@@ -4,7 +4,8 @@ import { logEvent } from "@/lib/data";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
+import { runAutomations } from "@/lib/automation-runner";
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -15,6 +16,13 @@ export async function POST(req: Request) {
   if (project_id !== null && project_id !== undefined) {
     const auth = await requireProjectPermission(req, Number(project_id), "edit");
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+  if (parent_task_id !== null && parent_task_id !== undefined) {
+    const parentProjectId = await getTaskProjectId(Number(parent_task_id));
+    if (parentProjectId !== null) {
+      const auth = await requireProjectPermission(req, parentProjectId, "edit");
+      if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
   }
   const dateOrNull = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
   const start = dateOrNull(start_on);
@@ -36,5 +44,6 @@ export async function POST(req: Request) {
   await notifyProject(project_id ?? null);
   await audit(uid, "task.create", { entity: "task", entityId: id, projectId: project_id ?? null, summary: name });
   await logEvent(id, uid, "created", "タスクを作成しました").catch(() => undefined);
+  await runAutomations(project_id ?? null, Number(id), "task_created").catch(() => undefined);
   return NextResponse.json({ id }, { status: 201 });
 }

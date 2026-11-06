@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { requireActiveUser } from "@/lib/api-project-auth";
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -9,6 +10,8 @@ export async function POST(req: Request) {
   if (!workspace_id || !name || String(name).trim() === "") {
     return NextResponse.json({ error: "workspace_id and name are required" }, { status: 400 });
   }
+  const active = await requireActiveUser(req);
+  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
   const p = await db.query(
     "INSERT INTO projects (workspace_id, name) VALUES ($1::bigint, $2) RETURNING id",
     [workspace_id, String(name).trim()],

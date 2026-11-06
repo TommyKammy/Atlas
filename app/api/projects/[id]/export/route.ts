@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
 function csvCell(v: unknown): string {
   const s = v === null || v === undefined ? "" : String(v);
@@ -11,6 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const auth = await requireProjectPermission(req, Number(id), "view");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format") ?? "json";
   if (format !== "json" && format !== "csv") {

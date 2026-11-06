@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("project_id");
   if (!projectId) return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+  const auth = await requireProjectPermission(req, Number(projectId), "view");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const r = await db.query(
     `SELECT t.id, t.name, t.title_template, t.description, t.assignee_id,
        u.name AS assignee_name, t.due_offset_days, t.section_id, s.name AS section_name, t.subtasks
@@ -23,7 +26,10 @@ export async function POST(req: Request) {
   const uid = getCurrentUserIdFromRequest(req);
   const body = await req.json().catch(() => null);
   const { project_id, name, title_template, description, assignee_id, due_offset_days, section_id, subtasks } = body ?? {};
-  if (!project_id || !name || String(name).trim() === "" || !title_template || String(title_template).trim() === "") {
+  if (!project_id) return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+  const auth = await requireProjectPermission(req, Number(project_id), "edit");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  if (!name || String(name).trim() === "" || !title_template || String(title_template).trim() === "") {
     return NextResponse.json({ error: "project_id, name and title_template are required" }, { status: 400 });
   }
   const subs = Array.isArray(subtasks)

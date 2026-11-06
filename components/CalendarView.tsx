@@ -23,6 +23,8 @@ import {
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const WEEKDAYS_ONLY = [1, 2, 3, 4, 5];
+const MONTH_SINGLE_LIMIT = 3;
+const UNSET_COLOR = "border-neutral-300 bg-neutral-100 text-neutral-600";
 const AVATAR_COLORS = ["bg-violet-400", "bg-amber-400", "bg-emerald-500", "bg-sky-500", "bg-rose-400"];
 const BAR_COLORS = [
   "border-[#c7d8f5] bg-[#e8f0fe] text-[#1f3a6e]",
@@ -68,6 +70,8 @@ export default function CalendarView({
   customFields,
   customValues,
   projectStatusOptions,
+  statusFieldName,
+  statusFieldEnabled,
   viewerId,
   month,
   week,
@@ -80,6 +84,8 @@ export default function CalendarView({
   customFields: CustomField[];
   customValues: Record<number, Record<number, CustomValue>>;
   projectStatusOptions: string[];
+  statusFieldName: string;
+  statusFieldEnabled: boolean;
   viewerId: number | null;
   month: string; // YYYY-MM
   week: string | null; // YYYY-MM-DD anchor day, null = month mode
@@ -92,8 +98,8 @@ export default function CalendarView({
   const selectFields = customFields.filter((f) => f.field_type === "select");
   const colorOptions = [
     { value: "none", label: "カラーなし" },
-    { value: "default", label: "Asana デフォルト" },
-    { value: "status", label: "Status" },
+    { value: "default", label: "セクション" },
+    ...(statusFieldEnabled ? [{ value: "status", label: statusFieldName }] : []),
     ...selectFields.map((f) => ({ value: `cf:${f.id}`, label: f.name })),
   ];
   const [completedFilter, setCompletedFilter] = useState(initial.completed);
@@ -111,12 +117,31 @@ export default function CalendarView({
     colorOptions.some((o) => o.value === initial.color) ? initial.color : "none",
   );
   const [weekStart, setWeekStart] = useState<0 | 1>(initial.weekStart);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [addingDate, setAddingDate] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragging = useRef(false);
+  const touchMove = useRef<{
+    taskId: number;
+    startX: number;
+    startY: number;
+    start: number;
+    end: number;
+    dayWidth: number;
+    single: boolean;
+    moved: boolean;
+  } | null>(null);
+  const calendarResize = useRef<{
+    taskId: number;
+    edge: "start" | "end";
+    startX: number;
+    dayWidth: number;
+    start: number;
+    end: number;
+  } | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const persistKey = `atlas.calendar.v1.${projectId}`;
 
@@ -245,7 +270,7 @@ export default function CalendarView({
     if (completedFilter === "done" && !t.completed) return false;
     if (assigneeFilter === "none" && t.assignee_id !== null) return false;
     if (assigneeFilter && assigneeFilter !== "none" && String(t.assignee_id ?? "") !== assigneeFilter) return false;
-    if (statusFilter && t.status !== statusFilter) return false;
+    if (statusFieldEnabled && statusFilter && t.status !== statusFilter) return false;
     if (creatorFilter === "none" && t.created_by !== null) return false;
     if (creatorFilter && creatorFilter !== "none" && String(t.created_by ?? "") !== creatorFilter) return false;
     for (const [fieldId, value] of Object.entries(customFilter)) {
@@ -295,6 +320,45 @@ export default function CalendarView({
     }
   }
   const undated = visibleTasks.filter((t) => !t.start_on && !t.due_on);
+
+  const colorKeyFor = (task: TaskRow): string => {
+    if (colorBy === "default") {
+      const sid = task.eff_section_id ?? task.section_id;
+      if (sid === null || sid === undefined) return "";
+      return sections.find((section) => section.id === sid)?.name ?? "";
+    }
+    if (statusFieldEnabled && colorBy === "status") return task.status ?? "";
+    if (colorBy.startsWith("cf:")) {
+      return customValues[task.id]?.[Number(colorBy.slice(3))]?.value_text ?? "";
+    }
+    return "";
+  };
+
+  const baseColorKeys =
+    colorBy === "default"
+      ? sections.map((section) => section.name)
+      : statusFieldEnabled && colorBy === "status"
+        ? projectStatusOptions
+        : colorBy.startsWith("cf:")
+          ? (selectFields.find((field) => `cf:${field.id}` === colorBy)?.options ?? [])
+          : [];
+  const observedColorKeys: string[] = [];
+  for (const task of visibleTasks) {
+    const key = colorKeyFor(task);
+    if (key !== "" && !baseColorKeys.includes(key) && !observedColorKeys.includes(key)) {
+      observedColorKeys.push(key);
+    }
+  }
+  const colorKeys = [...baseColorKeys, ...observedColorKeys];
+
+  const colorFor = (key: string): string => {
+    if (key === "") return UNSET_COLOR;
+    const idx = colorKeys.indexOf(key);
+    if (idx >= 0) return BAR_COLORS[idx % BAR_COLORS.length];
+    let hash = 0;
+    for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
+    return BAR_COLORS[Math.abs(hash) % BAR_COLORS.length];
+  };
 
   const anchor = weekMode ? week! : `${month}-01`;
   const [anchorY, anchorM] = anchor.slice(0, 7).split("-").map(Number);
@@ -565,7 +629,7 @@ export default function CalendarView({
   const activeFilters =
     (completedFilter ? 1 : 0) +
     (assigneeFilter ? 1 : 0) +
-    (statusFilter ? 1 : 0) +
+    (statusFieldEnabled && statusFilter ? 1 : 0) +
     (dueFilter ? 1 : 0) +
     (createdFilter ? 1 : 0) +
     (updatedFilter ? 1 : 0) +
@@ -574,18 +638,6 @@ export default function CalendarView({
     Object.keys(customFilter).length;
   const optionsActive = !showWeekends || !showMulti || colorBy !== "none" || weekStart === 1;
   const title = monthLabel(`${anchorY}-${String(anchorM).padStart(2, "0")}`);
-
-  const colorClass = (task: TaskRow): string => {
-    let key = "";
-    if (colorBy === "default") key = `section:${task.eff_section_id ?? task.section_id ?? ""}`;
-    else if (colorBy === "status") key = task.status;
-    else if (colorBy.startsWith("cf:")) {
-      key = customValues[task.id]?.[Number(colorBy.slice(3))]?.value_text ?? "";
-    }
-    let hash = 0;
-    for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
-    return BAR_COLORS[Math.abs(hash) % BAR_COLORS.length];
-  };
 
   const dayHeader = (day: number, weekView: boolean) => {
     const iso = formatDay(day);
@@ -667,7 +719,7 @@ export default function CalendarView({
 
   const taskFace = (task: TaskRow, bar: boolean) => {
     const colored = colorBy !== "none";
-    const color = colored ? colorClass(task) : "";
+    const color = colored ? colorFor(colorKeyFor(task)) : "";
     const base = bar
       ? `flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden border px-1.5 text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:brightness-[0.98] ${
           colored ? color : "border-neutral-200 bg-white text-neutral-900"
@@ -682,7 +734,7 @@ export default function CalendarView({
     task.assignee_name ? (
       <span
         title={task.assignee_name}
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${avatarColor(task.assignee_name)}`}
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-neutral-900 ${avatarColor(task.assignee_name)}`}
       >
         {task.assignee_name.slice(0, 1)}
       </span>
@@ -881,22 +933,24 @@ export default function CalendarView({
                     ))}
                   </select>
                 </label>
-                <label className="mt-2 block text-xs text-neutral-500">
-                  Status
-                  <select
-                    data-calendar-filter-status
-                    value={statusFilter}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    {statusOptions.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {statusFieldEnabled && (
+                  <label className="mt-2 block text-xs text-neutral-500">
+                    {statusFieldName}
+                    <select
+                      data-calendar-filter-status
+                      value={statusFilter}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
+                    >
+                      <option value="">すべて</option>
+                      {statusOptions.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label className="mt-2 block text-xs text-neutral-500">
                   期日
                   <select
@@ -1088,6 +1142,25 @@ export default function CalendarView({
         </button>
       </div>
 
+      {colorBy !== "none" && (
+        <div
+          data-calendar-legend
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-neutral-200 px-4 py-1.5 text-[12px] text-neutral-600"
+        >
+          <span className="font-medium text-neutral-700">凡例</span>
+          {colorKeys.map((key) => (
+            <span key={key} data-calendar-legend-item={key} className="flex items-center gap-1">
+              <span data-calendar-legend-swatch className={`h-3 w-3 rounded-sm border ${colorFor(key)}`} />
+              {key}
+            </span>
+          ))}
+          <span data-calendar-legend-item="unset" className="flex items-center gap-1">
+            <span data-calendar-legend-swatch className={`h-3 w-3 rounded-sm border ${UNSET_COLOR}`} />
+            未設定
+          </span>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 overflow-auto rounded-b-md border-l border-t border-neutral-200">
         <div className="flex min-h-full min-w-[720px] flex-col">
           {!weekMode && (
@@ -1127,6 +1200,7 @@ export default function CalendarView({
                       ))}
                     </div>
                     <div
+                      data-calendar-multi-grid
                       className="relative grid py-1"
                       style={{
                         gridTemplateColumns: cols,
@@ -1148,11 +1222,17 @@ export default function CalendarView({
                             <div
                               key={`${days[0]}-${t.id}`}
                               data-calendar-multiday={t.id}
+                              data-calendar-color-key={colorKeyFor(t)}
+                              data-calendar-color-tone={colorKeyFor(t) === "" ? "unset" : "set"}
                               data-calendar-continues={cont}
                               role="button"
                               tabIndex={0}
                               draggable
                               onDragStart={(e) => {
+                                if ((e.target as HTMLElement).closest("[data-calendar-resize]")) {
+                                  e.preventDefault();
+                                  return;
+                                }
                                 dragging.current = true;
                                 e.dataTransfer.setData("text/atlas-task", String(t.id));
                               }}
@@ -1169,7 +1249,56 @@ export default function CalendarView({
                                 if (e.key === "Enter") openTask(t.id);
                               }}
                               title="クリックで開く / ドラッグで期日を変更"
-                              className={`${taskFace(t, true)} mx-1 rounded ${
+                              onPointerDown={(e) => {
+                                if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+                                if ((e.target as HTMLElement).closest("[data-calendar-resize]")) return;
+                                const grid = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-multi-grid]");
+                                const dayCells = [...(grid?.parentElement?.parentElement?.querySelectorAll<HTMLElement>("[data-calendar-day]") ?? [])];
+                                const start = parseDay(t.start_on ?? t.due_on ?? "");
+                                const end = parseDay(t.due_on ?? t.start_on ?? "");
+                                if (!grid || dayCells.length === 0 || start === null || end === null) return;
+                                touchMove.current = {
+                                  taskId: t.id,
+                                  startX: e.clientX,
+                                  startY: e.clientY,
+                                  start,
+                                  end,
+                                  dayWidth: Math.max(...dayCells.map((cell) => cell.getBoundingClientRect().width)),
+                                  single: false,
+                                  moved: false,
+                                };
+                                e.currentTarget.setPointerCapture(e.pointerId);
+                              }}
+                              onPointerMove={(e) => {
+                                const session = touchMove.current;
+                                if (!session) return;
+                                if (Math.abs(e.clientX - session.startX) > 6 || Math.abs(e.clientY - session.startY) > 6) {
+                                  session.moved = true;
+                                  dragging.current = true;
+                                }
+                              }}
+                              onPointerUp={(e) => {
+                                const session = touchMove.current;
+                                touchMove.current = null;
+                                if (!session || !session.moved) return;
+                                const delta = Math.round((e.clientX - session.startX) / Math.max(1, session.dayWidth));
+                                if (delta !== 0) {
+                                  void patchTask(t, {
+                                    start_on: formatDay(session.start + delta),
+                                    due_on: formatDay(session.end + delta),
+                                  });
+                                }
+                                setTimeout(() => {
+                                  dragging.current = false;
+                                }, 30);
+                              }}
+                              onPointerCancel={() => {
+                                touchMove.current = null;
+                                setTimeout(() => {
+                                  dragging.current = false;
+                                }, 30);
+                              }}
+                              className={`${taskFace(t, true)} relative touch-pan-y mx-1 rounded ${
                                 bar.continuesLeft ? "rounded-l-none" : ""
                               } ${bar.continuesRight ? "rounded-r-none" : ""}`}
                               style={{
@@ -1180,11 +1309,79 @@ export default function CalendarView({
                               {bar.continuesLeft && <span className="shrink-0 text-neutral-400">‹</span>}
                               {completion(t)}
                               {taskAvatars(t)}
-                              <span className={`min-w-0 flex-1 truncate ${t.completed ? "line-through" : ""}`}>
+                              <span
+                                title={t.name}
+                                dir="auto"
+                                className={`min-w-0 flex-1 truncate ${t.completed ? "line-through" : ""}`}
+                              >
                                 {t.name}
                               </span>
                               {taskMeta(t)}
                               {bar.continuesRight && <span className="shrink-0 text-neutral-400">›</span>}
+                              <span
+                                data-calendar-resize="start"
+                                title="開始日を変更"
+                                onPointerDown={(e) => {
+                                  const start = parseDay(t.start_on ?? t.due_on ?? "");
+                                  const end = parseDay(t.due_on ?? t.start_on ?? "");
+                                  const grid = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-multi-grid]");
+                                  const dayCells = [...(grid?.parentElement?.parentElement?.querySelectorAll<HTMLElement>("[data-calendar-day]") ?? [])];
+                                  if (start === null || end === null || !grid || dayCells.length === 0) return;
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  calendarResize.current = {
+                                    taskId: t.id,
+                                    edge: "start",
+                                    startX: e.clientX,
+                                    dayWidth: Math.max(...dayCells.map((cell) => cell.getBoundingClientRect().width)),
+                                    start,
+                                    end,
+                                  };
+                                  e.currentTarget.setPointerCapture(e.pointerId);
+                                }}
+                                onPointerUp={(e) => {
+                                  const session = calendarResize.current;
+                                  calendarResize.current = null;
+                                  if (!session) return;
+                                  const delta = Math.round((e.clientX - session.startX) / Math.max(1, session.dayWidth));
+                                  if (delta === 0) return;
+                                  const start = Math.min(session.end, session.start + delta);
+                                  void patchTask(t, { start_on: formatDay(start), due_on: formatDay(session.end) });
+                                }}
+                                className="absolute inset-y-0 left-0 z-20 w-2 touch-none cursor-ew-resize rounded-l bg-[#2c60b8]/0 hover:bg-[#2c60b8]/40"
+                              />
+                              <span
+                                data-calendar-resize="end"
+                                title="期日を変更"
+                                onPointerDown={(e) => {
+                                  const start = parseDay(t.start_on ?? t.due_on ?? "");
+                                  const end = parseDay(t.due_on ?? t.start_on ?? "");
+                                  const grid = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-multi-grid]");
+                                  const dayCells = [...(grid?.parentElement?.parentElement?.querySelectorAll<HTMLElement>("[data-calendar-day]") ?? [])];
+                                  if (start === null || end === null || !grid || dayCells.length === 0) return;
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  calendarResize.current = {
+                                    taskId: t.id,
+                                    edge: "end",
+                                    startX: e.clientX,
+                                    dayWidth: Math.max(...dayCells.map((cell) => cell.getBoundingClientRect().width)),
+                                    start,
+                                    end,
+                                  };
+                                  e.currentTarget.setPointerCapture(e.pointerId);
+                                }}
+                                onPointerUp={(e) => {
+                                  const session = calendarResize.current;
+                                  calendarResize.current = null;
+                                  if (!session) return;
+                                  const delta = Math.round((e.clientX - session.startX) / Math.max(1, session.dayWidth));
+                                  if (delta === 0) return;
+                                  const end = Math.max(session.start, session.end + delta);
+                                  void patchTask(t, { start_on: formatDay(session.start), due_on: formatDay(end) });
+                                }}
+                                className="absolute inset-y-0 right-0 z-20 w-2 touch-none cursor-ew-resize rounded-r bg-[#2c60b8]/0 hover:bg-[#2c60b8]/40"
+                              />
                             </div>
                           );
                         }),
@@ -1196,6 +1393,9 @@ export default function CalendarView({
                   {visibleWeekDays.map((day) => {
                     const iso = formatDay(day);
                     const dayTasks = singleByDay.get(iso) ?? [];
+                    const expanded = expandedDays.has(iso);
+                    const shownDayTasks = weekMode || expanded ? dayTasks : dayTasks.slice(0, MONTH_SINGLE_LIMIT);
+                    const hiddenDayTasks = dayTasks.length - shownDayTasks.length;
                     const adding = addingDate === iso;
                     const dt = new Date(day * 86_400_000);
                     const compact = dt.getUTCDay() === 0 || dt.getUTCDay() === 6;
@@ -1203,19 +1403,22 @@ export default function CalendarView({
                       <div
                         key={iso}
                         data-calendar-day={iso}
+                        data-calendar-day-count={dayTasks.length}
                         onDragOver={(e) => {
                           e.preventDefault();
                           e.dataTransfer.dropEffect = "move";
                         }}
                         onDrop={(e) => onDrop(e, iso)}
                         className={`group relative border-r border-b border-neutral-200 p-1 align-top ${
-                          weekMode ? "min-h-[320px]" : "min-h-[120px]"
+                          weekMode ? "min-h-[320px]" : "min-h-[120px] max-h-[240px] overflow-y-auto"
                         }`}
                       >
-                        {dayTasks.map((t) => (
+                        {shownDayTasks.map((t) => (
                           <div
                             key={t.id}
                             data-calendar-single={t.id}
+                            data-calendar-color-key={colorKeyFor(t)}
+                            data-calendar-color-tone={colorKeyFor(t) === "" ? "unset" : "set"}
                             role="button"
                             tabIndex={0}
                             draggable
@@ -1236,16 +1439,93 @@ export default function CalendarView({
                               if (e.key === "Enter") openTask(t.id);
                             }}
                             title="クリックで開く / ドラッグで期日を変更"
-                            className={taskFace(t, false)}
+                            className={`${taskFace(t, false)} touch-pan-y`}
+                            onPointerDown={(e) => {
+                              if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+                              const day = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-day]");
+                              const start = parseDay(t.start_on ?? t.due_on ?? "");
+                              const end = parseDay(t.due_on ?? t.start_on ?? "");
+                              if (!day || start === null || end === null) return;
+                              touchMove.current = {
+                                taskId: t.id,
+                                startX: e.clientX,
+                                startY: e.clientY,
+                                start,
+                                end,
+                                dayWidth: day.getBoundingClientRect().width,
+                                single: true,
+                                moved: false,
+                              };
+                              e.currentTarget.setPointerCapture(e.pointerId);
+                            }}
+                            onPointerMove={(e) => {
+                              const session = touchMove.current;
+                              if (!session) return;
+                              if (Math.abs(e.clientX - session.startX) > 6 || Math.abs(e.clientY - session.startY) > 6) {
+                                session.moved = true;
+                                dragging.current = true;
+                              }
+                            }}
+                            onPointerUp={(e) => {
+                              const session = touchMove.current;
+                              touchMove.current = null;
+                              if (!session || !session.moved) return;
+                              const delta = Math.round((e.clientX - session.startX) / Math.max(1, session.dayWidth));
+                              if (delta !== 0) {
+                                const next = formatDay(session.end + delta);
+                                void patchTask(t, t.start_on ? { start_on: next, due_on: next } : { due_on: next });
+                              }
+                              setTimeout(() => {
+                                dragging.current = false;
+                              }, 30);
+                            }}
+                            onPointerCancel={() => {
+                              touchMove.current = null;
+                              setTimeout(() => {
+                                dragging.current = false;
+                              }, 30);
+                            }}
                           >
                             {completion(t)}
                             {taskAvatars(t)}
-                            <span className={`min-w-0 flex-1 truncate ${t.completed ? "line-through" : ""}`}>
+                            <span
+                              title={t.name}
+                              dir="auto"
+                              className={`min-w-0 flex-1 truncate ${t.completed ? "line-through" : ""}`}
+                            >
                               {t.name}
                             </span>
                             {taskMeta(t)}
                           </div>
                         ))}
+                        {hiddenDayTasks > 0 && (
+                          <button
+                            type="button"
+                            data-calendar-more={iso}
+                            onClick={() => {
+                              setExpandedDays((prev) => new Set(prev).add(iso));
+                            }}
+                            className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] font-medium text-[#2c60b8] hover:bg-neutral-100"
+                          >
+                            +{hiddenDayTasks} 件
+                          </button>
+                        )}
+                        {!weekMode && expanded && dayTasks.length > MONTH_SINGLE_LIMIT && (
+                          <button
+                            type="button"
+                            data-calendar-collapse={iso}
+                            onClick={() => {
+                              setExpandedDays((prev) => {
+                                const next = new Set(prev);
+                                next.delete(iso);
+                                return next;
+                              });
+                            }}
+                            className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] text-neutral-500 hover:bg-neutral-100"
+                          >
+                            折りたたむ
+                          </button>
+                        )}
                         {adding ? (
                           <input
                             ref={inputRef}

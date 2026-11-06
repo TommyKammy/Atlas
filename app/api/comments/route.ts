@@ -4,6 +4,7 @@ import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
+import { mentionedUserIds, replaceCommentMentions } from "@/lib/mentions";
 
 export async function POST(req: Request) {
   const uid = getCurrentUserIdFromRequest(req);
@@ -21,6 +22,8 @@ export async function POST(req: Request) {
     "INSERT INTO comments (task_id, author_id, body) VALUES ($1, $2, $3) RETURNING id",
     [task_id, uid, String(text).trim()],
   );
+  const mentionIds = await mentionedUserIds(taskProjectId, String(text));
+  await replaceCommentMentions(r.rows[0].id, mentionIds);
   await notifyTask(task_id);
   await audit(getCurrentUserIdFromRequest(req), "comment.create", { entity: "comment", entityId: r.rows[0].id, summary: String(text).trim().slice(0, 120) });
   return NextResponse.json({ id: r.rows[0].id }, { status: 201 });

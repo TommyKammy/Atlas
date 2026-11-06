@@ -1,28 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ProjectMembersManager from "./ProjectMembersManager";
 import ShareLinks from "./ShareLinks";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 export default function ProjectShareButton({
   projectId,
   projectName,
+  label = "共有",
 }: {
   projectId: number;
   projectName: string;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open, () => setOpen(false));
 
   const copy = async () => {
     try {
@@ -42,7 +38,7 @@ export default function ProjectShareButton({
         onClick={() => setOpen(true)}
         className="flex h-7 items-center rounded-md bg-[#4075cf] px-2.5 text-xs text-white hover:bg-[#3567b8]"
       >
-        共有
+        {label}
       </button>
       {open &&
         typeof document !== "undefined" &&
@@ -52,6 +48,8 @@ export default function ProjectShareButton({
             onMouseDown={() => setOpen(false)}
           >
             <div
+              ref={dialogRef}
+              tabIndex={-1}
               role="dialog"
               aria-modal="true"
               aria-labelledby="project-share-title"

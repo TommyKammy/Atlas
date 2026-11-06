@@ -13,6 +13,20 @@ export async function POST(req: Request) {
     const auth = await requireProjectPermission(req, projectId, "edit");
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+  const cycle = await db.query(
+    `WITH RECURSIVE chain(id) AS (
+       SELECT $2::bigint
+       UNION
+       SELECT d.depends_on_id
+         FROM task_dependencies d
+         JOIN chain c ON d.task_id = c.id
+     )
+     SELECT 1 FROM chain WHERE id = $1::bigint LIMIT 1`,
+    [task_id, depends_on_id],
+  );
+  if ((cycle.rowCount ?? 0) > 0) {
+    return NextResponse.json({ error: "dependency cycle" }, { status: 409 });
+  }
   await db.query(
     "INSERT INTO task_dependencies (task_id, depends_on_id) VALUES ($1::bigint, $2::bigint) ON CONFLICT DO NOTHING",
     [task_id, depends_on_id],

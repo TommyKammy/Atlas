@@ -2,6 +2,10 @@ import { db } from "./db";
 import { DEFAULT_WIDGETS, normalizeWidgets } from "./dashboard-widgets";
 
 import type { CustomField, CustomValue } from "./custom-fields";
+import type { FormField, ProjectForm } from "./forms";
+import type { ProjectApp } from "./integrations";
+import type { Bundle, BundleField } from "./bundles";
+import type { ProjectAutomation } from "./automations";
 import { normalizeProjectRole, type ProjectRole } from "./project-roles";
 export type { CustomField, CustomValue } from "./custom-fields";
 
@@ -23,10 +27,16 @@ export type User = {
 export type Project = {
   id: number;
   name: string;
+  description?: string | null;
   status: string;
+  status_color?: string | null;
   status_options: string[];
+  status_field_name: string;
+  status_field_enabled: boolean;
   color?: string | null;
   icon?: string | null;
+  email_address?: string | null;
+  email_enabled?: boolean;
 };
 
 export type Section = { id: number; name: string; position: number };
@@ -59,9 +69,11 @@ export type TaskRow = {
 
 export type CommentRow = {
   id: number;
+  author_id: number | null;
   author_name: string | null;
   body: string;
   created_at: string;
+  edited_at: string | null;
 };
 
 const TASK_COLS = `
@@ -98,6 +110,30 @@ export async function getUsers(): Promise<User[]> {
 }
 
 /** Projects visible to a user: workspace admins see all, others only member projects. */
+/** Search assignee options: guests only see themselves and collaborators. */
+export async function getSearchUsers(workspaceId: number, viewerUserId: number): Promise<User[]> {
+  const r = await db.query(
+    `SELECT u.id, u.name, u.email, u.title, u.avatar_url, u.is_guest, u.is_admin,
+       u.deactivated_at::text AS deactivated_at
+     FROM users u
+     WHERE u.deactivated_at IS NULL
+       AND (
+         NOT EXISTS (SELECT 1 FROM users me WHERE me.id = $1 AND me.is_guest)
+         OR u.id = $1
+         OR EXISTS (
+           SELECT 1
+           FROM project_members a
+           JOIN projects p ON p.id = a.project_id AND p.workspace_id = $2
+           JOIN project_members b ON b.project_id = a.project_id AND b.user_id = u.id
+           WHERE a.user_id = $1
+         )
+       )
+     ORDER BY u.id`,
+    [viewerUserId, workspaceId],
+  );
+  return r.rows;
+}
+
 export async function getProjectsForUser(workspaceId: number, userId: number): Promise<Project[]> {
   const r = await db.query(
     `SELECT p.id, p.name, p.status, COALESCE(p.status_options, '[]'::jsonb) AS status_options,
@@ -138,7 +174,7 @@ export async function getProjectAccess(
 
 export async function getProject(projectId: number) {
   const r = await db.query(
-    "SELECT id, name, status, COALESCE(status_options, '[]'::jsonb) AS status_options, color, icon FROM projects WHERE id = $1",
+    "SELECT id, name, description, status, status_color, COALESCE(status_options, '[]'::jsonb) AS status_options, status_field_name, status_field_enabled, color, icon, email_address, email_enabled FROM projects WHERE id = $1",
     [projectId],
   );
   return r.rows[0] as Project | undefined;
@@ -187,7 +223,8 @@ export async function getSubtasks(taskId: number): Promise<TaskRow[]> {
 
 export async function getComments(taskId: number): Promise<CommentRow[]> {
   const r = await db.query(
-    `SELECT c.id, u.name AS author_name, c.body, c.created_at::text
+    `SELECT c.id, c.author_id, u.name AS author_name, c.body, c.created_at::text,
+       c.edited_at::text AS edited_at
      FROM comments c LEFT JOIN users u ON u.id = c.author_id
      WHERE c.task_id = $1 ORDER BY c.id`,
     [taskId],
@@ -222,8 +259,9 @@ export async function getMyTasks(userId: number): Promise<(TaskRow & { project_n
        p.name AS project_name
      FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
      LEFT JOIN projects p ON p.id = t.project_id
+     LEFT JOIN my_task_orders o ON o.task_id = t.id AND o.user_id = $1
      WHERE t.assignee_id = $1 AND t.completed = FALSE AND t.parent_task_id IS NULL AND t.deleted_at IS NULL
-     ORDER BY t.due_on NULLS LAST, t.position, t.id`,
+     ORDER BY o.position NULLS LAST, t.due_on NULLS LAST, t.position, t.id`,
     [userId],
   );
   return r.rows;
@@ -255,6 +293,37 @@ export type ProjectStats = {
   recent: { id: number; name: string; updated_at: string }[];
 };
 
+export type ProjectActivity = {
+  kind: "comment" | "event";
+  id: number;
+  summary: string;
+  actor_name: string | null;
+  created_at: string;
+};
+
+export async function getProjectActivity(projectId: number, limit = 8): Promise<ProjectActivity[]> {
+  const r = await db.query(
+    `SELECT * FROM (
+       SELECT 'comment'::text AS kind, c.id, c.body AS summary, c.created_at::text AS created_at,
+         u.name AS actor_name
+       FROM comments c
+       JOIN tasks t ON t.id = c.task_id AND t.deleted_at IS NULL
+       LEFT JOIN users u ON u.id = c.author_id
+       WHERE t.project_id = $1
+       UNION ALL
+       SELECT 'event'::text AS kind, e.id, e.summary, e.created_at::text AS created_at,
+         u.name AS actor_name
+       FROM task_events e
+       JOIN tasks t ON t.id = e.task_id AND t.deleted_at IS NULL
+       LEFT JOIN users u ON u.id = e.actor_id
+       WHERE t.project_id = $1
+     ) feed
+     ORDER BY created_at DESC LIMIT $2`,
+    [projectId, limit],
+  );
+  return r.rows as ProjectActivity[];
+}
+
 export type ProjectMessage = {
   id: number;
   title: string;
@@ -262,6 +331,158 @@ export type ProjectMessage = {
   created_at: string;
   author_name: string | null;
 };
+
+export type ProjectTab = {
+  id: number;
+  tab_key: string;
+  name: string;
+  view_type: string;
+  position: number;
+  is_custom: boolean;
+};
+
+export const DEFAULT_PROJECT_TABS = [
+  { key: "builtin:overview", name: "概要", view: "overview" },
+  { key: "builtin:dashboard", name: "ダッシュボード", view: "dashboard" },
+  { key: "builtin:list", name: "リスト", view: "list" },
+  { key: "builtin:board", name: "ボード", view: "board" },
+  { key: "builtin:timeline", name: "タイムライン", view: "timeline" },
+  { key: "builtin:calendar", name: "カレンダー", view: "calendar" },
+  { key: "builtin:messages", name: "メッセージ", view: "messages" },
+  { key: "builtin:knowledge", name: "知識", view: "knowledge" },
+  { key: "builtin:files", name: "ファイル", view: "files" },
+  { key: "builtin:forms", name: "フォーム", view: "forms" },
+] as const;
+
+export async function getProjectTabs(projectId: number): Promise<ProjectTab[]> {
+  const existing = await db.query(
+    "SELECT id, tab_key, name, view_type, position, is_custom FROM project_tabs WHERE project_id = $1 ORDER BY position, id",
+    [projectId],
+  );
+  if (existing.rowCount === 0) {
+    for (const [index, tab] of DEFAULT_PROJECT_TABS.entries()) {
+      await db.query(
+        `INSERT INTO project_tabs (project_id, tab_key, name, view_type, position, is_custom)
+         VALUES ($1, $2, $3, $4, $5, false)
+         ON CONFLICT (project_id, tab_key) DO NOTHING`,
+        [projectId, tab.key, tab.name, tab.view, index * 1000],
+      );
+    }
+    return (
+      await db.query(
+        "SELECT id, tab_key, name, view_type, position, is_custom FROM project_tabs WHERE project_id = $1 ORDER BY position, id",
+        [projectId],
+      )
+    ).rows;
+  }
+  const present = new Set(existing.rows.map((row) => row.tab_key));
+  const missing = DEFAULT_PROJECT_TABS.filter((tab) => !present.has(tab.key));
+  if (missing.length > 0) {
+    const max = await db.query(
+      "SELECT COALESCE(MAX(position), 0) AS position FROM project_tabs WHERE project_id = $1",
+      [projectId],
+    );
+    let next = Number(max.rows[0].position) + 1000;
+    for (const tab of missing) {
+      await db.query(
+        `INSERT INTO project_tabs (project_id, tab_key, name, view_type, position, is_custom)
+         VALUES ($1, $2, $3, $4, $5, false)
+         ON CONFLICT (project_id, tab_key) DO NOTHING`,
+        [projectId, tab.key, tab.name, tab.view, next],
+      );
+      next += 1000;
+    }
+    return (
+      await db.query(
+        "SELECT id, tab_key, name, view_type, position, is_custom FROM project_tabs WHERE project_id = $1 ORDER BY position, id",
+        [projectId],
+      )
+    ).rows;
+  }
+  return existing.rows;
+}
+
+export async function getProjectAutomations(projectId: number): Promise<ProjectAutomation[]> {
+  const r = await db.query(
+    `SELECT id, project_id, name, trigger, action_type, action_value, enabled,
+            created_at::text AS created_at, updated_at::text AS updated_at
+     FROM project_automations WHERE project_id = $1 ORDER BY id`,
+    [projectId],
+  );
+  return r.rows as ProjectAutomation[];
+}
+
+export async function getBundlesForProject(projectId: number): Promise<Bundle[]> {
+  const r = await db.query(
+    `SELECT b.id, b.workspace_id, b.name, b.description, b.fields,
+            b.created_at::text AS created_at, b.updated_at::text AS updated_at,
+            EXISTS (SELECT 1 FROM bundle_applications ba WHERE ba.bundle_id = b.id AND ba.project_id = $1) AS applied,
+            (SELECT COUNT(*)::int FROM bundle_applications ba WHERE ba.bundle_id = b.id) AS applied_count
+     FROM bundles b
+     JOIN projects p ON p.workspace_id = b.workspace_id
+     WHERE p.id = $1
+     ORDER BY b.id`,
+    [projectId],
+  );
+  return r.rows.map((row) => ({
+    ...row,
+    fields: (row.fields ?? []) as BundleField[],
+    applied: row.applied === true,
+    applied_count: Number(row.applied_count ?? 0),
+  }));
+}
+
+export async function getProjectApps(projectId: number): Promise<ProjectApp[]> {
+  const r = await db.query(
+    `SELECT id, project_id, app_key, config, enabled,
+            created_at::text AS created_at, updated_at::text AS updated_at
+     FROM project_apps WHERE project_id = $1 ORDER BY id`,
+    [projectId],
+  );
+  return r.rows.map((row) => ({
+    ...row,
+    config: (row.config ?? {}) as Record<string, string>,
+  }));
+}
+
+export async function getProjectForms(projectId: number): Promise<ProjectForm[]> {
+  const r = await db.query(
+    `SELECT f.id, f.project_id, f.name, f.description, f.fields, f.published,
+            f.created_at::text AS created_at, f.updated_at::text AS updated_at,
+            COUNT(r.id)::int AS response_count
+     FROM project_forms f
+     LEFT JOIN form_responses r ON r.form_id = f.id
+     WHERE f.project_id = $1
+     GROUP BY f.id
+     ORDER BY f.id DESC`,
+    [projectId],
+  );
+  return r.rows.map((row) => ({
+    ...row,
+    fields: (row.fields ?? []) as FormField[],
+    response_count: Number(row.response_count ?? 0),
+  }));
+}
+
+export type ProjectKnowledge = {
+  id: number;
+  title: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  author_name: string | null;
+};
+
+export async function getProjectKnowledge(projectId: number): Promise<ProjectKnowledge[]> {
+  const r = await db.query(
+    `SELECT k.id, k.title, k.body, k.created_at::text AS created_at,
+            k.updated_at::text AS updated_at, u.name AS author_name
+     FROM project_knowledge k LEFT JOIN users u ON u.id = k.author_id
+     WHERE k.project_id = $1 ORDER BY k.updated_at DESC, k.id DESC LIMIT 100`,
+    [projectId],
+  );
+  return r.rows;
+}
 
 export async function getProjectMessages(projectId: number): Promise<ProjectMessage[]> {
   const r = await db.query(
@@ -407,6 +628,7 @@ export async function getSavedView(id: number): Promise<(SavedView & { project_i
 }
 
 export type DashboardExtras = {
+  statusFieldEnabled: boolean;
   byStatus: { status: string; n: number }[];
   overdue: { id: number; name: string; due_on: string | null; assignee_name: string | null }[];
   trend: { day: string; n: number }[];
@@ -414,11 +636,18 @@ export type DashboardExtras = {
 
 export async function getDashboardExtras(projectId: number, days = 14): Promise<DashboardExtras> {
   const window = [7, 14, 30].includes(days) ? days : 14;
-  const byStatus = await db.query(
-    `SELECT status, COUNT(*)::int AS n FROM tasks
-     WHERE project_id = $1 AND parent_task_id IS NULL AND deleted_at IS NULL GROUP BY status ORDER BY n DESC, status`,
+  const project = await db.query(
+    "SELECT status_field_enabled FROM projects WHERE id = $1",
     [projectId],
   );
+  const statusFieldEnabled = project.rows[0]?.status_field_enabled !== false;
+  const byStatus = statusFieldEnabled
+    ? await db.query(
+        `SELECT status, COUNT(*)::int AS n FROM tasks
+         WHERE project_id = $1 AND parent_task_id IS NULL AND deleted_at IS NULL GROUP BY status ORDER BY n DESC, status`,
+        [projectId],
+      )
+    : { rows: [] as { status: string; n: number }[] };
   const overdue = await db.query(
     `SELECT t.id, t.name, t.due_on::text AS due_on, u.name AS assignee_name
      FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
@@ -434,7 +663,7 @@ export async function getDashboardExtras(projectId: number, days = 14): Promise<
      GROUP BY d ORDER BY d`,
     [projectId, window],
   );
-  return { byStatus: byStatus.rows, overdue: overdue.rows, trend: trend.rows };
+  return { statusFieldEnabled, byStatus: byStatus.rows, overdue: overdue.rows, trend: trend.rows };
 }
 
 export async function getTaskDependencies(projectId: number) {
@@ -760,8 +989,14 @@ export type AdvancedSearchFilters = {
   projectId: number | null;
   assigneeId: number | null | "none";
   completed: "all" | "open" | "done";
+  status: string | null;
   dueFrom: string | null;
   dueTo: string | null;
+  createdFrom: string | null;
+  createdTo: string | null;
+  completedFrom: string | null;
+  completedTo: string | null;
+  custom: { fieldId: number; value: string; type: string }[];
 };
 
 export async function searchTasksAdvanced(
@@ -769,9 +1004,24 @@ export async function searchTasksAdvanced(
   f: AdvancedSearchFilters,
   viewerUserId?: number,
 ) {
-  const like = `%${f.q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
-  const conds: string[] = ["p.workspace_id = $1", "t.deleted_at IS NULL", "(t.name ILIKE $2 OR t.description ILIKE $2)"];
-  const params: unknown[] = [workspaceId, like];
+  const escaped = f.q.replace(/[%_\\]/g, (m) => `\\${m}`);
+  const like = `%${escaped}%`;
+  const hasQuery = f.q !== "";
+  const conds: string[] = ["p.workspace_id = $1", "p.archived_at IS NULL", "t.deleted_at IS NULL"];
+  const params: unknown[] = [workspaceId];
+  let likeParam = 0;
+  let exactParam = 0;
+  let prefixParam = 0;
+  if (hasQuery) {
+    params.push(like);
+    likeParam = params.length;
+    params.push(f.q);
+    exactParam = params.length;
+    params.push(`${escaped}%`);
+    prefixParam = params.length;
+    conds.push(`(t.name ILIKE $${likeParam} OR t.description ILIKE $${likeParam}
+      OR EXISTS (SELECT 1 FROM comments c WHERE c.task_id = t.id AND c.body ILIKE $${likeParam}))`);
+  }
   if (viewerUserId !== undefined) {
     params.push(viewerUserId);
     conds.push(`(EXISTS (SELECT 1 FROM users ux WHERE ux.id = $${params.length} AND ux.is_admin)
@@ -788,6 +1038,10 @@ export async function searchTasksAdvanced(
   }
   if (f.completed === "open") conds.push("t.completed = FALSE");
   else if (f.completed === "done") conds.push("t.completed = TRUE");
+  if (f.status !== null && f.status !== "") {
+    params.push(f.status);
+    conds.push(`t.status = $${params.length}`);
+  }
   if (f.dueFrom) {
     params.push(f.dueFrom);
     conds.push(`t.due_on >= $${params.length}`);
@@ -796,13 +1050,49 @@ export async function searchTasksAdvanced(
     params.push(f.dueTo);
     conds.push(`t.due_on <= $${params.length}`);
   }
+  if (f.createdFrom) {
+    params.push(f.createdFrom);
+    conds.push(`t.created_at::date >= $${params.length}`);
+  }
+  if (f.createdTo) {
+    params.push(f.createdTo);
+    conds.push(`t.created_at::date <= $${params.length}`);
+  }
+  if (f.completedFrom) {
+    params.push(f.completedFrom);
+    conds.push(`t.completed_at::date >= $${params.length}`);
+  }
+  if (f.completedTo) {
+    params.push(f.completedTo);
+    conds.push(`t.completed_at::date <= $${params.length}`);
+  }
+  for (const filter of f.custom) {
+    params.push(filter.fieldId);
+    const fieldParam = params.length;
+    params.push(filter.value);
+    const valueParam = params.length;
+    if (filter.type === "number") {
+      conds.push(`EXISTS (SELECT 1 FROM task_custom_values v WHERE v.task_id = t.id AND v.field_id = $${fieldParam} AND v.value_number = $${valueParam}::double precision)`);
+    } else {
+      conds.push(`EXISTS (SELECT 1 FROM task_custom_values v WHERE v.task_id = t.id AND v.field_id = $${fieldParam} AND v.value_text = $${valueParam})`);
+    }
+  }
+  const rankSql = hasQuery
+    ? `CASE
+         WHEN lower(t.name) = lower($${exactParam}) THEN 0
+         WHEN t.name ILIKE $${prefixParam} THEN 1
+         WHEN t.name ILIKE $${likeParam} THEN 2
+         WHEN t.description ILIKE $${likeParam} THEN 3
+         ELSE 4
+       END`
+    : "0";
   const r = await db.query(
     `SELECT t.id, t.name, t.completed, t.due_on::text AS due_on, u.name AS assignee_name,
-       p.id AS project_id, p.name AS project_name
+       p.id AS project_id, p.name AS project_name, ${rankSql} AS match_rank
      FROM tasks t JOIN projects p ON p.id = t.project_id
      LEFT JOIN users u ON u.id = t.assignee_id
      WHERE ${conds.join(" AND ")}
-     ORDER BY t.due_on NULLS LAST, t.updated_at DESC LIMIT 100`,
+     ORDER BY match_rank, t.due_on NULLS LAST, t.updated_at DESC LIMIT 100`,
     params,
   );
   return r.rows as {
@@ -814,6 +1104,288 @@ export async function searchTasksAdvanced(
     project_id: number;
     project_name: string;
   }[];
+}
+
+function searchAccessClause(viewerUserId: number | undefined, paramIndex: number): string {
+  if (viewerUserId === undefined) return "";
+  return ` AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $${paramIndex} AND ux.is_admin)
+    OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $${paramIndex}))`;
+}
+
+export type GlobalProjectHit = {
+  id: number;
+  name: string;
+  color: string | null;
+  icon: string | null;
+};
+
+export type GlobalMessageHit = {
+  id: number;
+  title: string;
+  body: string;
+  project_id: number;
+  project_name: string;
+  created_at: string;
+};
+
+export type GlobalKnowledgeHit = {
+  id: number;
+  title: string;
+  body: string;
+  project_id: number;
+  project_name: string;
+  updated_at: string;
+};
+
+export type GlobalFileHit = {
+  id: number;
+  file_name: string;
+  mime_type: string;
+  task_id: number;
+  task_name: string;
+  project_id: number;
+  project_name: string;
+  created_at: string;
+};
+
+/** Projects whose name matches the keyword, exact/prefix/contains first. */
+export async function searchProjectsGlobal(
+  workspaceId: number,
+  q: string,
+  viewerUserId?: number,
+): Promise<GlobalProjectHit[]> {
+  if (q.trim() === "") return [];
+  const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
+  const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
+  let access = "";
+  if (viewerUserId !== undefined) {
+    params.push(viewerUserId);
+    access = searchAccessClause(viewerUserId, params.length);
+  }
+  const r = await db.query(
+    `SELECT p.id, p.name, p.color, p.icon
+     FROM projects p
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND p.name ILIKE $2${access}
+     ORDER BY CASE
+       WHEN lower(p.name) = lower($3) THEN 0
+       WHEN p.name ILIKE $4 THEN 1
+       ELSE 2 END, p.created_at DESC
+     LIMIT 20`,
+    params,
+  );
+  return r.rows as GlobalProjectHit[];
+}
+
+/** Project messages (title/body) within the workspace. */
+export async function searchMessagesGlobal(
+  workspaceId: number,
+  q: string,
+  viewerUserId?: number,
+): Promise<GlobalMessageHit[]> {
+  if (q.trim() === "") return [];
+  const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
+  const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
+  let access = "";
+  if (viewerUserId !== undefined) {
+    params.push(viewerUserId);
+    access = searchAccessClause(viewerUserId, params.length);
+  }
+  const r = await db.query(
+    `SELECT m.id, m.title, m.body, m.created_at::text AS created_at,
+       p.id AS project_id, p.name AS project_name
+     FROM project_messages m JOIN projects p ON p.id = m.project_id
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL
+       AND (m.title ILIKE $2 OR m.body ILIKE $2)${access}
+     ORDER BY CASE
+       WHEN lower(m.title) = lower($3) THEN 0
+       WHEN m.title ILIKE $4 THEN 1
+       WHEN m.title ILIKE $2 THEN 2
+       ELSE 3 END, m.created_at DESC
+     LIMIT 20`,
+    params,
+  );
+  return r.rows as GlobalMessageHit[];
+}
+
+/** Knowledge notes (title/body) within the workspace. */
+export async function searchKnowledgeGlobal(
+  workspaceId: number,
+  q: string,
+  viewerUserId?: number,
+): Promise<GlobalKnowledgeHit[]> {
+  if (q.trim() === "") return [];
+  const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
+  const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
+  let access = "";
+  if (viewerUserId !== undefined) {
+    params.push(viewerUserId);
+    access = searchAccessClause(viewerUserId, params.length);
+  }
+  const r = await db.query(
+    `SELECT k.id, k.title, k.body, k.updated_at::text AS updated_at,
+       p.id AS project_id, p.name AS project_name
+     FROM project_knowledge k JOIN projects p ON p.id = k.project_id
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL
+       AND (k.title ILIKE $2 OR k.body ILIKE $2)${access}
+     ORDER BY CASE
+       WHEN lower(k.title) = lower($3) THEN 0
+       WHEN k.title ILIKE $4 THEN 1
+       WHEN k.title ILIKE $2 THEN 2
+       ELSE 3 END, k.updated_at DESC
+     LIMIT 20`,
+    params,
+  );
+  return r.rows as GlobalKnowledgeHit[];
+}
+
+/** Attachment file names within the workspace. */
+export async function searchFilesGlobal(
+  workspaceId: number,
+  q: string,
+  viewerUserId?: number,
+): Promise<GlobalFileHit[]> {
+  if (q.trim() === "") return [];
+  const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
+  const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
+  let access = "";
+  if (viewerUserId !== undefined) {
+    params.push(viewerUserId);
+    access = searchAccessClause(viewerUserId, params.length);
+  }
+  const r = await db.query(
+    `SELECT a.id, a.file_name, a.mime_type, a.created_at::text AS created_at,
+       t.id AS task_id, t.name AS task_name, p.id AS project_id, p.name AS project_name
+     FROM task_attachments a
+     JOIN tasks t ON t.id = a.task_id AND t.deleted_at IS NULL
+     JOIN projects p ON p.id = t.project_id
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND a.file_name ILIKE $2${access}
+     ORDER BY CASE
+       WHEN lower(a.file_name) = lower($3) THEN 0
+       WHEN a.file_name ILIKE $4 THEN 1
+       ELSE 2 END, a.created_at DESC
+     LIMIT 20`,
+    params,
+  );
+  return r.rows as GlobalFileHit[];
+}
+
+export type ViewState = Record<string, string | number | boolean | null>;
+
+const VIEW_STATE_KEYS = new Set(["list", "board", "timeline", "calendar"]);
+
+export async function getProjectViewStates(
+  userId: number,
+  projectId: number,
+): Promise<Record<string, ViewState>> {
+  const r = await db.query(
+    "SELECT view, state FROM project_view_states WHERE user_id = $1 AND project_id = $2",
+    [userId, projectId],
+  );
+  const out: Record<string, ViewState> = {};
+  for (const row of r.rows) {
+    if (VIEW_STATE_KEYS.has(row.view) && row.state && typeof row.state === "object") {
+      out[row.view] = row.state as ViewState;
+    }
+  }
+  return out;
+}
+
+export async function saveProjectViewState(
+  userId: number,
+  projectId: number,
+  view: string,
+  state: ViewState,
+): Promise<void> {
+  if (!VIEW_STATE_KEYS.has(view)) return;
+  await db.query(
+    `INSERT INTO project_view_states (user_id, project_id, view, state, updated_at)
+     VALUES ($1, $2, $3, $4::jsonb, now())
+     ON CONFLICT (user_id, project_id, view)
+     DO UPDATE SET state = EXCLUDED.state, updated_at = now()`,
+    [userId, projectId, view, JSON.stringify(state)],
+  );
+}
+
+export type SearchCustomField = {
+  id: number;
+  name: string;
+  field_type: string;
+  options: string[];
+  project_name: string;
+};
+
+export async function getSearchHistory(userId: number, limit = 8): Promise<string[]> {
+  const r = await db.query(
+    "SELECT query FROM search_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+    [userId, limit],
+  );
+  return r.rows.map((row) => row.query as string);
+}
+
+export async function saveSearchHistory(userId: number, query: string): Promise<void> {
+  const q = query.trim().slice(0, 200);
+  if (q === "") return;
+  await db.query(
+    `INSERT INTO search_history (user_id, query, created_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (user_id, query) DO UPDATE SET created_at = now()`,
+    [userId, q],
+  );
+  await db.query(
+    `DELETE FROM search_history
+     WHERE user_id = $1 AND query NOT IN (
+       SELECT query FROM search_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20
+     )`,
+    [userId],
+  );
+}
+
+export async function clearSearchHistory(userId: number): Promise<void> {
+  await db.query("DELETE FROM search_history WHERE user_id = $1", [userId]);
+}
+
+export type OutOfOffice = {
+  from: string | null;
+  to: string | null;
+  note: string | null;
+};
+
+export async function getOutOfOffice(userId: number): Promise<OutOfOffice> {
+  const r = await db.query(
+    "SELECT out_of_office_from::text AS from, out_of_office_to::text AS to, out_of_office_note AS note FROM users WHERE id = $1",
+    [userId],
+  );
+  return (r.rows[0] as OutOfOffice | undefined) ?? { from: null, to: null, note: null };
+}
+
+export async function getSearchCustomFields(
+  workspaceId: number,
+  viewerUserId?: number,
+): Promise<SearchCustomField[]> {
+  const params: unknown[] = [workspaceId];
+  let access = "";
+  if (viewerUserId !== undefined) {
+    params.push(viewerUserId);
+    access = ` AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $2 AND ux.is_admin)
+      OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $2))`;
+  }
+  const r = await db.query(
+    `SELECT f.id, f.name, f.field_type, f.options, p.name AS project_name
+     FROM custom_fields f JOIN projects p ON p.id = f.project_id
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL${access}
+     ORDER BY p.id, f.position, f.id`,
+    params,
+  );
+  return r.rows.map((row) => ({ ...row, options: (row.options ?? []) as string[] }));
+}
+
+export async function getSavedSearches(workspaceId: number, userId: number) {
+  const r = await db.query(
+    `SELECT id, name, params, created_at::text AS created_at
+     FROM saved_searches WHERE workspace_id = $1 AND user_id = $2 ORDER BY id DESC`,
+    [workspaceId, userId],
+  );
+  return r.rows as { id: number; name: string; params: Record<string, string>; created_at: string }[];
 }
 
 export async function recentComments(workspaceId: number, limit = 50) {

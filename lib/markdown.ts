@@ -25,6 +25,13 @@ export function renderMarkdown(text: string): string {
     }
   };
   for (const line of lines) {
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      flush();
+      const level = heading[1].length;
+      blocks.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+      continue;
+    }
     const m = line.match(/^\s*[-*] (.+)$/);
     if (m) list.push(m[1]);
     else {

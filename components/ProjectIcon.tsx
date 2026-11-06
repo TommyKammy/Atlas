@@ -1,4 +1,4 @@
-import { projectColor, type ProjectIconKey } from "@/lib/project-appearance";
+import { projectColor, readableTextColor, type ProjectIconKey } from "@/lib/project-appearance";
 
 function Glyph({ icon }: { icon: ProjectIconKey }) {
   const common = {
@@ -73,8 +73,8 @@ export default function ProjectIcon({
   const key = icon as ProjectIconKey | null | undefined;
   return (
     <span
-      className={`flex shrink-0 items-center justify-center rounded-[5px] font-bold text-white ${className}`}
-      style={{ backgroundColor: projectColor(id, color) }}
+      className={`flex shrink-0 items-center justify-center rounded-[5px] font-bold ${className}`}
+      style={{ backgroundColor: projectColor(id, color), color: readableTextColor(projectColor(id, color)) }}
     >
       {key ? <Glyph icon={key} /> : name.slice(0, 1)}
     </span>

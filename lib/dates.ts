@@ -1,6 +1,14 @@
-/** Local calendar date (YYYY-MM-DD) for UI "today" calculations. */
+/**
+ * Calendar date (YYYY-MM-DD) in the app timezone (Asia/Tokyo).
+ * Explicit so server, browser, and CI always agree around the JST boundary.
+ */
+const JST_DATE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Tokyo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function todayISO(now = new Date()): string {
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-    now.getDate(),
-  ).padStart(2, "0")}`;
+  return JST_DATE.format(now);
 }

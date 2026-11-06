@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { useRouter } from "next/navigation";
 
 export default function SidebarAddProject({ workspaceId }: { workspaceId: number }) {
@@ -9,15 +10,8 @@ export default function SidebarAddProject({ workspaceId }: { workspaceId: number
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open, () => setOpen(false));
 
   const create = async () => {
     const trimmed = name.trim();
@@ -63,6 +57,8 @@ export default function SidebarAddProject({ workspaceId }: { workspaceId: number
           onClick={() => setOpen(false)}
         >
           <div
+            ref={dialogRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby="sidebar-add-project-title"
@@ -79,7 +75,6 @@ export default function SidebarAddProject({ workspaceId }: { workspaceId: number
               onKeyDown={(e) => {
                 if (e.key === "Enter") create();
               }}
-              autoFocus
               placeholder="プロジェクト名"
               aria-label="プロジェクト名"
               className="mt-4 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-blue-500"

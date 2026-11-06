@@ -49,7 +49,7 @@ export default function CreateMenu() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex h-8 items-center gap-1 rounded-full bg-[#f06a6a] px-3 text-sm font-medium text-white hover:bg-[#ec5b5b]"
+        className="flex h-8 items-center gap-1 rounded-full bg-[#c94848] px-3 text-sm font-medium text-white hover:bg-[#b83c3c]"
       >
         <span className="text-base leading-none">＋</span> 作成
       </button>

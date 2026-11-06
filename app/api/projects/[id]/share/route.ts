@@ -3,12 +3,15 @@ import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const auth = await requireProjectPermission(req, Number(id), "admin");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const r = await db.query(
     "SELECT id, label, created_at::text AS created_at, expires_at::text AS expires_at FROM project_share_tokens WHERE project_id = $1::bigint ORDER BY id",
     [id],
@@ -21,6 +24,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const auth = await requireProjectPermission(req, Number(id), "admin");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const uid = getCurrentUserIdFromRequest(req);
   const body = await req.json().catch(() => null);
   const label = typeof body?.label === "string" ? body.label.trim().slice(0, 120) : "";
@@ -38,11 +43,13 @@ export async function POST(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const { searchParams } = new URL(_req.url);
+  const auth = await requireProjectPermission(req, Number(id), "admin");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { searchParams } = new URL(req.url);
   const tokenRowId = searchParams.get("token_id");
   if (!tokenRowId) return NextResponse.json({ error: "token_id is required" }, { status: 400 });
   const r = await db.query(

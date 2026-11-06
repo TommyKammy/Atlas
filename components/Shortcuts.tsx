@@ -18,7 +18,9 @@ const HELP: [string, string][] = [
   ["?", "ショートカット一覧の表示/非表示"],
   ["n", "タスク追加欄にフォーカス"],
   ["g → o/d/l/b/t/c/m/f", "概要/ダッシュボード/リスト/ボード/タイムライン/カレンダー/メッセージ/ファイルへ移動"],
-  ["Esc", "ヘルプを閉じる"],
+  ["↑ / ↓", "リスト内のタスク行を移動"],
+  ["Enter", "選択中のタスクを開く"],
+  ["Esc", "タスクペイン / ヘルプを閉じる"],
 ];
 
 export default function Shortcuts({ projectId }: { projectId: number }) {

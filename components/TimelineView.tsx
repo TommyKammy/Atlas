@@ -7,6 +7,8 @@ import { dayDeltaFromPixels, shiftDate } from "@/lib/timeline-dnd";
 import { criticalPath } from "@/lib/critical-path";
 import { positionBetween } from "@/lib/order";
 import { todayISO } from "@/lib/dates";
+import EmptyState from "./EmptyState";
+import { usePersistedViewState } from "@/lib/view-state-client";
 
 const DAY_MS = 86_400_000;
 
@@ -18,14 +20,21 @@ function toDay(s: string | null): number | null {
 
 // Asana-measured timeline metrics (REA, 2026-11-06):
 // row pitch 40px, bar 34px + 4px radius, axis 49px (month + week rows),
-// section header rows 36px, group hairlines #e1e1e1, daily grid #eaeaea,
-// weekend stripes #eaeaea, 2px today stripe, 10px resize handles.
+// section header shares the first 40px task row, group hairlines #e1e1e1,
+// daily grid #eaeaea, weekend stripes #eaeaea, 2px today stripe, 10px resize handles.
 const ROW_PITCH = 40;
 const BAR_H = 34;
 const AXIS_H = 49;
-const HEADER_H = 36;
 const EDGE_HIT = 10;
-const ZOOMS = [14, 22, 30, 40];
+const ZOOM_PRESETS = [
+  { key: "hour", label: "時間", dayWidth: 5064 },
+  { key: "day", label: "日", dayWidth: 40 },
+  { key: "week", label: "週", dayWidth: 24 },
+  { key: "month", label: "月", dayWidth: 12 },
+  { key: "quarter", label: "四半期", dayWidth: 4 },
+  { key: "half", label: "半年", dayWidth: 2 },
+  { key: "year", label: "年", dayWidth: 1 },
+] as const;
 const AVATAR_COLORS = ["bg-violet-400", "bg-amber-400", "bg-emerald-500", "bg-sky-500", "bg-rose-400"];
 
 type SortKey = "default" | "due" | "start" | "name";
@@ -73,16 +82,19 @@ export default function TimelineView({
   tasks,
   deps,
   startOverride,
+  initialState,
 }: {
   projectId: number;
   sections: Section[];
   tasks: TaskRow[];
   deps: { task_id: number; depends_on_id: number }[];
   startOverride: number | null;
+  initialState?: Record<string, string | number | boolean | null>;
 }) {
   const router = useRouter();
   const refresh = () => router.refresh();
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const draftInputRef = useRef<HTMLInputElement>(null);
   const draftRef = useRef<Draft>(null);
   const draftSeq = useRef(0);
@@ -90,20 +102,54 @@ export default function TimelineView({
   const revealBarId = useRef<number | null>(null);
   const moved = useRef(false);
 
-  const [zoom, setZoom] = useState(1);
+  const stored = initialState ?? {};
+  const storedZoom =
+    typeof stored.zoom === "number" && stored.zoom >= 0 && stored.zoom < ZOOM_PRESETS.length
+      ? stored.zoom
+      : 2;
+  const storedSort =
+    stored.sort === "due" || stored.sort === "start" || stored.sort === "name" ? (stored.sort as SortKey) : "default";
+  const [zoom, setZoom] = useState(storedZoom);
   const [undatedOpen, setUndatedOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [collapsedHydrated, setCollapsedHydrated] = useState(false);
   const [draft, setDraft] = useState<Draft>(null);
   const [menu, setMenu] = useState<MenuKey>(null);
-  const [hideCompleted, setHideCompleted] = useState(false);
-  const [assigneeFilter, setAssigneeFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<SortKey>("default");
-  const [showWeekends, setShowWeekends] = useState(true);
-  const [showDependencies, setShowDependencies] = useState(true);
-  const [showCritical, setShowCritical] = useState(true);
+  const [hideCompleted, setHideCompleted] = useState(stored.hide_completed === true);
+  const [assigneeFilter, setAssigneeFilter] = useState(
+    typeof stored.assignee === "string" && stored.assignee !== "" ? stored.assignee : "all",
+  );
+  const [sortBy, setSortBy] = useState<SortKey>(storedSort);
+  const [zoomMenu, setZoomMenu] = useState(false);
+  const [showWeekends, setShowWeekends] = useState(stored.weekends !== false);
+  const [showDependencies, setShowDependencies] = useState(stored.dependencies !== false);
+  const [showCritical, setShowCritical] = useState(stored.critical !== false);
+  usePersistedViewState(projectId, "timeline", {
+    zoom,
+    hide_completed: hideCompleted,
+    assignee: assigneeFilter,
+    sort: sortBy,
+    weekends: showWeekends,
+    dependencies: showDependencies,
+    critical: showCritical,
+  });
   const [hover, setHover] = useState<{ sectionId: number; top: number; height: number; day: number } | null>(null);
   const [barHoverId, setBarHoverId] = useState<number | null>(null);
+  const [barOverflowId, setBarOverflowId] = useState<number | null>(null);
+  const [canvasWidth, setCanvasWidth] = useState(0);
+  const [depLink, setDepLink] = useState<{
+    fromId: number;
+    edge: "start" | "end";
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  } | null>(null);
+  const [depTargetId, setDepTargetId] = useState<number | null>(null);
+  const [hoveredDep, setHoveredDep] = useState<string | null>(null);
   const barHoverTimer = useRef<number | null>(null);
+  const barHoverIdRef = useRef<number | null>(null);
+  const depHoverTimer = useRef<number | null>(null);
   const [drag, setDrag] = useState<{
     id: number;
     mode: "move" | "start" | "end";
@@ -113,7 +159,10 @@ export default function TimelineView({
     startY: number;
     drop: { sectionId: number; index: number; top: number } | null;
   } | null>(null);
-  const dayWidth = ZOOMS[zoom];
+  const zoomPreset = ZOOM_PRESETS[zoom];
+  const dayWidth = zoomPreset.dayWidth;
+  const pendingAnchor = useRef<{ day: number } | null>(null);
+  const initialScrollDone = useRef(false);
 
   useEffect(() => {
     if (!draft) return;
@@ -131,12 +180,48 @@ export default function TimelineView({
     }
   }, [tasks]);
 
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setCanvasWidth(el.clientWidth));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(
     () => () => {
       if (barHoverTimer.current) window.clearTimeout(barHoverTimer.current);
     },
     [],
   );
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(`atlas.timeline.collapsed.${projectId}`);
+      if (raw) {
+        const ids = JSON.parse(raw);
+        if (Array.isArray(ids)) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setCollapsed(new Set(ids.filter((id): id is number => Number.isInteger(id))));
+        }
+      }
+    } catch {
+      // localStorage may be unavailable in private modes
+    }
+    setCollapsedHydrated(true);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!collapsedHydrated) return;
+    try {
+      window.localStorage.setItem(
+        `atlas.timeline.collapsed.${projectId}`,
+        JSON.stringify([...collapsed]),
+      );
+    } catch {
+      // localStorage may be unavailable in private modes
+    }
+  }, [collapsed, collapsedHydrated, projectId]);
 
   const assigneeNames = Array.from(
     new Set(tasks.map((t) => t.assignee_name).filter((name): name is string => Boolean(name))),
@@ -178,9 +263,42 @@ export default function TimelineView({
     min = startOverride;
     if (max < min) max = min + 30;
   }
-  const span = Math.max(1, max - min + 1);
+  let span = Math.max(1, max - min + 1);
+  // Keep enough content around the tasks so coarse zoom levels do not stretch
+  // a short project across the viewport (Asana extends its timeline range).
+  const desiredSpan = Math.max(1, Math.ceil(1680 / dayWidth));
+  if (span < desiredSpan) {
+    const extra = desiredSpan - span;
+    const before = Math.floor(extra / 2);
+    min -= before;
+    max += extra - before;
+    span = Math.max(1, max - min + 1);
+  }
   const dayPct = 100 / span;
   const pct = (d: number) => `${((d - min) / span) * 100}%`;
+
+  const changeZoom = (next: number) => {
+    const clamped = Math.max(0, Math.min(ZOOM_PRESETS.length - 1, next));
+    if (clamped === zoom) return;
+    const scroller = scrollRef.current;
+    if (scroller) {
+      const width = contentRef.current?.offsetWidth ?? Math.max(700, span * dayWidth);
+      const centerX = scroller.scrollLeft + scroller.clientWidth / 2;
+      pendingAnchor.current = { day: min + (centerX / Math.max(1, width)) * span };
+    }
+    setZoom(clamped);
+  };
+
+  useEffect(() => {
+    const pending = pendingAnchor.current;
+    if (!pending) return;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const width = contentRef.current?.offsetWidth ?? Math.max(700, span * dayWidth);
+    const x = ((pending.day - min) / span) * width;
+    scroller.scrollLeft = Math.max(0, x - scroller.clientWidth / 2);
+    pendingAnchor.current = null;
+  }, [zoom, min, span, dayWidth]);
 
   const bySection = new Map<number | null, TaskRow[]>();
   for (const t of dated) {
@@ -217,7 +335,11 @@ export default function TimelineView({
     const isCollapsed = collapsed.has(section.id);
     const hasDraft = !isCollapsed && draft?.sectionId === section.id;
     const shown = isCollapsed ? [] : all;
-    const height = HEADER_H + (isCollapsed ? 0 : all.length * ROW_PITCH + (hasDraft ? ROW_PITCH : 0));
+    // Asana shares the section header row with the first task row. The header
+    // itself is one 40px row, and subsequent tasks add one row each.
+    const height = isCollapsed
+      ? ROW_PITCH
+      : Math.max(all.length, 1) * ROW_PITCH + (hasDraft ? ROW_PITCH : 0);
     groups.push({ section, tasks: shown, all, collapsed: isCollapsed, hasDraft, top: cursorY, height });
     cursorY += height;
   }
@@ -230,13 +352,52 @@ export default function TimelineView({
       const t = group.tasks[i];
       const st = toDay(t.start_on) ?? toDay(t.due_on)!;
       const en = toDay(t.due_on) ?? toDay(t.start_on)!;
-      rowY.set(t.id, group.top + HEADER_H + i * ROW_PITCH + ROW_PITCH / 2);
+      rowY.set(t.id, group.top + i * ROW_PITCH + ROW_PITCH / 2);
       pos.set(t.id, { x1: pct(Math.max(st, min)), x2: pct(Math.min(en, max) + 1) });
     }
   }
   const edges = showDependencies
     ? deps.filter((d) => rowY.has(d.task_id) && rowY.has(d.depends_on_id))
     : [];
+  const dependencyShapes = edges.map((e) => {
+    const fromPct = pos.get(e.depends_on_id)!;
+    const toPct = pos.get(e.task_id)!;
+    const from = { x: (parseFloat(fromPct.x2) / 100) * canvasWidth };
+    const to = { x: (parseFloat(toPct.x1) / 100) * canvasWidth };
+    const y1 = rowY.get(e.depends_on_id)!;
+    const y2 = rowY.get(e.task_id)!;
+    const midX = to.x >= from.x + 24 ? from.x + (to.x - from.x) / 2 : from.x + 14;
+    return {
+      e,
+      key: `${e.depends_on_id}-${e.task_id}`,
+      d: `M ${from.x} ${y1} H ${midX} V ${y2} H ${to.x}`,
+      arrow: `M ${to.x} ${y2} L ${to.x - 7} ${y2 - 4} L ${to.x - 7} ${y2 + 4} Z`,
+      from,
+      to,
+      y1,
+      y2,
+      midX,
+      midY: (y1 + y2) / 2,
+    };
+  });
+  const hoveredShape = hoveredDep
+    ? dependencyShapes.find((shape) => shape.key === hoveredDep)
+    : undefined;
+
+  const showDepHover = (key: string) => {
+    if (depHoverTimer.current) {
+      window.clearTimeout(depHoverTimer.current);
+      depHoverTimer.current = null;
+    }
+    setHoveredDep(key);
+  };
+  const scheduleDepHoverClear = () => {
+    if (depHoverTimer.current) window.clearTimeout(depHoverTimer.current);
+    depHoverTimer.current = window.setTimeout(() => {
+      setHoveredDep(null);
+      depHoverTimer.current = null;
+    }, 180);
+  };
   const critical = criticalPath(
     dated.map((t) => ({ id: t.id, start_on: t.start_on, due_on: t.due_on })),
     deps,
@@ -244,6 +405,16 @@ export default function TimelineView({
 
   const todayDay = toDay(todayISO())!;
   const showToday = todayDay >= min && todayDay <= max;
+
+  useEffect(() => {
+    if (initialScrollDone.current) return;
+    const scroller = scrollRef.current;
+    const canvas = contentRef.current;
+    if (!scroller || !canvas || canvas.offsetWidth === 0) return;
+    const x = ((todayDay - min) / span) * canvas.offsetWidth;
+    scroller.scrollLeft = Math.max(0, x - scroller.clientWidth / 2);
+    initialScrollDone.current = true;
+  }, [min, span, todayDay]);
   const firstWeek = min - new Date(min * DAY_MS).getUTCDay();
   const lastWeek = max + (6 - new Date(max * DAY_MS).getUTCDay());
   const weeks: { start: number; left: number; right: number; label: string }[] = [];
@@ -278,6 +449,88 @@ export default function TimelineView({
     const wd = new Date(d * DAY_MS).getUTCDay();
     if (wd === 0 || wd === 6) weekendDays.push(d);
   }
+
+  type AxisInterval = { key: string; start: number; end: number; label: string; daysWide: number };
+  const buildIntervals = (keyOf: (d: number) => { key: string; label: string }): AxisInterval[] => {
+    const out: Array<Omit<AxisInterval, "daysWide">> = [];
+    let current: Omit<AxisInterval, "daysWide"> | null = null;
+    for (let d = min; d <= max; d++) {
+      const { key, label } = keyOf(d);
+      if (!current || current.key !== key) {
+        if (current) current.end = d - 1;
+        current = { key, start: d, end: d, label };
+        out.push(current);
+      } else {
+        current.end = d;
+      }
+    }
+    return out.map((interval) => ({ ...interval, daysWide: interval.end - interval.start + 1 }));
+  };
+  const monthIntervals = buildIntervals((d) => {
+    const dt = new Date(d * DAY_MS);
+    return { key: `${dt.getUTCFullYear()}-${dt.getUTCMonth()}`, label: `${dt.getUTCMonth() + 1}月` };
+  });
+  const yearIntervals = buildIntervals((d) => {
+    const y = new Date(d * DAY_MS).getUTCFullYear();
+    return { key: `${y}`, label: `${y}年` };
+  });
+  const quarterIntervals = buildIntervals((d) => {
+    const dt = new Date(d * DAY_MS);
+    const q = Math.floor(dt.getUTCMonth() / 3) + 1;
+    return { key: `${dt.getUTCFullYear()}-Q${q}`, label: `Q${q}` };
+  });
+  const dayIntervals = buildIntervals((d) => {
+    const dt = new Date(d * DAY_MS);
+    return { key: `${d}`, label: `${dt.getUTCDate()}` };
+  });
+  const hourDayIntervals = buildIntervals((d) => {
+    const dt = new Date(d * DAY_MS);
+    return { key: `${d}`, label: `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}` };
+  });
+  const hourIntervals: AxisInterval[] = [];
+  for (let d = min; d <= max; d++) {
+    for (let h = 0; h < 24; h++) {
+      hourIntervals.push({
+        key: `${d}-${h}`,
+        start: d + h / 24,
+        end: d + (h + 1) / 24,
+        label: `${h}:00`,
+        daysWide: 1 / 24,
+      });
+    }
+  }
+  const axisTop =
+    zoomPreset.key === "hour"
+      ? hourDayIntervals
+      : zoomPreset.key === "day" || zoomPreset.key === "week"
+        ? monthIntervals
+        : yearIntervals;
+  const axisBottom =
+    zoomPreset.key === "hour"
+      ? hourIntervals
+      : zoomPreset.key === "day"
+        ? dayIntervals
+        : zoomPreset.key === "week"
+          ? weeks.map((w) => ({
+              key: `w-${w.start}`,
+              start: w.left,
+              end: w.right,
+              label: w.label,
+              daysWide: w.right - w.left + 1,
+            }))
+          : zoomPreset.key === "month" || zoomPreset.key === "quarter"
+            ? monthIntervals
+            : quarterIntervals;
+  const gridLines =
+    zoomPreset.key === "hour"
+      ? hourIntervals.filter((h) => !h.label.startsWith("0:00")).map((h) => h.start)
+      : zoomPreset.key === "day" || zoomPreset.key === "week"
+        ? days
+        : zoomPreset.key === "month"
+          ? weekLines
+          : zoomPreset.key === "quarter"
+            ? monthIntervals.map((m) => m.start)
+            : quarterIntervals.map((q) => q.start);
 
   const commitChange = async (
     t: TaskRow,
@@ -348,15 +601,10 @@ export default function TimelineView({
     if (!group) return null;
     const list = group.tasks;
     const sourceIndex = list.findIndex((x) => x.id === id);
-    let raw: number;
-    if (y < group.top + HEADER_H) {
-      raw = 0;
-    } else {
-      const local = y - (group.top + HEADER_H);
-      const row = Math.floor(local / ROW_PITCH);
-      const within = local - row * ROW_PITCH;
-      raw = row + (within > ROW_PITCH / 2 ? 1 : 0);
-    }
+    const local = y - group.top;
+    const row = Math.floor(local / ROW_PITCH);
+    const within = local - row * ROW_PITCH;
+    let raw = row + (within > ROW_PITCH / 2 ? 1 : 0);
     raw = Math.max(0, Math.min(list.length, raw));
     const maxIndex = list.length - (sourceIndex >= 0 ? 1 : 0);
     let index = raw > sourceIndex && sourceIndex >= 0 ? raw - 1 : raw;
@@ -366,7 +614,7 @@ export default function TimelineView({
     return {
       sectionId: group.section.id,
       index,
-      top: group.top + HEADER_H + boundary * ROW_PITCH,
+      top: group.top + boundary * ROW_PITCH,
     };
   };
 
@@ -408,6 +656,13 @@ export default function TimelineView({
 
   const onBarMove = (e: React.PointerEvent) => {
     if (!drag) return;
+    const scroller = scrollRef.current;
+    if (scroller) {
+      const rect = scroller.getBoundingClientRect();
+      const edge = 48;
+      if (e.clientX < rect.left + edge) scroller.scrollLeft = Math.max(0, scroller.scrollLeft - 14);
+      else if (e.clientX > rect.right - edge) scroller.scrollLeft += 14;
+    }
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
     if (Math.abs(dx) > 2 || Math.abs(dy) > 4) moved.current = true;
@@ -449,17 +704,109 @@ export default function TimelineView({
 
   const dragDelta = (id: number) => (drag && drag.id === id ? drag.dx : 0);
 
+  const beginDependency = (e: React.PointerEvent, t: TaskRow, edge: "start" | "end") => {
+    e.preventDefault();
+    e.stopPropagation();
+    const content = contentRef.current;
+    const bar = document.querySelector<HTMLElement>(`[data-timeline-bar="${t.id}"]`);
+    if (!content || !bar) return;
+    const contentRect = content.getBoundingClientRect();
+    const barRect = bar.getBoundingClientRect();
+    const x = (edge === "start" ? barRect.left : barRect.right) - contentRect.left;
+    const y = barRect.top + barRect.height / 2 - contentRect.top;
+    setDepTargetId(null);
+    setDepLink({ fromId: t.id, edge, x1: x, y1: y, x2: x, y2: y });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const moveDependency = (e: React.PointerEvent) => {
+    const content = contentRef.current;
+    if (!content || !depLink) return;
+    const scroller = scrollRef.current;
+    if (scroller) {
+      const sr = scroller.getBoundingClientRect();
+      if (e.clientX > sr.right - 36) scroller.scrollLeft += 14;
+      else if (e.clientX < sr.left + 36) scroller.scrollLeft = Math.max(0, scroller.scrollLeft - 14);
+    }
+    const rect = content.getBoundingClientRect();
+    const target = document
+      .elementFromPoint(e.clientX, e.clientY)
+      ?.closest<HTMLElement>("[data-timeline-bar]");
+    const targetId = Number(target?.getAttribute("data-timeline-bar"));
+    setDepTargetId(
+      target && Number.isInteger(targetId) && targetId !== depLink.fromId ? targetId : null,
+    );
+    setDepLink((link) =>
+      link ? { ...link, x2: e.clientX - rect.left, y2: e.clientY - rect.top } : link,
+    );
+  };
+
+  const endDependency = async (e: React.PointerEvent) => {
+    if (!depLink) return;
+    const target = document
+      .elementFromPoint(e.clientX, e.clientY)
+      ?.closest<HTMLElement>("[data-timeline-bar]");
+    const targetId = Number(target?.getAttribute("data-timeline-bar"));
+    const { fromId, edge } = depLink;
+    setDepLink(null);
+    setDepTargetId(null);
+    if (!targetId || Number.isNaN(targetId) || targetId === fromId) return;
+    const payload =
+      edge === "start"
+        ? { task_id: fromId, depends_on_id: targetId }
+        : { task_id: targetId, depends_on_id: fromId };
+    const res = await fetch("/api/dependencies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      if (res.status === 409) alert("循環依存は作成できません");
+      return;
+    }
+    refresh();
+  };
+
+  const removeDependency = async (dep: { task_id: number; depends_on_id: number }) => {
+    const res = await fetch(
+      `/api/dependencies?task_id=${dep.task_id}&depends_on_id=${dep.depends_on_id}`,
+      { method: "DELETE" },
+    );
+    if (!res.ok) return;
+    setHoveredDep(null);
+    refresh();
+  };
+
   const showBarHover = (id: number) => {
     if (barHoverTimer.current) {
       window.clearTimeout(barHoverTimer.current);
       barHoverTimer.current = null;
     }
+    barHoverIdRef.current = id;
     setBarHoverId(id);
+    // Asana only shows the bar tooltip when the task name is clipped by the
+    // bar. Measure after the hover inset is painted.
+    window.requestAnimationFrame(() => {
+      if (barHoverIdRef.current !== id) return;
+      const nameEl = document.querySelector<HTMLElement>(
+        `[data-timeline-bar="${id}"] [data-timeline-bar-name]`,
+      );
+      if (!nameEl) {
+        setBarOverflowId(null);
+        return;
+      }
+      const clipped =
+        nameEl.scrollHeight > nameEl.clientHeight + 1 ||
+        nameEl.scrollWidth > nameEl.clientWidth + 1;
+      setBarOverflowId(clipped ? id : null);
+    });
   };
   const scheduleBarHoverClear = () => {
     if (barHoverTimer.current) window.clearTimeout(barHoverTimer.current);
     barHoverTimer.current = window.setTimeout(() => {
+      barHoverIdRef.current = null;
       setBarHoverId(null);
+      setBarOverflowId(null);
       barHoverTimer.current = null;
     }, 160);
   };
@@ -660,6 +1007,7 @@ export default function TimelineView({
     const p = pos.get(t.id)!;
     const leftPct = parseFloat(p.x1);
     const sameDay = t.start_on !== null && t.due_on !== null && t.start_on === t.due_on;
+    const skinny = barPx < 52;
     const labelOnLeft = leftPct > 72;
     const completionLeft = `calc(${p.x1} + 4px)`;
     const barInfo = `${t.name}（${t.start_on ?? "?"} 〜 ${t.due_on ?? "?"}・進捗${t.progress}%${t.assignee_name ? `・担当${t.assignee_name}` : ""}）${!t.completed && showCritical && critical.has(t.id) ? "【クリティカルパス】" : ""} — ドラッグで移動、上下で並び替え、左右端で期間変更`;
@@ -667,6 +1015,7 @@ export default function TimelineView({
       <div key={t.id} className="relative h-10" data-timeline-row={t.id}>
         <div
           data-timeline-bar={t.id}
+          data-timeline-dependency-target={depTargetId === t.id ? "true" : undefined}
           aria-label={barInfo}
           onPointerDown={(e) => beginBarDrag(e, t)}
           onPointerMove={onBarMove}
@@ -677,35 +1026,47 @@ export default function TimelineView({
             e.stopPropagation();
             if (!moved.current) openTask(t.id);
           }}
-          className={`tl-bar absolute top-[3px] flex min-w-2 cursor-grab select-none touch-none items-center gap-1.5 overflow-visible rounded-[4px] px-2 text-[12px] active:cursor-grabbing hover:z-30 ${barFace(t)} ${
+          className={`tl-bar absolute top-[3px] flex min-w-2 cursor-grab select-none touch-none items-center gap-1.5 overflow-visible rounded-[4px] px-2 text-[12px] active:cursor-grabbing hover:z-30 hover:shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${barFace(t)} ${
             active ? "z-30 shadow-lg" : "z-10"
-          } ${dx !== 0 ? "opacity-80" : ""}`}
+          } ${depTargetId === t.id ? "ring-2 ring-[#2c60b8] ring-offset-1" : ""} ${
+            dx !== 0 ? "opacity-80" : ""
+          }`}
           style={{
             ...barStyle(t),
             ...(barHoverId === t.id && !sameDay ? { paddingLeft: 26 } : {}),
           }}
         >
-          {showAvatar && t.assignee_name && (
+          {!skinny && showAvatar && t.assignee_name && (
             <span
               title={t.assignee_name}
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${avatarColor(t.assignee_name)}`}
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-neutral-900 ${avatarColor(t.assignee_name)}`}
             >
               {t.assignee_name.slice(0, 1)}
             </span>
           )}
-          {sameDay ? (
+          {skinny || sameDay ? (
             <span
-              className={`absolute top-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-white/95 px-1.5 py-0.5 text-[12px] font-medium text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_2px_rgba(0,0,0,0.06)] ${
-                labelOnLeft ? "right-full mr-2" : "left-full ml-2"
+              data-timeline-bar-label={t.id}
+              dir="auto"
+              title={t.name}
+              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[12px] font-medium whitespace-nowrap text-[#050505] ${
+                labelOnLeft ? "right-full mr-2 text-right" : "left-full ml-2"
               } ${t.completed ? "line-through" : ""}`}
+              style={{ maxWidth: 172 }}
             >
               {t.name}
             </span>
           ) : (
-            <span className={`pointer-events-none line-clamp-2 min-w-0 flex-1 leading-[14px] ${t.completed ? "line-through" : ""}`}>{t.name}</span>
+            <span
+              data-timeline-bar-name={t.id}
+              dir="auto"
+              className={`pointer-events-none line-clamp-2 min-w-0 flex-1 leading-[14px] ${t.completed ? "line-through" : ""}`}
+            >
+              {t.name}
+            </span>
           )}
-          {showSubtasks && (
-            <span className="pointer-events-none flex shrink-0 items-center gap-0.5 text-[11px] text-neutral-500" title="サブタスク">
+          {!skinny && showSubtasks && (
+            <span className="pointer-events-none flex shrink-0 items-center gap-0.5 text-[11px] text-neutral-700" title="サブタスク">
               <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.2">
                 <path d="M4 3v4.5a2 2 0 0 0 2 2h6" />
                 <path d="M9.5 7.5 12 9.5 9.5 11.5" />
@@ -734,6 +1095,50 @@ export default function TimelineView({
           className="tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-r-[4px] bg-transparent transition-colors hover:bg-[#2c60b8]/90"
           style={handleStyle(t, "end")}
         />
+        {!active && (
+          <>
+            <button
+              type="button"
+              data-timeline-dependency-handle={t.id}
+              data-timeline-dependency-direction="precedent"
+              aria-label="先行タスクとの依存関係を作成"
+              title="ドラッグして依存関係を作成"
+              onPointerDown={(e) => beginDependency(e, t, "start")}
+              onPointerMove={moveDependency}
+              onPointerUp={(e) => void endDependency(e)}
+              onPointerEnter={() => showBarHover(t.id)}
+              onPointerLeave={scheduleBarHoverClear}
+              onClick={(e) => e.stopPropagation()}
+              data-timeline-dependency-placement="top"
+              style={{ left: `calc(${p.x1} + 8px)`, top: -8 }}
+              className={`absolute z-40 flex h-3.5 w-3.5 cursor-crosshair items-center justify-center rounded-full border border-neutral-400 bg-white shadow-sm hover:border-[#2c60b8] hover:bg-[#2c60b8] ${
+                barHoverId === t.id ? "opacity-100" : "pointer-events-none opacity-0"
+              }`}
+            >
+              <span className="h-0 w-0 border-x-[3px] border-b-[4px] border-x-transparent border-b-neutral-500" />
+            </button>
+            <button
+              type="button"
+              data-timeline-dependency-handle={t.id}
+              data-timeline-dependency-direction="dependent"
+              aria-label="後続タスクとの依存関係を作成"
+              title="ドラッグして依存関係を作成"
+              onPointerDown={(e) => beginDependency(e, t, "end")}
+              onPointerMove={moveDependency}
+              onPointerUp={(e) => void endDependency(e)}
+              onPointerEnter={() => showBarHover(t.id)}
+              onPointerLeave={scheduleBarHoverClear}
+              onClick={(e) => e.stopPropagation()}
+              data-timeline-dependency-placement="bottom"
+              style={{ left: `max(calc(${p.x1} + 8px), calc(${p.x2} - 22px))`, top: 32 }}
+              className={`absolute z-40 flex h-3.5 w-3.5 cursor-crosshair items-center justify-center rounded-full border border-neutral-400 bg-white shadow-sm hover:border-[#2c60b8] hover:bg-[#2c60b8] ${
+                barHoverId === t.id ? "opacity-100" : "pointer-events-none opacity-0"
+              }`}
+            >
+              <span className="h-0 w-0 border-x-[3px] border-t-[4px] border-x-transparent border-t-neutral-500" />
+            </button>
+          </>
+        )}
         {!active && barHoverId === t.id && (
           <>
             <button
@@ -758,17 +1163,30 @@ export default function TimelineView({
                 <path d="M2.5 6.2 5 8.6l4.5-5" />
               </svg>
             </button>
-            <span
-              data-timeline-bar-tooltip={t.id}
-              className="pointer-events-none absolute z-50 w-max max-w-[360px] whitespace-normal rounded-md bg-[#1f1f1f] px-2.5 py-1.5 text-[12px] leading-4 text-white shadow-lg"
-              style={labelOnLeft ? { right: `calc(100% - ${p.x2})`, top: 38 } : { left: p.x1, top: 38 }}
-            >
-              <span className="block break-words font-medium">{t.name}</span>
-              <span className="mt-0.5 block whitespace-nowrap text-[11px] text-neutral-300">
-                {t.start_on ?? "?"} 〜 {t.due_on ?? "?"}
-                {t.assignee_name ? ` ・ ${t.assignee_name}` : ""}
+
+            {barOverflowId === t.id && !skinny && !sameDay && (
+              <span
+                data-timeline-bar-tooltip={t.id}
+                role="tooltip"
+                className="pointer-events-none absolute z-50 w-max max-w-[260px] whitespace-normal rounded-[4px] bg-[#333] px-3 py-2 text-[12px] leading-[18px] text-[#f3f3f3] shadow-[0_1px_4px_rgba(118,118,118,0.08)]"
+                style={
+                  labelOnLeft
+                    ? { right: `calc(100% - ${p.x1} + 8px)`, top: "50%", transform: "translateY(-50%)" }
+                    : { left: `calc(${p.x2} + 8px)`, top: "50%", transform: "translateY(-50%)" }
+                }
+              >
+                <span
+                  aria-hidden
+                  className="absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 rounded-[1px] bg-[#333]"
+                  style={labelOnLeft ? { right: -5 } : { left: -5 }}
+                />
+                <span dir="auto" className="relative block break-words">{t.name}</span>
+                <span className="relative mt-0.5 block text-[11px] leading-4 text-neutral-300">
+                  {t.start_on ?? "?"} 〜 {t.due_on ?? "?"}
+                  {t.assignee_name ? ` ・ ${t.assignee_name}` : ""}
+                </span>
               </span>
-            </span>
+            )}
           </>
         )}
         {active && drag.mode !== "move" && (
@@ -791,7 +1209,19 @@ export default function TimelineView({
     }`;
 
   return (
-    <div className="pb-16 text-sm">
+    <div
+      className="pb-16 text-sm"
+      data-timeline
+      data-timeline-zoom={zoom}
+      data-timeline-zoom-level={zoomPreset.label}
+      data-timeline-zoom-preset={zoomPreset.key}
+      data-timeline-hide-completed={hideCompleted}
+      data-timeline-sort={sortBy}
+      data-timeline-weekends={showWeekends}
+      data-timeline-dependencies={showDependencies}
+      data-timeline-critical={showCritical}
+      data-timeline-assignee={assigneeFilter}
+    >
       <div className="flex flex-wrap items-center gap-1.5 px-4 py-2">
         <button
           type="button"
@@ -836,14 +1266,58 @@ export default function TimelineView({
         >
           日付なしのタスク ({undated.length} 件)
         </button>
-        <span className="px-1 text-[12px] text-neutral-500">週</span>
+        <span className="relative">
+          <button
+            type="button"
+            data-timeline-zoom-level={zoomPreset.label}
+            aria-label={`ズームレベル: ${zoomPreset.label}`}
+            aria-haspopup="listbox"
+            aria-expanded={zoomMenu}
+            onClick={() => setZoomMenu((v) => !v)}
+            className="flex h-7 items-center gap-1 rounded-md px-2 text-[13px] text-neutral-700 hover:bg-neutral-100"
+          >
+            {zoomPreset.label}
+            <span className="text-[10px] text-neutral-400">▾</span>
+          </button>
+          {zoomMenu && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setZoomMenu(false)} />
+              <div
+                data-timeline-zoom-menu
+                role="listbox"
+                className="absolute top-8 right-0 z-40 w-36 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg"
+              >
+                {ZOOM_PRESETS.map((preset, index) => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    role="option"
+                    aria-selected={index === zoom}
+                    data-timeline-zoom-option={preset.label}
+                    onClick={() => {
+                      changeZoom(index);
+                      setZoomMenu(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[13px] hover:bg-neutral-100 ${
+                      index === zoom ? "bg-[#eff4fd] text-[#2c60b8]" : "text-neutral-700"
+                    }`}
+                  >
+                    {preset.label}
+                    {index === zoom && <span className="text-[11px]">✓</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </span>
         <button
           type="button"
           data-timeline-zoom-out
           aria-label="ズームアウト"
+          aria-disabled={zoom === ZOOM_PRESETS.length - 1}
           title="ズームアウト"
-          onClick={() => setZoom((z) => Math.max(0, z - 1))}
-          disabled={zoom === 0}
+          onClick={() => changeZoom(zoom + 1)}
+          disabled={zoom === ZOOM_PRESETS.length - 1}
           className="flex h-7 w-7 items-center justify-center rounded-md text-base text-neutral-600 hover:bg-neutral-100 disabled:opacity-30"
         >
           −
@@ -852,9 +1326,10 @@ export default function TimelineView({
           type="button"
           data-timeline-zoom-in
           aria-label="ズームイン"
+          aria-disabled={zoom === 0}
           title="ズームイン"
-          onClick={() => setZoom((z) => Math.min(ZOOMS.length - 1, z + 1))}
-          disabled={zoom === ZOOMS.length - 1}
+          onClick={() => changeZoom(zoom - 1)}
+          disabled={zoom === 0}
           className="flex h-7 w-7 items-center justify-center rounded-md text-base text-neutral-600 hover:bg-neutral-100 disabled:opacity-30"
         >
           ＋
@@ -1046,16 +1521,33 @@ export default function TimelineView({
         </div>
       </div>
 
+      {tasks.length === 0 && (
+        <EmptyState
+          scope="timeline"
+          title="タイムラインにタスクがありません"
+          description="タスクを追加すると、日付に沿ってここに表示されます。"
+          action={
+            <button
+              type="button"
+              onClick={addToday}
+              className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium text-white hover:bg-[#24529c]"
+            >
+              ＋ 今日のタスク
+            </button>
+          }
+        />
+      )}
       <div className="flex">
-        <div className="w-60 shrink-0 border-r border-[#eaeaea]">
+        <div className="w-36 shrink-0 border-r border-[#eaeaea] md:w-60">
           <div className="h-[49px]" />
           {groups.map((group) => (
             <div key={group.section.id} className="relative" data-timeline-section={group.section.id}>
               <button
                 type="button"
+                data-timeline-section-row={group.section.id}
                 aria-expanded={!group.collapsed}
                 onClick={() => toggleSection(group.section.id)}
-                className="flex h-9 w-full items-center gap-1.5 pl-5 pr-2 text-left text-[14px] font-medium text-[#050505] hover:bg-neutral-50"
+                className="flex h-10 w-full items-center gap-1.5 pl-5 pr-2 text-left text-[14px] font-medium text-[#050505] hover:bg-neutral-50"
               >
                 <svg
                   viewBox="0 0 12 12"
@@ -1069,7 +1561,9 @@ export default function TimelineView({
                 <span className="truncate">{group.section.name}</span>
               </button>
               {!group.collapsed &&
-                group.all.map((t) => <div key={t.id} className="h-10" data-timeline-spacer={t.id} />)}
+                group.all
+                  .slice(1)
+                  .map((t) => <div key={t.id} className="h-10" data-timeline-spacer={t.id} />)}
               {group.hasDraft && <div className="h-10" />}
               <span data-timeline-group-line className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[#e1e1e1]" />
             </div>
@@ -1082,7 +1576,7 @@ export default function TimelineView({
           </button>
         </div>
 
-        <div className="timeline-scroll min-w-0 flex-1 overflow-x-auto">
+        <div ref={scrollRef} className="timeline-scroll min-w-0 flex-1 overflow-x-auto">
           <div
             className="relative w-full cursor-copy bg-[#f3f3f3]"
             style={{
@@ -1091,6 +1585,9 @@ export default function TimelineView({
             }}
             ref={contentRef}
             data-timeline-canvas
+            data-timeline-min={min}
+            data-timeline-span={span}
+            data-timeline-day-width={dayWidth}
             onPointerDown={() => {
               if (draftRef.current) suppressCanvasClick.current = true;
             }}
@@ -1100,34 +1597,39 @@ export default function TimelineView({
           >
             <div className="relative h-[49px] cursor-default border-b border-[#e1e1e1] bg-white">
               <div className="relative h-[24px] text-xs text-neutral-600">
-                {months.map((m) => {
-                  const length = m.end - m.start + 1;
-                  if (length < 6) return null;
+                {axisTop.map((interval) => {
+                  const widthPx = interval.daysWide * dayWidth;
+                  if (widthPx < 28) return null;
                   return (
-                    <span key={m.start} className="absolute top-1 pl-1" style={{ left: pct(m.start) }}>
-                      {m.label}
+                    <span
+                      key={interval.key}
+                      data-timeline-axis-row="top"
+                      data-timeline-axis-interval={interval.key}
+                      className="absolute top-1 pl-1"
+                      style={{ left: pct(interval.start) }}
+                    >
+                      {interval.label}
                     </span>
                   );
                 })}
               </div>
               <div className="relative h-[25px] text-[11px] text-neutral-500">
-                {weeks.map((w) => (
-                  <div
-                    key={`cell-${w.start}`}
-                    className="absolute top-0 h-[25px] border-t border-[#eaeaea]"
-                    style={{ left: pct(w.left), width: `${(w.right - w.left + 1) * dayPct}%` }}
-                  />
-                ))}
-                {weeks.map((w) => {
-                  const labelDay = Math.max(w.start + 3.5, min + 3.5);
+                {axisBottom.map((interval) => {
+                  const widthPx = interval.daysWide * dayWidth;
                   return (
-                    <span
-                      key={`label-${w.start}`}
-                      className="absolute top-0.5 -translate-x-1/2 whitespace-nowrap"
-                      style={{ left: pct(labelDay) }}
+                    <div
+                      key={`cell-${interval.key}`}
+                      data-timeline-axis-row="bottom"
+                      data-timeline-axis-interval={interval.key}
+                      className="absolute top-0 h-[25px] border-t border-[#eaeaea]"
+                      style={{ left: pct(interval.start), width: `${interval.daysWide * dayPct}%` }}
                     >
-                      {w.label}
-                    </span>
+                      {widthPx >= 28 && (
+                        <span className="absolute top-0.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                          {interval.label}
+                        </span>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -1142,6 +1644,7 @@ export default function TimelineView({
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[49px] z-0">
               {showWeekends &&
+                dayWidth >= 20 &&
                 weekendDays.map((d) => (
                   <div
                     key={`weekend-${d}`}
@@ -1150,21 +1653,14 @@ export default function TimelineView({
                     style={{ left: pct(d), width: `${dayPct}%` }}
                   />
                 ))}
-              {dayWidth >= 20
-                ? days.map((d) => (
-                    <div
-                      key={`day-${d}`}
-                      className="absolute inset-y-0 w-px bg-[#eaeaea]"
-                      style={{ left: pct(d) }}
-                    />
-                  ))
-                : weekLines.map((d) => (
-                    <div
-                      key={`week-${d}`}
-                      className="absolute inset-y-0 w-px bg-[#eaeaea]"
-                      style={{ left: pct(d) }}
-                    />
-                  ))}
+              {gridLines.map((d) => (
+                <div
+                  key={`grid-${d}`}
+                  data-timeline-grid={d}
+                  className="absolute inset-y-0 w-px bg-[#eaeaea]"
+                  style={{ left: pct(d) }}
+                />
+              ))}
             </div>
 
             {hover && !drag && (
@@ -1181,7 +1677,7 @@ export default function TimelineView({
 
             {groups.map((group) => (
               <div key={group.section.id} className="relative" data-timeline-group={group.section.id}>
-                <div className="h-9" />
+                {(group.collapsed || group.tasks.length === 0) && <div className="h-10" />}
                 {!group.collapsed && group.tasks.map((t) => renderBar(t))}
                 {group.hasDraft && draft && (
                   <div className="relative h-10" data-timeline-draft>
@@ -1243,20 +1739,72 @@ export default function TimelineView({
                 title="今日"
               />
             )}
-            {edges.length > 0 && (
+            {dependencyShapes.length > 0 && canvasWidth > 0 && (
               <svg className="pointer-events-none absolute inset-0 z-[2] h-full w-full">
-                {edges.map((e, i) => {
-                  const from = pos.get(e.depends_on_id)!;
-                  const y1 = rowY.get(e.depends_on_id)!;
-                  const y2 = rowY.get(e.task_id)!;
-                  const to = pos.get(e.task_id)!;
+                {dependencyShapes.map((shape) => {
+                  const selected = hoveredDep === shape.key;
                   return (
-                    <g key={`${e.depends_on_id}-${e.task_id}-${i}`} stroke="#737373" strokeWidth="1.5">
-                      <line x1={from.x2} y1={y1} x2={to.x1} y2={y2} />
-                      <circle cx={from.x2} cy={y1} r="2.5" fill="#737373" stroke="none" />
+                    <g key={shape.key} data-timeline-dependency={shape.key}>
+                      <path
+                        d={shape.d}
+                        fill="none"
+                        stroke={selected ? "#2c60b8" : "#737373"}
+                        strokeWidth={selected ? 2 : 1.5}
+                        strokeLinejoin="round"
+                      />
+                      <circle cx={shape.from.x} cy={shape.y1} r="2.5" fill={selected ? "#2c60b8" : "#737373"} />
+                      <path d={shape.arrow} fill={selected ? "#2c60b8" : "#737373"} />
+                      <path
+                        data-timeline-dependency-hit={shape.key}
+                        d={shape.d}
+                        fill="none"
+                        stroke="transparent"
+                        strokeWidth={12}
+                        strokeLinejoin="round"
+                        style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                        tabIndex={0}
+                        onPointerEnter={() => showDepHover(shape.key)}
+                        onPointerLeave={scheduleDepHoverClear}
+                        onFocus={() => showDepHover(shape.key)}
+                        onBlur={scheduleDepHoverClear}
+                        onClick={(event) => event.stopPropagation()}
+                      />
                     </g>
                   );
                 })}
+              </svg>
+            )}
+            {hoveredShape && (
+              <button
+                type="button"
+                data-timeline-dependency-delete={hoveredShape.key}
+                aria-label="依存関係を削除"
+                title="依存関係を削除"
+                onPointerEnter={() => showDepHover(hoveredShape.key)}
+                onPointerLeave={scheduleDepHoverClear}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void removeDependency(hoveredShape.e);
+                }}
+                style={{ left: hoveredShape.midX, top: hoveredShape.midY }}
+                className="absolute z-[6] flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-200 bg-white text-red-600 shadow-md hover:bg-red-50"
+              >
+                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5M6.5 7v4M9.5 7v4" />
+                </svg>
+              </button>
+            )}
+            {depLink && (
+              <svg className="pointer-events-none absolute inset-0 z-[4] h-full w-full">
+                <path
+                  data-timeline-dependency-draft
+                  d={`M ${depLink.x1} ${depLink.y1} L ${depLink.x2} ${depLink.y2}`}
+                  fill="none"
+                  stroke="#2c60b8"
+                  strokeWidth="2"
+                  strokeDasharray="5 4"
+                />
+                <circle cx={depLink.x1} cy={depLink.y1} r="3" fill="#2c60b8" />
               </svg>
             )}
           </div>
@@ -1289,10 +1837,10 @@ export default function TimelineView({
                     onClick={() => openTask(t.id)}
                     className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
                   >
-                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${avatarColor(t.assignee_name)}`}>
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-neutral-900 ${avatarColor(t.assignee_name)}`}>
                       {(t.assignee_name ?? "?").slice(0, 1)}
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                    <span title={t.name} dir="auto" className="min-w-0 flex-1 truncate">{t.name}</span>
                   </button>
                 ))
               )}
@@ -1306,7 +1854,7 @@ export default function TimelineView({
                   onClick={() => openTask(t.id)}
                   className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-neutral-100"
                 >
-                  <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                  <span title={t.name} dir="auto" className="min-w-0 flex-1 truncate">{t.name}</span>
                   <span className="shrink-0 text-[11px] text-neutral-400">{t.due_on ?? "—"}</span>
                 </button>
               ))}

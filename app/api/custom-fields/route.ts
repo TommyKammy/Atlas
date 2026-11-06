@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
 const TYPES = new Set(["number", "text", "select"]);
 
@@ -8,6 +9,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("project_id");
   if (!projectId) return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+  const auth = await requireProjectPermission(req, Number(projectId), "view");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const r = await db.query(
     "SELECT id, name, field_type, options FROM custom_fields WHERE project_id = $1::bigint ORDER BY position, id",
     [projectId],
@@ -18,7 +21,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const body = await req.json();
   const { project_id, name, field_type, options } = body;
-  if (!project_id || !name || String(name).trim() === "" || !TYPES.has(field_type)) {
+  if (!project_id) return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+  const auth = await requireProjectPermission(req, Number(project_id), "edit");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  if (!name || String(name).trim() === "" || !TYPES.has(field_type)) {
     return NextResponse.json(
       { error: "project_id, name and valid field_type (number|text|select) are required" },
       { status: 400 },

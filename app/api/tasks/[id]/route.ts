@@ -5,6 +5,7 @@ import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
+import { runAutomations } from "@/lib/automation-runner";
 
 const PATCHABLE = new Set([
   "name",
@@ -68,7 +69,7 @@ export async function PATCH(
     }
   }
   const before = await db.query(
-    "SELECT name, completed, assignee_id, start_on::text AS start_on, due_on::text AS due_on FROM tasks WHERE id = $1::bigint",
+    "SELECT name, completed, assignee_id, status, start_on::text AS start_on, due_on::text AS due_on FROM tasks WHERE id = $1::bigint",
     [id],
   );
   values.push(id);
@@ -85,6 +86,7 @@ export async function PATCH(
         name: string;
         completed: boolean;
         assignee_id: number | null;
+        status: string;
         start_on: string | null;
         due_on: string | null;
       }
@@ -172,6 +174,12 @@ export async function PATCH(
     }
     if (typeof b.name === "string" && b.name.trim() !== "" && b.name.trim() !== prev.name) {
       await log("renamed", "タスク名を変更しました");
+    }
+    if (b.completed === true && prev.completed === false) {
+      await runAutomations(taskProjectId, Number(id), "task_completed").catch(() => undefined);
+    }
+    if (typeof b.status === "string" && b.status !== prev.status) {
+      await runAutomations(taskProjectId, Number(id), "status_changed").catch(() => undefined);
     }
   }
   await notifyTask(id);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
 function csvCell(v: unknown): string {
   const s = v === null || v === undefined ? "" : String(v);
@@ -11,6 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const auth = await requireProjectPermission(req, Number(id), "view");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format") ?? "json";
   if (format !== "json" && format !== "csv") {
@@ -19,9 +22,13 @@ export async function GET(
   const daysRaw = Number(searchParams.get("days"));
   const days = [7, 14, 30].includes(daysRaw) ? daysRaw : 14;
 
-  const p = await db.query("SELECT id, name FROM projects WHERE id = $1::bigint", [id]);
+  const p = await db.query(
+    "SELECT id, name, status_field_enabled FROM projects WHERE id = $1::bigint",
+    [id],
+  );
   if (p.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const project = p.rows[0] as { id: number; name: string };
+  const project = p.rows[0] as { id: number; name: string; status_field_enabled: boolean };
+  const statusFieldEnabled = project.status_field_enabled !== false;
 
   const totals = await db.query(
     `SELECT COUNT(*) FILTER (WHERE parent_task_id IS NULL AND deleted_at IS NULL)::int AS total,
@@ -43,11 +50,13 @@ export async function GET(
      GROUP BY u.id, u.name ORDER BY 2 DESC, u.id`,
     [id],
   );
-  const byStatus = await db.query(
-    `SELECT status, COUNT(*)::int AS n FROM tasks
-     WHERE project_id = $1::bigint AND parent_task_id IS NULL AND deleted_at IS NULL GROUP BY status ORDER BY n DESC, status`,
-    [id],
-  );
+  const byStatus = statusFieldEnabled
+    ? await db.query(
+        `SELECT status, COUNT(*)::int AS n FROM tasks
+         WHERE project_id = $1::bigint AND parent_task_id IS NULL AND deleted_at IS NULL GROUP BY status ORDER BY n DESC, status`,
+        [id],
+      )
+    : { rows: [] as { status: string; n: number }[] };
   const trend = await db.query(
     `SELECT to_char(d, 'YYYY-MM-DD') AS day, COUNT(e.id)::int AS n
      FROM generate_series(CURRENT_DATE - ($2::int - 1), CURRENT_DATE, interval '1 day') AS d
@@ -64,6 +73,7 @@ export async function GET(
     totals: totals.rows[0],
     bySection: bySection.rows,
     byAssignee: byAssignee.rows,
+    status_field_enabled: statusFieldEnabled,
     byStatus: byStatus.rows,
     trend: trend.rows,
   };

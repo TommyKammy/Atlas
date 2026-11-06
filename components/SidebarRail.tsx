@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 const ITEMS = [
   { href: "/", label: "ホーム", icon: "home" },
@@ -10,6 +11,29 @@ const ITEMS = [
   { href: "/search", label: "検索", icon: "search" },
   { href: "/portfolio", label: "ポートフォリオ", icon: "portfolio" },
 ] as const;
+
+const FLYOUTS: Record<string, { label: string; href: string }[]> = {
+  "/": [
+    { label: "ホーム", href: "/" },
+    { label: "マイタスク", href: "/my-tasks" },
+    { label: "受信トレイ", href: "/inbox" },
+  ],
+  "/my-tasks": [
+    { label: "マイタスク", href: "/my-tasks" },
+    { label: "期限超過", href: "/my-tasks#overdue" },
+    { label: "今日が期日", href: "/my-tasks#today" },
+    { label: "今週", href: "/my-tasks#week" },
+  ],
+  "/inbox": [
+    { label: "受信トレイ", href: "/inbox" },
+    { label: "未読を確認", href: "/inbox" },
+  ],
+  "/search": [
+    { label: "検索", href: "/search" },
+    { label: "詳細検索", href: "/search" },
+  ],
+  "/portfolio": [{ label: "ポートフォリオ", href: "/portfolio" }],
+};
 
 function RailIcon({ name }: { name: (typeof ITEMS)[number]["icon"] }) {
   const common = {
@@ -57,24 +81,72 @@ function RailIcon({ name }: { name: (typeof ITEMS)[number]["icon"] }) {
   );
 }
 
-export default function SidebarRail() {
+export default function SidebarRail({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
+  const [openHref, setOpenHref] = useState<string | null>(null);
+  const closeTimer = useRef<number | null>(null);
+
+  const showFlyout = (href: string) => {
+    if (!collapsed) return;
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    setOpenHref(href);
+  };
+  const scheduleClose = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setOpenHref(null), 120);
+  };
+
+  useEffect(() => () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+  }, []);
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto py-2">
+    <div data-sidebar-rail className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-visible py-2">
       {ITEMS.map((item) => {
         const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (
-          <Link
+          <div
             key={item.href}
-            href={item.href}
-            title={item.label}
-            aria-label={item.label}
-            className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-              active ? "bg-white/15 text-white" : "text-neutral-400 hover:bg-white/10 hover:text-white"
-            }`}
+            className="relative"
+            onMouseEnter={() => showFlyout(item.href)}
+            onMouseLeave={scheduleClose}
+            onFocus={() => showFlyout(item.href)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node)) scheduleClose();
+            }}
           >
-            <RailIcon name={item.icon} />
-          </Link>
+            <Link
+              href={item.href}
+              title={item.label}
+              aria-label={item.label}
+              className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                active ? "bg-white/15 text-white" : "text-neutral-400 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <RailIcon name={item.icon} />
+            </Link>
+            <div
+              data-sidebar-flyout={item.href}
+              className={`absolute left-full top-0 z-[60] ml-2 w-56 rounded-lg border border-white/10 bg-[#1f1f1f] p-2 text-neutral-200 shadow-2xl ${
+                collapsed && openHref === item.href ? "" : "hidden"
+              }`}
+            >
+              <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+                {item.label}
+              </div>
+              {FLYOUTS[item.href].map((link) => (
+                <Link
+                  key={`${item.href}-${link.label}`}
+                  href={link.href}
+                  data-sidebar-flyout-link={link.label}
+                  onClick={() => setOpenHref(null)}
+                  className="block rounded px-2 py-1.5 text-[13px] text-neutral-200 hover:bg-white/10 hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
         );
       })}
     </div>

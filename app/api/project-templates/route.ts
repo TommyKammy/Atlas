@@ -3,11 +3,14 @@ import { todayISO } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
+import { requireActiveUser, requireProjectPermission } from "@/lib/api-project-auth";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const workspaceId = searchParams.get("workspace_id");
   if (!workspaceId) return NextResponse.json({ error: "workspace_id is required" }, { status: 400 });
+  const active = await requireActiveUser(req);
+  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
   const r = await db.query(
     "SELECT id, name FROM project_templates WHERE workspace_id = $1::bigint ORDER BY id",
     [workspaceId],
@@ -24,6 +27,8 @@ export async function POST(req: Request) {
   if (!project_id || !name || String(name).trim() === "") {
     return NextResponse.json({ error: "project_id and name are required" }, { status: 400 });
   }
+  const auth = await requireProjectPermission(req, Number(project_id), "edit");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const p = await db.query("SELECT workspace_id FROM projects WHERE id = $1::bigint", [project_id]);
   if (p.rowCount === 0) return NextResponse.json({ error: "project not found" }, { status: 404 });
   const today = todayISO();

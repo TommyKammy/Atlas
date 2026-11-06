@@ -3,11 +3,14 @@ import { todayISO } from "@/lib/dates";
 import { shiftDate } from "@/lib/timeline-dnd";
 import { db } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
+import { requireActiveUser, requireWorkspaceAdmin } from "@/lib/api-project-auth";
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const admin = await requireWorkspaceAdmin(req);
+  if (!admin.ok) return NextResponse.json({ error: admin.error }, { status: admin.status });
   const { id } = await params;
   const r = await db.query("DELETE FROM project_templates WHERE id = $1::bigint", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -19,6 +22,8 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const active = await requireActiveUser(req);
+  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";

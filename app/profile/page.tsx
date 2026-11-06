@@ -20,6 +20,7 @@ export default async function ProfilePage() {
   return (
     <div className="max-w-xl p-6">
       <h1 className="text-lg font-bold">プロフィール</h1>
+      <div id="settings">
       <ProfileForm
         userId={me.id}
         initialName={me.name}
@@ -28,6 +29,7 @@ export default async function ProfilePage() {
         initialAvatarUrl={me.avatar_url ?? ""}
         isGuest={me.is_guest}
       />
+      </div>
     </div>
   );
 }

@@ -9,6 +9,8 @@ import { todayISO } from "@/lib/dates";
 import { formatCustomValue, type CustomField, type CustomValue } from "@/lib/custom-fields";
 import { positionBetween } from "@/lib/order";
 import TemplateBar from "./TemplateBar";
+import EmptyState from "./EmptyState";
+import { usePersistedViewState } from "@/lib/view-state-client";
 
 async function api(path: string, method: string, body?: unknown) {
   const res = await fetch(path, {
@@ -61,6 +63,8 @@ export default function ListView({
   activeSavedId,
   initial,
   projectStatusOptions,
+  statusFieldName,
+  statusFieldEnabled,
   activeTaskId,
 }: {
   projectId: number;
@@ -73,6 +77,8 @@ export default function ListView({
   subtaskMap: Record<number, TaskRow[]>;
   activeSavedId: number | null;
   projectStatusOptions: string[];
+  statusFieldName: string;
+  statusFieldEnabled: boolean;
   activeTaskId: number | null;
   initial: {
     hide_completed?: boolean;
@@ -152,7 +158,9 @@ export default function ListView({
   };
   const [hideCompleted, setHideCompleted] = useState(initial.hide_completed === true);
   const [groupBy, setGroupBy] = useState<"section" | "assignee" | "status">(
-    initial.group === "assignee" || initial.group === "status" ? initial.group : "section",
+    initial.group === "assignee" || (initial.group === "status" && statusFieldEnabled)
+      ? initial.group
+      : "section",
   );
   const [groupSections, setGroupSections] = useState<Record<string, number | null>>({});
   const [assigneeFilter, setAssigneeFilter] = useState(initial.assignee ?? "");
@@ -169,11 +177,22 @@ export default function ListView({
   const [menuCol, setMenuCol] = useState<string | null>(null);
   const [hiddenCols, setHiddenCols] = useState<Set<number>>(new Set());
   const [statusHidden, setStatusHidden] = useState(false);
+  const [rowLimits, setRowLimits] = useState<Record<string, number>>({});
+  const [isCompact, setIsCompact] = useState(false);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   const [colOrder, setColOrder] = useState<string[]>([]);
+  usePersistedViewState(projectId, "list", {
+    hide_completed: hideCompleted,
+    assignee: assigneeFilter,
+    status: statusFilter,
+    due: dueFilter,
+    sort: sortKey,
+    sortdir: sortDir,
+    group: groupBy,
+  });
   const colW = (key: string) =>
     colWidths[key] ??
-    (key.startsWith("cf-") ? 130 : ({ assignee: 160, due: 120, progress: 100, status: 120 } as Record<string, number>)[key] ?? 120);
+    (key.startsWith("cf-") ? 130 : ({ assignee: 119, due: 119, progress: 119, status: 119 } as Record<string, number>)[key] ?? 119);
 
   const gripMouseDown = (e: React.MouseEvent, key: string) => {
     e.stopPropagation();
@@ -201,6 +220,14 @@ export default function ListView({
     setColDragging(null);
     setColDropOver(null);
   };
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const update = () => setIsCompact(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     const onMove = (ev: MouseEvent) => {
@@ -413,23 +440,19 @@ export default function ListView({
   const dayOffset = (n: number) => new Date(todayMs + n * 86400000).toISOString().slice(0, 10);
 
   const distinctStatus = [...new Set(tasks.map((t) => t.status))].sort((a, b) => a.localeCompare(b, "ja"));
-  const statusOptions = projectStatusOptions.length > 0 ? projectStatusOptions : distinctStatus;
-  const [editingStatusOpts, setEditingStatusOpts] = useState(false);
-  const [statusOptsDraft, setStatusOptsDraft] = useState("");
-
-  const saveStatusOpts = async () => {
-    const opts = statusOptsDraft
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s !== "");
-    if (opts.length === 0) return;
-    await api(`/api/projects/${projectId}`, "PATCH", { status_options: opts });
-    setEditingStatusOpts(false);
-    setMenuCol(null);
-    refresh();
-  };
+  const statusOptions = statusFieldEnabled
+    ? projectStatusOptions.length > 0
+      ? projectStatusOptions
+      : distinctStatus
+    : [];
   const shownFields = customFields.filter((f) => !hiddenCols.has(f.id));
-  const baseKeys = ["assignee", "due", "progress", "status", ...customFields.map((f) => `cf-${f.id}`)];
+  const baseKeys = [
+    "assignee",
+    "due",
+    "progress",
+    ...(statusFieldEnabled ? ["status"] : []),
+    ...customFields.map((f) => `cf-${f.id}`),
+  ];
   const orderedKeys = [...colOrder.filter((k) => baseKeys.includes(k)), ...baseKeys.filter((k) => !colOrder.includes(k))];
   const visibleCols = orderedKeys.filter((k) =>
     k === "status" ? !statusHidden : k.startsWith("cf-") ? !hiddenCols.has(Number(k.slice(3))) : true,
@@ -444,14 +467,17 @@ export default function ListView({
     setMenuCol(null);
   };
   const nameW = colWidths["name"];
-  const gridCols = `28px ${nameW ? `${nameW}px` : "minmax(220px,1fr)"}${visibleCols.map((k) => ` ${colW(k)}px`).join("")} 40px`;
+  const gridCols = isCompact
+    ? "28px minmax(0,1fr)"
+    : `28px ${nameW ? `${nameW}px` : "minmax(220px,640px)"}${visibleCols.map((k) => ` ${colW(k)}px`).join("")} minmax(40px,1fr)`;
+  const compactCells = isCompact ? "[&>*:nth-child(n+3)]:hidden" : "";
 
   const visible = tasks.filter(
     (t) =>
       (!hideCompleted || !t.completed) &&
       (assigneeFilter === "" ||
         (assigneeFilter === "none" ? t.assignee_id === null : t.assignee_id === Number(assigneeFilter))) &&
-      (statusFilter === "" || t.status === statusFilter) &&
+      (!statusFieldEnabled || statusFilter === "" || t.status === statusFilter) &&
       (dueFilter === "" ||
         (t.due_on !== null &&
           (dueFilter === "overdue"
@@ -702,7 +728,7 @@ export default function ListView({
     (hideCompleted ? 1 : 0) +
     (assigneeFilter !== "" ? 1 : 0) +
     (dueFilter !== "" ? 1 : 0) +
-    (statusFilter !== "" ? 1 : 0);
+    (statusFieldEnabled && statusFilter !== "" ? 1 : 0);
   const sortActive = sortKey !== "position";
 
   const clearFilters = () => {
@@ -760,7 +786,7 @@ export default function ListView({
     if (key === "assignee") return headerCell(key, "担当者");
     if (key === "due") return headerCell(key, "期日");
     if (key === "progress") return headerCell(key, "進捗");
-    if (key === "status") return headerCell(key, "Status");
+    if (key === "status") return headerCell(key, statusFieldName);
     const f = customFields.find((x) => `cf-${x.id}` === key);
     return f ? headerCell(key, f.name, f) : null;
   };
@@ -774,13 +800,14 @@ export default function ListView({
 
   const menuItem =
     "block w-full px-3 py-1.5 text-left text-[13px] font-normal text-neutral-700 hover:bg-neutral-100";
-  const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400";
+  const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500";
 
   const headerCell = (key: string, label: string, field?: CustomField) => {
     const sortable = key === "name" || key === "due" || key === "progress";
     const open = menuCol === key;
     return (
       <span
+        data-list-header={key}
         className={`group/hd relative inline-flex min-w-0 cursor-grab items-center gap-0.5 select-none active:cursor-grabbing ${
           colDropOver === key ? "rounded bg-blue-100 ring-2 ring-blue-400" : ""
         } ${colDragging === key ? "opacity-50" : ""}`}
@@ -806,7 +833,7 @@ export default function ListView({
         <button
           onClick={() => setMenuCol(open ? null : key)}
           title="列メニュー"
-          className={`rounded px-0.5 text-[10px] leading-none text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 ${
+          className={`rounded px-0.5 text-[10px] leading-none text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 ${
             open ? "opacity-100" : "opacity-0 group-hover/hd:opacity-100"
           }`}
         >
@@ -898,7 +925,7 @@ export default function ListView({
                 ))}
               </>
             )}
-            {key === "status" && (
+            {statusFieldEnabled && key === "status" && (
               <>
                 <div className={menuLabel}>フィルター</div>
                 <button className={menuItem} onClick={() => { applyStatusFilter(""); setMenuCol(null); }}>
@@ -910,35 +937,17 @@ export default function ListView({
                     {statusFilter === st ? " ✓" : ""}
                   </button>
                 ))}
-                {editingStatusOpts ? (
-                  <div className="px-3 py-2">
-                    <div className={menuLabel + " pt-0"}>Statusの選択肢を編集</div>
-                    <input
-                      value={statusOptsDraft}
-                      onChange={(e) => setStatusOptsDraft(e.target.value)}
-                      placeholder="未着手,進行中,Done"
-                      className="mb-1 w-full rounded border px-2 py-1 text-[13px] outline-none focus:border-blue-500"
-                    />
-                    <div className="flex gap-1">
-                      <button onClick={saveStatusOpts} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">
-                        保存
-                      </button>
-                      <button onClick={() => setEditingStatusOpts(false)} className="rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100">
-                        キャンセル
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    className={menuItem}
-                    onClick={() => {
-                      setEditingStatusOpts(true);
-                      setStatusOptsDraft(statusOptions.join(","));
-                    }}
-                  >
-                    Statusの選択肢を編集
-                  </button>
-                )}
+                <button
+                  className={menuItem}
+                  onClick={() => {
+                    setMenuCol(null);
+                    window.dispatchEvent(
+                      new CustomEvent("atlas:open-customize", { detail: { panel: "status" } }),
+                    );
+                  }}
+                >
+                  {statusFieldName}フィールドを編集
+                </button>
                 <button
                   className={menuItem}
                   onClick={() => {
@@ -1056,9 +1065,9 @@ export default function ListView({
 
   const statusChip = (st: string) => {
     const base = "inline-block rounded-full px-2 py-0.5 text-xs";
-    if (st === "Done") return `${base} bg-green-100 text-green-800`;
-    if (st === "進行中") return `${base} bg-blue-100 text-blue-800`;
-    if (st === "未着手") return `${base} bg-neutral-100 text-neutral-500`;
+    if (st === "Done" || st === "完了") return `${base} bg-green-100 text-green-800`;
+    if (st === "進行中" || st === "In Progress") return `${base} bg-blue-100 text-blue-800`;
+    if (st === "未着手" || st === "To Do") return `${base} bg-neutral-100 text-neutral-700`;
     return `${base} bg-neutral-100 text-neutral-600`;
   };
 
@@ -1117,6 +1126,19 @@ export default function ListView({
     refresh();
   };
 
+  const rowLimitFor = (key: string) => rowLimits[key] ?? 100;
+  const showMoreRows = (key: string, total: number, shown: number) =>
+    total > shown ? (
+      <button
+        type="button"
+        data-list-show-more={key}
+        onClick={() => setRowLimits((current) => ({ ...current, [key]: (current[key] ?? 100) + 200 }))}
+        className="mx-2 my-1 rounded-md border border-[#e1e1e1] bg-white px-3 py-1.5 text-[12px] text-neutral-600 hover:bg-neutral-50"
+      >
+        さらに表示（{shown} / {total} 件）
+      </button>
+    ) : null;
+
   const renderRow = (t: TaskRow, depth = 0) => {
     const overdue = !t.completed && t.due_on !== null && t.due_on < today;
     const isToday = !t.completed && t.due_on !== null && t.due_on === today;
@@ -1124,6 +1146,25 @@ export default function ListView({
     <Fragment key={t.id}>
     <div
       draggable
+      data-list-row={t.id}
+      tabIndex={0}
+      role="listitem"
+      aria-label={`タスク: ${t.name}`}
+      onKeyDown={(e) => {
+        if ((e.target as HTMLElement).closest("input,select,textarea,button,a,summary")) return;
+        if (e.key === "Enter") {
+          e.preventDefault();
+          openTask(t.id);
+          return;
+        }
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const rows = [...document.querySelectorAll<HTMLElement>("[data-list-row]")];
+          const index = rows.indexOf(e.currentTarget);
+          const next = rows[index + (e.key === "ArrowDown" ? 1 : -1)];
+          next?.focus();
+        }
+      }}
       onDragStart={(e) => {
         dragging.current = true;
         e.dataTransfer.setData("text/atlas-task", String(t.id));
@@ -1151,7 +1192,7 @@ export default function ListView({
         const dragId = Number(e.dataTransfer.getData("text/atlas-task"));
         if (dragId) moveTask(dragId, t, before);
       }}
-      className={`group grid min-h-[37px] cursor-pointer items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 py-1.5 text-sm ${
+      className={`group grid min-h-[37px] cursor-pointer items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${compactCells} ${
         t.id === activeTaskId ? "bg-[#eff4fd]" : "hover:bg-neutral-50"
       } ${
         dropHint?.id === t.id
@@ -1170,12 +1211,12 @@ export default function ListView({
           ⋮⋮
         </span>
       </span>
-      <div className={`flex min-w-0 items-center gap-1.5 ${depth > 0 ? "pl-7" : ""}`}>
+      <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${depth > 0 ? "pl-7" : ""}`}>
         {(subtaskMap[t.id] ?? []).length > 0 ? (
           <button
             onClick={() => toggleExpand(t.id)}
             title={expanded.has(t.id) ? "サブタスクを閉じる" : "サブタスクを開く"}
-            className="w-4 shrink-0 text-center text-xs text-neutral-400 hover:text-black"
+            className="w-4 shrink-0 text-center text-xs text-neutral-600 hover:text-black"
           >
             {expanded.has(t.id) ? "▾" : "▸"}
           </button>
@@ -1186,7 +1227,7 @@ export default function ListView({
           onClick={() => toggle(t)}
           title={t.completed ? "未完了に戻す" : "完了にする"}
           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px] ${
-            t.completed ? "border-green-600 bg-green-600 text-white" : "border-neutral-300 text-neutral-300 hover:border-green-600"
+            t.completed ? "border-green-700 bg-green-700 text-white" : "border-neutral-300 text-transparent hover:border-green-600"
           }`}
         >
           ✓
@@ -1214,18 +1255,19 @@ export default function ListView({
         ) : (
           <span
             onClick={(e) => openEdit(e, t, "name", t.name)}
-            title="クリックで名前を編集（行の他部分は詳細を開く）"
+            title={`${t.name} — クリックで名前を編集`}
+            dir="auto"
             className="w-fit max-w-full min-w-0 flex-none cursor-text truncate rounded hover:bg-neutral-100"
           >
             {t.name}
           </span>
         )}
         {t.recurrence && t.recurrence !== "none" && (
-          <span title="繰り返しタスク" className="shrink-0 text-xs text-neutral-400">
+          <span title="繰り返しタスク" className="shrink-0 text-xs text-neutral-500">
             ↻
           </span>
         )}
-        <span className="ml-1 flex items-center gap-2 text-[11px] text-neutral-400">
+        <span className="ml-1 flex items-center gap-2 text-[11px] text-neutral-600">
           {t.subtask_count > 0 && (
             <span className="flex items-center gap-0.5" title="サブタスク">
               <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.2">
@@ -1243,6 +1285,15 @@ export default function ListView({
               {t.comment_count}
             </span>
           )}
+        </span>
+        <span className="flex w-full flex-wrap items-center gap-2 pl-6 text-[11px] text-neutral-500 lg:hidden">
+          {t.due_on && (
+            <span className={overdue ? "font-semibold text-red-600" : isToday ? "font-semibold text-[#2c60b8]" : ""}>
+              期日 {t.due_on}
+            </span>
+          )}
+          {t.assignee_name && <span>{t.assignee_name}</span>}
+          {statusFieldEnabled && t.status !== "inbox" && t.status !== "" && <span>{t.status}</span>}
         </span>
       </div>
       {editing?.id === t.id && editing.field === "assignee" ? (
@@ -1273,7 +1324,7 @@ export default function ListView({
           className="flex min-w-0 cursor-pointer items-center gap-1.5 truncate rounded text-neutral-600 hover:bg-neutral-100"
         >
           {t.assignee_name && (
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-400 text-[10px] font-bold text-white">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-400 text-[10px] font-bold text-neutral-900">
               {t.assignee_name.slice(0, 1)}
             </span>
           )}
@@ -1338,7 +1389,7 @@ export default function ListView({
               return (
                 <span
                   className={`whitespace-nowrap text-[12px] ${
-                    overdue ? "font-medium text-red-600" : isToday ? "text-green-700" : "text-neutral-600"
+                    overdue ? "font-medium text-red-700" : isToday ? "text-green-700" : "text-neutral-600"
                   }`}
                 >
                   {s1}
@@ -1393,12 +1444,12 @@ export default function ListView({
               <span className="h-1.5 w-16 overflow-hidden rounded bg-neutral-200">
                 <span className="block h-full rounded bg-green-500" style={{ width: `${t.progress}%` }} />
               </span>
-              <span className="text-xs text-neutral-500">{t.progress}%</span>
+              <span className="text-xs text-neutral-600">{t.progress}%</span>
             </>
           ) : null}
         </span>
       )}
-      {!statusHidden && (
+      {statusFieldEnabled && !statusHidden && (
         editing?.id === t.id && editing.field === "status" ? (
           <select
           style={{ order: visibleCols.indexOf("status") }}
@@ -1488,7 +1539,7 @@ export default function ListView({
       <button
         style={{ order: 999 }}
         onClick={() => remove(t)}
-        className="invisible text-neutral-300 hover:text-red-600 group-hover:visible"
+        className="invisible justify-self-end text-neutral-300 hover:text-red-600 group-hover:visible"
         title="削除"
       >
         ×
@@ -1537,7 +1588,7 @@ export default function ListView({
   const groupHeader = (key: string, name: string, count: number) => {
     const collapsed = collapsedGroups.has(key);
     return (
-      <div className="flex h-[50px] items-center gap-3 pl-6">
+      <div data-list-section-header={key} className="flex h-[37px] items-center gap-2 pl-6">
         <button
           onClick={() => toggleGroup(key)}
           title={collapsed ? "展開する" : "折りたたむ"}
@@ -1551,8 +1602,10 @@ export default function ListView({
             <path d="M2.2 4.2h7.6L6 9.2z" />
           </svg>
         </button>
-        <span className="text-[16px] leading-6 font-medium text-neutral-900">{name}</span>
-        <span className="text-[13px] font-normal text-neutral-400">{count}</span>
+        <span className="text-[14px] leading-6 font-semibold text-neutral-900">{name}</span>
+        {groupBy !== "section" && (
+          <span data-list-section-count={count} className="text-[13px] font-normal text-neutral-500">{count}</span>
+        )}
       </div>
     );
   };
@@ -1594,7 +1647,17 @@ export default function ListView({
   );
 
   return (
-    <div className="px-4 pb-16">
+    <div
+      className="px-4 pb-16"
+      data-list-view
+      data-list-hide-completed={hideCompleted}
+      data-list-sort={sortKey}
+      data-list-sortdir={sortDir}
+      data-list-group={groupBy}
+      data-list-assignee={assigneeFilter}
+      data-list-status={statusFilter}
+      data-list-due={dueFilter}
+    >
       <div className="overflow-x-auto">
       <div className="min-w-[860px]">
       <div className="flex flex-wrap items-center gap-1 border-b py-2 text-sm">
@@ -1616,7 +1679,7 @@ export default function ListView({
             <div className="absolute top-full left-0 z-40 mt-1 w-64 rounded-lg border bg-white py-1 text-sm shadow-lg">
               <div className={menuLabel}>テンプレートから作成</div>
               {addTemplates.length === 0 && (
-                <div className="px-3 py-1 text-xs text-neutral-400">テンプレートなし</div>
+                <div className="px-3 py-1 text-xs text-neutral-500">テンプレートなし</div>
               )}
               {addTemplates.map((t) => (
                 <button key={t.id} className={menuItem} onClick={() => instantiateTemplate(t.id)}>
@@ -1632,6 +1695,7 @@ export default function ListView({
             <span className="flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]">
               <button
                 onClick={openFilterMenu}
+                data-list-filter-open
                 className="flex items-center pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]"
               >
                 絞り込み: {activeFilterCount}
@@ -1641,7 +1705,7 @@ export default function ListView({
               </button>
             </span>
           ) : (
-            <button onClick={openFilterMenu} className={toolbarBtn}>
+            <button onClick={openFilterMenu} data-list-filter-open className={toolbarBtn}>
               絞り込み
             </button>
           )}
@@ -1661,6 +1725,7 @@ export default function ListView({
                   <input
                     type="checkbox"
                     checked={hideCompleted}
+                    data-list-hide-completed
                     onChange={(e) => {
                       setHideCompleted(e.target.checked);
                       pushState({ hide: e.target.checked });
@@ -1668,9 +1733,10 @@ export default function ListView({
                   />
                   未完了のタスクのみ
                 </label>
-                <div className="mt-2 px-1.5 text-[11px] font-semibold tracking-wide text-neutral-400">担当者</div>
+                <div className="mt-2 px-1.5 text-[11px] font-semibold tracking-wide text-neutral-500">担当者</div>
                 <select
                   value={assigneeFilter}
+                  data-list-assignee-select
                   onChange={(e) => {
                     setAssigneeFilter(e.target.value);
                     pushState({ assignee: e.target.value });
@@ -1685,7 +1751,7 @@ export default function ListView({
                     </option>
                   ))}
                 </select>
-                <div className="mt-2 px-1.5 text-[11px] font-semibold tracking-wide text-neutral-400">期日</div>
+                <div className="mt-2 px-1.5 text-[11px] font-semibold tracking-wide text-neutral-500">期日</div>
                 <select
                   value={dueFilter}
                   onChange={(e) => {
@@ -1701,22 +1767,26 @@ export default function ListView({
                   <option value="nextweek">来週</option>
                   <option value="month">今月</option>
                 </select>
-                <div className="mt-2 px-1.5 text-[11px] font-semibold tracking-wide text-neutral-400">Status</div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
-                    pushState({ status: e.target.value });
-                  }}
-                  className={menuSelect}
-                >
-                  <option value="">すべて</option>
-                  {statusOptions.map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </select>
+                {statusFieldEnabled && (
+                  <>
+                    <div className="mt-2 px-1.5 text-[11px] font-semibold tracking-wide text-neutral-500">{statusFieldName}</div>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => {
+                        setStatusFilter(e.target.value);
+                        pushState({ status: e.target.value });
+                      }}
+                      className={menuSelect}
+                    >
+                      <option value="">すべて</option>
+                      {statusOptions.map((st) => (
+                        <option key={st} value={st}>
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -1806,7 +1876,7 @@ export default function ListView({
                 {[
                   ["section", "セクション"],
                   ["assignee", "担当者"],
-                  ["status", "Status"],
+                  ...(statusFieldEnabled ? [["status", statusFieldName]] : []),
                 ].map(([key, label]) => (
                   <button
                     key={key}
@@ -1845,18 +1915,19 @@ export default function ListView({
                     if (e.key === "Enter") saveView();
                   }}
                   placeholder="ビュー名"
+                  aria-label="保存するビュー名"
                   autoFocus
                   className="w-32 rounded border px-2 py-0.5 text-sm outline-none focus:border-blue-500"
                 />
-                <button onClick={saveView} className="rounded bg-blue-600 px-2 py-0.5 text-sm text-white">
+                <button onClick={saveView} aria-label="ビューを保存" className="rounded bg-blue-600 px-2 py-0.5 text-sm text-white">
                   保存
                 </button>
-                <button onClick={() => setSaving(false)} className="text-sm text-neutral-500">
+                <button onClick={() => setSaving(false)} aria-label="ビュー保存をキャンセル" className="text-sm text-neutral-500">
                   ×
                 </button>
               </span>
             ) : (
-              <button onClick={() => setSaving(true)} className="text-sm text-neutral-600 hover:text-black">
+              <button onClick={() => setSaving(true)} aria-label="現在のビューを保存" className="text-sm text-neutral-600 hover:text-black">
                 ビューを保存
               </button>
             )}
@@ -1892,7 +1963,7 @@ export default function ListView({
             </span>
           ))}
           {activeSavedId !== null && (
-            <a href={`/projects/${projectId}?view=list`} className="text-neutral-400 hover:text-black">
+            <a href={`/projects/${projectId}?view=list`} className="text-neutral-500 hover:text-black">
               クリア ×
             </a>
           )}
@@ -1962,8 +2033,24 @@ export default function ListView({
       {editing?.field === "due" && (
         <div className="fixed inset-0 z-30" onClick={cancelEdit} />
       )}
+      {tasks.length === 0 && (
+        <EmptyState
+          scope="list"
+          title="タスクがありません"
+          description="最初のタスクを追加して、このプロジェクトを進めましょう。"
+          action={
+            <button
+              type="button"
+              onClick={focusAdd}
+              className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium text-white hover:bg-[#24529c]"
+            >
+              ＋ タスクを追加
+            </button>
+          }
+        />
+      )}
       <div
-        className="grid h-[37px] items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 text-xs font-normal text-neutral-500"
+        className={`grid h-[37px] items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 text-xs font-normal text-neutral-500 ${compactCells}`}
         style={{ gridTemplateColumns: gridCols }}
       >
         <input
@@ -1983,21 +2070,21 @@ export default function ListView({
           style={{ order: 999 }}
           onClick={openFieldAdd}
           title="フィールド（カスタム項目）を追加"
-          className="rounded px-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="justify-self-end rounded px-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
         >
           ＋
         </button>
       </div>
-      {(statusHidden || customFields.some((f) => hiddenCols.has(f.id))) && (
-        <div className="flex items-center gap-1 py-1 text-[11px] font-normal text-neutral-400">
+      {((statusFieldEnabled && statusHidden) || customFields.some((f) => hiddenCols.has(f.id))) && (
+        <div className="flex items-center gap-1 py-1 text-[11px] font-normal text-neutral-500">
           非表示:
-          {statusHidden && (
+          {statusFieldEnabled && statusHidden && (
             <button
               onClick={() => setStatusHidden(false)}
-              title="Status列を再表示"
+              title={`${statusFieldName}列を再表示`}
               className="rounded-full border px-2 py-0.5 hover:bg-neutral-100 hover:text-neutral-600"
             >
-              Statusを再表示
+              {statusFieldName}を再表示
             </button>
           )}
           {customFields
@@ -2024,12 +2111,14 @@ export default function ListView({
         ? groupOrder.map(([gkey, items]) => {
             const gk = `g:${gkey}`;
             const collapsed = collapsedGroups.has(gk);
+            const shownItems = items.slice(0, rowLimitFor(gk));
             return (
               <div key={gkey}>
                 {groupHeader(gk, gkey, items.length)}
                 {!collapsed && (
                   <>
-                    {items.map((t) => renderRow(t))}
+                    {shownItems.map((t) => renderRow(t))}
+                    {showMoreRows(gk, items.length, shownItems.length)}
                     {addingTo === gk
                       ? addRow(
                           <>
@@ -2042,6 +2131,9 @@ export default function ListView({
                                   setAddingTo(null);
                                 }
                                 if (e.key === "Escape") setAddingTo(null);
+                              }}
+                              onBlur={() => {
+                                if ((drafts[gkey] ?? "").trim() === "") setAddingTo(null);
                               }}
                               placeholder="タスク名を入力"
                               data-add-task
@@ -2083,6 +2175,7 @@ export default function ListView({
             const key = `s:${s.id}`;
             const collapsed = collapsedGroups.has(key);
             const items = bySection.get(s.id) ?? [];
+            const shownItems = items.slice(0, rowLimitFor(key));
             return (
               <div
                 key={s.id}
@@ -2099,7 +2192,8 @@ export default function ListView({
                 {groupHeader(key, s.name, items.length)}
                 {!collapsed && (
                   <>
-                    {items.map((t) => renderRow(t))}
+                    {shownItems.map((t) => renderRow(t))}
+                    {showMoreRows(key, items.length, shownItems.length)}
                     {addingTo === s.id
                       ? addRow(
                           <>
@@ -2140,8 +2234,17 @@ export default function ListView({
           })}
       {(bySection.get(null) ?? []).length > 0 && (
         <div>
-          <div className="flex h-[50px] items-center pl-[56px] text-[16px] font-medium text-neutral-500">（セクションなし）</div>
-          {(bySection.get(null) ?? []).map((t) => renderRow(t))}
+          <div className="flex h-[37px] items-center pl-[56px] text-[14px] font-semibold text-neutral-500">（セクションなし）</div>
+          {(() => {
+            const loose = bySection.get(null) ?? [];
+            const shown = loose.slice(0, rowLimitFor("none"));
+            return (
+              <>
+                {shown.map((t) => renderRow(t))}
+                {showMoreRows("none", loose.length, shown.length)}
+              </>
+            );
+          })()}
         </div>
       )}
       <div className="pt-4" id="custom-field-add">
@@ -2170,7 +2273,7 @@ export default function ListView({
             ＋ セクションを追加
           </button>
         )}
-        <span className="mx-2 text-neutral-300">|</span>
+        <span className="mx-2 text-neutral-500">|</span>
         {addingField ? (
           <span className="inline-flex items-center gap-1">
             <input

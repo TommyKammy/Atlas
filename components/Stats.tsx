@@ -206,7 +206,7 @@ export function AssigneeBars({ stats }: { stats: ProjectStats }) {
       <div className="mt-2 space-y-2">
         {stats.byAssignee.map((a) => (
           <div key={a.id} className="flex items-center gap-2 text-sm">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-400 text-xs font-bold text-white">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-400 text-xs font-bold text-neutral-900">
               {a.name.slice(0, 1)}
             </span>
             <span className="w-32 shrink-0 truncate">{a.name}</span>

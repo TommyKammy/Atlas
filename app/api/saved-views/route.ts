@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
 const SORTS = new Set(["position", "due", "name", "progress"]);
 const GROUPS = new Set(["section", "assignee", "status"]);
@@ -10,6 +11,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("project_id");
   if (!projectId) return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+  const auth = await requireProjectPermission(req, Number(projectId), "view");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const r = await db.query(
     "SELECT id, name, view_type, filters, sort_key, group_by FROM saved_views WHERE project_id = $1::bigint ORDER BY id",
     [projectId],
@@ -24,6 +27,8 @@ export async function POST(req: Request) {
   if (!project_id || !name || String(name).trim() === "") {
     return NextResponse.json({ error: "project_id and name are required" }, { status: 400 });
   }
+  const auth = await requireProjectPermission(req, Number(project_id), "edit");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const f =
     filters && typeof filters === "object"
       ? {

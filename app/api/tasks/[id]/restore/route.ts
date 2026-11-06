@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { logEvent } from "@/lib/data";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyTask } from "@/lib/notify";
+import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
 
 // Restore a soft-deleted task subtree.
 export async function POST(
@@ -10,6 +11,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const projectId = await getTaskProjectId(Number(id));
+  if (projectId !== null) {
+    const auth = await requireProjectPermission(req, projectId, "edit");
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
   const r = await db.query(
     `WITH RECURSIVE sub AS (
        SELECT id FROM tasks WHERE id = $1::bigint AND deleted_at IS NOT NULL

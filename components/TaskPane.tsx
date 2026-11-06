@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import AttachmentPreview from "./AttachmentPreview";
@@ -9,6 +10,7 @@ import type { CustomField, CustomValue } from "@/lib/custom-fields";
 import { renderMarkdown } from "@/lib/markdown";
 import MarkdownToolbar from "./MarkdownToolbar";
 import { useApiRefresh } from "./ListView";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 async function api(path: string, method: string, body?: unknown) {
   const res = await fetch(path, {
@@ -36,6 +38,10 @@ export default function TaskPane({
   reactions,
   events,
   statusOptions,
+  statusFieldName,
+  statusFieldEnabled,
+  viewerId,
+  viewerCanModerate,
 }: {
   projectId: number;
   view: string;
@@ -52,9 +58,15 @@ export default function TaskPane({
   reactions: Record<number, { emoji: string; n: number; mine: boolean }[]>;
   events: { id: number; summary: string; actor_name: string | null; created_at: string }[];
   statusOptions: string[];
+  statusFieldName: string;
+  statusFieldEnabled: boolean;
+  viewerId: number;
+  viewerCanModerate: boolean;
 }) {
   const refresh = useApiRefresh();
   const [commentDraft, setCommentDraft] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [commentEditDraft, setCommentEditDraft] = useState("");
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionIndex, setMentionIndex] = useState(0);
@@ -70,6 +82,8 @@ export default function TaskPane({
     stamp: string;
   } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const router = useRouter();
+  const paneRef = useRef<HTMLElement>(null);
   const [reactionMap, setReactionMap] = useState(reactions);
   const [feedTab, setFeedTab] = useState<"comments" | "activity">("comments");
 
@@ -91,6 +105,7 @@ export default function TaskPane({
   const [newMemberSections, setNewMemberSections] = useState<{ id: number; name: string }[]>([]);
   const [newMemberSection, setNewMemberSection] = useState("");
   const closeHref = `/projects/${projectId}?view=${view}`;
+  useFocusTrap(paneRef, true, () => router.push(closeHref));
   const todayStr = todayISO();
   const isOverdue = !task.completed && task.due_on !== null && task.due_on < todayStr;
 
@@ -112,7 +127,7 @@ export default function TaskPane({
     start_on: "開始日",
     due_on: "期日",
     progress: "進捗",
-    status: "Status",
+    status: statusFieldName,
     description: "説明",
     section_id: "セクション",
   };
@@ -172,6 +187,48 @@ export default function TaskPane({
     setCommentDraft("");
     setMentionOpen(false);
     refresh();
+  };
+
+  const startEditComment = (comment: CommentRow) => {
+    setEditingCommentId(comment.id);
+    setCommentEditDraft(comment.body);
+  };
+
+  const saveComment = async (commentId: number) => {
+    if (!commentEditDraft.trim()) return;
+    await api(`/api/comments/${commentId}`, "PATCH", { body: commentEditDraft });
+    setEditingCommentId(null);
+    setCommentEditDraft("");
+    refresh();
+  };
+
+  const deleteComment = async (commentId: number) => {
+    if (!confirm("このコメントを削除しますか？")) return;
+    await api(`/api/comments/${commentId}`, "DELETE");
+    if (editingCommentId === commentId) setEditingCommentId(null);
+    refresh();
+  };
+
+  const renderCommentBody = (body: string): string => {
+    const html = renderMarkdown(body);
+    const names = [...users]
+      .map((u) => u.name)
+      .filter((name) => name !== "")
+      .sort((a, b) => b.length - a.length);
+    if (names.length === 0) return html;
+    const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`@(${names.map(escape).join("|")})`, "g");
+    return html
+      .split(/(<[^>]+>)/)
+      .map((part) => {
+        if (part.startsWith("<")) return part;
+        return part.replace(
+          pattern,
+          (match) =>
+            `<span data-comment-mention="${match.slice(1)}" class="rounded bg-blue-50 px-1 font-medium text-blue-700">${match}</span>`,
+        );
+      })
+      .join("");
   };
 
   const mentionCandidates = users.filter((u) =>
@@ -348,13 +405,20 @@ export default function TaskPane({
   const collaborators = `このタスクは${collaboratorNames}に表示されています。`;
 
   return (
-    <aside className="taskpane-enter flex w-full shrink-0 flex-col border-t bg-white md:w-[520px] md:border-l md:border-t-0 xl:w-[600px]">
+    <aside
+      ref={paneRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      aria-label="タスク詳細"
+      className="taskpane-enter fixed inset-0 z-[80] flex w-full shrink-0 flex-col overflow-y-auto border-t bg-white md:static md:z-auto md:w-[520px] md:overflow-y-auto md:border-l md:border-t-0 xl:w-[600px] 2xl:w-[700px]"
+    >
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <button
           onClick={toggle}
           className={`flex h-7 items-center gap-1.5 rounded-full border px-3 text-sm ${
             task.completed
-              ? "border-green-600 bg-green-600 text-white"
+              ? "border-green-700 bg-green-700 text-white"
               : "border-neutral-300 hover:border-green-600"
           }`}
         >
@@ -363,17 +427,17 @@ export default function TaskPane({
           </span>
           {task.completed ? "完了" : "完了にする"}
         </button>
-        <span className="ml-1 hidden min-w-0 flex-1 truncate text-xs text-neutral-400 lg:block" title={collaborators}>
+        <span className="ml-1 hidden min-w-0 flex-1 truncate text-xs text-neutral-500 lg:block" title={collaborators}>
           {collaborators}
         </span>
         <span className="flex-1 lg:hidden" />
-        <button title="いいね（v1では無効）" className="cursor-default px-1.5 text-lg leading-none text-neutral-300">
+        <button title="いいね（v1では無効）" className="cursor-default px-1.5 text-lg leading-none text-neutral-500">
           ♡
         </button>
-        <button onClick={remove} title="削除" className="px-2 text-sm text-neutral-400 hover:text-red-600">
+        <button onClick={remove} title="削除" className="px-2 text-sm text-neutral-500 hover:text-red-600">
           削除
         </button>
-        <Link href={closeHref} className="px-1.5 text-neutral-500 hover:text-black" title="閉じる">
+        <Link href={closeHref} className="px-1.5 text-neutral-500 hover:text-black" title="閉じる" aria-label="タスクペインを閉じる">
           ×
         </Link>
       </div>
@@ -448,7 +512,7 @@ export default function TaskPane({
                 title="開始日"
                 className="w-[130px] cursor-pointer rounded bg-transparent px-1 py-1 text-sm text-neutral-800 outline-none hover:bg-white"
               />
-              <span className="text-neutral-400">〜</span>
+              <span className="text-neutral-500">〜</span>
               <input
                 type="date"
                 defaultValue={task.due_on ?? ""}
@@ -456,7 +520,7 @@ export default function TaskPane({
                 onChange={(e) => patch({ due_on: e.target.value || null })}
                 title="期日"
                 className={`w-[130px] cursor-pointer rounded bg-transparent px-1 py-1 text-sm outline-none hover:bg-white ${
-                  isOverdue ? "font-semibold text-red-600" : "text-neutral-800"
+                  isOverdue ? "font-semibold text-red-700" : "text-neutral-800"
                 }`}
               />
             </span>
@@ -478,22 +542,24 @@ export default function TaskPane({
               </span>
             </span>
           </div>
-          <div className="flex h-9 items-center gap-2 rounded-md px-1 hover:bg-neutral-50">
-            <span className="w-28 shrink-0 text-sm text-neutral-500">Status</span>
-            <select
-              value={task.status}
-              key={`st-${task.id}`}
-              onChange={(e) => e.target.value && patch({ status: e.target.value })}
-              className="min-w-0 flex-1 cursor-pointer appearance-none rounded bg-transparent px-1 py-1 text-sm text-neutral-800 outline-none hover:bg-white"
-            >
-              {!statusOptions.includes(task.status) && <option value={task.status}>{task.status}</option>}
-              {statusOptions.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          </div>
+          {statusFieldEnabled && (
+            <div className="flex h-9 items-center gap-2 rounded-md px-1 hover:bg-neutral-50">
+              <span className="w-28 shrink-0 truncate text-sm text-neutral-500">{statusFieldName}</span>
+              <select
+                value={task.status}
+                key={`st-${task.id}`}
+                onChange={(e) => e.target.value && patch({ status: e.target.value })}
+                className="min-w-0 flex-1 cursor-pointer appearance-none rounded bg-transparent px-1 py-1 text-sm text-neutral-800 outline-none hover:bg-white"
+              >
+                {!statusOptions.includes(task.status) && <option value={task.status}>{task.status}</option>}
+                {statusOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex h-9 items-center gap-2 rounded-md px-1 hover:bg-neutral-50">
             <span className="w-28 shrink-0 text-sm text-neutral-500">繰り返し</span>
             <select
@@ -517,12 +583,12 @@ export default function TaskPane({
                     <span className="min-w-0 flex-1 truncate">
                       {m.name}
                       {m.section_name ? ` / ${m.section_name}` : ""}
-                      {isPrimary && <span className="ml-1 text-xs text-neutral-400">（主）</span>}
+                      {isPrimary && <span className="ml-1 text-xs text-neutral-500">（主）</span>}
                     </span>
                     {!isPrimary && (
                       <button
                         onClick={() => removeMembership(m.id)}
-                        className="text-neutral-300 hover:text-red-600"
+                        className="text-neutral-500 hover:text-red-600"
                         title="所属を外す"
                       >
                         ×
@@ -532,7 +598,7 @@ export default function TaskPane({
                 );
               })}
               {!addingProject ? (
-                <button onClick={openAddProject} className="flex h-8 items-center text-sm text-neutral-400 hover:text-neutral-700">
+                <button onClick={openAddProject} className="flex h-8 items-center text-sm text-neutral-500 hover:text-neutral-700">
                   ＋ 他プロジェクトに追加
                 </button>
               ) : (
@@ -586,14 +652,14 @@ export default function TaskPane({
             <span className="w-28 shrink-0 pt-1.5 text-sm text-neutral-500">依存関係</span>
             <div className="min-w-0 flex-1">
               {dependencies.length === 0 && (
-                <div className="flex h-8 items-center text-sm text-neutral-400">依存関係を追加</div>
+                <div className="flex h-8 items-center text-sm text-neutral-500">依存関係を追加</div>
               )}
               {dependencies.map((d) => (
                 <div key={d.id} className="flex h-8 items-center gap-2 border-b text-sm">
                   <span className="flex-1 truncate">⛔ {d.name}</span>
                   <button
                     onClick={() => removeDependency(d.id)}
-                    className="text-neutral-300 hover:text-red-600"
+                    className="text-neutral-500 hover:text-red-600"
                     title="依存を外す"
                   >
                     ×
@@ -658,7 +724,7 @@ export default function TaskPane({
           ) : (
             <button
               onClick={() => setEditingDesc(true)}
-              className="w-full rounded-md p-2 text-left text-sm text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
+              className="w-full rounded-md p-2 text-left text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-600"
             >
               このタスクの内容を入力します
             </button>
@@ -669,11 +735,15 @@ export default function TaskPane({
             <MarkdownToolbar target={commentRef} onChange={setCommentDraft} />
           </div>
           {mentionOpen && mentionCandidates.length > 0 && (
-            <div className="mb-1 max-h-32 overflow-auto rounded border bg-white shadow">
+            <div
+              data-mention-menu
+              className="mb-1 max-h-32 overflow-auto rounded border bg-white shadow"
+            >
               {mentionCandidates.map((u, i) => (
                 <button
                   key={u.id}
                   type="button"
+                  data-mention-option={u.id}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     pickMention(u.name);
@@ -683,7 +753,7 @@ export default function TaskPane({
                     i === mentionIndex ? "bg-blue-50" : ""
                   }`}
                 >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-400 text-[10px] font-bold text-white">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-400 text-[10px] font-bold text-neutral-900">
                     {u.name.slice(0, 1)}
                   </span>
                   {u.name}
@@ -693,6 +763,7 @@ export default function TaskPane({
           )}
           <textarea
             ref={commentRef}
+            data-comment-input
             value={commentDraft}
             onChange={(e) => onCommentChange(e.target.value, e.target.selectionStart)}
             onKeyDown={(e) => {
@@ -720,6 +791,7 @@ export default function TaskPane({
           <div className="text-right">
             <button
               onClick={addComment}
+              data-comment-submit
               className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
             >
               投稿
@@ -742,7 +814,7 @@ export default function TaskPane({
             <button
               onClick={() => setAddingSubtask(true)}
               title="サブタスクを追加"
-              className="rounded px-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              className="rounded px-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
             >
               ＋
             </button>
@@ -752,14 +824,14 @@ export default function TaskPane({
               <button
                 onClick={() => api(`/api/tasks/${s.id}`, "PATCH", { completed: !s.completed }).then(refresh)}
                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${
-                  s.completed ? "border-green-600 bg-green-600 text-white" : "border-neutral-400"
+                  s.completed ? "border-green-700 bg-green-700 text-white" : "border-neutral-400"
                 }`}
               >
                 {s.completed && "✓"}
               </button>
               <Link
                 href={`/projects/${projectId}?view=${view}&task=${s.id}`}
-                className={`min-w-0 flex-1 truncate hover:underline ${s.completed ? "text-neutral-400 line-through" : ""}`}
+                className={`min-w-0 flex-1 truncate hover:underline ${s.completed ? "text-neutral-500 line-through" : ""}`}
               >
                 {s.name}
               </Link>
@@ -769,7 +841,7 @@ export default function TaskPane({
                   api(`/api/tasks/${s.id}`, "DELETE").then(refresh);
                 }}
                 title="サブタスクを削除"
-                className="invisible shrink-0 text-neutral-300 hover:text-red-600 group-hover/sub:visible"
+                className="invisible shrink-0 text-neutral-500 hover:text-red-600 group-hover/sub:visible"
               >
                 ×
               </button>
@@ -804,10 +876,10 @@ export default function TaskPane({
           ) : (
             <button
               onClick={() => setAddingSubtask(true)}
-              className="mt-1 flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
+              className="mt-1 flex w-full items-center gap-2 rounded px-1 py-1 text-left text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-600"
             >
               <span className="min-w-0 flex-1 truncate">サブタスクを追加</span>
-              <span className="flex shrink-0 items-center gap-1 text-neutral-300">
+              <span className="flex shrink-0 items-center gap-1 text-neutral-500">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed">👤</span>
                 <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed">📅</span>
               </span>
@@ -824,7 +896,7 @@ export default function TaskPane({
                 </a>
               <button
                 onClick={() => removeAttachment(a.id)}
-                className="text-neutral-300 hover:text-red-600"
+                className="text-neutral-500 hover:text-red-600"
                 title="添付を削除"
               >
                 ×
@@ -866,55 +938,124 @@ export default function TaskPane({
           </div>
           {feedTab === "comments" ? (
             comments.length === 0 ? (
-              <div className="py-3 text-sm text-neutral-400">まだコメントはありません</div>
+              <div className="py-3 text-sm text-neutral-500">まだコメントはありません</div>
             ) : (
-              comments.map((c) => (
-            <div key={c.id} className="flex gap-2 py-2 text-sm">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-300 text-xs font-bold text-white">
-                {(c.author_name ?? "?").slice(0, 1)}
-              </span>
-              <div className="min-w-0 flex-1 rounded-lg bg-neutral-50 px-3 py-2">
-                <div className="text-xs font-semibold text-neutral-600">{c.author_name ?? "–"}</div>
-                <div
-                  className="mt-0.5 text-sm [&_a]:text-blue-700 [&_code]:rounded [&_code]:bg-neutral-200 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(c.body) }}
-                />
-                <div className="mt-1 flex flex-wrap items-center gap-1">
-                  {(reactionMap[c.id] ?? []).map((r) => (
-                    <button
-                      key={r.emoji}
-                      type="button"
-                      onClick={() => toggleReaction(c.id, r.emoji)}
-                      title="リアクション切替"
-                      className={`rounded-full border px-1.5 py-0.5 text-xs ${
-                        r.mine ? "border-blue-500 bg-blue-50" : "hover:bg-neutral-100"
-                      }`}
-                    >
-                      {r.emoji} {r.n}
-                    </button>
-                  ))}
-                  {QUICK.filter((e) => !(reactionMap[c.id] ?? []).some((r) => r.emoji === e))
-                    .slice(0, 3)
-                    .map((e) => (
-                      <button
-                        key={e}
-                        type="button"
-                        onClick={() => toggleReaction(c.id, e)}
-                        title="リアクションする"
-                        className="rounded-full border border-dashed px-1.5 py-0.5 text-xs text-neutral-400 hover:bg-neutral-100"
-                      >
-                        {e} ＋
-                      </button>
-                    ))}
-                </div>
-              </div>
-            </div>
-          ))
+              comments.map((c) => {
+                const canEdit = c.author_id === viewerId || viewerCanModerate;
+                return (
+                  <div
+                    key={c.id}
+                    data-comment-id={c.id}
+                    data-comment-author-id={c.author_id ?? ""}
+                    className="flex gap-2 py-2 text-sm"
+                  >
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-300 text-xs font-bold text-neutral-800">
+                      {(c.author_name ?? "?").slice(0, 1)}
+                    </span>
+                    <div className="min-w-0 flex-1 rounded-lg bg-neutral-50 px-3 py-2">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-neutral-600">
+                        <span>{c.author_name ?? "–"}</span>
+                        {c.edited_at && (
+                          <span data-comment-edited={c.id} className="font-normal text-neutral-400">
+                            編集済み
+                          </span>
+                        )}
+                        {canEdit && editingCommentId !== c.id && (
+                          <span className="ml-auto flex items-center gap-2 font-normal">
+                            <button
+                              type="button"
+                              data-comment-edit={c.id}
+                              onClick={() => startEditComment(c)}
+                              className="text-[11px] text-neutral-500 hover:underline"
+                            >
+                              編集
+                            </button>
+                            <button
+                              type="button"
+                              data-comment-delete={c.id}
+                              onClick={() => void deleteComment(c.id)}
+                              className="text-[11px] text-red-600 hover:underline"
+                            >
+                              削除
+                            </button>
+                          </span>
+                        )}
+                      </div>
+                      {editingCommentId === c.id ? (
+                        <div className="mt-1">
+                          <textarea
+                            data-comment-edit-input={c.id}
+                            value={commentEditDraft}
+                            onChange={(e) => setCommentEditDraft(e.target.value)}
+                            rows={3}
+                            className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm outline-none focus:border-blue-500"
+                          />
+                          <div className="mt-1 flex justify-end gap-2">
+                            <button
+                              type="button"
+                              data-comment-edit-cancel={c.id}
+                              onClick={() => setEditingCommentId(null)}
+                              className="rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100"
+                            >
+                              キャンセル
+                            </button>
+                            <button
+                              type="button"
+                              data-comment-edit-save={c.id}
+                              onClick={() => void saveComment(c.id)}
+                              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+                            >
+                              保存
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          data-comment-body={c.id}
+                          className="mt-0.5 text-sm [&_a]:text-blue-700 [&_code]:rounded [&_code]:bg-neutral-200 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
+                          dangerouslySetInnerHTML={{ __html: renderCommentBody(c.body) }}
+                        />
+                      )}
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {(reactionMap[c.id] ?? []).map((r) => (
+                          <button
+                            key={r.emoji}
+                            type="button"
+                            data-comment-reaction={r.emoji}
+                            aria-pressed={r.mine}
+                            onClick={() => toggleReaction(c.id, r.emoji)}
+                            title="リアクション切替"
+                            className={`rounded-full border px-1.5 py-0.5 text-xs ${
+                              r.mine ? "border-blue-500 bg-blue-50" : "hover:bg-neutral-100"
+                            }`}
+                          >
+                            {r.emoji} {r.n}
+                          </button>
+                        ))}
+                        {QUICK.filter((e) => !(reactionMap[c.id] ?? []).some((r) => r.emoji === e))
+                          .slice(0, 3)
+                          .map((e) => (
+                            <button
+                              key={e}
+                              type="button"
+                              data-comment-reaction-add={e}
+                              onClick={() => toggleReaction(c.id, e)}
+                              title="リアクションする"
+                              className="rounded-full border border-dashed px-1.5 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100"
+                            >
+                              {e} ＋
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )
           ) : (
             <div>
               {events.length === 0 && (
-                <div className="py-3 text-sm text-neutral-400">アクティビティはまだありません</div>
+                <div className="py-3 text-sm text-neutral-500">アクティビティはまだありません</div>
               )}
               {events.map((ev) => (
                 <div key={ev.id} className="flex gap-2 py-1.5 text-sm">
@@ -924,7 +1065,7 @@ export default function TaskPane({
                   <div className="min-w-0 flex-1">
                     <span className="font-medium text-neutral-700">{ev.actor_name ?? "システム"}</span>{" "}
                     <span className="text-neutral-600">{ev.summary}</span>
-                    <div className="text-xs text-neutral-400">{ev.created_at.slice(0, 16).replace("T", " ")}</div>
+                    <div className="text-xs text-neutral-500">{ev.created_at.slice(0, 16).replace("T", " ")}</div>
                   </div>
                 </div>
               ))}

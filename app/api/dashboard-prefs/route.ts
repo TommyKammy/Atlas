@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { normalizeWidgets } from "@/lib/dashboard-widgets";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("project_id");
   if (!projectId) return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+  const auth = await requireProjectPermission(req, Number(projectId), "view");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const uid = getCurrentUserIdFromRequest(req);
   const r = await db.query("SELECT widgets FROM dashboard_prefs WHERE user_id = $1 AND project_id = $2::bigint", [
     uid,
@@ -21,6 +24,8 @@ export async function PUT(req: Request) {
   const body = await req.json().catch(() => null);
   const { project_id, widgets } = body ?? {};
   if (!project_id) return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+  const auth = await requireProjectPermission(req, Number(project_id), "view");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const me = await db.query("SELECT id FROM users WHERE id = $1", [uid]);
   if (me.rowCount === 0) return NextResponse.json({ error: "unknown user" }, { status: 403 });
   const p = await db.query("SELECT id FROM projects WHERE id = $1::bigint", [project_id]);

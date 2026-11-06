@@ -2,6 +2,7 @@ import type { DashboardExtras, ProjectStats } from "@/lib/data";
 import type { DashboardWidgetKey } from "@/lib/dashboard-widgets";
 import { AssigneeBars, Donut, OverdueList, SectionProgress, StatusBars, TrendBars } from "./Stats";
 import DashboardSettings from "./DashboardSettings";
+import EmptyState from "./EmptyState";
 
 export default function DashboardView({
   projectId,
@@ -48,6 +49,21 @@ export default function DashboardView({
           </div>
         </details>
       </div>
+      {stats.total === 0 && (
+        <EmptyState
+          scope="dashboard"
+          title="タスクがまだありません"
+          description="リストからタスクを追加すると、完了トレンドや担当者別の集計が表示されます。"
+          action={
+            <a
+              href={`/projects/${projectId}?view=list`}
+              className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium leading-8 text-white hover:bg-[#24529c]"
+            >
+              リストでタスクを追加
+            </a>
+          }
+        />
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {metrics.map((m) => (
           <div key={m.label} className="rounded-lg border bg-white p-4">
@@ -88,7 +104,20 @@ export default function DashboardView({
               case "assignees":
                 return <AssigneeBars key="assignees" stats={stats} />;
               case "status":
-                return <StatusBars key="status" stats={extras} />;
+                return extras.statusFieldEnabled ? (
+                  <StatusBars key="status" stats={extras} />
+                ) : (
+                  <div
+                    key="status"
+                    data-dashboard-status-disabled
+                    className="mt-6 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-4 py-5"
+                  >
+                    <h2 className="font-semibold text-neutral-800">Statusフィールドは削除されています</h2>
+                    <p className="mt-1 text-sm text-neutral-500">
+                      カスタマイズ → フィールドからStatusを再追加すると、保持されている値が再表示されます。
+                    </p>
+                  </div>
+                );
               case "overdue":
                 return <OverdueList key="overdue" projectId={projectId} overdue={extras.overdue} />;
             }

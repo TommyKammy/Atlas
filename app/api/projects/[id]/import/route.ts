@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { logEvent } from "@/lib/data";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
 const MAX_ROWS = 1000;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -37,6 +38,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const auth = await requireProjectPermission(req, Number(id), "edit");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const uid = getCurrentUserIdFromRequest(req);
   const p = await db.query("SELECT id FROM projects WHERE id = $1::bigint", [id]);
   if (p.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });

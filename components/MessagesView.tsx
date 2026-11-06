@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ProjectMessage } from "@/lib/data";
 import { renderMarkdown } from "@/lib/markdown";
 import { useApiRefresh } from "./ListView";
+import EmptyState from "./EmptyState";
 
 export default function MessagesView({
   projectId,
@@ -54,7 +55,7 @@ export default function MessagesView({
             className="mt-2 w-full text-sm outline-none"
           />
           <div className="flex items-center gap-2">
-            <span className="text-xs text-neutral-400">プロジェクト全体に送信されます</span>
+            <span className="text-xs text-neutral-500">プロジェクト全体に送信されます</span>
             <span className="flex-1" />
             <button
               onClick={() => setOpen(false)}
@@ -75,7 +76,7 @@ export default function MessagesView({
           onClick={() => setOpen(true)}
           className="flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm text-neutral-500 hover:bg-neutral-50"
         >
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-400 text-[10px] font-bold text-white">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-400 text-[10px] font-bold text-neutral-900">
             管
           </span>
           メンバーにメッセージを送信
@@ -83,12 +84,11 @@ export default function MessagesView({
       )}
       <div className="mt-4">
         {initial.length === 0 ? (
-          <div className="rounded-lg border p-6 text-center">
-            <div className="text-sm font-semibold text-neutral-700">会話を仕事につなげる</div>
-            <p className="mt-1 text-sm text-neutral-500">
-              メッセージを送信して、プロジェクトを開始する、タスクについて話し合う、またはアイデアを共有しましょう。
-            </p>
-          </div>
+          <EmptyState
+            scope="messages"
+            title="会話を仕事につなげる"
+            description="メッセージを送信して、プロジェクトを開始する、タスクについて話し合う、またはアイデアを共有しましょう。"
+          />
         ) : (
           initial.map((m) => (
             <div key={m.id} className="border-b py-3">
@@ -97,7 +97,7 @@ export default function MessagesView({
                   {(m.author_name ?? "?").slice(0, 1)}
                 </span>
                 <span className="text-xs font-semibold text-neutral-600">{m.author_name ?? "–"}</span>
-                <span className="text-xs text-neutral-400">{m.created_at}</span>
+                <span className="text-xs text-neutral-500">{m.created_at}</span>
               </div>
               {m.title && <div className="mt-1.5 font-semibold">{m.title}</div>}
               <div

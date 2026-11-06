@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 export default function InviteUserDialog({
   open,
@@ -14,15 +15,8 @@ export default function InviteUserDialog({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [result, setResult] = useState<{ url: string; emailed: boolean; reason: string | null } | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open, onClose);
 
   if (!open) return null;
 
@@ -59,6 +53,8 @@ export default function InviteUserDialog({
       onMouseDown={onClose}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="invite-dialog-title"

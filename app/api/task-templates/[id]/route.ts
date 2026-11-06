@@ -5,13 +5,69 @@ import { todayISO } from "@/lib/dates";
 import { shiftDate } from "@/lib/timeline-dnd";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
-export async function DELETE(
-  _req: Request,
+
+export async function PATCH(
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const owner = await db.query("SELECT project_id FROM task_templates WHERE id = $1::bigint", [id]);
+  if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const auth = await requireProjectPermission(req, Number(owner.rows[0].project_id), "edit");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const body = await req.json().catch(() => ({}));
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  if (typeof body.name === "string" && body.name.trim() !== "") {
+    values.push(body.name.trim());
+    sets.push(`name = $${values.length}`);
+  }
+  if (typeof body.title_template === "string" && body.title_template.trim() !== "") {
+    values.push(body.title_template.trim());
+    sets.push(`title_template = $${values.length}`);
+  }
+  if (typeof body.description === "string") {
+    values.push(body.description);
+    sets.push(`description = $${values.length}`);
+  }
+  if ("assignee_id" in body) {
+    values.push(body.assignee_id === null || body.assignee_id === "" ? null : Number(body.assignee_id));
+    sets.push(`assignee_id = $${values.length}::bigint`);
+  }
+  if ("due_offset_days" in body) {
+    values.push(body.due_offset_days === null || body.due_offset_days === "" ? null : Number(body.due_offset_days));
+    sets.push(`due_offset_days = $${values.length}::int`);
+  }
+  if ("section_id" in body) {
+    values.push(body.section_id === null || body.section_id === "" ? null : Number(body.section_id));
+    sets.push(`section_id = $${values.length}::bigint`);
+  }
+  if (Array.isArray(body.subtasks)) {
+    const subs = body.subtasks
+      .filter((x: unknown) => typeof x === "object" && x !== null && typeof (x as { name?: unknown }).name === "string" && String((x as { name: string }).name).trim() !== "")
+      .slice(0, 50)
+      .map((x: { name: string }) => ({ name: x.name.trim().slice(0, 255) }));
+    values.push(JSON.stringify(subs));
+    sets.push(`subtasks = $${values.length}::jsonb`);
+  }
+  if (sets.length === 0) return NextResponse.json({ error: "no fields to update" }, { status: 400 });
+  values.push(id);
+  await db.query(`UPDATE task_templates SET ${sets.join(", ")} WHERE id = $${values.length}::bigint`, values);
+  await notifyProject(Number(owner.rows[0].project_id));
+  return NextResponse.json({ id: Number(id) });
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const owner = await db.query("SELECT project_id FROM task_templates WHERE id = $1::bigint", [id]);
+  if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const auth = await requireProjectPermission(req, Number(owner.rows[0].project_id), "edit");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const r = await db.query("DELETE FROM task_templates WHERE id = $1::bigint", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   await notifyProject(owner.rows[0]?.project_id ?? null);
@@ -31,6 +87,8 @@ export async function POST(
     [id],
   );
   if (t.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const auth = await requireProjectPermission(req, Number(t.rows[0].project_id), "edit");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const tpl = t.rows[0] as {
     project_id: number;
     title_template: string;

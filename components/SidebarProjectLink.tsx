@@ -434,7 +434,7 @@ export default function SidebarProjectLink({
                   <div className="mt-5 flex justify-end gap-2">
                     <button className={secondary} onClick={() => setDialog(null)}>キャンセル</button>
                     <button
-                      className="flex h-8 items-center rounded-md bg-[#f06a6a] px-3 text-sm font-medium text-white hover:bg-[#ec5b5b] disabled:opacity-60"
+                      className="flex h-8 items-center rounded-md bg-[#c94848] px-3 text-sm font-medium text-white hover:bg-[#b83c3c] disabled:opacity-60"
                       disabled={busy}
                       onClick={archive}
                     >

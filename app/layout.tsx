@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
@@ -20,11 +21,16 @@ export const metadata: Metadata = {
   description: "Asana-like project management tool",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const theme = (await cookies()).get("atlas_theme")?.value === "dark" ? "dark" : "light";
   return (
-    <html lang="ja" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html
+      lang="ja"
+      data-theme={theme}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col">
-        <AppShell>{children}</AppShell>
+        <AppShell theme={theme}>{children}</AppShell>
       </body>
     </html>
   );

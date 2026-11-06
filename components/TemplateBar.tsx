@@ -89,6 +89,7 @@ export default function TemplateBar({
       <select
         value={picked}
         onChange={(e) => setPicked(e.target.value)}
+        aria-label="テンプレートを選択"
         className="rounded border px-1 py-0.5"
       >
         <option value="">選択…</option>
@@ -101,6 +102,7 @@ export default function TemplateBar({
       <button
         onClick={instantiate}
         disabled={!picked}
+        aria-label="選択したテンプレートからタスクを作成"
         className="rounded bg-blue-600 px-2 py-0.5 text-white disabled:opacity-40"
       >
         使う
@@ -112,9 +114,9 @@ export default function TemplateBar({
       )}
       {forming ? (
         <span className="flex flex-wrap items-center gap-1">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="テンプレート名" className={`${field} w-32`} />
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="タスク名" className={`${field} w-40`} />
-          <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="rounded border px-1 py-1 text-sm">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="テンプレート名" aria-label="テンプレート名" className={`${field} w-32`} />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="タスク名" aria-label="テンプレートのタスク名" className={`${field} w-40`} />
+          <select value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="テンプレートの担当者" className="rounded border px-1 py-1 text-sm">
             <option value="">担当者なし</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>
@@ -127,18 +129,19 @@ export default function TemplateBar({
             onChange={(e) => setOffset(e.target.value)}
             placeholder="期日+N日"
             inputMode="numeric"
+            aria-label="期日オフセット"
             className={`${field} w-24`}
           />
-          <input value={subs} onChange={(e) => setSubs(e.target.value)} placeholder="サブタスク（カンマ区切り）" className={`${field} w-48`} />
-          <button onClick={create} className="rounded bg-blue-600 px-2 py-0.5 text-white">
+          <input value={subs} onChange={(e) => setSubs(e.target.value)} placeholder="サブタスク（カンマ区切り）" aria-label="サブタスク" className={`${field} w-48`} />
+          <button onClick={create} aria-label="テンプレートを保存" className="rounded bg-blue-600 px-2 py-0.5 text-white">
             保存
           </button>
-          <button onClick={() => setForming(false)} className="text-neutral-500">
+          <button onClick={() => setForming(false)} aria-label="テンプレート作成をキャンセル" className="text-neutral-500">
             ×
           </button>
         </span>
       ) : (
-        <button onClick={() => setForming(true)} className="text-neutral-600 hover:text-black">
+        <button onClick={() => setForming(true)} aria-label="テンプレートを新規作成" className="text-neutral-600 hover:text-black">
           ＋ 新規
         </button>
       )}

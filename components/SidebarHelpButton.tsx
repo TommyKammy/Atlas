@@ -63,11 +63,29 @@ export default function SidebarHelpButton() {
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="fixed z-[130] w-56 rounded-lg border border-neutral-200 bg-white p-1 text-sm text-neutral-800 shadow-xl"
+            role="menu"
+            data-sidebar-help-menu
+            className="fixed z-[130] w-64 rounded-lg border border-neutral-200 bg-white p-1 text-sm text-neutral-800 shadow-xl"
             style={{ left: pos.left, bottom: pos.bottom }}
           >
+            <div className="border-b border-neutral-100 px-3 py-2 text-[12px] font-semibold text-neutral-500">
+              ヘルプと始め方
+            </div>
+            <Link href="/help" data-help-features onClick={() => setOpen(false)} className="mt-1 block rounded px-3 py-2 hover:bg-neutral-100">
+              機能に関するヘルプ
+            </Link>
+            <a href="mailto:support@atlas.example" data-help-support onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+              サポートに問い合わせる
+            </a>
+            <Link href="/help#privacy" data-help-privacy onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+              プライバシーステートメント
+            </Link>
+            <Link href="/help#integrations" data-help-integrations onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+              アプリと連携
+            </Link>
             <button
               type="button"
+              data-help-shortcuts
               onClick={() => {
                 setOpen(false);
                 setShortcuts(true);
@@ -76,11 +94,14 @@ export default function SidebarHelpButton() {
             >
               キーボードショートカット
             </button>
-            <Link href="/profile" onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
-              プロフィール
+            <Link href="/help#videos" data-help-videos onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+              動画チュートリアル
             </Link>
-            <Link href="/" onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+            <Link href="/help#about" data-help-about onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
               Atlas について
+            </Link>
+            <Link href="/profile" data-help-profile onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+              プロフィール
             </Link>
           </div>,
           document.body,
@@ -90,7 +111,7 @@ export default function SidebarHelpButton() {
         typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/40 p-4" onClick={() => setShortcuts(false)}>
-            <div className="w-[28rem] max-w-[90vw] rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div data-shortcuts-dialog className="w-[28rem] max-w-[90vw] rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
               <h2 className="font-bold">キーボードショートカット</h2>
               <div className="mt-3 space-y-2 text-sm">
                 {SHORTCUTS.map(([k, desc]) => (
@@ -101,7 +122,7 @@ export default function SidebarHelpButton() {
                 ))}
               </div>
               <div className="mt-4 text-right">
-                <button type="button" onClick={() => setShortcuts(false)} className="rounded bg-neutral-800 px-3 py-1 text-sm text-white">
+                <button type="button" data-shortcuts-close onClick={() => setShortcuts(false)} className="rounded bg-neutral-800 px-3 py-1 text-sm text-white">
                   閉じる
                 </button>
               </div>

@@ -36,6 +36,28 @@ export async function requireProjectPermission(
   return { ok: true, uid, role: access.role, workspaceAdmin: access.workspaceAdmin };
 }
 
+/** Require a live (non-deactivated) user session. */
+export async function requireActiveUser(
+  req: Request,
+): Promise<{ ok: true; uid: number } | { ok: false; status: 403; error: string }> {
+  const uid = getCurrentUserIdFromRequest(req);
+  const r = await db.query("SELECT id FROM users WHERE id = $1 AND deactivated_at IS NULL", [uid]);
+  if ((r.rowCount ?? 0) === 0) return { ok: false, status: 403, error: "unknown or inactive user" };
+  return { ok: true, uid };
+}
+
+/** Require a workspace administrator (used for shared resources such as bundles/templates). */
+export async function requireWorkspaceAdmin(
+  req: Request,
+): Promise<{ ok: true; uid: number } | { ok: false; status: 403; error: string }> {
+  const uid = getCurrentUserIdFromRequest(req);
+  const r = await db.query("SELECT is_admin, deactivated_at FROM users WHERE id = $1", [uid]);
+  if ((r.rowCount ?? 0) === 0 || r.rows[0].deactivated_at !== null || r.rows[0].is_admin !== true) {
+    return { ok: false, status: 403, error: "workspace admin required" };
+  }
+  return { ok: true, uid };
+}
+
 /** Resolve the project that should govern a task (primary, multi-home, or parent). */
 export async function getTaskProjectId(taskId: number): Promise<number | null> {
   const r = await db.query(

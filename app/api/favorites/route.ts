@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { requireProjectPermission } from "@/lib/api-project-auth";
 
 export async function GET(req: Request) {
   const uid = getCurrentUserIdFromRequest(req);
@@ -20,6 +21,8 @@ export async function POST(req: Request) {
   if (!Number.isInteger(pid)) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
+  const auth = await requireProjectPermission(req, Number(pid), "view");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const me = await db.query("SELECT id FROM users WHERE id = $1", [uid]);
   if (me.rowCount === 0) return NextResponse.json({ error: "unknown user" }, { status: 403 });
   const p = await db.query("SELECT id FROM projects WHERE id = $1::bigint", [pid]);

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Attachment } from "@/lib/data";
 import AttachmentPreview from "./AttachmentPreview";
+import EmptyState from "./EmptyState";
 
 function fmtSize(n: number): string {
   if (n < 1024) return `${n}B`;
@@ -25,9 +26,11 @@ export default function FilesView({
         </span>
       </div>
       {attachments.length === 0 ? (
-        <div className="rounded-lg border p-6 text-center text-sm text-neutral-500">
-          まだファイルがありません。タスク詳細ペインから添付すると、ここに表示されます。
-        </div>
+        <EmptyState
+          scope="files"
+          title="まだファイルがありません"
+          description="タスク詳細ペインから添付すると、ここに表示されます。"
+        />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {attachments.map((a) => (
