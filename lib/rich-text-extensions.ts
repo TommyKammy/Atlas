@@ -6,6 +6,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import StarterKit from "@tiptap/starter-kit";
 import { createMentionSuggestion } from "./rich-text-mention";
+import { SlashCommand } from "./rich-text-slash";
 import type { MentionUser } from "./rich-text-types";
 
 const LINK_ATTRIBUTES = {
@@ -21,10 +22,12 @@ export function richTextExtensions({
   placeholder = "",
   mentionUsers = [],
   withPlaceholder = true,
+  withSlash = true,
 }: {
   placeholder?: string;
   mentionUsers?: MentionUser[];
   withPlaceholder?: boolean;
+  withSlash?: boolean;
 } = {}): Extensions {
   const extensions: Extensions = [
     StarterKit.configure({
@@ -70,10 +73,12 @@ export function richTextExtensions({
     );
   }
 
+  if (withSlash) extensions.push(SlashCommand);
+
   return extensions;
 }
 
 /** Schema-only extension set for server-side validation. */
 export function richTextSchemaExtensions(): Extensions {
-  return richTextExtensions({ withPlaceholder: false });
+  return richTextExtensions({ withPlaceholder: false, withSlash: false });
 }

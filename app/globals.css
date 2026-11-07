@@ -352,3 +352,12 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
 .atlas-rich-editor .ProseMirror p {
   margin: 0.2em 0;
 }
+
+/* Compact comment toolbar stays one row on phones; larger Asana-style icons
+   remain comfortably tappable and the row scrolls horizontally if needed. */
+@media (max-width: 640px) {
+  .atlas-toolbar-compact {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+}
