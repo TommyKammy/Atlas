@@ -193,8 +193,18 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
 }
 
 .project-drawer-enter {
-  animation: project-drawer-in 1s cubic-bezier(0.05, 0.4, 0.2, 1) both;
+  animation: project-drawer-in 250ms ease both;
   will-change: transform;
+}
+
+.project-drawer-enter-customize {
+  animation-duration: 250ms;
+  animation-timing-function: ease;
+}
+
+.project-drawer-enter-options {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.05, 0.4, 0.2, 1);
 }
 
 /* Asana-like thin timeline scrollbar. */

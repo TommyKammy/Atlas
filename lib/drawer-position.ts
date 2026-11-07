@@ -7,6 +7,3 @@ export function projectDrawerTop(): number {
   if (tabs) return Math.max(0, Math.round(tabs.getBoundingClientRect().bottom));
   return 0;
 }
-
-/** Duration used by the Asana-style right-edge panel animation. */
-export const PROJECT_DRAWER_ANIMATION_MS = 1000;

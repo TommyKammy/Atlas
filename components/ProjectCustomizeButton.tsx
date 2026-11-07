@@ -680,7 +680,7 @@ export default function ProjectCustomizeButton({
             aria-modal="true"
             aria-label="プロジェクトをカスタマイズ"
             style={{ top: panelTop, height: `calc(100vh - ${panelTop}px)` }}
-            className="project-drawer-enter fixed right-0 z-[70] flex w-[min(480px,100vw)] flex-col border-l border-neutral-200 bg-white shadow-2xl"
+            className="project-drawer-enter project-drawer-enter-customize fixed right-0 z-[70] flex w-[min(480px,100vw)] flex-col border-l border-neutral-200 bg-white shadow-2xl"
           >
           <div className="flex h-[60px] shrink-0 items-center gap-2 border-b border-neutral-200 px-5">
             {panel !== "home" && (

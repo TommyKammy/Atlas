@@ -186,7 +186,7 @@ export default function ListOptionsDrawer({
         aria-label="リストのオプション"
         data-list-options-drawer
         style={{ top: panelTop, height: `calc(100vh - ${panelTop}px)` }}
-        className="project-drawer-enter fixed right-0 z-[80] flex w-[min(480px,100vw)] flex-col overflow-y-auto bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
+        className="project-drawer-enter project-drawer-enter-options fixed right-0 z-[80] flex w-[min(480px,100vw)] flex-col overflow-y-auto bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
       >
         <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-neutral-100 bg-white px-4">
           <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#2c60b8]" fill="none" stroke="currentColor" strokeWidth="1.6">
