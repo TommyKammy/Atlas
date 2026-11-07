@@ -5,6 +5,7 @@ import { confirmAction } from "@/lib/ui-feedback";
 import { api } from "@/lib/api-client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { projectDrawerTop } from "@/lib/drawer-position";
 import type { Section, TaskTemplate, User } from "@/lib/data";
 import type { CustomField } from "@/lib/custom-fields";
 import { APP_CATALOG, type ProjectApp } from "@/lib/integrations";
@@ -86,6 +87,7 @@ export default function ProjectCustomizeButton({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [panelTop, setPanelTop] = useState(0);
   const [panel, setPanel] = useState<Panel>("home");
   const [color, setColor] = useState<string | null>(initialColor);
   const [icon, setIcon] = useState<string | null>(initialIcon);
@@ -129,6 +131,13 @@ export default function ProjectCustomizeButton({
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(""), 2400);
   };
+
+  useEffect(() => {
+    if (!open) return;
+    const onResize = () => setPanelTop(projectDrawerTop());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -188,6 +197,7 @@ export default function ProjectCustomizeButton({
   useEffect(() => {
     const onOpen = (event: Event) => {
       const detail = (event as CustomEvent<{ panel?: Panel }>).detail;
+      setPanelTop(projectDrawerTop());
       setPanel(detail?.panel === "status" ? "status" : "home");
       setOpen(true);
     };
@@ -638,8 +648,13 @@ export default function ProjectCustomizeButton({
         data-project-customize
         aria-expanded={open}
         onClick={() => {
-          setOpen((current) => !current);
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          setPanelTop(projectDrawerTop());
           setPanel("home");
+          setOpen(true);
         }}
         className={`hidden h-7 items-center gap-1 rounded-md border px-2.5 text-xs md:flex ${
           open
@@ -652,13 +667,21 @@ export default function ProjectCustomizeButton({
       </button>
 
       {open && (
-        <aside
-          data-project-customize-drawer
-          role="dialog"
-          aria-modal="true"
-          aria-label="プロジェクトをカスタマイズ"
-          className="fixed inset-y-0 right-0 z-[70] flex w-[min(480px,100vw)] flex-col border-l border-neutral-200 bg-white shadow-2xl"
-        >
+        <>
+          <button
+            type="button"
+            aria-label="カスタマイズを閉じる"
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-[65] cursor-default bg-transparent"
+          />
+          <aside
+            data-project-customize-drawer
+            role="dialog"
+            aria-modal="true"
+            aria-label="プロジェクトをカスタマイズ"
+            style={{ top: panelTop, height: `calc(100vh - ${panelTop}px)` }}
+            className="project-drawer-enter fixed right-0 z-[70] flex w-[min(480px,100vw)] flex-col border-l border-neutral-200 bg-white shadow-2xl"
+          >
           <div className="flex h-[60px] shrink-0 items-center gap-2 border-b border-neutral-200 px-5">
             {panel !== "home" && (
               <button
@@ -882,7 +905,8 @@ export default function ProjectCustomizeButton({
             message={toast}
             className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-md bg-neutral-800 px-3 py-1.5 text-[12px] text-white shadow-lg"
           />
-        </aside>
+          </aside>
+        </>
       )}
 
       {fieldDraft && (

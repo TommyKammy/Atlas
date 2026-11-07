@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Section, User } from "@/lib/data";
 import { useFocusTrap } from "@/lib/use-focus-trap";
+import { projectDrawerTop } from "@/lib/drawer-position";
 import TemplateBar from "../TemplateBar";
 
 export type ListColumnOption = {
@@ -109,7 +110,21 @@ export default function ListOptionsDrawer({
   const [iconOpen, setIconOpen] = useState(false);
   const [renameBusy, setRenameBusy] = useState(false);
   const [iconBusy, setIconBusy] = useState(false);
+  const [panelTop, setPanelTop] = useState(0);
   useFocusTrap(panelRef, open, onClose);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPanelTop(projectDrawerTop());
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onResize = () => setPanelTop(projectDrawerTop());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [open]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -162,7 +177,7 @@ export default function ListOptionsDrawer({
         type="button"
         aria-label="オプションを閉じる"
         onClick={onClose}
-        className="fixed inset-0 z-[70] bg-black/20"
+        className="fixed inset-0 z-[70] cursor-default bg-transparent"
       />
       <aside
         ref={panelRef}
@@ -170,7 +185,8 @@ export default function ListOptionsDrawer({
         aria-modal="true"
         aria-label="リストのオプション"
         data-list-options-drawer
-        className="fixed top-0 right-0 z-[80] flex h-full w-[min(440px,100vw)] flex-col overflow-y-auto bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
+        style={{ top: panelTop, height: `calc(100vh - ${panelTop}px)` }}
+        className="project-drawer-enter fixed right-0 z-[80] flex w-[min(480px,100vw)] flex-col overflow-y-auto bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
       >
         <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-neutral-100 bg-white px-4">
           <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#2c60b8]" fill="none" stroke="currentColor" strokeWidth="1.6">
