@@ -96,8 +96,6 @@ export default async function ProjectPage(props: {
     ? Math.floor(Date.parse(fromRaw) / 86400000)
     : null;
   const groupRaw = qstr("group");
-  const daysRaw = typeof searchParams.days === "string" ? Number(searchParams.days) : NaN;
-  const days = [7, 14, 30].includes(daysRaw) ? daysRaw : 14;
   const viewerId = await getCurrentUserId();
   if (!viewerId) notFound();
   const access = await getProjectAccess(viewerId, projectId);
@@ -136,7 +134,7 @@ export default async function ProjectPage(props: {
   const timelineData = view === "timeline" ? await getTimelineViewData(projectId) : null;
   const calendarData = view === "calendar" ? await getCalendarViewData(projectId) : null;
   const overviewData = view === "overview" ? await getOverviewViewData(projectId) : null;
-  const dashboardData = view === "dashboard" ? await getDashboardViewData(projectId, viewerId, days) : null;
+  const dashboardData = view === "dashboard" ? await getDashboardViewData(projectId) : null;
   const messagesData = view === "messages" ? await getMessagesViewData(projectId) : null;
   const knowledgeData = view === "knowledge" ? await getKnowledgeViewData(projectId) : null;
   const formsData = view === "forms" ? await getFormsViewData(projectId) : null;
@@ -400,10 +398,15 @@ export default async function ProjectPage(props: {
         {view === "dashboard" && dashboardData && (
           <LazyDashboardView
             projectId={projectId}
-            stats={dashboardData.stats}
-            extras={dashboardData.extras}
-            days={days}
-            prefs={dashboardData.prefs}
+            projectName={project.name}
+            tasks={dashboardData.tasks}
+            widgets={dashboardData.widgets}
+            sections={sections.map((section) => ({ id: section.id, name: section.name }))}
+            users={users.map((user) => ({ id: user.id, name: user.name }))}
+            statusOptions={project.status_options ?? []}
+            statusFieldName={project.status_field_name ?? "Status"}
+            statusFieldEnabled={project.status_field_enabled !== false}
+            canEdit={access.role === "admin" || access.role === "editor"}
           />
         )}
         {view === "list" && listData && (

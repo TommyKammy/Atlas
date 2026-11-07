@@ -1,9 +1,8 @@
 import { cache } from "react";
+import { getDashboardTasks, getDashboardWidgets } from "../dashboard";
 import {
   getBundlesForProject,
   getCustomFields,
-  getDashboardExtras,
-  getDashboardPrefs,
   getDependencies,
   getProjectActivity,
   getProjectApps,
@@ -95,13 +94,12 @@ export async function getOverviewViewData(projectId: number) {
   return { stats, activity };
 }
 
-export async function getDashboardViewData(projectId: number, viewerId: number, days: number) {
-  const [stats, extras, prefs] = await Promise.all([
-    getProjectStats(projectId),
-    getDashboardExtras(projectId, days),
-    getDashboardPrefs(viewerId, projectId),
+export async function getDashboardViewData(projectId: number) {
+  const [widgets, tasks] = await Promise.all([
+    getDashboardWidgets(projectId),
+    getDashboardTasks(projectId),
   ]);
-  return { stats, extras, prefs };
+  return { widgets, tasks };
 }
 
 export async function getMessagesViewData(projectId: number) {
