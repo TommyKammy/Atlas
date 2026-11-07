@@ -25,6 +25,7 @@ export default function ListGroupMenu({
   customFields,
   statusFieldEnabled,
   statusFieldName,
+  allowSubgroup = true,
   onSelectPrimary,
   onSelectSecondary,
   onClearSecondary,
@@ -37,6 +38,7 @@ export default function ListGroupMenu({
   customFields: CustomField[];
   statusFieldEnabled: boolean;
   statusFieldName: string;
+  allowSubgroup?: boolean;
   onSelectPrimary: (key: ListGroupBy) => void;
   onSelectSecondary: (key: ListGroupBy | null) => void;
   onClearSecondary: () => void;
@@ -94,7 +96,7 @@ export default function ListGroupMenu({
         </select>
       </div>
 
-      {group2 === null ? (
+      {allowSubgroup && (group2 === null ? (
         showSecondary ? (
           <div className="mt-2 flex items-center gap-2">
             <span className="w-24 shrink-0 text-[12px] text-neutral-600">サブグループ</span>
@@ -154,7 +156,7 @@ export default function ListGroupMenu({
             ×
           </button>
         </div>
-      )}
+      ))}
 
       <div className="mt-3 border-t border-neutral-100 px-1 pt-2">
         <a href="/help" className="text-[12px] text-[#6d5bd0] hover:underline">

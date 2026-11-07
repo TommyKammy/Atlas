@@ -84,6 +84,10 @@ export default function CalendarView({
   month,
   week,
   initial,
+  viewName,
+  viewIcon,
+  viewTabId,
+  canEdit,
 }: {
   projectId: number;
   tasks: TaskRow[];
@@ -98,6 +102,10 @@ export default function CalendarView({
   month: string; // YYYY-MM
   week: string | null; // YYYY-MM-DD anchor day, null = month mode
   initial: CalendarFilter;
+  viewName: string;
+  viewIcon: string | null;
+  viewTabId: number | null;
+  canEdit: boolean;
 }) {
   const weekMode = week !== null;
   const router = useRouter();
@@ -722,7 +730,6 @@ export default function CalendarView({
     (completedOnFilter ? 1 : 0) +
     (creatorFilter ? 1 : 0) +
     Object.keys(customFilter).length;
-  const optionsActive = !showWeekends || !showMulti || colorBy !== "none" || weekStart === 1;
   const title = monthLabel(`${anchorY}-${String(anchorM).padStart(2, "0")}`);
 
   const completion = (task: TaskRow, size = "h-4 w-4") => (
@@ -757,7 +764,18 @@ export default function CalendarView({
   );
 
   return (
-    <div className="flex min-h-[560px] flex-col px-4 pb-2 text-sm md:h-[calc(100vh-200px)]">
+    <div
+      className="flex min-h-[560px] flex-col px-4 pb-2 text-sm md:h-[calc(100vh-200px)]"
+      data-calendar-view
+      data-calendar-completed={completedFilter}
+      data-calendar-assignee={assigneeFilter}
+      data-calendar-status={statusFilter}
+      data-calendar-due={dueFilter}
+      data-calendar-created={createdFilter}
+      data-calendar-updated={updatedFilter}
+      data-calendar-completed-on={completedOnFilter}
+      data-calendar-creator={creatorFilter}
+    >
       <CalendarToolbar
         addToday={addToday}
         prevHref={prevHref}
@@ -796,7 +814,6 @@ export default function CalendarView({
         selectFields={selectFields}
         customFilter={customFilter}
         setCustomFilterValue={setCustomFilterValue}
-        optionsActive={optionsActive}
         colorBy={colorBy}
         setColor={setColor}
         colorOptions={colorOptions}
@@ -810,6 +827,10 @@ export default function CalendarView({
         search={search}
         setSearch={setSearch}
         setSearchOpen={setSearchOpen}
+        viewName={viewName}
+        viewIcon={viewIcon}
+        viewTabId={viewTabId}
+        canEdit={canEdit}
       />
 
       {colorBy !== "none" && <CalendarLegend colorKeys={colorKeys} colorFor={colorFor} />}

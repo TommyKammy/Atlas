@@ -6,7 +6,13 @@ import { ApiError, api } from "@/lib/api-client";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Section, TaskRow } from "@/lib/data";
+import type { Section, TaskRow, User } from "@/lib/data";
+import {
+  parseListDateFilter,
+  taskMatchesListFilters,
+  type ListDateFilter,
+  type ListFilters,
+} from "@/lib/list-view";
 import { dayDeltaFromPixels, shiftDate } from "@/lib/timeline-dnd";
 import { criticalPath } from "@/lib/critical-path";
 import { positionBetween } from "@/lib/order";
@@ -43,8 +49,7 @@ const ZOOM_PRESETS = [
   { key: "year", label: "年", dayWidth: 1 },
 ] as const;
 
-type SortKey = "default" | "due" | "start" | "name";
-type MenuKey = "filter" | "sort" | "options" | null;
+type SortKey = "default" | "due" | "start" | "assignee";
 type Draft = { sectionId: number | null; day: number; key: number } | null;
 
 function isoWeek(day: number): number {
@@ -75,6 +80,15 @@ export default function TimelineView({
   deps,
   startOverride,
   initialState,
+  viewName,
+  viewIcon,
+  viewTabId,
+  canEdit,
+  users,
+  viewerId,
+  statusFieldName,
+  statusFieldEnabled,
+  statusOptions,
 }: {
   projectId: number;
   sections: Section[];
@@ -82,6 +96,15 @@ export default function TimelineView({
   deps: { task_id: number; depends_on_id: number }[];
   startOverride: number | null;
   initialState?: Record<string, string | number | boolean | null>;
+  viewName: string;
+  viewIcon: string | null;
+  viewTabId: number | null;
+  canEdit: boolean;
+  users: User[];
+  viewerId: number;
+  statusFieldName: string;
+  statusFieldEnabled: boolean;
+  statusOptions: string[];
 }) {
   const router = useRouter();
   const refresh = () => router.refresh();
@@ -100,16 +123,32 @@ export default function TimelineView({
       ? stored.zoom
       : 2;
   const storedSort =
-    stored.sort === "due" || stored.sort === "start" || stored.sort === "name" ? (stored.sort as SortKey) : "default";
+    stored.sort === "due" || stored.sort === "start" || stored.sort === "assignee"
+      ? (stored.sort as SortKey)
+      : "default";
   const [zoom, setZoom] = useState(storedZoom);
   const [undatedOpen, setUndatedOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [collapsedHydrated, setCollapsedHydrated] = useState(false);
   const [draft, setDraft] = useState<Draft>(null);
-  const [menu, setMenu] = useState<MenuKey>(null);
   const [hideCompleted, setHideCompleted] = useState(stored.hide_completed === true);
+  const [completedOnly, setCompletedOnly] = useState(stored.completed_only === true);
+  const [mineOnly, setMineOnly] = useState(stored.mine_only === true);
   const [assigneeFilter, setAssigneeFilter] = useState(
-    typeof stored.assignee === "string" && stored.assignee !== "" ? stored.assignee : "all",
+    typeof stored.assignee === "string" && stored.assignee !== "all" ? stored.assignee : "",
+  );
+  const [statusFilter, setStatusFilter] = useState(
+    typeof stored.status === "string" ? stored.status : "",
+  );
+  const [dueFilter, setDueFilter] = useState(typeof stored.due === "string" ? stored.due : "");
+  const [startFilter, setStartFilter] = useState<ListDateFilter>(() => parseListDateFilter(stored.start));
+  const [creatorFilter, setCreatorFilter] = useState(
+    typeof stored.creator === "string" ? stored.creator : "",
+  );
+  const [createdFilter, setCreatedFilter] = useState<ListDateFilter>(() => parseListDateFilter(stored.created));
+  const [updatedFilter, setUpdatedFilter] = useState<ListDateFilter>(() => parseListDateFilter(stored.updated));
+  const [completedDateFilter, setCompletedDateFilter] = useState<ListDateFilter>(() =>
+    parseListDateFilter(stored.completed_on),
   );
   const [sortBy, setSortBy] = useState<SortKey>(storedSort);
   const [zoomMenu, setZoomMenu] = useState(false);
@@ -119,7 +158,16 @@ export default function TimelineView({
   usePersistedViewState(projectId, "timeline", {
     zoom,
     hide_completed: hideCompleted,
+    completed_only: completedOnly,
+    mine_only: mineOnly,
     assignee: assigneeFilter,
+    status: statusFilter,
+    due: dueFilter,
+    start: startFilter,
+    creator: creatorFilter,
+    created: createdFilter,
+    updated: updatedFilter,
+    completed_on: completedDateFilter,
     sort: sortBy,
     weekends: showWeekends,
     dependencies: showDependencies,
@@ -215,23 +263,38 @@ export default function TimelineView({
     }
   }, [collapsed, collapsedHydrated, projectId]);
 
-  const assigneeNames = useMemo(
-    () =>
-      Array.from(
-        new Set(tasks.map((t) => t.assignee_name).filter((name): name is string => Boolean(name))),
-      ).sort((a, b) => a.localeCompare(b, "ja")),
-    [tasks],
-  );
-
+  const timelineToday = todayISO();
+  const shiftTimelineDay = (days: number) => {
+    const date = new Date(`${timelineToday}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  };
+  const filters: ListFilters = {
+    hide_completed: hideCompleted,
+    completed_only: completedOnly,
+    mine_only: mineOnly,
+    assignee: assigneeFilter,
+    status: statusFilter,
+    due: dueFilter,
+    start: startFilter,
+    creator: creatorFilter,
+    created: createdFilter,
+    updated: updatedFilter,
+    completed_on: completedDateFilter,
+  };
   const visibleTasks = useMemo(
     () =>
-      tasks.filter((t) => {
-        if (hideCompleted && t.completed) return false;
-        if (assigneeFilter === "none") return !t.assignee_name;
-        if (assigneeFilter !== "all") return t.assignee_name === assigneeFilter;
-        return true;
-      }),
-    [tasks, hideCompleted, assigneeFilter],
+      tasks.filter((task) =>
+        taskMatchesListFilters(task, filters, {
+          today: timelineToday,
+          viewerId,
+          statusFieldEnabled,
+          dayOffset: shiftTimelineDay,
+        }),
+      ),
+    // filter fields are primitives; recreating the predicate each render is cheap
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, hideCompleted, completedOnly, mineOnly, assigneeFilter, statusFilter, dueFilter, startFilter, creatorFilter, createdFilter, updatedFilter, completedDateFilter, viewerId, statusFieldEnabled, timelineToday],
   );
   const dated = useMemo(
     () => visibleTasks.filter((t) => toDay(t.start_on) !== null || toDay(t.due_on) !== null),
@@ -243,7 +306,7 @@ export default function TimelineView({
   );
   // Vertical reorder maps directly to task.position. Disable it while a
   // non-default sort or a filter hides rows, so the visual order stays truthful.
-  const canReorder = sortBy === "default" && !hideCompleted && assigneeFilter === "all";
+  const canReorder = sortBy === "default" && !hideCompleted && assigneeFilter === "";
 
   const { min, max, span, dayPct } = useMemo(() => {
     let min = Number.MAX_SAFE_INTEGER;
@@ -325,7 +388,7 @@ export default function TimelineView({
         const sorted = [...list];
         if (sortBy === "due") sorted.sort((a, b) => cmpDate(a.due_on, b.due_on) || a.id - b.id);
         else if (sortBy === "start") sorted.sort((a, b) => cmpDate(a.start_on, b.start_on) || a.id - b.id);
-        else if (sortBy === "name") sorted.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+        else if (sortBy === "assignee") sorted.sort((a, b) => (a.assignee_name ?? "").localeCompare(b.assignee_name ?? "", "ja") || a.id - b.id);
         bySection.set(key, sorted);
       }
     }
@@ -1087,9 +1150,44 @@ export default function TimelineView({
     );
   };
 
-  const filterActive = hideCompleted || assigneeFilter !== "all";
-  const sortActive = sortBy !== "default";
-  const optionsActive = !showWeekends || !showDependencies || !showCritical;
+  const activeFilterCount =
+    (hideCompleted ? 1 : 0) +
+    (completedOnly ? 1 : 0) +
+    (mineOnly ? 1 : 0) +
+    (assigneeFilter !== "" ? 1 : 0) +
+    (statusFieldEnabled && statusFilter !== "" ? 1 : 0) +
+    (dueFilter !== "" ? 1 : 0) +
+    (startFilter !== "" ? 1 : 0) +
+    (creatorFilter !== "" ? 1 : 0) +
+    (createdFilter !== "" ? 1 : 0) +
+    (updatedFilter !== "" ? 1 : 0) +
+    (completedDateFilter !== "" ? 1 : 0);
+  const setTimelineFilter = (key: keyof ListFilters, value: string | boolean) => {
+    if (key === "hide_completed") setHideCompleted(value === true);
+    else if (key === "completed_only") setCompletedOnly(value === true);
+    else if (key === "mine_only") setMineOnly(value === true);
+    else if (key === "assignee") setAssigneeFilter(String(value));
+    else if (key === "status") setStatusFilter(String(value));
+    else if (key === "due") setDueFilter(String(value));
+    else if (key === "start") setStartFilter(parseListDateFilter(value));
+    else if (key === "creator") setCreatorFilter(String(value));
+    else if (key === "created") setCreatedFilter(parseListDateFilter(value));
+    else if (key === "updated") setUpdatedFilter(parseListDateFilter(value));
+    else if (key === "completed_on") setCompletedDateFilter(parseListDateFilter(value));
+  };
+  const clearTimelineFilters = () => {
+    setHideCompleted(false);
+    setCompletedOnly(false);
+    setMineOnly(false);
+    setAssigneeFilter("");
+    setStatusFilter("");
+    setDueFilter("");
+    setStartFilter("");
+    setCreatorFilter("");
+    setCreatedFilter("");
+    setUpdatedFilter("");
+    setCompletedDateFilter("");
+  };
 
   return (
     <div
@@ -1104,6 +1202,15 @@ export default function TimelineView({
       data-timeline-dependencies={showDependencies}
       data-timeline-critical={showCritical}
       data-timeline-assignee={assigneeFilter}
+      data-timeline-completed-only={completedOnly}
+      data-timeline-mine-only={mineOnly}
+      data-timeline-status={statusFilter}
+      data-timeline-due={dueFilter}
+      data-timeline-start={startFilter}
+      data-timeline-creator={creatorFilter}
+      data-timeline-created={createdFilter}
+      data-timeline-updated={updatedFilter}
+      data-timeline-completed-on={completedDateFilter}
     >
       <TimelineToolbar
         projectId={projectId}
@@ -1119,18 +1226,20 @@ export default function TimelineView({
         zoomMenu={zoomMenu}
         setZoomMenu={setZoomMenu}
         changeZoom={changeZoom}
-        filterActive={filterActive}
-        menu={menu}
-        setMenu={setMenu}
-        hideCompleted={hideCompleted}
-        setHideCompleted={setHideCompleted}
-        assigneeFilter={assigneeFilter}
-        setAssigneeFilter={setAssigneeFilter}
-        assigneeNames={assigneeNames}
-        sortActive={sortActive}
+        filters={filters}
+        activeFilterCount={activeFilterCount}
+        onFilterChange={setTimelineFilter}
+        clearFilters={clearTimelineFilters}
         sortBy={sortBy}
         setSortBy={setSortBy}
-        optionsActive={optionsActive}
+        users={users}
+        statusFieldName={statusFieldName}
+        statusFieldEnabled={statusFieldEnabled}
+        statusOptions={statusOptions}
+        viewName={viewName}
+        viewIcon={viewIcon}
+        viewTabId={viewTabId}
+        canEdit={canEdit}
         showWeekends={showWeekends}
         setShowWeekends={setShowWeekends}
         showDependencies={showDependencies}

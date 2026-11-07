@@ -1,9 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import type { Dispatch, MutableRefObject, SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api-client";
+import { toast } from "@/lib/ui-feedback";
 import type { TaskRow, User } from "@/lib/data";
 import type { CustomField } from "@/lib/custom-fields";
+import { parseListDateFilter, type ListFilters } from "@/lib/list-view";
+import ListFilterMenu from "../list/ListFilterMenu";
+import ViewOptionsDrawer from "../view/ViewOptionsDrawer";
+import { FilterIcon, OptionsIcon } from "../view/ViewToolbarIcons";
+
+const toolbarBtn =
+  "flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700";
+const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
+const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
+const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
+const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-white shadow-lg";
 
 export default function CalendarToolbar({
   addToday,
@@ -43,7 +57,6 @@ export default function CalendarToolbar({
   selectFields,
   customFilter,
   setCustomFilterValue,
-  optionsActive,
   colorBy,
   setColor,
   colorOptions,
@@ -57,6 +70,10 @@ export default function CalendarToolbar({
   search,
   setSearch,
   setSearchOpen,
+  viewName,
+  viewIcon,
+  viewTabId,
+  canEdit,
 }: {
   addToday: () => void;
   prevHref: string;
@@ -95,7 +112,6 @@ export default function CalendarToolbar({
   selectFields: CustomField[];
   customFilter: Record<string, string>;
   setCustomFilterValue: (fieldId: number, value: string) => void;
-  optionsActive: boolean;
   colorBy: string;
   setColor: (value: string) => void;
   colorOptions: { value: string; label: string }[];
@@ -109,8 +125,79 @@ export default function CalendarToolbar({
   search: string;
   setSearch: (value: string) => void;
   setSearchOpen: Dispatch<SetStateAction<boolean>>;
+  viewName: string;
+  viewIcon: string | null;
+  viewTabId: number | null;
+  canEdit: boolean;
 }) {
+  const router = useRouter();
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
+
+  useEffect(() => {
+    if (!filterOpen && !optionsOpen && !zoomOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setFilterOpen(false);
+      setOptionsOpen(false);
+      setZoomOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [filterOpen, optionsOpen, zoomOpen]);
+
+  const filters: ListFilters = {
+    hide_completed: completedFilter === "open",
+    completed_only: completedFilter === "done",
+    mine_only: viewerId !== null && assigneeFilter === String(viewerId),
+    assignee: assigneeFilter,
+    status: statusFilter,
+    due: dueFilter,
+    start: "",
+    creator: creatorFilter,
+    created: parseListDateFilter(createdFilter),
+    updated: parseListDateFilter(updatedFilter),
+    completed_on: parseListDateFilter(completedOnFilter),
+  };
+
+  const onFilterChange = (key: keyof ListFilters, value: string | boolean) => {
+    if (key === "hide_completed") setCompleted(value === true ? "open" : "");
+    else if (key === "completed_only") setCompleted(value === true ? "done" : "");
+    else if (key === "mine_only") setAssignee(value === true && viewerId !== null ? String(viewerId) : "");
+    else if (key === "assignee") setAssignee(String(value));
+    else if (key === "status") setStatus(String(value));
+    else if (key === "due") setDue(String(value));
+    else if (key === "creator") setCreator(String(value));
+    else if (key === "created") setCreated(String(value));
+    else if (key === "updated") setUpdated(String(value));
+    else if (key === "completed_on") setCompletedOn(String(value));
+  };
+
+  const renameView = async (name: string) => {
+    if (!canEdit || viewTabId === null) return;
+    try {
+      await api(`/api/project-tabs/${viewTabId}`, "PATCH", { name });
+      toast("ビュー名を変更しました");
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "ビュー名を変更できませんでした");
+    }
+  };
+
+  const updateViewIcon = async (icon: string | null) => {
+    if (!canEdit || viewTabId === null) return;
+    try {
+      await api(`/api/project-tabs/${viewTabId}`, "PATCH", { icon });
+      toast("ビューのアイコンを変更しました");
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "アイコンを変更できませんでした");
+    }
+  };
+
   return (
+    <>
       <div className="flex shrink-0 flex-wrap items-center gap-1.5 py-2">
         <button
           type="button"
@@ -153,14 +240,14 @@ export default function CalendarToolbar({
             {undated.length === 0 ? (
               <div className="px-2 py-2 text-xs text-neutral-400">日付なしのタスクはありません</div>
             ) : (
-              undated.map((t) => (
+              undated.map((task) => (
                 <button
-                  key={t.id}
+                  key={task.id}
                   type="button"
                   draggable
-                  onDragStart={(e) => {
+                  onDragStart={(event) => {
                     dragging.current = true;
-                    e.dataTransfer.setData("text/atlas-task", String(t.id));
+                    event.dataTransfer.setData("text/atlas-task", String(task.id));
                   }}
                   onDragEnd={() => {
                     setTimeout(() => {
@@ -169,300 +256,118 @@ export default function CalendarToolbar({
                   }}
                   onClick={() => {
                     if (dragging.current) return;
-                    openTask(t.id);
+                    openTask(task.id);
                   }}
                   className="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
                   title="日付を設定するにはカレンダーへドラッグ"
                 >
-                  {t.name}
+                  {task.name}
                 </button>
               ))
             )}
           </div>
         </details>
-        <details className="relative">
-          <summary
+
+        <span className="relative">
+          <button
+            type="button"
             data-calendar-zoom
-            className="flex h-7 cursor-pointer list-none items-center gap-1 rounded-md px-2 text-[13px] text-neutral-700 hover:bg-neutral-100 [&::-webkit-details-marker]:hidden"
+            aria-haspopup="menu"
+            aria-expanded={zoomOpen}
+            onClick={() => setZoomOpen((value) => !value)}
+            className={toolbarBtn}
           >
             {weekMode ? "週" : "月"}
             <span className="text-[10px] text-neutral-400">▾</span>
-          </summary>
-          <div className="absolute right-0 z-30 mt-1 w-40 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">
-            <Link href={weekHref} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
-              <span className="w-3 text-neutral-700">{weekMode ? "✓" : ""}</span>週
-            </Link>
-            <Link href={monthHref} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
-              <span className="w-3 text-neutral-700">{!weekMode ? "✓" : ""}</span>月
-            </Link>
-          </div>
-        </details>
-        <details className="relative">
-          <summary
-            data-calendar-filter
-            className={`flex h-7 cursor-pointer list-none items-center gap-1 rounded-md px-2 text-[13px] hover:bg-neutral-100 [&::-webkit-details-marker]:hidden ${
-              activeFilters ? "bg-[#eff4fd] font-medium text-[#2c60b8]" : "text-neutral-700"
-            }`}
-          >
-            フィルター
-            {activeFilters > 0 && <span className="text-[11px]">{activeFilters}</span>}
-          </summary>
-          <div className="absolute right-0 z-30 mt-1 w-[min(420px,calc(100vw-2rem))] rounded-lg border border-neutral-200 bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
-              <span className="text-[13px] font-medium">フィルター</span>
+          </button>
+          {zoomOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setZoomOpen(false)} />
+              <div className="absolute top-full right-0 z-40 mt-1 w-40 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">
+                <Link href={weekHref} onClick={() => setZoomOpen(false)} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
+                  <span className="w-3 text-neutral-700">{weekMode ? "✓" : ""}</span>週
+                </Link>
+                <Link href={monthHref} onClick={() => setZoomOpen(false)} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
+                  <span className="w-3 text-neutral-700">{!weekMode ? "✓" : ""}</span>月
+                </Link>
+              </div>
+            </>
+          )}
+        </span>
+
+        <span className="relative">
+          {activeFilters > 0 ? (
+            <span className={activePill}>
               <button
                 type="button"
-                data-calendar-clear
-                onClick={clearFilters}
-                className="text-xs text-[#2c60b8] hover:underline"
+                data-calendar-filter
+                data-calendar-filter-open
+                aria-expanded={filterOpen}
+                aria-haspopup="menu"
+                onClick={() => setFilterOpen((value) => !value)}
+                className={activePillMain}
               >
-                クリア
+                <FilterIcon /> フィルター: {activeFilters}
               </button>
-            </div>
-            <div className="max-h-[calc(100vh-220px)] overflow-y-auto p-3">
-              <div className="text-[11px] font-medium text-neutral-500">クイックフィルター</div>
-              <div className="mt-1 flex flex-wrap gap-1">
-                <button
-                  type="button"
-                  data-calendar-quick-completed="open"
-                  onClick={() => setCompleted("open")}
-                  className={`rounded-full border px-2 py-0.5 text-xs ${
-                    completedFilter === "open"
-                      ? "border-[#b8ccef] bg-[#eff4fd] text-[#2c60b8]"
-                      : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-                  }`}
-                >
-                  未完了タスク
-                </button>
-                <button
-                  type="button"
-                  data-calendar-quick-completed="done"
-                  onClick={() => setCompleted("done")}
-                  className={`rounded-full border px-2 py-0.5 text-xs ${
-                    completedFilter === "done"
-                      ? "border-[#b8ccef] bg-[#eff4fd] text-[#2c60b8]"
-                      : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-                  }`}
-                >
-                  完了したタスク
-                </button>
-                {viewerId !== null && (
-                  <button
-                    type="button"
-                    data-calendar-quick-mine
-                    onClick={() => setAssignee(assigneeFilter === String(viewerId) ? "" : String(viewerId))}
-                    className={`rounded-full border px-2 py-0.5 text-xs ${
-                      assigneeFilter === String(viewerId)
-                        ? "border-[#b8ccef] bg-[#eff4fd] text-[#2c60b8]"
-                        : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-                    }`}
-                  >
-                    自分のタスクのみ
-                  </button>
-                )}
+              <button type="button" title="フィルターをクリア" onClick={clearFilters} className={clearPill}>
+                ×
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              data-calendar-filter
+              data-calendar-filter-open
+              aria-expanded={filterOpen}
+              aria-haspopup="menu"
+              onClick={() => setFilterOpen((value) => !value)}
+              className={toolbarBtn}
+            >
+              <FilterIcon /> フィルター
+            </button>
+          )}
+          {filterOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
+              <div className={`${popoverBase} right-0 w-[560px] max-w-[calc(100vw-2rem)]`}>
+                <ListFilterMenu
+                  filters={filters}
+                  activeCount={activeFilters}
+                  users={users}
+                  statusFieldEnabled={statusFieldEnabled}
+                  statusFieldName={statusFieldName}
+                  statusOptions={statusOptions}
+                  quickFilters={["open", "done", "mine"]}
+                  allowedBuiltins={["assignee", "due", "creator", "created", "updated", "completed_on", "status"]}
+                  customFields={selectFields}
+                  customFilter={customFilter}
+                  onChange={onFilterChange}
+                  onCustomFilterChange={setCustomFilterValue}
+                  onClear={clearFilters}
+                />
               </div>
-              <div className="mt-3 border-t border-neutral-100 pt-2">
-                <div className="text-[11px] font-medium text-neutral-500">フィルターを追加</div>
-                <label className="mt-1 block text-xs text-neutral-500">
-                  担当者
-                  <select
-                    data-calendar-filter-assignee
-                    value={assigneeFilter}
-                    onChange={(e) => setAssignee(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="none">未割当</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {statusFieldEnabled && (
-                  <label className="mt-2 block text-xs text-neutral-500">
-                    {statusFieldName}
-                    <select
-                      data-calendar-filter-status
-                      value={statusFilter}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                    >
-                      <option value="">すべて</option>
-                      {statusOptions.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <label className="mt-2 block text-xs text-neutral-500">
-                  期日
-                  <select
-                    data-calendar-filter-due
-                    value={dueFilter}
-                    onChange={(e) => setDue(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="overdue">期限切れ</option>
-                    <option value="today">今日</option>
-                    <option value="week">今週</option>
-                    <option value="nextweek">来週</option>
-                    <option value="month">来月まで</option>
-                    <option value="none">日付なし</option>
-                  </select>
-                </label>
-                <label className="mt-2 block text-xs text-neutral-500">
-                  作成日
-                  <select
-                    data-calendar-filter-created
-                    value={createdFilter}
-                    onChange={(e) => setCreated(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="today">今日</option>
-                    <option value="7">過去7日</option>
-                    <option value="30">過去30日</option>
-                  </select>
-                </label>
-                <label className="mt-2 block text-xs text-neutral-500">
-                  最終変更日
-                  <select
-                    data-calendar-filter-updated
-                    value={updatedFilter}
-                    onChange={(e) => setUpdated(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="today">今日</option>
-                    <option value="7">過去7日</option>
-                    <option value="30">過去30日</option>
-                  </select>
-                </label>
-                <label className="mt-2 block text-xs text-neutral-500">
-                  完了日
-                  <select
-                    data-calendar-filter-completed-on
-                    value={completedOnFilter}
-                    onChange={(e) => setCompletedOn(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="today">今日</option>
-                    <option value="7">過去7日</option>
-                    <option value="30">過去30日</option>
-                  </select>
-                </label>
-                <label className="mt-2 block text-xs text-neutral-500">
-                  作成したユーザー
-                  <select
-                    data-calendar-filter-creator
-                    value={creatorFilter}
-                    onChange={(e) => setCreator(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="none">未設定</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {selectFields.map((field) => (
-                  <label key={field.id} className="mt-2 block text-xs text-neutral-500">
-                    {field.name}
-                    <select
-                      data-calendar-filter-field={field.id}
-                      value={customFilter[String(field.id)] ?? ""}
-                      onChange={(e) => setCustomFilterValue(field.id, e.target.value)}
-                      className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                    >
-                      <option value="">すべて</option>
-                      {customFilter[String(field.id)] &&
-                        !field.options.includes(customFilter[String(field.id)]) && (
-                          <option value={customFilter[String(field.id)]}>{customFilter[String(field.id)]}</option>
-                        )}
-                      {field.options.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        </details>
-        <details className="relative">
-          <summary
-            data-calendar-options
-            className={`flex h-7 cursor-pointer list-none items-center gap-1 rounded-md px-2 text-[13px] hover:bg-neutral-100 [&::-webkit-details-marker]:hidden ${
-              optionsActive ? "bg-[#eff4fd] font-medium text-[#2c60b8]" : "text-neutral-700"
-            }`}
-          >
-            オプション
-            <span className="text-[10px] text-neutral-400">▾</span>
-          </summary>
-          <div className="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-neutral-200 bg-white p-3 shadow-lg">
-            <div className="text-[11px] font-medium text-neutral-500">レイアウトオプション</div>
-            <label className="mt-2 block text-xs text-neutral-500">
-              タスクのカラー
-              <select
-                data-calendar-color
-                value={colorBy}
-                onChange={(e) => setColor(e.target.value)}
-                className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-              >
-                {colorOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="mt-2 flex items-center gap-2 text-[13px]">
-              <input
-                type="checkbox"
-                data-calendar-weekends
-                checked={showWeekends}
-                onChange={(e) => setWeekends(e.target.checked)}
-              />
-              週末を表示
-            </label>
-            <label className="mt-2 flex items-center gap-2 text-[13px]">
-              <input
-                type="checkbox"
-                data-calendar-multi
-                checked={showMulti}
-                onChange={(e) => setMulti(e.target.checked)}
-              />
-              複数日にわたるタスクを表示
-            </label>
-            <label className="mt-3 block text-xs text-neutral-500">
-              週の始まり
-              <select
-                data-calendar-week-start
-                value={weekStart}
-                onChange={(e) => setWeekStartOn(e.target.value === "1" ? 1 : 0)}
-                className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-              >
-                <option value={0}>日曜日</option>
-                <option value={1}>月曜日</option>
-              </select>
-            </label>
-          </div>
-        </details>
+            </>
+          )}
+        </span>
+
+        <button
+          type="button"
+          data-calendar-options
+          data-calendar-options-open
+          aria-haspopup="dialog"
+          aria-expanded={optionsOpen}
+          onClick={() => {
+            setFilterOpen(false);
+            setOptionsOpen(true);
+          }}
+          className={toolbarBtn}
+        >
+          <OptionsIcon /> オプション
+        </button>
         {searchOpen && (
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="このビュー内で検索"
             aria-label="このビュー内で検索"
             autoFocus
@@ -473,7 +378,7 @@ export default function CalendarToolbar({
           type="button"
           onClick={() => {
             if (searchOpen) setSearch("");
-            setSearchOpen((v) => !v);
+            setSearchOpen((value) => !value);
           }}
           data-calendar-search
           aria-label="このビューで検索"
@@ -488,5 +393,86 @@ export default function CalendarToolbar({
           </svg>
         </button>
       </div>
+
+      <ViewOptionsDrawer
+        open={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        title="カレンダー"
+        viewName={viewName}
+        viewIcon={viewIcon}
+        viewTabId={viewTabId}
+        canEdit={canEdit}
+        onRenameView={renameView}
+        onUpdateIcon={updateViewIcon}
+        filterSummary={activeFilters > 0 ? `適用中: ${activeFilters}` : "なし"}
+        sortSummary=""
+        showSort={false}
+        onOpenFilter={() => {
+          setOptionsOpen(false);
+          setFilterOpen(true);
+        }}
+        onOpenSort={() => undefined}
+      >
+        <div className="mt-3 border-t border-neutral-100 pt-3">
+          <div className="px-2 text-[11px] font-medium text-neutral-500">レイアウトオプション</div>
+          <label className="mt-2 block px-2 text-[12px] text-neutral-600">
+            タスクのカラー
+            <select
+              value={colorBy}
+              onChange={(event) => setColor(event.target.value)}
+              className="mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+            >
+              {colorOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+            <input type="checkbox" checked={showWeekends} onChange={(event) => setWeekends(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+            週末を表示
+          </label>
+          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+            <input type="checkbox" checked={showMulti} onChange={(event) => setMulti(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+            複数日にわたるタスクを表示
+          </label>
+          <label className="mt-1 block px-2 text-[12px] text-neutral-600">
+            週の始まり
+            <select
+              value={weekStart}
+              onChange={(event) => setWeekStartOn(event.target.value === "1" ? 1 : 0)}
+              className="mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+            >
+              <option value={0}>日曜日</option>
+              <option value={1}>月曜日</option>
+            </select>
+          </label>
+        </div>
+        <div className="mt-2 border-t border-neutral-100 pt-3">
+          <div className="px-2 text-[11px] font-medium text-neutral-500">ズーム</div>
+          <div className="mt-1 flex gap-1 px-2">
+            <Link
+              href={weekHref}
+              onClick={() => setOptionsOpen(false)}
+              className={`flex h-8 flex-1 items-center justify-center rounded-md border text-[13px] ${
+                weekMode ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]" : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+              }`}
+            >
+              週
+            </Link>
+            <Link
+              href={monthHref}
+              onClick={() => setOptionsOpen(false)}
+              className={`flex h-8 flex-1 items-center justify-center rounded-md border text-[13px] ${
+                !weekMode ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]" : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+              }`}
+            >
+              月
+            </Link>
+          </div>
+        </div>
+      </ViewOptionsDrawer>
+    </>
   );
 }

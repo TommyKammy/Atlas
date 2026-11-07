@@ -1,11 +1,26 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
-import PopoverMenu from "../ui/PopoverMenu";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api-client";
+import { toast } from "@/lib/ui-feedback";
+import type { User } from "@/lib/data";
+import type { ListFilters } from "@/lib/list-view";
+import ListFilterMenu from "../list/ListFilterMenu";
+import ListSortMenu from "../list/ListSortMenu";
+import ViewOptionsDrawer from "../view/ViewOptionsDrawer";
+import { FilterIcon, OptionsIcon, SortIcon } from "../view/ViewToolbarIcons";
 
-export type TimelineSortKey = "default" | "due" | "start" | "name";
+export type TimelineSortKey = "default" | "due" | "start" | "assignee";
 export type TimelineMenuKey = "filter" | "sort" | "options" | null;
 export type TimelineZoomPreset = { key: string; label: string; dayWidth: number };
+
+const toolbarBtn =
+  "flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700";
+const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
+const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
+const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
+const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-white shadow-lg";
 
 export default function TimelineToolbar({
   projectId,
@@ -21,18 +36,20 @@ export default function TimelineToolbar({
   zoomMenu,
   setZoomMenu,
   changeZoom,
-  filterActive,
-  menu,
-  setMenu,
-  hideCompleted,
-  setHideCompleted,
-  assigneeFilter,
-  setAssigneeFilter,
-  assigneeNames,
-  sortActive,
+  filters,
+  activeFilterCount,
+  onFilterChange,
+  clearFilters,
   sortBy,
   setSortBy,
-  optionsActive,
+  users,
+  statusFieldName,
+  statusFieldEnabled,
+  statusOptions,
+  viewName,
+  viewIcon,
+  viewTabId,
+  canEdit,
   showWeekends,
   setShowWeekends,
   showDependencies,
@@ -53,18 +70,20 @@ export default function TimelineToolbar({
   zoomMenu: boolean;
   setZoomMenu: Dispatch<SetStateAction<boolean>>;
   changeZoom: (next: number) => void;
-  filterActive: boolean;
-  menu: TimelineMenuKey;
-  setMenu: Dispatch<SetStateAction<TimelineMenuKey>>;
-  hideCompleted: boolean;
-  setHideCompleted: (value: boolean) => void;
-  assigneeFilter: string;
-  setAssigneeFilter: (value: string) => void;
-  assigneeNames: string[];
-  sortActive: boolean;
+  filters: ListFilters;
+  activeFilterCount: number;
+  onFilterChange: (key: keyof ListFilters, value: string | boolean) => void;
+  clearFilters: () => void;
   sortBy: TimelineSortKey;
   setSortBy: (value: TimelineSortKey) => void;
-  optionsActive: boolean;
+  users: User[];
+  statusFieldName: string;
+  statusFieldEnabled: boolean;
+  statusOptions: string[];
+  viewName: string;
+  viewIcon: string | null;
+  viewTabId: number | null;
+  canEdit: boolean;
   showWeekends: boolean;
   setShowWeekends: (value: boolean) => void;
   showDependencies: boolean;
@@ -72,12 +91,54 @@ export default function TimelineToolbar({
   showCritical: boolean;
   setShowCritical: (value: boolean) => void;
 }) {
-  const menuButtonClass = (active: boolean, open: boolean) =>
-    `flex h-7 items-center gap-1 rounded-md px-2 text-[13px] hover:bg-neutral-100 ${
-      open || active ? "bg-[#eff4fd] text-[#2c60b8]" : "text-neutral-700"
-    }`;
+  const router = useRouter();
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const closeMenus = () => {
+    setFilterOpen(false);
+    setSortOpen(false);
+  };
+
+  useEffect(() => {
+    if (!filterOpen && !sortOpen && !optionsOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setFilterOpen(false);
+      setSortOpen(false);
+      setOptionsOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [filterOpen, sortOpen, optionsOpen]);
+
+  const renameView = async (name: string) => {
+    if (!canEdit || viewTabId === null) return;
+    try {
+      await api(`/api/project-tabs/${viewTabId}`, "PATCH", { name });
+      toast("ビュー名を変更しました");
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "ビュー名を変更できませんでした");
+    }
+  };
+
+  const updateViewIcon = async (icon: string | null) => {
+    if (!canEdit || viewTabId === null) return;
+    try {
+      await api(`/api/project-tabs/${viewTabId}`, "PATCH", { icon });
+      toast("ビューのアイコンを変更しました");
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "アイコンを変更できませんでした");
+    }
+  };
+
+  const sortKey = sortBy === "default" ? "position" : (sortBy as "start" | "due" | "assignee");
+  const sortLabel = sortBy === "default" ? "" : sortBy === "start" ? "開始日" : sortBy === "due" ? "期日" : "担当者";
 
   return (
+    <>
       <div className="flex flex-wrap items-center gap-1.5 px-4 py-2">
         <button
           type="button"
@@ -115,7 +176,7 @@ export default function TimelineToolbar({
         <button
           type="button"
           data-timeline-undated
-          onClick={() => setUndatedOpen((v) => !v)}
+          onClick={() => setUndatedOpen((value) => !value)}
           className={`flex h-7 items-center rounded-md px-2 text-[13px] hover:bg-neutral-100 ${
             undatedOpen ? "bg-[#eff4fd] text-[#2c60b8]" : "text-neutral-700"
           }`}
@@ -129,8 +190,8 @@ export default function TimelineToolbar({
             aria-label={`ズームレベル: ${zoomPreset.label}`}
             aria-haspopup="listbox"
             aria-expanded={zoomMenu}
-            onClick={() => setZoomMenu((v) => !v)}
-            className="flex h-7 items-center gap-1 rounded-md px-2 text-[13px] text-neutral-700 hover:bg-neutral-100"
+            onClick={() => setZoomMenu((value) => !value)}
+            className={toolbarBtn}
           >
             {zoomPreset.label}
             <span className="text-[10px] text-neutral-400">▾</span>
@@ -141,7 +202,7 @@ export default function TimelineToolbar({
               <div
                 data-timeline-zoom-menu
                 role="listbox"
-                className="absolute top-8 right-0 z-40 w-36 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg"
+                className="absolute top-full right-0 z-40 mt-1 w-36 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg"
               >
                 {zoomPresets.map((preset, index) => (
                   <button
@@ -191,170 +252,195 @@ export default function TimelineToolbar({
           ＋
         </button>
 
-        <div className="relative">
-          <button
-            type="button"
-            data-timeline-filter
-            onClick={() => setMenu((m) => (m === "filter" ? null : "filter"))}
-            className={menuButtonClass(filterActive, menu === "filter")}
-            aria-expanded={menu === "filter"}
-            aria-haspopup="menu"
-          >
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <path d="M2.5 3h11l-4.2 5v4.2L6.7 13V8L2.5 3Z" />
-            </svg>
-            フィルター
-            {filterActive && <span className="h-1.5 w-1.5 rounded-full bg-[#2c60b8]" />}
-          </button>
-          <PopoverMenu
-            open={menu === "filter"}
-            onClose={() => setMenu(null)}
-            panelClassName="absolute right-0 top-8 z-30 w-60 rounded-lg border border-neutral-200 bg-white p-3 text-[13px] shadow-lg"
-            panelProps={{ "data-timeline-filter-menu": true }}
-          >
-                <label className="flex cursor-pointer items-center gap-2 text-neutral-700">
-                  <input
-                    type="checkbox"
-                    checked={hideCompleted}
-                    onChange={(e) => setHideCompleted(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[#2c60b8]"
-                  />
-                  完了済みを非表示
-                </label>
-                <div className="mt-3 text-[11px] font-medium text-neutral-500">担当者</div>
-                <select
-                  value={assigneeFilter}
-                  onChange={(e) => setAssigneeFilter(e.target.value)}
-                  className="mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
-                >
-                  <option value="all">すべての担当者</option>
-                  <option value="none">未割り当て</option>
-                  {assigneeNames.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-                {(hideCompleted || assigneeFilter !== "all") && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHideCompleted(false);
-                      setAssigneeFilter("all");
-                    }}
-                    className="mt-3 text-[12px] text-[#2c60b8] hover:underline"
-                  >
-                    フィルターを解除
-                  </button>
-                )}
-          </PopoverMenu>
-        </div>
+        <span className="relative">
+          {activeFilterCount > 0 ? (
+            <span className={activePill}>
+              <button
+                type="button"
+                data-timeline-filter
+                data-timeline-filter-open
+                aria-expanded={filterOpen}
+                aria-haspopup="menu"
+                onClick={() => {
+                  closeMenus();
+                  setFilterOpen((value) => !value);
+                }}
+                className={activePillMain}
+              >
+                <FilterIcon /> フィルター: {activeFilterCount}
+              </button>
+              <button type="button" title="フィルターをクリア" onClick={clearFilters} className={clearPill}>
+                ×
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              data-timeline-filter
+              data-timeline-filter-open
+              aria-expanded={filterOpen}
+              aria-haspopup="menu"
+              onClick={() => {
+                closeMenus();
+                setFilterOpen((value) => !value);
+              }}
+              className={toolbarBtn}
+            >
+              <FilterIcon /> フィルター
+            </button>
+          )}
+          {filterOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
+              <div data-timeline-filter-menu className={`${popoverBase} right-0 w-[560px] max-w-[calc(100vw-2rem)]`}>
+                <ListFilterMenu
+                  filters={filters}
+                  activeCount={activeFilterCount}
+                  users={users}
+                  statusFieldEnabled={statusFieldEnabled}
+                  statusFieldName={statusFieldName}
+                  statusOptions={statusOptions}
+                  onChange={onFilterChange}
+                  onClear={clearFilters}
+                />
+              </div>
+            </>
+          )}
+        </span>
 
-        <div className="relative">
-          <button
-            type="button"
-            data-timeline-sort
-            onClick={() => setMenu((m) => (m === "sort" ? null : "sort"))}
-            className={menuButtonClass(sortActive, menu === "sort")}
-            aria-expanded={menu === "sort"}
-            aria-haspopup="menu"
-          >
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <path d="M4 2.5v11M4 13.5 1.8 11.2M4 13.5l2.2-2.3M9 3h5M9 6.5h4M9 10h3" />
-            </svg>
-            ソート
-            {sortActive && <span className="h-1.5 w-1.5 rounded-full bg-[#2c60b8]" />}
-          </button>
-          <PopoverMenu
-            open={menu === "sort"}
-            onClose={() => setMenu(null)}
-            panelClassName="absolute right-0 top-8 z-30 w-52 rounded-lg border border-neutral-200 bg-white p-1.5 text-[13px] shadow-lg"
-            panelProps={{ "data-timeline-sort-menu": true }}
-          >
-                {(
-                  [
-                    ["default", "既定の並び"],
-                    ["due", "期日"],
-                    ["start", "開始日"],
-                    ["name", "名前"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => {
-                      setSortBy(key);
-                      setMenu(null);
-                    }}
-                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left hover:bg-neutral-100 ${
-                      sortBy === key ? "text-[#2c60b8]" : "text-neutral-700"
-                    }`}
-                  >
-                    {label}
-                    {sortBy === key && (
-                      <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.7">
-                        <path d="M2 6.2 4.7 9 10 3.2" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-          </PopoverMenu>
-        </div>
+        <span className="relative">
+          {sortBy !== "default" ? (
+            <span className={activePill}>
+              <button
+                type="button"
+                data-timeline-sort
+                data-timeline-sort-open
+                aria-expanded={sortOpen}
+                aria-haspopup="menu"
+                onClick={() => {
+                  closeMenus();
+                  setSortOpen((value) => !value);
+                }}
+                className={activePillMain}
+              >
+                <SortIcon /> ソート: {sortLabel}
+              </button>
+              <button type="button" title="ソートをクリア" onClick={() => setSortBy("default")} className={clearPill}>
+                ×
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              data-timeline-sort
+              data-timeline-sort-open
+              aria-expanded={sortOpen}
+              aria-haspopup="menu"
+              onClick={() => {
+                closeMenus();
+                setSortOpen((value) => !value);
+              }}
+              className={toolbarBtn}
+            >
+              <SortIcon /> ソート
+            </button>
+          )}
+          {sortOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setSortOpen(false)} />
+              <div data-timeline-sort-menu className={`${popoverBase} right-0 w-60`}>
+                <ListSortMenu
+                  sortKey={sortKey}
+                  sortDir="asc"
+                  allowedKeys={["start", "due", "assignee"]}
+                  showDirection={false}
+                  includeNone
+                  onSelect={(key) => {
+                    setSortBy(key as TimelineSortKey);
+                    setSortOpen(false);
+                  }}
+                  onToggleDir={() => undefined}
+                  onClear={() => {
+                    setSortBy("default");
+                    setSortOpen(false);
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </span>
 
-        <div className="relative">
-          <button
-            type="button"
-            data-timeline-options
-            onClick={() => setMenu((m) => (m === "options" ? null : "options"))}
-            className={menuButtonClass(optionsActive, menu === "options")}
-            aria-expanded={menu === "options"}
-            aria-haspopup="menu"
-          >
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.3">
-              <path d="M3 4h10M3 8h10M3 12h10" />
-              <circle cx="6" cy="4" r="1.4" fill="white" />
-              <circle cx="10" cy="8" r="1.4" fill="white" />
-              <circle cx="7" cy="12" r="1.4" fill="white" />
-            </svg>
-            オプション
-            {optionsActive && <span className="h-1.5 w-1.5 rounded-full bg-[#2c60b8]" />}
-          </button>
-          <PopoverMenu
-            open={menu === "options"}
-            onClose={() => setMenu(null)}
-            panelClassName="absolute right-0 top-8 z-30 w-56 rounded-lg border border-neutral-200 bg-white p-3 text-[13px] shadow-lg"
-            panelProps={{ "data-timeline-options-menu": true }}
-          >
-                <label className="flex cursor-pointer items-center gap-2 text-neutral-700">
-                  <input
-                    type="checkbox"
-                    checked={showWeekends}
-                    onChange={(e) => setShowWeekends(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[#2c60b8]"
-                  />
-                  週末を網掛け
-                </label>
-                <label className="mt-2.5 flex cursor-pointer items-center gap-2 text-neutral-700">
-                  <input
-                    type="checkbox"
-                    checked={showDependencies}
-                    onChange={(e) => setShowDependencies(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[#2c60b8]"
-                  />
-                  依存関係を表示
-                </label>
-                <label className="mt-2.5 flex cursor-pointer items-center gap-2 text-neutral-700">
-                  <input
-                    type="checkbox"
-                    checked={showCritical}
-                    onChange={(e) => setShowCritical(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[#2c60b8]"
-                  />
-                  クリティカルパスを表示
-                </label>
-          </PopoverMenu>
-        </div>
+        <button
+          type="button"
+          data-timeline-options
+          data-timeline-options-open
+          aria-haspopup="dialog"
+          aria-expanded={optionsOpen}
+          onClick={() => {
+            closeMenus();
+            setOptionsOpen(true);
+          }}
+          className={toolbarBtn}
+        >
+          <OptionsIcon /> オプション
+        </button>
       </div>
 
+      <ViewOptionsDrawer
+        open={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        title="タイムライン"
+        viewName={viewName}
+        viewIcon={viewIcon}
+        viewTabId={viewTabId}
+        canEdit={canEdit}
+        onRenameView={renameView}
+        onUpdateIcon={updateViewIcon}
+        filterSummary={activeFilterCount > 0 ? `適用中: ${activeFilterCount}` : "なし"}
+        sortSummary={sortBy === "default" ? "なし" : sortLabel}
+        onOpenFilter={() => {
+          setOptionsOpen(false);
+          setFilterOpen(true);
+        }}
+        onOpenSort={() => {
+          setOptionsOpen(false);
+          setSortOpen(true);
+        }}
+      >
+        <div className="mt-3 border-t border-neutral-100 pt-3">
+          <div className="px-2 text-[11px] font-medium text-neutral-500">レイアウトオプション</div>
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+            <input type="checkbox" checked={showWeekends} onChange={(event) => setShowWeekends(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+            週末を網掛け
+          </label>
+          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+            <input type="checkbox" checked={showCritical} onChange={(event) => setShowCritical(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+            クリティカルパスを表示
+          </label>
+        </div>
+        <div className="mt-2 border-t border-neutral-100 pt-3">
+          <div className="px-2 text-[11px] font-medium text-neutral-500">依存関係設定</div>
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+            <input type="checkbox" checked={showDependencies} onChange={(event) => setShowDependencies(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+            依存関係を表示
+          </label>
+        </div>
+        <div className="mt-2 border-t border-neutral-100 pt-3">
+          <div className="px-2 text-[11px] font-medium text-neutral-500">ズーム</div>
+          <select
+            value={zoom}
+            onChange={(event) => changeZoom(Number(event.target.value))}
+            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+            aria-label="ズーム"
+          >
+            {zoomPresets.map((preset, index) => (
+              <option key={preset.key} value={index}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </ViewOptionsDrawer>
+    </>
   );
 }

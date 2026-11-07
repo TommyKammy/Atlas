@@ -2,14 +2,26 @@
 
 import { useState } from "react";
 import type { User } from "@/lib/data";
+import type { CustomField } from "@/lib/custom-fields";
 import {
   LIST_DATE_FILTER_OPTIONS,
   type ListFilters,
 } from "@/lib/list-view";
 
-type FieldKey = "assignee" | "due" | "start" | "creator" | "created" | "updated" | "completed_on" | "status";
+type BuiltinField =
+  | "assignee"
+  | "due"
+  | "start"
+  | "creator"
+  | "created"
+  | "updated"
+  | "completed_on"
+  | "status";
+type FieldKey = BuiltinField | `cf-${number}`;
 
-const FIELD_LABELS: Record<FieldKey, string> = {
+export type QuickFilterKey = "open" | "done" | "mine" | "week" | "nextweek";
+
+const FIELD_LABELS: Record<BuiltinField, string> = {
   assignee: "担当者",
   due: "期日",
   start: "開始日",
@@ -20,7 +32,7 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   status: "Status",
 };
 
-const FIELD_ORDER: FieldKey[] = [
+const FIELD_ORDER: BuiltinField[] = [
   "assignee",
   "due",
   "start",
@@ -31,19 +43,30 @@ const FIELD_ORDER: FieldKey[] = [
   "status",
 ];
 
+const ALL_QUICK: QuickFilterKey[] = ["open", "done", "mine", "week", "nextweek"];
+
 const quickFilterCls =
   "flex h-7 items-center rounded-full border px-2.5 text-[12px] transition-colors";
 const rowSelect =
   "h-8 min-w-0 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]";
 
-function initialFields(filters: ListFilters, statusEnabled: boolean): FieldKey[] {
-  return FIELD_ORDER.filter((key) => {
+function initialFields(
+  filters: ListFilters,
+  statusEnabled: boolean,
+  customFields: CustomField[],
+  customFilter: Record<string, string>,
+): FieldKey[] {
+  const builtin = FIELD_ORDER.filter((key) => {
     if (key === "status" && !statusEnabled) return false;
     if (key === "assignee") return filters.assignee !== "";
     if (key === "creator") return filters.creator !== "";
     if (key === "due") return filters.due !== "";
     return filters[key] !== "";
   });
+  const custom = customFields
+    .filter((field) => (customFilter[String(field.id)] ?? "") !== "")
+    .map((field) => `cf-${field.id}` as FieldKey);
+  return [...builtin, ...custom];
 }
 
 function dateSelect(
@@ -76,7 +99,12 @@ export default function ListFilterMenu({
   statusFieldEnabled,
   statusFieldName,
   statusOptions,
+  quickFilters = ALL_QUICK,
+  allowedBuiltins = FIELD_ORDER,
+  customFields = [],
+  customFilter = {},
   onChange,
+  onCustomFilterChange,
   onClear,
 }: {
   filters: ListFilters;
@@ -85,16 +113,32 @@ export default function ListFilterMenu({
   statusFieldEnabled: boolean;
   statusFieldName: string;
   statusOptions: string[];
+  quickFilters?: QuickFilterKey[];
+  allowedBuiltins?: BuiltinField[];
+  customFields?: CustomField[];
+  customFilter?: Record<string, string>;
   onChange: (key: keyof ListFilters, value: string | boolean) => void;
+  onCustomFilterChange?: (fieldId: number, value: string) => void;
   onClear: () => void;
 }) {
-  const [fields, setFields] = useState<FieldKey[]>(() => initialFields(filters, statusFieldEnabled));
+  const [fields, setFields] = useState<FieldKey[]>(() =>
+    initialFields(filters, statusFieldEnabled, customFields, customFilter).filter(
+      (key) => !FIELD_ORDER.includes(key as BuiltinField) || allowedBuiltins.includes(key as BuiltinField),
+    ),
+  );
   const [addOpen, setAddOpen] = useState(false);
+
+  const labelFor = (key: FieldKey) =>
+    key.startsWith("cf-")
+      ? customFields.find((field) => field.id === Number(key.slice(3)))?.name ?? "カスタムフィールド"
+      : key === "status"
+        ? statusFieldName
+        : FIELD_LABELS[key as BuiltinField];
 
   const removeField = (key: FieldKey) => {
     setFields((current) => current.filter((item) => item !== key));
-    if (key === "assignee" || key === "creator" || key === "due" || key === "status") onChange(key, "");
-    else onChange(key, "");
+    if (key.startsWith("cf-")) onCustomFilterChange?.(Number(key.slice(3)), "");
+    else onChange(key as keyof ListFilters, "");
   };
 
   const addField = (key: FieldKey) => {
@@ -102,9 +146,14 @@ export default function ListFilterMenu({
     setAddOpen(false);
   };
 
-  const available = FIELD_ORDER.filter(
-    (key) => !fields.includes(key) && (key !== "status" || statusFieldEnabled),
-  );
+  const available: FieldKey[] = [
+    ...allowedBuiltins.filter(
+      (key) => !fields.includes(key) && (key !== "status" || statusFieldEnabled),
+    ),
+    ...customFields
+      .map((field) => `cf-${field.id}` as FieldKey)
+      .filter((key) => !fields.includes(key)),
+  ];
 
   const quick = (key: string, label: string, active: boolean, onClick: () => void, extra?: string) => (
     <button
@@ -192,18 +241,35 @@ export default function ListFilterMenu({
           ))}
         </select>
       );
+    } else if (key.startsWith("cf-")) {
+      const fieldId = Number(key.slice(3));
+      const field = customFields.find((item) => item.id === fieldId);
+      control = (
+        <select
+          value={customFilter[String(fieldId)] ?? ""}
+          data-list-filter-input={key}
+          onChange={(event) => onCustomFilterChange?.(fieldId, event.target.value)}
+          className={rowSelect}
+        >
+          <option value="">すべて</option>
+          {(field?.options ?? []).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      );
     } else {
-      control = dateSelect(filters[key], (value) => onChange(key, value), key);
+      const builtin = key as BuiltinField;
+      control = dateSelect(filters[builtin], (value) => onChange(builtin, value), builtin);
     }
     return (
       <div key={key} data-list-filter-row={key} className="flex items-center gap-2">
-        <span className="w-28 shrink-0 text-[12px] text-neutral-600">
-          {key === "status" ? statusFieldName : FIELD_LABELS[key]}
-        </span>
+        <span className="w-28 shrink-0 truncate text-[12px] text-neutral-600">{labelFor(key)}</span>
         {control}
         <button
           type="button"
-          aria-label={`${FIELD_LABELS[key]}フィルターを削除`}
+          aria-label={`${labelFor(key)}フィルターを削除`}
           onClick={() => removeField(key)}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
         >
@@ -231,29 +297,29 @@ export default function ListFilterMenu({
 
       <div className="mt-3 text-[11px] font-medium text-neutral-500">クイックフィルター</div>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {quick(
-          "open",
-          "未完了タスク",
-          filters.hide_completed && !filters.completed_only,
-          () => {
-            const next = !(filters.hide_completed && !filters.completed_only);
-            onChange("hide_completed", next);
-            if (next) onChange("completed_only", false);
-          },
-        )}
-        {quick(
-          "done",
-          "完了したタスク",
-          filters.completed_only,
-          () => {
+        {quickFilters.includes("open") &&
+          quick(
+            "open",
+            "未完了タスク",
+            filters.hide_completed && !filters.completed_only,
+            () => {
+              const next = !(filters.hide_completed && !filters.completed_only);
+              onChange("hide_completed", next);
+              if (next && filters.completed_only) onChange("completed_only", false);
+            },
+          )}
+        {quickFilters.includes("done") &&
+          quick("done", "完了したタスク", filters.completed_only, () => {
             const next = !filters.completed_only;
             onChange("completed_only", next);
-            if (next) onChange("hide_completed", false);
-          },
-        )}
-        {quick("mine", "自分のタスクのみ", filters.mine_only, () => onChange("mine_only", !filters.mine_only))}
-        {quick("week", "今週期限", filters.due === "week", () => onChange("due", filters.due === "week" ? "" : "week"))}
-        {quick("nextweek", "来週期限", filters.due === "nextweek", () => onChange("due", filters.due === "nextweek" ? "" : "nextweek"))}
+            if (next && filters.hide_completed) onChange("hide_completed", false);
+          })}
+        {quickFilters.includes("mine") &&
+          quick("mine", "自分のタスクのみ", filters.mine_only, () => onChange("mine_only", !filters.mine_only))}
+        {quickFilters.includes("week") &&
+          quick("week", "今週期限", filters.due === "week", () => onChange("due", filters.due === "week" ? "" : "week"))}
+        {quickFilters.includes("nextweek") &&
+          quick("nextweek", "来週期限", filters.due === "nextweek", () => onChange("due", filters.due === "nextweek" ? "" : "nextweek"))}
       </div>
 
       {fields.length > 0 && (
@@ -286,7 +352,7 @@ export default function ListFilterMenu({
                 onClick={() => addField(key)}
                 className="flex h-8 w-full items-center px-3 text-left text-[13px] text-neutral-700 hover:bg-neutral-100"
               >
-                {key === "status" ? statusFieldName : FIELD_LABELS[key]}
+                {labelFor(key)}
               </button>
             ))}
           </div>

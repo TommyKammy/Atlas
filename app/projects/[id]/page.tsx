@@ -94,10 +94,6 @@ export default async function ProjectPage(props: {
     ? Math.floor(Date.parse(fromRaw) / 86400000)
     : null;
   const groupRaw = qstr("group");
-  const boardGroup = (groupRaw === "assignee" || groupRaw === "status" ? groupRaw : "section") as
-    | "section"
-    | "assignee"
-    | "status";
   const daysRaw = typeof searchParams.days === "string" ? Number(searchParams.days) : NaN;
   const days = [7, 14, 30].includes(daysRaw) ? daysRaw : 14;
   const viewerId = await getCurrentUserId();
@@ -199,6 +195,10 @@ export default async function ProjectPage(props: {
     return typeof v === "string" && (allowed === undefined || allowed.includes(v)) ? v : "";
   };
   const storedBool = (viewKey: string, key: string) => viewStates[viewKey]?.[key] === true;
+  const storedBoolDefault = (viewKey: string, key: string, fallback: boolean) => {
+    const value = viewStates[viewKey]?.[key];
+    return typeof value === "boolean" ? value : fallback;
+  };
 
   const savedView = view === "list" && savedId ? await getSavedView(savedId) : undefined;
   const activeSaved =
@@ -210,10 +210,14 @@ export default async function ProjectPage(props: {
 
   const tabParam = qstr("tab");
   const activeTab = tabParam ? projectTabs.find((tab) => tab.tab_key === tabParam) : undefined;
-  const activeListTab =
-    activeTab?.view_type === "list"
+  const activeTabFor = (viewType: string) =>
+    activeTab?.view_type === viewType
       ? activeTab
-      : projectTabs.find((tab) => tab.view_type === "list");
+      : projectTabs.find((tab) => tab.view_type === viewType);
+  const activeListTab = activeTabFor("list");
+  const activeBoardTab = activeTabFor("board");
+  const activeTimelineTab = activeTabFor("timeline");
+  const activeCalendarTab = activeTabFor("calendar");
   const listSort = parseListSortKey(
     activeSaved
       ? activeSaved.sort_key
@@ -431,32 +435,65 @@ export default async function ProjectPage(props: {
             sections={sections}
             tasks={boardData.tasks}
             users={users}
-            initialGroup={
-              groupRaw !== ""
-                ? boardGroup
-                : ((storedString("board", "group", ["assignee", "status"]) || "section") as
-                    | "section"
-                    | "assignee"
-                    | "status")
-            }
+            viewerId={viewerId}
+            viewName={activeBoardTab?.name ?? "ボード"}
+            viewIcon={activeBoardTab?.icon ?? null}
+            viewTabId={activeBoardTab && activeBoardTab.id > 0 ? activeBoardTab.id : null}
+            canEdit={access.role === "admin" || access.role === "editor"}
+            initialGroup={parseListGroupBy(
+              groupRaw !== "" ? groupRaw : storedString("board", "group"),
+              project.status_field_enabled !== false,
+            )}
             statusFieldName={project.status_field_name ?? "Status"}
             statusFieldEnabled={project.status_field_enabled !== false}
             statusOptions={project.status_options ?? []}
             initial={{
               hide_completed:
-                searchParams.hide !== undefined ? qstr("hide") === "1" : storedBool("board", "hide_completed"),
+                searchParams.hide !== undefined
+                  ? qstr("hide") === "1"
+                  : storedBoolDefault("board", "hide_completed", false),
+              completed_only:
+                qstr("completed") === "done" || storedBoolDefault("board", "completed_only", false),
+              mine_only:
+                qstr("mine") !== ""
+                  ? qstr("mine") === "1"
+                  : storedBoolDefault("board", "mine_only", false),
               assignee: qstr("assignee") !== "" ? qstr("assignee") : storedString("board", "assignee"),
               status: qstr("status") !== "" ? qstr("status") : storedString("board", "status"),
-              sort:
-                sortRaw !== ""
-                  ? qstr("sort") === "due" || qstr("sort") === "name"
-                    ? qstr("sort")
-                    : "position"
-                  : storedString("board", "sort", ["due", "name"]) || "position",
+              due:
+                qstr("due") !== ""
+                  ? qstr("due")
+                  : storedString("board", "due", ["overdue", "today", "week", "nextweek", "month"]),
+              start:
+                qstr("start") !== ""
+                  ? qstr("start")
+                  : storedString("board", "start"),
+              creator: qstr("creator") !== "" ? qstr("creator") : storedString("board", "creator"),
+              created:
+                qstr("created") !== ""
+                  ? qstr("created")
+                  : storedString("board", "created"),
+              updated:
+                qstr("updated") !== ""
+                  ? qstr("updated")
+                  : storedString("board", "updated"),
+              completed_on:
+                qstr("completed_on") !== ""
+                  ? qstr("completed_on")
+                  : storedString("board", "completed_on"),
+              sort: parseListSortKey(
+                sortRaw !== "" ? sortRaw : storedString("board", "sort"),
+              ),
               sortdir:
                 qstr("sortdir") !== ""
                   ? sortDirParam
                   : ((storedString("board", "sortdir", ["asc", "desc"]) || "asc") as "asc" | "desc"),
+              show_empty_groups: storedBoolDefault("board", "show_empty_groups", true),
+              auto_refresh: storedBoolDefault("board", "auto_refresh", true),
+              show_assignee: storedBoolDefault("board", "show_assignee", true),
+              show_due: storedBoolDefault("board", "show_due", true),
+              show_status: storedBoolDefault("board", "show_status", true),
+              show_meta: storedBoolDefault("board", "show_meta", true),
             }}
           />
         )}
@@ -469,6 +506,15 @@ export default async function ProjectPage(props: {
             deps={timelineData.deps}
             startOverride={fromDay}
             initialState={viewStates.timeline}
+            viewName={activeTimelineTab?.name ?? "タイムライン"}
+            viewIcon={activeTimelineTab?.icon ?? null}
+            viewTabId={activeTimelineTab && activeTimelineTab.id > 0 ? activeTimelineTab.id : null}
+            canEdit={access.role === "admin" || access.role === "editor"}
+            users={users}
+            viewerId={viewerId}
+            statusFieldName={project.status_field_name ?? "Status"}
+            statusFieldEnabled={project.status_field_enabled !== false}
+            statusOptions={project.status_options ?? []}
           />
         )}
         {view === "messages" && messagesData && (
@@ -498,6 +544,10 @@ export default async function ProjectPage(props: {
             viewerId={viewerId}
             month={month}
             week={week}
+            viewName={activeCalendarTab?.name ?? "カレンダー"}
+            viewIcon={activeCalendarTab?.icon ?? null}
+            viewTabId={activeCalendarTab && activeCalendarTab.id > 0 ? activeCalendarTab.id : null}
+            canEdit={access.role === "admin" || access.role === "editor"}
             initial={{
               completed: calendarCompleted as "" | "open" | "done",
               assignee: calendarAssignee,

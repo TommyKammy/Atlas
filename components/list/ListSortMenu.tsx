@@ -13,13 +13,26 @@ export default function ListSortMenu({
   onSelect,
   onToggleDir,
   onClear,
+  hideProject = false,
+  allowedKeys,
+  showDirection = true,
+  includeNone = false,
 }: {
   sortKey: ListSortKey;
   sortDir: "asc" | "desc";
   onSelect: (key: Exclude<ListSortKey, "position">) => void;
   onToggleDir: () => void;
   onClear: () => void;
+  hideProject?: boolean;
+  allowedKeys?: readonly Exclude<ListSortKey, "position">[];
+  showDirection?: boolean;
+  includeNone?: boolean;
 }) {
+  const options =
+    allowedKeys ??
+    (hideProject
+      ? LIST_SORT_OPTIONS.filter((key) => key !== "project")
+      : LIST_SORT_OPTIONS);
   return (
     <div data-list-sort-menu className="p-1.5">
       <div className="flex items-center justify-between px-1.5 pb-1">
@@ -33,7 +46,18 @@ export default function ListSortMenu({
           クリア
         </button>
       </div>
-      {LIST_SORT_OPTIONS.map((key) => (
+      {includeNone && (
+        <button
+          type="button"
+          data-list-sort-option="none"
+          onClick={onClear}
+          className="flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-100"
+        >
+          <span className="w-4 text-[#2c60b8]">{sortKey === "position" ? "✓" : ""}</span>
+          なし
+        </button>
+      )}
+      {options.map((key) => (
         <button
           key={key}
           type="button"
@@ -48,7 +72,7 @@ export default function ListSortMenu({
           )}
         </button>
       ))}
-      {sortKey !== "position" && (
+      {showDirection && sortKey !== "position" && (
         <button
           type="button"
           data-list-sort-dir
