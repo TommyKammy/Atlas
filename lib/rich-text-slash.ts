@@ -199,10 +199,15 @@ export const SlashCommand = Extension.create({
             selected = Math.max(0, Math.min(selected, props.items.length - 1));
             props.items.forEach((item, index) => {
               const button = renderItem(item, index === selected);
-              button.addEventListener("mousedown", (event) => {
+              let handled = false;
+              const activate = (event: Event) => {
                 event.preventDefault();
+                if (handled) return;
+                handled = true;
                 props?.command(item);
-              });
+              };
+              button.addEventListener("pointerdown", activate);
+              button.addEventListener("mousedown", activate);
               button.addEventListener("mouseenter", () => {
                 selected = index;
                 draw();

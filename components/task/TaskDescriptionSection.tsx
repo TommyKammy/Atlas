@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import { docToText, markdownToDoc } from "@/lib/rich-text-markdown";
 import type { MentionUser, RichTextDoc } from "@/lib/rich-text-types";
@@ -26,7 +26,17 @@ export default function TaskDescriptionSection({
   const [editing, setEditing] = useState(false);
   const initial = doc ?? markdownToDoc(legacy, mentionUsers);
   const draftRef = useRef<RichTextDoc>(initial);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasText = docToText(initial).length > 0;
+
+  const clearBlurTimer = () => {
+    if (blurTimer.current) {
+      clearTimeout(blurTimer.current);
+      blurTimer.current = null;
+    }
+  };
+
+  useEffect(() => clearBlurTimer, []);
 
   const start = () => {
     draftRef.current = doc ?? markdownToDoc(legacy, mentionUsers);
@@ -34,6 +44,7 @@ export default function TaskDescriptionSection({
   };
 
   const save = async () => {
+    clearBlurTimer();
     try {
       await onSave(draftRef.current);
       setEditing(false);
@@ -43,7 +54,27 @@ export default function TaskDescriptionSection({
   };
 
   const cancel = () => {
+    clearBlurTimer();
     setEditing(false);
+  };
+
+  /**
+   * Floating menus (slash/mention) are portalled to document.body. Clicking
+   * one briefly blurs the editor before its mousedown command re-focuses it,
+   * so wait a tick and only save when focus really left the section.
+   */
+  const scheduleBlurSave = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    const section = event.currentTarget;
+    clearBlurTimer();
+    blurTimer.current = setTimeout(() => {
+      blurTimer.current = null;
+      const active = document.activeElement;
+      if (active && (section.contains(active) || active.closest("[data-atlas-mention-menu], [data-atlas-slash-menu]"))) {
+        return;
+      }
+      void save();
+    }, 120);
   };
 
   return (
@@ -63,9 +94,8 @@ export default function TaskDescriptionSection({
 
       {editing ? (
         <div
-          onBlur={(event: FocusEvent<HTMLDivElement>) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) void save();
-          }}
+          onBlur={scheduleBlurSave}
+          onFocus={clearBlurTimer}
         >
           <RichTextEditor
             initialDoc={doc ?? markdownToDoc(legacy, mentionUsers)}

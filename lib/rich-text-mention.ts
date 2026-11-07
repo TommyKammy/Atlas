@@ -51,10 +51,15 @@ export function createMentionSuggestion(getUsers: () => MentionUser[]): MentionS
           button.style.padding = "5px 8px";
           button.style.textAlign = "left";
           button.style.cursor = "pointer";
-          button.addEventListener("mousedown", (event) => {
+          let handled = false;
+          const activate = (event: Event) => {
             event.preventDefault();
+            if (handled) return;
+            handled = true;
             props?.command({ id: String(user.id), label: user.name });
-          });
+          };
+          button.addEventListener("pointerdown", activate);
+          button.addEventListener("mousedown", activate);
           button.addEventListener("mouseenter", () => {
             selected = index;
             draw();
