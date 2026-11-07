@@ -69,13 +69,6 @@ function MenuIcon({ name }: { name: string }) {
         <path d="m8 1.5 1 1.7 2-.3 1.3 1.6 1.7 1-.3 2 1 1.5-1 1.5.3 2-1.7 1-1.3 1.6-2-.3-1 1.7-1-1.7-2 .3L3.7 13l-1.7-1 .3-2-1-1.5 1-1.5-.3-2 1.7-1L5 2.9l2 .3z" />
       </svg>
     );
-  if (name === "license")
-    return (
-      <svg {...common}>
-        <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" />
-        <path d="M1.5 6.5h13M4 9h3" />
-      </svg>
-    );
   if (name === "logout")
     return (
       <svg {...common}>
@@ -235,15 +228,6 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                   <MenuIcon name="user-plus" />
                   メンバーを招待
                 </button>
-                <Link
-                  href="/admin#users"
-                  onClick={() => setOpen(false)}
-                  data-user-menu-license
-                  className="mx-2 my-1 flex h-9 items-center gap-2 rounded bg-amber-300 px-3 text-left text-[13px] font-medium text-neutral-900 hover:bg-amber-400"
-                >
-                  <MenuIcon name="license" />
-                  ライセンスを追加
-                </Link>
                 <div className="my-1 border-t border-neutral-100" />
               </>
             )}
