@@ -124,7 +124,7 @@ export default async function SidebarNav() {
               <SidebarProjectLink
                 key={p.id}
                 project={p}
-                href={`/projects/${p.id}?view=list`}
+                href={`/projects/${p.id}`}
                 className={`${item} text-amber-200`}
                 starred
                 leading="star"
@@ -139,7 +139,7 @@ export default async function SidebarNav() {
               <SidebarProjectLink
                 key={p.id}
                 project={p}
-                href={`/projects/${p.id}?view=list`}
+                href={`/projects/${p.id}`}
                 className={`${item} text-neutral-300`}
                 starred={favoriteIds.has(p.id)}
               />
@@ -155,7 +155,7 @@ export default async function SidebarNav() {
           <SidebarProjectLink
             key={p.id}
             project={p}
-            href={`/projects/${p.id}?view=list`}
+            href={`/projects/${p.id}`}
             className={item}
             starred={favoriteIds.has(p.id)}
           />

@@ -16,6 +16,7 @@ const VIEW_TYPES = new Set([
   "messages",
   "knowledge",
   "files",
+  "forms",
 ]);
 
 export const GET = withProject("view", async (_req, { projectId }) => {

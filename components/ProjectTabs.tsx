@@ -1,29 +1,28 @@
 "use client";
 
-import { confirmAction } from "@/lib/ui-feedback";
-
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ProjectTab } from "@/lib/data";
-import { useFocusTrap } from "@/lib/use-focus-trap";
-
-const VIEW_OPTIONS = [
-  ["overview", "概要"],
-  ["dashboard", "ダッシュボード"],
-  ["list", "リスト"],
-  ["board", "ボード"],
-  ["timeline", "タイムライン"],
-  ["calendar", "カレンダー"],
-  ["messages", "メッセージ"],
-  ["knowledge", "知識"],
-  ["files", "ファイル"],
-  ["forms", "フォーム"],
-] as const;
+import { api } from "@/lib/api-client";
+import { confirmAction, toast } from "@/lib/ui-feedback";
+import type { ProjectTabViewOption } from "@/lib/project-tab-views";
+import ProjectTabAddMenu from "./project/ProjectTabAddMenu";
+import ProjectTabContextMenu, { type ProjectTabMenuAction } from "./project/ProjectTabContextMenu";
 
 function tabHref(projectId: number, tab: ProjectTab) {
-  const base = `/projects/${projectId}?view=${tab.view_type}`;
-  return tab.is_custom ? `${base}&tab=${encodeURIComponent(tab.tab_key)}` : base;
+  return `/projects/${projectId}?view=${tab.view_type}&tab=${encodeURIComponent(tab.tab_key)}`;
+}
+
+function moveTab(list: ProjectTab[], dragId: number, overId: number, after: boolean): ProjectTab[] {
+  const from = list.findIndex((tab) => tab.id === dragId);
+  const target = list.find((tab) => tab.id === overId);
+  if (from < 0 || !target) return list;
+  const next = list.filter((tab) => tab.id !== dragId);
+  const targetIndex = next.findIndex((tab) => tab.id === overId);
+  const insert = targetIndex < 0 ? next.length : targetIndex + (after ? 1 : 0);
+  next.splice(insert, 0, list[from]);
+  return next;
 }
 
 export default function ProjectTabs({
@@ -31,238 +30,415 @@ export default function ProjectTabs({
   active,
   activeTabKey,
   tabs,
+  defaultTabKey,
+  canEdit,
 }: {
   projectId: number;
   active: string;
   activeTabKey: string | null;
   tabs: ProjectTab[];
+  defaultTabKey: string | null;
+  canEdit: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [viewType, setViewType] = useState("list");
+  const [order, setOrder] = useState<ProjectTab[]>(tabs);
+  const [menu, setMenu] = useState<{ tab: ProjectTab; x: number; y: number } | null>(null);
+  const [addMenu, setAddMenu] = useState<{ x: number; y: number; width: number } | null>(null);
+  const [defaultKey, setDefaultKey] = useState<string | null>(defaultTabKey);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const [draggingTab, setDraggingTab] = useState(false);
-  const dialogRef = useRef<HTMLFormElement>(null);
-  useFocusTrap(dialogRef, open, () => setOpen(false));
-  const dragging = useRef(false);
-  const draggedId = useRef<number | null>(null);
+  const [busyView, setBusyView] = useState<string | null>(null);
+  const [addError, setAddError] = useState("");
+  const [renameKey, setRenameKey] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const draggingRef = useRef(false);
+  const droppedRef = useRef(false);
+  const renameCancelledRef = useRef(false);
+  const renameBusyRef = useRef(false);
+  const orderRef = useRef(order);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOrder(tabs);
+    orderRef.current = tabs;
+  }, [tabs]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDefaultKey(defaultTabKey);
+  }, [defaultTabKey]);
+
+  useEffect(() => {
+    if (!renameKey) return;
+    renameInputRef.current?.focus();
+    renameInputRef.current?.select();
+  }, [renameKey]);
 
   const activeKey = activeTabKey ?? tabs.find((tab) => tab.view_type === active)?.tab_key ?? null;
 
-  const addTab = async (event: React.FormEvent) => {
+  const openMenuAt = (tab: ProjectTab, x: number, y: number) => {
+    const width = 190;
+    const height = 210;
+    setMenu({
+      tab,
+      x: Math.max(8, Math.min(x, window.innerWidth - width - 8)),
+      y: Math.max(8, Math.min(y, window.innerHeight - height - 8)),
+    });
+  };
+
+  const openMenu = (event: React.MouseEvent, tab: ProjectTab) => {
     event.preventDefault();
-    if (busy || !name.trim()) return;
-    setBusy(true);
-    setError("");
+    event.stopPropagation();
+    openMenuAt(tab, event.clientX, event.clientY);
+  };
+
+  const saveRename = async (tab: ProjectTab) => {
+    if (renameKey !== tab.tab_key) return;
+    if (renameBusyRef.current) return;
+    const name = renameValue.trim();
+    if (name === "" || name === tab.name) {
+      setRenameKey(null);
+      return;
+    }
+    renameBusyRef.current = true;
     try {
-      const res = await fetch("/api/project-tabs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: projectId, name: name.trim(), view_type: viewType }),
+      await api(`/api/project-tabs/${tab.id}`, "PATCH", { name });
+      setOrder((current) => {
+        const next = current.map((item) => (item.id === tab.id ? { ...item, name } : item));
+        orderRef.current = next;
+        return next;
       });
-      if (!res.ok) throw new Error(`タブの追加に失敗しました (${res.status})`);
-      setOpen(false);
-      setName("");
-      setViewType("list");
+      setRenameKey(null);
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "タブの追加に失敗しました");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "タブ名を変更できませんでした");
+    } finally {
+      renameBusyRef.current = false;
+    }
+  };
+
+  const setDefaultTab = async (tab: ProjectTab) => {
+    setBusy(true);
+    try {
+      await api("/api/view-state", "PUT", {
+        project_id: projectId,
+        view: "tabs",
+        state: { default: tab.tab_key },
+      });
+      setDefaultKey(tab.tab_key);
+      toast(`「${tab.name}」をデフォルトタブに設定しました`);
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "デフォルトタブを設定できませんでした");
     } finally {
       setBusy(false);
     }
   };
 
-  const reorder = async (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
-    const next = [...tabs];
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    const res = await fetch("/api/project-tabs/reorder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId, ids: next.map((tab) => tab.id) }),
-    });
-    if (res.ok) router.refresh();
+  const duplicateTab = async (tab: ProjectTab) => {
+    setBusy(true);
+    try {
+      const created = await api<{ id: number; tab_key: string }>("/api/project-tabs", "POST", {
+        project_id: projectId,
+        name: `${tab.name} のコピー`,
+        view_type: tab.view_type,
+      });
+      toast("タブをコピーしました");
+      router.push(`/projects/${projectId}?view=${tab.view_type}&tab=${encodeURIComponent(created.tab_key)}`);
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "タブをコピーできませんでした");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const removeTab = async (tab: ProjectTab) => {
-    if (!tab.is_custom || !await confirmAction(`「${tab.name}」タブを削除しますか？`)) return;
-    const res = await fetch(`/api/project-tabs/${tab.id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+  const copyTabLink = async (tab: ProjectTab) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}${tabHref(projectId, tab)}`);
+      toast("タブのリンクをコピーしました");
+    } catch {
+      toast("リンクをコピーできませんでした");
+    }
+  };
+
+  const deleteTab = async (tab: ProjectTab) => {
+    if (!(await confirmAction(`「${tab.name}」タブを削除しますか？`))) return;
+    setBusy(true);
+    try {
+      await api(`/api/project-tabs/${tab.id}`, "DELETE");
+      const current = orderRef.current;
+      const removedIndex = current.findIndex((item) => item.id === tab.id);
+      const next = current.filter((item) => item.id !== tab.id);
+      setOrder(next);
+      orderRef.current = next;
+      if (activeKey === tab.tab_key) {
+        const fallback = next[Math.min(Math.max(removedIndex, 0), next.length - 1)] ?? next[0];
+        if (fallback) router.push(tabHref(projectId, fallback));
+      }
+      router.refresh();
+      toast("タブを削除しました");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "タブを削除できませんでした");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runMenuAction = (action: ProjectTabMenuAction) => {
+    const tab = menu?.tab;
+    setMenu(null);
+    if (!tab) return;
+    if (action === "rename") {
+      renameCancelledRef.current = false;
+      setRenameKey(tab.tab_key);
+      setRenameValue(tab.name);
+    } else if (action === "default") {
+      void setDefaultTab(tab);
+    } else if (action === "duplicate") {
+      void duplicateTab(tab);
+    } else if (action === "copy") {
+      void copyTabLink(tab);
+    } else if (action === "delete") {
+      void deleteTab(tab);
+    }
+  };
+
+  const openAddMenu = () => {
+    if (!canEdit) return;
+    setAddError("");
+    const rect = addButtonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = Math.min(680, window.innerWidth - 16);
+    setAddMenu({
+      x: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+      y: rect.bottom + 6,
+      width,
+    });
+  };
+
+  const addTab = async (option: ProjectTabViewOption) => {
+    if (!canEdit || busyView) return;
+    setBusyView(option.value);
+    setAddError("");
+    try {
+      const created = await api<{ id: number; tab_key: string }>("/api/project-tabs", "POST", {
+        project_id: projectId,
+        name: option.label,
+        view_type: option.value,
+      });
+      setAddMenu(null);
+      router.push(`/projects/${projectId}?view=${option.value}&tab=${encodeURIComponent(created.tab_key)}`);
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : "タブを追加できませんでした");
+    } finally {
+      setBusyView(null);
+    }
+  };
+
+  const persistOrder = async (next: ProjectTab[]) => {
+    try {
+      await api("/api/project-tabs/reorder", "POST", {
+        project_id: projectId,
+        ids: next.map((tab) => tab.id),
+      });
+      router.refresh();
+    } catch {
+      setOrder(tabs);
+      orderRef.current = tabs;
+      toast("タブの並び替えに失敗しました");
+    }
   };
 
   return (
     <>
-      <nav className="relative flex items-center gap-2 overflow-x-auto px-6 py-[3px] text-sm whitespace-nowrap">
-        {tabs.map((tab, index) => (
-          <div
-            key={tab.id}
-            draggable
-            data-project-tab={tab.tab_key}
-            onDragStart={(event) => {
-              dragging.current = true;
-              draggedId.current = tab.id;
-              setDraggingTab(true);
-              event.dataTransfer.setData("text/atlas-tab", String(tab.id));
-              event.dataTransfer.effectAllowed = "move";
-            }}
-            onDragEnd={() => {
-              setTimeout(() => {
-                dragging.current = false;
-                draggedId.current = null;
-                setDraggingTab(false);
-                setDropIndex(null);
-              }, 0);
-            }}
-            className={`group relative flex shrink-0 items-center rounded-md ${
-              dropIndex === index ? "border-l-2 border-[#2c60b8]" : ""
-            }`}
-          >
-            <Link
-              href={tabHref(projectId, tab)}
-              onClick={(event) => {
-                if (dragging.current) event.preventDefault();
+      <nav
+        data-project-tabs
+        className="relative flex items-center gap-1 overflow-x-auto px-6 py-[3px] text-sm whitespace-nowrap"
+        onDragOver={(event) => {
+          if (dragId !== null) event.preventDefault();
+        }}
+        onDrop={(event) => {
+          if (!canEdit || dragId === null) return;
+          event.preventDefault();
+          droppedRef.current = true;
+          setDragId(null);
+          setDragOverId(null);
+          void persistOrder(orderRef.current);
+        }}
+      >
+        {order.map((tab) => {
+          const isActive = activeKey === tab.tab_key;
+          const isRenaming = renameKey === tab.tab_key;
+          const isDragOver = dragOverId === tab.id && dragId !== null;
+          const linkClass = `flex h-7 items-center rounded-md px-2 text-[14px] font-medium transition-colors ${
+            isActive
+              ? "bg-[#eff4fd] text-[#2c60b8] hover:bg-[#e1ebfc] hover:text-[#1b4da0]"
+              : "text-[#636363] hover:bg-[rgba(38,38,38,0.03)] hover:text-[#050505]"
+          } ${
+            isDragOver
+              ? isActive
+                ? "bg-[#e1ebfc] text-[#1b4da0]"
+                : "bg-[rgba(38,38,38,0.03)] text-[#050505]"
+              : ""
+          }`;
+          return (
+            <div
+              key={tab.id}
+              draggable={canEdit && !isRenaming}
+              data-project-tab={tab.tab_key}
+              onDragStart={(event) => {
+                if (!canEdit) return;
+                draggingRef.current = true;
+                droppedRef.current = false;
+                setDragId(tab.id);
+                setDragOverId(tab.id);
+                event.dataTransfer.setData("text/atlas-tab", String(tab.id));
+                event.dataTransfer.effectAllowed = "move";
               }}
-              className={`flex h-7 items-center rounded-md px-2 text-[14px] font-medium ${
-                activeKey === tab.tab_key
-                  ? "bg-[#eff4fd] text-[#2C60B8]"
-                  : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+              onDragOver={(event) => {
+                if (!canEdit || dragId === null) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setDragOverId(tab.id);
+                if (tab.id === dragId) return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                const after = event.clientX > rect.left + rect.width / 2;
+                setOrder((current) => {
+                  const next = moveTab(current, dragId, tab.id, after);
+                  orderRef.current = next;
+                  return next;
+                });
+              }}
+              onDrop={(event) => {
+                if (!canEdit || dragId === null) return;
+                event.preventDefault();
+                event.stopPropagation();
+                droppedRef.current = true;
+                setDragId(null);
+                setDragOverId(null);
+                void persistOrder(orderRef.current);
+              }}
+              onDragEnd={() => {
+                window.setTimeout(() => {
+                  draggingRef.current = false;
+                }, 0);
+                setDragId(null);
+                setDragOverId(null);
+                if (!droppedRef.current) {
+                  setOrder(tabs);
+                  orderRef.current = tabs;
+                }
+                droppedRef.current = false;
+              }}
+              onContextMenu={(event) => openMenu(event, tab)}
+              onKeyDown={(event) => {
+                if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                  event.preventDefault();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  openMenuAt(tab, rect.left + 8, rect.bottom + 2);
+                }
+              }}
+              className={`relative flex shrink-0 items-center rounded-md ${
+                dragId === tab.id ? "opacity-40" : ""
               }`}
             >
-              {tab.name}
-            </Link>
-            {tab.is_custom && (
-              <button
-                type="button"
-                data-project-tab-delete={tab.id}
-                aria-label={`${tab.name}タブを削除`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  void removeTab(tab);
-                }}
-                className="mr-1 hidden h-4 w-4 items-center justify-center rounded text-neutral-400 hover:bg-red-50 hover:text-red-600 group-hover:flex"
-              >
-                ×
-              </button>
-            )}
-          </div>
-        ))}
-        {draggingTab && (
-          <div
-            data-project-tab-dropzone
-            className="absolute inset-0 z-10"
-            onDragOver={(event) => {
-              event.preventDefault();
-              const rects = [...document.querySelectorAll<HTMLElement>("[data-project-tab]")].map((el) =>
-                el.getBoundingClientRect(),
-              );
-              let raw = 0;
-              for (const rect of rects) {
-                if (event.clientX > rect.left + rect.width / 2) raw += 1;
-              }
-              const from = tabs.findIndex((tab) => tab.id === draggedId.current);
-              const index = Math.max(0, Math.min(tabs.length - 1, from >= 0 && from < raw ? raw - 1 : raw));
-              setDropIndex(index);
+              {isRenaming ? (
+                <input
+                  ref={renameInputRef}
+                  value={renameValue}
+                  onChange={(event) => setRenameValue(event.target.value)}
+                  onBlur={() => {
+                    if (!renameCancelledRef.current) void saveRename(tab);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      renameCancelledRef.current = false;
+                      void saveRename(tab);
+                    } else if (event.key === "Escape") {
+                      event.preventDefault();
+                      renameCancelledRef.current = true;
+                      setRenameKey(null);
+                    }
+                  }}
+                  data-project-tab-rename-input={tab.tab_key}
+                  aria-label={`${tab.name}タブの名前`}
+                  className="h-7 w-32 rounded-md border border-[#2c60b8] bg-white px-2 text-[14px] font-medium text-neutral-900 outline-none"
+                />
+              ) : (
+                <Link
+                  href={tabHref(projectId, tab)}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={(event) => {
+                    if (draggingRef.current) event.preventDefault();
+                  }}
+                  className={linkClass}
+                >
+                  {tab.name}
+                </Link>
+              )}
+            </div>
+          );
+        })}
+        {canEdit && (
+          <button
+            ref={addButtonRef}
+            type="button"
+            data-project-tab-add
+            aria-label="タブを追加"
+            aria-haspopup="menu"
+            aria-expanded={addMenu !== null}
+            onClick={() => {
+              if (addMenu) setAddMenu(null);
+              else openAddMenu();
             }}
-            onDrop={(event) => {
-              event.preventDefault();
-              const rects = [...document.querySelectorAll<HTMLElement>("[data-project-tab]")].map((el) =>
-                el.getBoundingClientRect(),
-              );
-              let raw = 0;
-              for (const rect of rects) {
-                if (event.clientX > rect.left + rect.width / 2) raw += 1;
-              }
-              const from = tabs.findIndex((tab) => tab.id === draggedId.current);
-              const index = Math.max(0, Math.min(tabs.length - 1, from >= 0 && from < raw ? raw - 1 : raw));
-              setDropIndex(null);
-              void reorder(from, index);
-            }}
-          />
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-[rgba(38,38,38,0.03)] hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2c60b8]"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
         )}
-        <button
-          type="button"
-          data-project-tab-add
-          aria-label="タブを追加"
-          onClick={() => {
-            setError("");
-            setOpen(true);
-          }}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[17px] leading-none text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
-        >
-          ＋
-        </button>
       </nav>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 pt-24" role="dialog" aria-modal="true">
-          <form
-            ref={dialogRef}
-            tabIndex={-1}
-            onSubmit={addTab}
-            data-project-tab-composer
-            className="w-[360px] rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold text-neutral-900">タブを追加</h2>
-              <button
-                type="button"
-                aria-label="閉じる"
-                onClick={() => setOpen(false)}
-                className="text-lg leading-none text-neutral-400 hover:text-neutral-700"
-              >
-                ×
-              </button>
-            </div>
-            <label className="mt-4 block text-[12px] font-medium text-neutral-600">
-              タブ名
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                data-project-tab-name
-                placeholder="例: 週次ボード"
-                className="mt-1 h-8 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
-              />
-            </label>
-            <label className="mt-3 block text-[12px] font-medium text-neutral-600">
-              表示するビュー
-              <select
-                value={viewType}
-                onChange={(event) => setViewType(event.target.value)}
-                data-project-tab-view
-                className="mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
-              >
-                {VIEW_OPTIONS.map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {error && <p className="mt-3 text-[12px] text-red-600">{error}</p>}
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded px-3 py-1.5 text-[13px] text-neutral-500 hover:bg-neutral-100"
-              >
-                キャンセル
-              </button>
-              <button
-                type="submit"
-                data-project-tab-save
-                disabled={busy}
-                className="rounded bg-[#2c60b8] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
-              >
-                追加
-              </button>
-            </div>
-          </form>
-        </div>
+      {menu && (
+        <ProjectTabContextMenu
+          tab={menu.tab}
+          pos={{ x: menu.x, y: menu.y }}
+          isDefault={menu.tab.tab_key === defaultKey}
+          canEdit={canEdit}
+          canDelete={order.length > 1 && menu.tab.tab_key !== defaultKey}
+          busy={busy}
+          onClose={() => setMenu(null)}
+          onAction={runMenuAction}
+        />
+      )}
+
+      {canEdit && addMenu && (
+        <ProjectTabAddMenu
+          pos={addMenu}
+          busyView={busyView}
+          error={addError}
+          onSelect={(option) => void addTab(option)}
+          onClose={() => {
+            setAddMenu(null);
+            setAddError("");
+          }}
+        />
       )}
     </>
   );

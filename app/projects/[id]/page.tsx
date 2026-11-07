@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   getProject,
   getProjectAccess,
@@ -59,9 +59,11 @@ export default async function ProjectPage(props: {
   const project = await getProject(projectId);
   if (!project) notFound();
 
-  const view = typeof searchParams.view === "string" && VIEWS.has(searchParams.view)
-    ? searchParams.view
-    : "list";
+  const explicitView =
+    typeof searchParams.view === "string" && VIEWS.has(searchParams.view)
+      ? searchParams.view
+      : null;
+  const view = explicitView ?? "list";
   const taskId =
     typeof searchParams.task === "string" && /^\d+$/.test(searchParams.task)
       ? Number(searchParams.task)
@@ -119,8 +121,21 @@ export default async function ProjectPage(props: {
     favorite,
   } = shell;
 
-  const needsViewState = view === "list" || view === "board" || view === "timeline" || view === "calendar";
-  const viewStates = needsViewState ? await getProjectViewStates(viewerId, projectId) : {};
+  const viewStates = await getProjectViewStates(viewerId, projectId);
+  if (!explicitView) {
+    const preferred = typeof viewStates.tabs?.default === "string" ? viewStates.tabs.default : null;
+    const defaultTab = preferred ? projectTabs.find((tab) => tab.tab_key === preferred) : undefined;
+    if (defaultTab) {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(searchParams)) {
+        if (typeof value === "string") params.set(key, value);
+        else if (Array.isArray(value)) for (const item of value) params.append(key, item);
+      }
+      params.set("view", defaultTab.view_type);
+      params.set("tab", defaultTab.tab_key);
+      redirect(`/projects/${projectId}?${params.toString()}`);
+    }
+  }
 
   const listData = view === "list" ? await getListViewData(projectId) : null;
   const boardData = view === "board" ? await getBoardViewData(projectId) : null;
@@ -248,6 +263,8 @@ export default async function ProjectPage(props: {
           active={view}
           activeTabKey={projectTabs.find((tab) => tab.tab_key === qstr("tab"))?.tab_key ?? null}
           tabs={projectTabs}
+          defaultTabKey={typeof viewStates.tabs?.default === "string" ? viewStates.tabs.default : null}
+          canEdit={access.role === "admin" || access.role === "editor"}
         />
         <div data-project-view={view}>
         {view === "overview" && overviewData && (

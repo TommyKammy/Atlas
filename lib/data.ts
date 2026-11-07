@@ -269,7 +269,7 @@ export async function getUnreadCount(userId: number, workspaceId: number): Promi
 
 export type ViewState = Record<string, string | number | boolean | null>;
 
-const VIEW_STATE_KEYS = new Set(["list", "board", "timeline", "calendar"]);
+const VIEW_STATE_KEYS = new Set(["list", "board", "timeline", "calendar", "tabs"]);
 
 export async function getProjectViewStates(
   userId: number,

@@ -3,7 +3,7 @@ import { withProject } from "@/lib/api/route";
 import { badRequest } from "@/lib/api/errors";
 import { getProjectViewStates, saveProjectViewState, type ViewState } from "@/lib/data";
 
-const VIEWS = new Set(["list", "board", "timeline", "calendar"]);
+const VIEWS = new Set(["list", "board", "timeline", "calendar", "tabs"]);
 
 function validState(value: unknown): value is ViewState {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
