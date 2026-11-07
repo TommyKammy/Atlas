@@ -22,6 +22,75 @@ type MenuUser = {
   out_of_office_note?: string | null;
 };
 
+function MenuIcon({ name }: { name: string }) {
+  const common = {
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.4,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    className: "h-4 w-4 shrink-0 text-neutral-500",
+  };
+  if (name === "clock")
+    return (
+      <svg {...common}>
+        <circle cx="8" cy="8" r="6" />
+        <path d="M8 4.5V8l2.5 1.5" />
+      </svg>
+    );
+  if (name === "admin")
+    return (
+      <svg {...common}>
+        <path d="M2.5 10a5.5 5.5 0 1 1 11 0" />
+        <path d="M8 10 10.5 6" />
+        <path d="M2.5 12.5h11" />
+      </svg>
+    );
+  if (name === "user")
+    return (
+      <svg {...common}>
+        <circle cx="8" cy="5.5" r="2.5" />
+        <path d="M2.8 13.5c0-2.4 2.2-4 5.2-4s5.2 1.6 5.2 4" />
+      </svg>
+    );
+  if (name === "user-plus")
+    return (
+      <svg {...common}>
+        <circle cx="6.5" cy="5.5" r="2.5" />
+        <path d="M1.8 13.5c0-2.4 2-4 4.7-4 1.1 0 2.1.3 2.9.8" />
+        <path d="M12 8.5v4M10 10.5h4" />
+      </svg>
+    );
+  if (name === "gear")
+    return (
+      <svg {...common}>
+        <circle cx="8" cy="8" r="2.2" />
+        <path d="m8 1.5 1 1.7 2-.3 1.3 1.6 1.7 1-.3 2 1 1.5-1 1.5.3 2-1.7 1-1.3 1.6-2-.3-1 1.7-1-1.7-2 .3L3.7 13l-1.7-1 .3-2-1-1.5 1-1.5-.3-2 1.7-1L5 2.9l2 .3z" />
+      </svg>
+    );
+  if (name === "license")
+    return (
+      <svg {...common}>
+        <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" />
+        <path d="M1.5 6.5h13M4 9h3" />
+      </svg>
+    );
+  if (name === "logout")
+    return (
+      <svg {...common}>
+        <path d="M6.5 2H3v12h3.5" />
+        <path d="M9 5.5 12 8l-3 2.5M6 8h6" />
+      </svg>
+    );
+  return (
+    <svg {...common}>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 5v6M5 8h6" />
+    </svg>
+  );
+}
+
 export default function SidebarUserMenu({ user }: { user: MenuUser }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -33,6 +102,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
   const [oooSaving, setOooSaving] = useState(false);
   const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
   const ref = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const openMenu = () => {
     const rect = ref.current?.getBoundingClientRect();
@@ -44,7 +114,9 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -109,6 +181,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
         typeof document !== "undefined" &&
         createPortal(
           <div
+            ref={menuRef}
             role="menu"
             data-user-menu
             className="fixed z-[130] w-64 rounded-lg border border-neutral-200 bg-white py-1 text-neutral-900 shadow-xl"
@@ -141,12 +214,13 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
               }}
               className={`${item} mt-1`}
             >
-              <span className="text-neutral-400">◷</span>
+              <MenuIcon name="clock" />
               不在に設定
             </button>
             {user.is_admin && (
               <>
                 <Link href="/admin" onClick={() => setOpen(false)} data-user-menu-admin className={item}>
+                  <MenuIcon name="admin" />
                   管理者コンソール
                 </Link>
                 <button
@@ -158,15 +232,27 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                   }}
                   className={item}
                 >
+                  <MenuIcon name="user-plus" />
                   メンバーを招待
                 </button>
+                <Link
+                  href="/admin#users"
+                  onClick={() => setOpen(false)}
+                  data-user-menu-license
+                  className="mx-2 my-1 flex h-9 items-center gap-2 rounded bg-amber-300 px-3 text-left text-[13px] font-medium text-neutral-900 hover:bg-amber-400"
+                >
+                  <MenuIcon name="license" />
+                  ライセンスを追加
+                </Link>
                 <div className="my-1 border-t border-neutral-100" />
               </>
             )}
             <Link href="/profile" onClick={() => setOpen(false)} data-user-menu-profile className={item}>
+              <MenuIcon name="user" />
               プロフィール
             </Link>
             <Link href="/profile#settings" onClick={() => setOpen(false)} data-user-menu-settings className={item}>
+              <MenuIcon name="gear" />
               設定
             </Link>
             <div className="my-1 border-t border-neutral-100" />
@@ -176,9 +262,11 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
               onClick={() => void logout(true)}
               className={item}
             >
+              <MenuIcon name="user-plus" />
               別のアカウントを追加
             </button>
             <button type="button" data-user-logout onClick={() => void logout()} className={item}>
+              <MenuIcon name="logout" />
               ログアウト
             </button>
           </div>,
