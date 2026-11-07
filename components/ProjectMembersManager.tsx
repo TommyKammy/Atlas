@@ -3,7 +3,7 @@
 import { confirmAction } from "@/lib/ui-feedback";
 
 import { api } from "@/lib/api-client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import UserAvatar from "./UserAvatar";
 import {
   PROJECT_ROLE_DESCRIPTIONS,
@@ -33,7 +33,13 @@ type DirectoryUser = {
 };
 
 
-export default function ProjectMembersManager({ projectId }: { projectId: number }) {
+export default function ProjectMembersManager({
+  projectId,
+  autoFocusAdd = false,
+}: {
+  projectId: number;
+  autoFocusAdd?: boolean;
+}) {
   const [members, setMembers] = useState<Member[]>([]);
   const [users, setUsers] = useState<DirectoryUser[]>([]);
   const [canManage, setCanManage] = useState(false);
@@ -42,6 +48,11 @@ export default function ProjectMembersManager({ projectId }: { projectId: number
   const [addRole, setAddRole] = useState<ProjectRole>("editor");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const addSelectRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    if (autoFocusAdd && canManage) addSelectRef.current?.focus();
+  }, [autoFocusAdd, canManage]);
 
   const load = async () => {
     const data = await api<{ members: Member[]; can_manage: boolean; current_user_id: number }>(`/api/projects/${projectId}/members`);
@@ -116,8 +127,10 @@ export default function ProjectMembersManager({ projectId }: { projectId: number
       {canManage && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           <select
+            ref={addSelectRef}
             value={addUserId}
             onChange={(e) => setAddUserId(e.target.value)}
+            aria-label="追加するユーザー"
             className="h-8 min-w-40 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-sm"
           >
             <option value="">ユーザーを選択…</option>

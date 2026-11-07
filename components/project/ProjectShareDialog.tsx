@@ -1,21 +1,35 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Dialog from "../ui/Dialog";
 import ProjectMembersManager from "../ProjectMembersManager";
 import ShareLinks from "../ShareLinks";
 import { toast } from "@/lib/ui-feedback";
 
-/** Project share dialog used from the sidebar context menu. */
+/** Project share dialog used from the header facepile and the sidebar context menu. */
 export default function ProjectShareDialog({
   projectId,
   projectName,
+  title,
+  subtitle = "メンバーと閲覧リンクを管理します。",
+  focusAdd = false,
   onClose,
 }: {
   projectId: number;
   projectName: string;
+  title?: string;
+  subtitle?: string;
+  focusAdd?: boolean;
   onClose: () => void;
 }) {
-  const url = typeof window === "undefined" ? "" : `${window.location.origin}/projects/${projectId}?view=list`;
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setOrigin(window.location.origin));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  const url = `${origin}/projects/${projectId}?view=list`;
   const primary =
     "flex h-8 items-center rounded-md bg-[#4075cf] px-3 text-sm font-medium text-white hover:bg-[#3567b8] disabled:opacity-60";
   const secondary =
@@ -24,13 +38,13 @@ export default function ProjectShareDialog({
     <Dialog
       open
       onClose={onClose}
-      title="プロジェクトを共有"
+      title={title ?? `${projectName}を共有`}
       backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
       panelClassName="max-h-[90vh] w-[min(560px,90vw)] overflow-y-auto rounded-lg bg-white text-sm shadow-xl"
     >
-      <div className="p-5">
+      <div className="p-5" data-project-share-dialog>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">プロジェクトを共有</h2>
+          <h2 className="text-lg font-semibold">{title ?? `${projectName}を共有`}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -40,7 +54,9 @@ export default function ProjectShareDialog({
             ×
           </button>
         </div>
-        <p className="mt-1 text-xs text-neutral-500">{projectName}</p>
+        <p className="mt-1 text-xs text-neutral-500">
+          {subtitle ? `${projectName} ・ ${subtitle}` : projectName}
+        </p>
         <div className="mt-4 flex items-center gap-2">
           <input
             readOnly
@@ -60,7 +76,7 @@ export default function ProjectShareDialog({
             コピー
           </button>
         </div>
-        <ProjectMembersManager projectId={projectId} />
+        <ProjectMembersManager projectId={projectId} autoFocusAdd={focusAdd} />
         <ShareLinks projectId={projectId} />
         <div className="mt-5 flex justify-end">
           <button type="button" className={primary} onClick={onClose}>

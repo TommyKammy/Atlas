@@ -37,7 +37,7 @@ import Shortcuts from "@/components/Shortcuts";
 import StarButton from "@/components/StarButton";
 import ProjectTitle from "@/components/ProjectTitle";
 import ProjectHeaderStatus from "@/components/ProjectHeaderStatus";
-import UserAvatar from "@/components/UserAvatar";
+import ProjectMemberFacepile from "@/components/project/ProjectMemberFacepile";
 import ProjectShareButton from "@/components/ProjectShareButton";
 import ProjectCustomizeButton from "@/components/ProjectCustomizeButton";
 import TaskPane from "@/components/TaskPane";
@@ -217,13 +217,11 @@ export default async function ProjectPage(props: {
             canEdit={access.role === "admin"}
           />
           <span className="flex-1" />
-          <span className="hidden -space-x-1 lg:flex">
-            {members.slice(0, 5).map((m) => (
-              <span key={m.id} className="inline-block rounded-full border-2 border-white">
-                <UserAvatar name={m.name} url={m.avatar_url} className="h-7 w-7" />
-              </span>
-            ))}
-          </span>
+          <ProjectMemberFacepile
+            projectId={projectId}
+            projectName={project.name}
+            members={members.map((m) => ({ id: m.id, name: m.name, avatar_url: m.avatar_url ?? null }))}
+          />
           <ProjectShareButton projectId={projectId} projectName={project.name} />
           <ProjectCustomizeButton
             key={`customize-${projectId}`}
