@@ -1,50 +1,16 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { logEvent } from "@/lib/data";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
+import { parseCsv } from "@/lib/csv";
 
 const MAX_ROWS = 1000;
 const MAX_BYTES = 5 * 1024 * 1024;
 
-function splitCsvLine(line: string): string[] {
-  const out: string[] = [];
-  let cur = "";
-  let quoted = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (quoted) {
-      if (c === '"') {
-        if (line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else quoted = false;
-      } else cur += c;
-    } else if (c === '"') quoted = true;
-    else if (c === ",") {
-      out.push(cur);
-      cur = "";
-    } else cur += c;
-  }
-  out.push(cur);
-  return out;
-}
-
 // Import the CSV dialect produced by GET export (same column order).
 // Rows with 種別=サブタスク attach to the preceding top-level row.
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const auth = await requireProjectPermission(req, Number(id), "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const uid = getCurrentUserIdFromRequest(req);
-  const p = await db.query("SELECT id FROM projects WHERE id = $1::bigint", [id]);
-  if (p.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const projectId = Number(id);
-
+export const POST = withProject("edit", async (req, { uid, projectId }) => {
   const form = await req.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
@@ -53,11 +19,11 @@ export async function POST(
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: "file exceeds 5MB" }, { status: 413 });
   }
-  const text = (await file.text()).replace(/^\uFEFF/, "");
-  const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
-  if (lines.length < 2) return NextResponse.json({ error: "empty csv" }, { status: 400 });
+  const text = await file.text();
+  const records = parseCsv(text).filter((row) => row.some((cell) => cell.trim() !== ""));
+  if (records.length < 2) return NextResponse.json({ error: "empty csv" }, { status: 400 });
 
-  const header = splitCsvLine(lines[0]);
+  const header = records[0].map((cell) => cell.trim());
   const base = ["セクション", "種別", "名前", "完了", "担当者", "開始日", "期日", "進捗", "Status", "繰返し", "コメント"];
   for (let i = 0; i < base.length; i++) {
     if (header[i] !== base[i]) {
@@ -90,9 +56,9 @@ export async function POST(
   let skipped = 0;
   const errors: string[] = [];
   let lastTop: number | null = null;
-  const rows = lines.slice(1, MAX_ROWS + 1);
+  const rows = records.slice(1, MAX_ROWS + 1);
   for (let li = 0; li < rows.length; li++) {
-    const cols = splitCsvLine(rows[li]);
+    const cols = rows[li];
     const get = (i: number) => (cols[i] ?? "").trim();
     try {
       const kind = get(1);
@@ -183,4 +149,4 @@ export async function POST(
   }
   await notifyProject(projectId);
   return NextResponse.json({ created, skipped, errors: errors.slice(0, 20) }, { status: 201 });
-}
+});

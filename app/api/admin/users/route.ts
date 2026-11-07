@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withAdmin } from "@/lib/api/route";
 
 const ROLE_FLAGS: Record<string, { is_admin: boolean; is_guest: boolean }> = {
   admin: { is_admin: true, is_guest: false },
@@ -9,18 +9,7 @@ const ROLE_FLAGS: Record<string, { is_admin: boolean; is_guest: boolean }> = {
   guest: { is_admin: false, is_guest: true },
 };
 
-async function requireAdmin(req: Request) {
-  const uid = getCurrentUserIdFromRequest(req);
-  const r = await db.query("SELECT is_admin FROM users WHERE id = $1 AND deactivated_at IS NULL", [uid]);
-  if (r.rowCount === 0 || r.rows[0].is_admin !== true) {
-    return null;
-  }
-  return uid as number;
-}
-
-export async function GET(req: Request) {
-  const admin = await requireAdmin(req);
-  if (admin === null) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+export const GET = withAdmin(async () => {
   const r = await db.query(
     `SELECT u.id, u.name, u.email, u.title, u.avatar_url, u.is_guest, u.is_admin,
        u.deactivated_at::text AS deactivated_at,
@@ -35,11 +24,9 @@ export async function GET(req: Request) {
        (SELECT COALESCE(SUM(size_bytes),0)::bigint FROM task_attachments) AS bytes`,
   );
   return NextResponse.json({ users: r.rows, stats: ws.rows[0] });
-}
+});
 
-export async function POST(req: Request) {
-  const admin = await requireAdmin(req);
-  if (admin === null) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+export const POST = withAdmin(async (req) => {
   const body = await req.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim().slice(0, 120) : "";
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase().slice(0, 255) : "";
@@ -71,4 +58,4 @@ export async function POST(req: Request) {
     }
     throw e;
   }
-}
+});

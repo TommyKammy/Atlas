@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ProjectMessage } from "@/lib/data";
 import { renderMarkdown } from "@/lib/markdown";
-import { useApiRefresh } from "./ListView";
+import { useApiRefresh } from "@/lib/use-api-refresh";
 import EmptyState from "./EmptyState";
 
 export default function MessagesView({
@@ -19,7 +19,10 @@ export default function MessagesView({
   const [body, setBody] = useState("");
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("focus") === "composer") setOpen(true);
+    const frame = window.requestAnimationFrame(() => {
+      if (new URLSearchParams(window.location.search).get("focus") === "composer") setOpen(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const post = async () => {

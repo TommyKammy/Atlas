@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { logEvent } from "@/lib/data";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
+import { withTask } from "@/lib/api/route";
 import { runAutomations } from "@/lib/automation-runner";
+import { nextOccurrence } from "@/lib/recurrence";
 
 const PATCHABLE = new Set([
   "name",
@@ -23,17 +24,90 @@ const PATCHABLE = new Set([
   "recurrence",
 ]);
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const taskProjectId = await getTaskProjectId(Number(id));
-  if (taskProjectId !== null) {
-    const auth = await requireProjectPermission(req, taskProjectId, "edit");
-    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: currentProjectId }) => {
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
-  const body = await req.json();
+
+  // Validate the destination before touching the row. This closes the
+  // cross-project move hole where only the source project was authorized.
+  const rawProject = body.project_id;
+  const targetProjectId =
+    rawProject === undefined
+      ? currentProjectId
+      : rawProject === null || rawProject === ""
+        ? null
+        : Number(rawProject);
+  if (targetProjectId === null || !Number.isInteger(targetProjectId) || targetProjectId <= 0) {
+    return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+  }
+  if (targetProjectId !== currentProjectId) {
+    const targetAuth = await requireProjectPermission(req, targetProjectId, "edit");
+    if (!targetAuth.ok) return NextResponse.json({ error: targetAuth.error }, { status: targetAuth.status });
+    if (!("section_id" in body)) body.section_id = null;
+    if (!("parent_task_id" in body)) body.parent_task_id = null;
+  }
+  if ("section_id" in body) {
+    const rawSection = body.section_id;
+    if (rawSection === null || rawSection === "") {
+      body.section_id = null;
+    } else {
+      const sectionId = Number(rawSection);
+      if (!Number.isInteger(sectionId) || sectionId <= 0) {
+        return NextResponse.json({ error: "invalid section_id" }, { status: 400 });
+      }
+      const section = await db.query("SELECT project_id FROM sections WHERE id = $1::bigint", [sectionId]);
+      if (section.rowCount === 0 || Number(section.rows[0].project_id) !== targetProjectId) {
+        return NextResponse.json({ error: "section does not belong to project" }, { status: 400 });
+      }
+      body.section_id = sectionId;
+    }
+  }
+  if ("parent_task_id" in body) {
+    const rawParent = body.parent_task_id;
+    if (rawParent === null || rawParent === "") {
+      body.parent_task_id = null;
+    } else {
+      const parentId = Number(rawParent);
+      if (!Number.isInteger(parentId) || parentId <= 0 || parentId === taskId) {
+        return NextResponse.json({ error: "invalid parent_task_id" }, { status: 400 });
+      }
+      const parentProjectId = await getTaskProjectId(parentId);
+      if (parentProjectId !== targetProjectId) {
+        return NextResponse.json({ error: "parent task is in another project" }, { status: 400 });
+      }
+      const cycle = await db.query(
+        `WITH RECURSIVE descendants AS (
+           SELECT id FROM tasks WHERE parent_task_id = $1::bigint
+           UNION ALL SELECT t.id FROM tasks t JOIN descendants d ON t.parent_task_id = d.id
+         ) SELECT 1 FROM descendants WHERE id = $2::bigint LIMIT 1`,
+        [taskId, parentId],
+      );
+      if ((cycle.rowCount ?? 0) > 0) {
+        return NextResponse.json({ error: "parent task cycle" }, { status: 400 });
+      }
+      body.parent_task_id = parentId;
+    }
+  }
+  if ("assignee_id" in body) {
+    const rawAssignee = body.assignee_id;
+    if (rawAssignee === null || rawAssignee === "") {
+      body.assignee_id = null;
+    } else {
+      const assigneeId = Number(rawAssignee);
+      if (!Number.isInteger(assigneeId) || assigneeId <= 0) {
+        return NextResponse.json({ error: "invalid assignee_id" }, { status: 400 });
+      }
+      const user = await db.query("SELECT id FROM users WHERE id = $1 AND deactivated_at IS NULL", [assigneeId]);
+      if (user.rowCount === 0) {
+        return NextResponse.json({ error: "assignee not found" }, { status: 400 });
+      }
+      body.assignee_id = assigneeId;
+    }
+  }
+  if ("project_id" in body) body.project_id = targetProjectId;
+
   const sets: string[] = [];
   const values: unknown[] = [];
   for (const [k, v] of Object.entries(body)) {
@@ -47,39 +121,50 @@ export async function PATCH(
   if (sets.length === 0) {
     return NextResponse.json({ error: "no patchable fields" }, { status: 400 });
   }
-  const uid = getCurrentUserIdFromRequest(req);
-  const expected = (body as Record<string, unknown>).expected_updated_at;
-  if (typeof expected === "string" && expected !== "") {
-    const cur = await db.query("SELECT updated_at::text AS u FROM tasks WHERE id = $1::bigint", [id]);
+  const expected = body.expected_updated_at;
+  const conflictResponse = async () => {
+    const cur = await db.query("SELECT updated_at::text AS u FROM tasks WHERE id = $1::bigint", [taskId]);
     if (cur.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-    if (cur.rows[0].u !== expected) {
-      const snap = await db.query(
-        `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
-           t.start_on::text AS start_on, t.due_on::text AS due_on,
-           t.progress, t.status, t.description, t.section_id,
-           t.updated_at::text AS updated_at
-         FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
-         WHERE t.id = $1::bigint`,
-        [id],
-      );
-      return NextResponse.json(
-        { error: "conflict", updated_at: cur.rows[0].u, current: snap.rows[0] ?? null },
-        { status: 409 },
-      );
-    }
+    const snap = await db.query(
+      `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
+         t.start_on::text AS start_on, t.due_on::text AS due_on,
+         t.progress, t.status, t.description, t.section_id,
+         t.updated_at::text AS updated_at
+       FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
+       WHERE t.id = $1::bigint`,
+      [taskId],
+    );
+    return NextResponse.json(
+      { error: "conflict", updated_at: cur.rows[0].u, current: snap.rows[0] ?? null },
+      { status: 409 },
+    );
+  };
+  if (typeof expected === "string" && expected !== "") {
+    const cur = await db.query("SELECT updated_at::text AS u FROM tasks WHERE id = $1::bigint", [taskId]);
+    if (cur.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+    if (cur.rows[0].u !== expected) return conflictResponse();
   }
   const before = await db.query(
     "SELECT name, completed, assignee_id, status, start_on::text AS start_on, due_on::text AS due_on FROM tasks WHERE id = $1::bigint",
-    [id],
+    [taskId],
   );
-  values.push(id);
+  values.push(taskId);
+  let where = `id = $${values.length}::bigint`;
+  if (typeof expected === "string" && expected !== "") {
+    values.push(expected);
+    where += ` AND updated_at = $${values.length}::timestamptz`;
+  }
   const r = await db.query(
-    `UPDATE tasks SET ${sets.join(", ")}, updated_at = now() WHERE id = $${values.length}::bigint RETURNING id`,
+    `UPDATE tasks SET ${sets.join(", ")}, updated_at = now() WHERE ${where} RETURNING id`,
     values,
   );
-  if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (r.rowCount === 0) {
+    return typeof expected === "string" && expected !== ""
+      ? conflictResponse()
+      : NextResponse.json({ error: "not found" }, { status: 404 });
+  }
   const log = (kind: string, summary: string) =>
-    logEvent(Number(id), uid, kind, summary).catch(() => undefined);
+    logEvent(taskId, uid, kind, summary).catch(() => undefined);
   const b = body as Record<string, unknown>;
   const prev = before.rows[0] as
     | {
@@ -96,7 +181,7 @@ export async function PATCH(
       `SELECT project_id, section_id, parent_task_id, name, description, assignee_id,
          start_on::text AS start_on, due_on::text AS due_on, progress, status, recurrence
        FROM tasks WHERE id = $1::bigint`,
-      [id],
+      [taskId],
     )
   ).rows[0] as
     | {
@@ -113,17 +198,6 @@ export async function PATCH(
         recurrence: string;
       }
     | undefined;
-  const shiftDate = (iso: string, rec: string): string => {
-    const d = new Date(`${iso}T00:00:00Z`);
-    if (rec === "daily") d.setUTCDate(d.getUTCDate() + 1);
-    else if (rec === "weekly") d.setUTCDate(d.getUTCDate() + 7);
-    else {
-      const day = d.getUTCDate();
-      d.setUTCMonth(d.getUTCMonth() + 1);
-      if (d.getUTCDate() < day) d.setUTCDate(0);
-    }
-    return d.toISOString().slice(0, 10);
-  };
   if (prev) {
     if (typeof b.completed === "boolean" && b.completed !== prev.completed) {
       await log(b.completed ? "completed" : "reopened", b.completed ? "タスクを完了しました" : "タスクを未完了に戻しました");
@@ -140,13 +214,13 @@ export async function PATCH(
             full.name,
             full.description,
             full.assignee_id,
-            full.start_on ? shiftDate(full.start_on, rec) : null,
-            full.due_on ? shiftDate(full.due_on, rec) : null,
+            nextOccurrence(full.start_on, rec),
+            nextOccurrence(full.due_on, rec),
             full.status,
             rec,
           ],
         );
-        await logEvent(Number(id), uid, "recurrence_spawned", "次回のタスクを生成しました").catch(() => undefined);
+        await logEvent(taskId, uid, "recurrence_spawned", "次回のタスクを生成しました").catch(() => undefined);
       }
     }
     if ("assignee_id" in b) {
@@ -176,45 +250,36 @@ export async function PATCH(
       await log("renamed", "タスク名を変更しました");
     }
     if (b.completed === true && prev.completed === false) {
-      await runAutomations(taskProjectId, Number(id), "task_completed").catch(() => undefined);
+      await runAutomations(targetProjectId, taskId, "task_completed").catch(() => undefined);
     }
     if (typeof b.status === "string" && b.status !== prev.status) {
-      await runAutomations(taskProjectId, Number(id), "status_changed").catch(() => undefined);
+      await runAutomations(targetProjectId, taskId, "status_changed").catch(() => undefined);
     }
   }
-  await notifyTask(id);
-  await audit(uid, "task.update", { entity: "task", entityId: id, summary: Object.keys(b).join(",") });
-  return NextResponse.json({ id: Number(id) });
-}
+  await notifyTask(taskId);
+  await audit(uid, "task.update", { entity: "task", entityId: taskId, summary: Object.keys(b).join(",") });
+  return NextResponse.json({ id: taskId });
+});
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const taskProjectId = await getTaskProjectId(Number(id));
-  if (taskProjectId !== null) {
-    const auth = await requireProjectPermission(req, taskProjectId, "edit");
-    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+export const DELETE = withTask("edit", async (req, { taskId, uid, projectId }) => {
   const force = new URL(req.url).searchParams.get("force") === "1";
   if (force) {
-    const r = await db.query("DELETE FROM tasks WHERE id = $1::bigint", [id]);
+    const r = await db.query("DELETE FROM tasks WHERE id = $1::bigint", [taskId]);
     if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-    await notifyTask(id);
-    await audit(getCurrentUserIdFromRequest(req), "task.purge", { entity: "task", entityId: id });
-    return NextResponse.json({ deleted: Number(id) });
+    await notifyTask(taskId);
+    await audit(uid, "task.purge", { entity: "task", entityId: taskId, projectId: projectId ?? undefined });
+    return NextResponse.json({ deleted: taskId });
   }
   const r = await db.query(
     `WITH RECURSIVE sub AS (
        SELECT id FROM tasks WHERE id = $1::bigint AND deleted_at IS NULL
        UNION ALL SELECT t.id FROM tasks t JOIN sub s ON t.parent_task_id = s.id WHERE t.deleted_at IS NULL
      ) UPDATE tasks SET deleted_at = now(), updated_at = now() WHERE id IN (SELECT id FROM sub) RETURNING id`,
-    [id],
+    [taskId],
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  await notifyTask(id);
-  await audit(getCurrentUserIdFromRequest(req), "task.delete", { entity: "task", entityId: id });
-  await logEvent(Number(id), getCurrentUserIdFromRequest(req), "deleted", "タスクをゴミ箱に入れました").catch(() => undefined);
-  return NextResponse.json({ deleted: Number(id) });
-}
+  await notifyTask(taskId);
+  await audit(uid, "task.delete", { entity: "task", entityId: taskId, projectId: projectId ?? undefined });
+  await logEvent(taskId, uid, "deleted", "タスクをゴミ箱に入れました").catch(() => undefined);
+  return NextResponse.json({ deleted: taskId });
+});

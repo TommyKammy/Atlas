@@ -3,28 +3,18 @@ import { todayISO } from "@/lib/dates";
 import { shiftDate } from "@/lib/timeline-dnd";
 import { db } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
-import { requireActiveUser, requireWorkspaceAdmin } from "@/lib/api-project-auth";
+import { withAdmin, withUser } from "@/lib/api/route";
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const admin = await requireWorkspaceAdmin(req);
-  if (!admin.ok) return NextResponse.json({ error: admin.error }, { status: admin.status });
-  const { id } = await params;
+export const DELETE = withAdmin(async (_req, { params }) => {
+  const id = params.id;
   const r = await db.query("DELETE FROM project_templates WHERE id = $1::bigint", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json({ deleted: Number(id) });
-}
+});
 
 // Instantiate a template into a new project. Body: { name: string }.
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const active = await requireActiveUser(req);
-  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
-  const { id } = await params;
+export const POST = withUser(async (req, { params }) => {
+  const id = params.id;
   const body = await req.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 });
@@ -70,4 +60,4 @@ export async function POST(
   }
   await notifyProject(projectId);
   return NextResponse.json({ id: projectId }, { status: 201 });
-}
+});

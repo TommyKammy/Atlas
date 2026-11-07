@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { db, withTransaction } from "@/lib/db";
+import { withResourceProject } from "@/lib/api/route";
 import type { FormField } from "@/lib/forms";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
@@ -10,11 +9,8 @@ function dateValue(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) ? value : null;
 }
 
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const POST = withResourceProject("view", "project_forms", async (_req, { uid, params, body }) => {
+  const id = params.id;
   const formResult = await db.query(
     `SELECT f.*, p.status_options, p.status_field_enabled
      FROM project_forms f JOIN projects p ON p.id = f.project_id
@@ -31,12 +27,8 @@ export async function POST(
     status_options: string[] | null;
     status_field_enabled: boolean;
   };
-  const auth = await requireProjectPermission(req, Number(form.project_id), "view");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   if (!form.published) return NextResponse.json({ error: "form is not published" }, { status: 403 });
-
-  const body = await req.json().catch(() => null);
-  const answers = body?.answers;
+  const answers = (body as { answers?: unknown } | null)?.answers;
   if (typeof answers !== "object" || answers === null || Array.isArray(answers)) {
     return NextResponse.json({ error: "answers are required" }, { status: 400 });
   }
@@ -73,41 +65,44 @@ export async function POST(
     [form.project_id],
   );
   const sectionId = section.rows[0]?.id ?? null;
-  const position = await db.query(
-    `SELECT COALESCE(MAX(position), 0) + 1000 AS position
-     FROM tasks WHERE project_id = $1 AND parent_task_id IS NULL`,
-    [form.project_id],
-  );
   const status =
     form.status_field_enabled !== false && Array.isArray(form.status_options) && form.status_options.length > 0
       ? form.status_options[0]
       : "inbox";
-  const task = await db.query(
-    `INSERT INTO tasks (project_id, section_id, name, description, due_on, status, position, created_by)
-     VALUES ($1::bigint, $2::bigint, $3, $4, $5::date, $6, $7, $8) RETURNING id`,
-    [
-      form.project_id,
-      sectionId,
-      title,
-      description,
-      dueOn,
-      status,
-      Number(position.rows[0].position),
-      form.created_by,
-    ],
-  );
-  const taskId = Number(task.rows[0].id);
-  await db.query(
-    `INSERT INTO form_responses (form_id, task_id, answers, submitted_by)
-     VALUES ($1::bigint, $2::bigint, $3::jsonb, $4)`,
-    [id, taskId, JSON.stringify(cleaned), getCurrentUserIdFromRequest(req)],
-  );
+  const taskId = await withTransaction(async (q) => {
+    const position = await q.query(
+      `SELECT COALESCE(MAX(position), 0) + 1000 AS position
+       FROM tasks WHERE project_id = $1 AND parent_task_id IS NULL`,
+      [form.project_id],
+    );
+    const task = await q.query(
+      `INSERT INTO tasks (project_id, section_id, name, description, due_on, status, position, created_by)
+       VALUES ($1::bigint, $2::bigint, $3, $4, $5::date, $6, $7, $8) RETURNING id`,
+      [
+        form.project_id,
+        sectionId,
+        title,
+        description,
+        dueOn,
+        status,
+        Number(position.rows[0].position),
+        form.created_by,
+      ],
+    );
+    const insertedId = Number(task.rows[0].id);
+    await q.query(
+      `INSERT INTO form_responses (form_id, task_id, answers, submitted_by)
+       VALUES ($1::bigint, $2::bigint, $3::jsonb, $4)`,
+      [id, insertedId, JSON.stringify(cleaned), uid],
+    );
+    return insertedId;
+  });
   await notifyProject(Number(form.project_id));
-  await audit(getCurrentUserIdFromRequest(req), "form.submit", {
+  await audit(uid, "form.submit", {
     entity: "form",
     entityId: Number(id),
     projectId: Number(form.project_id),
     summary: `task ${taskId}`,
   });
   return NextResponse.json({ ok: true, task_id: taskId, project_id: Number(form.project_id) }, { status: 201 });
-}
+}, { body: true });

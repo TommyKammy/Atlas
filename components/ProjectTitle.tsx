@@ -1,5 +1,7 @@
 "use client";
 
+import { toast as toastMessage } from "@/lib/ui-feedback";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -33,7 +35,7 @@ export default function ProjectTitle({
         body: JSON.stringify({ name: next }),
       });
       if (!res.ok) {
-        alert(`プロジェクト名の変更に失敗しました: ${res.status}`);
+        toastMessage(`プロジェクト名の変更に失敗しました: ${res.status}`);
         setValue(name);
         return;
       }

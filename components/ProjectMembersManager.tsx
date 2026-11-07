@@ -1,5 +1,8 @@
 "use client";
 
+import { confirmAction } from "@/lib/ui-feedback";
+
+import { api } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import UserAvatar from "./UserAvatar";
 import {
@@ -29,16 +32,6 @@ type DirectoryUser = {
   is_guest: boolean;
 };
 
-async function api(path: string, method?: string, body?: unknown) {
-  const res = await fetch(path, {
-    method: method ?? "GET",
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.error ?? `${method ?? "GET"} ${path}: ${res.status}`);
-  return data;
-}
 
 export default function ProjectMembersManager({ projectId }: { projectId: number }) {
   const [members, setMembers] = useState<Member[]>([]);
@@ -51,12 +44,12 @@ export default function ProjectMembersManager({ projectId }: { projectId: number
   const [msg, setMsg] = useState("");
 
   const load = async () => {
-    const data = await api(`/api/projects/${projectId}/members`);
+    const data = await api<{ members: Member[]; can_manage: boolean; current_user_id: number }>(`/api/projects/${projectId}/members`);
     setMembers(Array.isArray(data?.members) ? data.members : []);
     setCanManage(data?.can_manage === true);
     setCurrentUserId(typeof data?.current_user_id === "number" ? data.current_user_id : null);
     if (data?.can_manage) {
-      const directory = await api("/api/users");
+      const directory = await api<{ users: DirectoryUser[] }>("/api/users");
       setUsers(Array.isArray(directory?.users) ? directory.users : []);
     }
   };
@@ -97,7 +90,7 @@ export default function ProjectMembersManager({ projectId }: { projectId: number
   };
 
   const remove = async (member: Member) => {
-    if (!confirm(`「${member.name}」をプロジェクトから除外しますか？`)) return;
+    if (!await confirmAction(`「${member.name}」をプロジェクトから除外しますか？`)) return;
     setBusy(true);
     setMsg("");
     try {

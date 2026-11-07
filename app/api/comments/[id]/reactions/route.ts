@@ -1,31 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withCommentProject } from "@/lib/api/route";
 
 // Toggle a reaction. Body: { emoji: string } (1-12 chars).
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const uid = getCurrentUserIdFromRequest(req);
-  const body = await req.json().catch(() => null);
-  const emoji = typeof body?.emoji === "string" ? body.emoji.trim() : "";
+export const POST = withCommentProject("view", async (_req, { uid, params, body }) => {
+  const id = params.id;
+  const emoji = typeof (body as { emoji?: unknown } | null)?.emoji === "string" ? (body as { emoji: string }).emoji.trim() : "";
   if ([...emoji].length < 1 || [...emoji].length > 12) {
     return NextResponse.json({ error: "emoji (1-12 chars) is required" }, { status: 400 });
   }
-  const c = await db.query(
-    "SELECT c.id, t.project_id FROM comments c JOIN tasks t ON t.id = c.task_id WHERE c.id = $1::bigint",
-    [id],
-  );
-  if (c.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  if (c.rows[0].project_id !== null) {
-    const auth = await requireProjectPermission(req, Number(c.rows[0].project_id), "view");
-    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
-  const me = await db.query("SELECT id FROM users WHERE id = $1", [uid]);
-  if (me.rowCount === 0) return NextResponse.json({ error: "unknown user" }, { status: 403 });
   const existing = await db.query(
     "SELECT 1 FROM comment_reactions WHERE comment_id = $1::bigint AND user_id = $2 AND emoji = $3",
     [id, uid, emoji],
@@ -52,4 +35,4 @@ export async function POST(
     [id, uid],
   );
   return NextResponse.json({ added, reactions: counts.rows });
-}
+}, { body: true });

@@ -1,6 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { toast as toastMessage } from "@/lib/ui-feedback";
+
+import { ApiError } from "@/lib/api-client";
+import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Section, TaskRow, User } from "@/lib/data";
@@ -16,16 +19,26 @@ import {
   weekAround,
   type CalendarSpan,
 } from "@/lib/calendar";
+import TaskCompletionToggle from "./task/TaskCompletionToggle";
+import TaskAvatar from "./task/TaskAvatar";
+import TaskMetaBadges from "./task/TaskMetaBadges";
+import { usePersistedViewState } from "@/lib/view-state-client";
+import { dropTaskOnDate, moveTaskSpan, pixelsToDayDelta, resizeTaskEnd, resizeTaskStart } from "@/lib/task-dates";
+import CalendarToolbar from "./calendar/CalendarToolbar";
+import CalendarDayHeader from "./calendar/CalendarDayHeader";
+import CalendarLegend from "./calendar/CalendarLegend";
+import CalendarMultiDayBar from "./calendar/CalendarMultiDayBar";
+import CalendarSingleTask from "./calendar/CalendarSingleTask";
+import CalendarDayCell from "./calendar/CalendarDayCell";
+import CalendarGrid from "./calendar/CalendarGrid";
 
 // Asana calendar metrics measured 2026-11-06 (read-only, 1920×839):
 // compact weekend columns 44px, weekday columns share the rest; week header
 // 70px, range bar 36px / 4px radius / 1px #eaeaea, day row 36px.
-const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const WEEKDAYS_ONLY = [1, 2, 3, 4, 5];
 const MONTH_SINGLE_LIMIT = 3;
 const UNSET_COLOR = "border-neutral-300 bg-neutral-100 text-neutral-600";
-const AVATAR_COLORS = ["bg-violet-400", "bg-amber-400", "bg-emerald-500", "bg-sky-500", "bg-rose-400"];
 const BAR_COLORS = [
   "border-[#c7d8f5] bg-[#e8f0fe] text-[#1f3a6e]",
   "border-[#c9e7d2] bg-[#e6f6ec] text-[#1f5134]",
@@ -51,11 +64,6 @@ type CalendarFilter = {
   color: string;
   weekStart: 0 | 1;
 };
-
-function avatarColor(name: string | null): string {
-  const code = name ? name.charCodeAt(0) : 0;
-  return AVATAR_COLORS[code % AVATAR_COLORS.length];
-}
 
 function monthLabel(month: string): string {
   const [y, m] = month.split("-").map(Number);
@@ -142,104 +150,22 @@ export default function CalendarView({
     start: number;
     end: number;
   } | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-  const persistKey = `atlas.calendar.v1.${projectId}`;
-
-  useEffect(() => {
-    const keys = [
-      "completed",
-      "hide",
-      "assignee",
-      "status",
-      "due",
-      "created",
-      "updated",
-      "completed_on",
-      "creator",
-      "weekends",
-      "multi",
-      "color",
-      "start",
-    ];
-    const params = new URLSearchParams(window.location.search);
-    const explicit =
-      keys.some((key) => params.has(key)) || [...params.keys()].some((key) => key.startsWith("cf_"));
-    if (!explicit) {
-      try {
-        const saved = JSON.parse(window.localStorage.getItem(persistKey) ?? "null") as
-          | Record<string, unknown>
-          | null;
-        /* eslint-disable react-hooks/set-state-in-effect */
-        if (saved) {
-          if (saved.completed === "open" || saved.completed === "done" || saved.completed === "") {
-            setCompletedFilter(saved.completed);
-          }
-          if (typeof saved.assignee === "string") setAssigneeFilter(saved.assignee);
-          if (typeof saved.status === "string") setStatusFilter(saved.status);
-          if (saved.custom && typeof saved.custom === "object") {
-            setCustomFilter(saved.custom as Record<string, string>);
-          }
-          if (typeof saved.due === "string") setDueFilter(saved.due);
-          if (typeof saved.created === "string") setCreatedFilter(saved.created);
-          if (typeof saved.updated === "string") setUpdatedFilter(saved.updated);
-          if (typeof saved.completedOn === "string") setCompletedOnFilter(saved.completedOn);
-          if (typeof saved.creator === "string") setCreatorFilter(saved.creator);
-          if (typeof saved.weekends === "boolean") setShowWeekends(saved.weekends);
-          if (typeof saved.multi === "boolean") setShowMulti(saved.multi);
-          if (typeof saved.color === "string") setColorBy(saved.color);
-          if (saved.weekStart === 0 || saved.weekStart === 1) setWeekStart(saved.weekStart);
-        }
-        setHydrated(true);
-        /* eslint-enable react-hooks/set-state-in-effect */
-      } catch {
-        setHydrated(true);
-      }
-    } else {
-      setHydrated(true);
-    }
-  }, [persistKey]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(
-        persistKey,
-        JSON.stringify({
-          completed: completedFilter,
-          assignee: assigneeFilter,
-          status: statusFilter,
-          custom: customFilter,
-          due: dueFilter,
-          created: createdFilter,
-          updated: updatedFilter,
-          completedOn: completedOnFilter,
-          creator: creatorFilter,
-          weekends: showWeekends,
-          multi: showMulti,
-          color: colorBy,
-          weekStart,
-        }),
-      );
-    } catch {
-      // storage can be unavailable in private modes
-    }
-  }, [
-    hydrated,
-    persistKey,
-    completedFilter,
-    assigneeFilter,
-    statusFilter,
-    customFilter,
-    dueFilter,
-    createdFilter,
-    updatedFilter,
-    completedOnFilter,
-    creatorFilter,
-    showWeekends,
-    showMulti,
-    colorBy,
-    weekStart,
-  ]);
+  usePersistedViewState(projectId, "calendar", {
+    completed: completedFilter,
+    hide: completedFilter === "open",
+    assignee: assigneeFilter,
+    status: statusFilter,
+    custom: JSON.stringify(customFilter),
+    due: dueFilter,
+    created: createdFilter,
+    updated: updatedFilter,
+    completed_on: completedOnFilter,
+    creator: creatorFilter,
+    weekends: showWeekends,
+    multi: showMulti,
+    color: colorBy,
+    start: weekStart,
+  });
 
   useEffect(() => {
     if (addingDate) inputRef.current?.focus();
@@ -405,19 +331,16 @@ export default function CalendarView({
     router.push(`/projects/${projectId}?${q.toString()}`);
   };
 
-  const patchTask = async (task: TaskRow, fields: Record<string, unknown>) => {
-    const res = await fetch(`/api/tasks/${task.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...fields, expected_updated_at: task.updated_at }),
-    });
-    if (res.status === 409) {
-      alert("他のユーザーが先に更新しました。最新を表示します。");
+  const patchTaskFields = async (task: TaskRow, fields: Record<string, unknown>) => {
+    try {
+      await patchTask(task.id, fields, task.updated_at);
+    } catch (error) {
+      if (error instanceof TaskConflictError) {
+        toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+      } else {
+        toastMessage(`更新に失敗しました: ${error instanceof ApiError ? error.status : ""}`);
+      }
       refresh();
-      return false;
-    }
-    if (!res.ok) {
-      alert(`更新に失敗しました: ${res.status}`);
       return false;
     }
     refresh();
@@ -425,7 +348,7 @@ export default function CalendarView({
   };
 
   const toggleComplete = async (task: TaskRow) => {
-    await patchTask(task, { completed: !task.completed, progress: task.completed ? task.progress : 100 });
+    await patchTaskFields(task, { completed: !task.completed, progress: task.completed ? task.progress : 100 });
   };
 
   const onDrop = async (e: React.DragEvent, date: string) => {
@@ -434,18 +357,181 @@ export default function CalendarView({
     if (!taskId) return;
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
-    const span = taskSpan(task.start_on, task.due_on);
-    const target = parseDay(date);
-    let fields: Record<string, unknown>;
-    if (span && span.end > span.start && showMulti) {
-      const duration = span.end - span.start;
-      fields = { start_on: formatDay(target - duration), due_on: date };
-    } else if (task.start_on) {
-      fields = { start_on: date, due_on: date };
-    } else {
-      fields = { due_on: date };
+    const fields = dropTaskOnDate(task, date, showMulti);
+    if (fields) await patchTaskFields(task, fields);
+  };
+
+  const multiDayWidthFromEvent = (event: React.PointerEvent) => {
+    const grid = (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-multi-grid]");
+    const dayCells = [
+      ...(grid?.parentElement?.parentElement?.querySelectorAll<HTMLElement>("[data-calendar-day]") ?? []),
+    ];
+    return grid && dayCells.length > 0
+      ? Math.max(...dayCells.map((cell) => cell.getBoundingClientRect().width))
+      : null;
+  };
+
+  const multiBarDragStart = (task: TaskRow, event: React.DragEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest("[data-calendar-resize]")) {
+      event.preventDefault();
+      return;
     }
-    await patchTask(task, fields);
+    dragging.current = true;
+    event.dataTransfer.setData("text/atlas-task", String(task.id));
+  };
+  const multiBarDragEnd = () => {
+    setTimeout(() => {
+      dragging.current = false;
+    }, 0);
+  };
+  const multiBarClick = (task: TaskRow) => {
+    if (dragging.current) return;
+    openTask(task.id);
+  };
+  const multiBarKeyDown = (task: TaskRow, event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter") openTask(task.id);
+  };
+  const multiBarPointerDown = (task: TaskRow, event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+    if ((event.target as HTMLElement).closest("[data-calendar-resize]")) return;
+    const start = parseDay(task.start_on ?? task.due_on ?? "");
+    const end = parseDay(task.due_on ?? task.start_on ?? "");
+    const dayWidth = multiDayWidthFromEvent(event);
+    if (dayWidth === null || start === null || end === null) return;
+    touchMove.current = {
+      taskId: task.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      start,
+      end,
+      dayWidth,
+      single: false,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const multiBarPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const session = touchMove.current;
+    if (!session) return;
+    if (Math.abs(event.clientX - session.startX) > 6 || Math.abs(event.clientY - session.startY) > 6) {
+      session.moved = true;
+      dragging.current = true;
+    }
+  };
+  const multiBarPointerUp = (task: TaskRow, event: React.PointerEvent<HTMLDivElement>) => {
+    const session = touchMove.current;
+    touchMove.current = null;
+    if (!session || !session.moved) return;
+    const delta = pixelsToDayDelta(event.clientX - session.startX, session.dayWidth);
+    if (delta !== 0) {
+      const fields = moveTaskSpan(task, delta);
+      if (fields) void patchTaskFields(task, fields);
+    }
+    setTimeout(() => {
+      dragging.current = false;
+    }, 30);
+  };
+  const multiBarPointerCancel = () => {
+    touchMove.current = null;
+    setTimeout(() => {
+      dragging.current = false;
+    }, 30);
+  };
+  const multiBarResizeDown = (
+    task: TaskRow,
+    edge: "start" | "end",
+    event: React.PointerEvent<HTMLSpanElement>,
+  ) => {
+    const start = parseDay(task.start_on ?? task.due_on ?? "");
+    const end = parseDay(task.due_on ?? task.start_on ?? "");
+    const dayWidth = multiDayWidthFromEvent(event);
+    if (start === null || end === null || dayWidth === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    calendarResize.current = {
+      taskId: task.id,
+      edge,
+      startX: event.clientX,
+      dayWidth,
+      start,
+      end,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const multiBarResizeUp = (
+    task: TaskRow,
+    edge: "start" | "end",
+    event: React.PointerEvent<HTMLSpanElement>,
+  ) => {
+    const session = calendarResize.current;
+    calendarResize.current = null;
+    if (!session) return;
+    const delta = pixelsToDayDelta(event.clientX - session.startX, session.dayWidth);
+    if (delta === 0) return;
+    const fields = edge === "start" ? resizeTaskStart(task, delta) : resizeTaskEnd(task, delta);
+    if (fields) void patchTaskFields(task, fields);
+  };
+
+  const singleBarDragStart = (task: TaskRow, event: React.DragEvent<HTMLDivElement>) => {
+    dragging.current = true;
+    event.dataTransfer.setData("text/atlas-task", String(task.id));
+  };
+  const singleBarDragEnd = () => {
+    setTimeout(() => {
+      dragging.current = false;
+    }, 0);
+  };
+  const singleBarClick = (task: TaskRow) => {
+    if (dragging.current) return;
+    openTask(task.id);
+  };
+  const singleBarKeyDown = (task: TaskRow, event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter") openTask(task.id);
+  };
+  const singleBarPointerDown = (task: TaskRow, event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+    const day = (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-day]");
+    const start = parseDay(task.start_on ?? task.due_on ?? "");
+    const end = parseDay(task.due_on ?? task.start_on ?? "");
+    if (!day || start === null || end === null) return;
+    touchMove.current = {
+      taskId: task.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      start,
+      end,
+      dayWidth: day.getBoundingClientRect().width,
+      single: true,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const singleBarPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const session = touchMove.current;
+    if (!session) return;
+    if (Math.abs(event.clientX - session.startX) > 6 || Math.abs(event.clientY - session.startY) > 6) {
+      session.moved = true;
+      dragging.current = true;
+    }
+  };
+  const singleBarPointerUp = (task: TaskRow, event: React.PointerEvent<HTMLDivElement>) => {
+    const session = touchMove.current;
+    touchMove.current = null;
+    if (!session || !session.moved) return;
+    const delta = pixelsToDayDelta(event.clientX - session.startX, session.dayWidth);
+    if (delta !== 0) {
+      const fields = dropTaskOnDate(task, formatDay(session.end + delta), false);
+      if (fields) void patchTaskFields(task, fields);
+    }
+    setTimeout(() => {
+      dragging.current = false;
+    }, 30);
+  };
+  const singleBarPointerCancel = () => {
+    touchMove.current = null;
+    setTimeout(() => {
+      dragging.current = false;
+    }, 30);
   };
 
   const startInlineAdd = (date: string) => {
@@ -467,7 +553,7 @@ export default function CalendarView({
       }),
     });
     if (!res.ok) {
-      alert(`作成に失敗しました: ${res.status}`);
+      toastMessage(`作成に失敗しました: ${res.status}`);
       return;
     }
     setDraft("");
@@ -486,7 +572,7 @@ export default function CalendarView({
       }),
     });
     if (!res.ok) {
-      alert(`作成に失敗しました: ${res.status}`);
+      toastMessage(`作成に失敗しました: ${res.status}`);
       return;
     }
     const created = await res.json();
@@ -639,82 +725,8 @@ export default function CalendarView({
   const optionsActive = !showWeekends || !showMulti || colorBy !== "none" || weekStart === 1;
   const title = monthLabel(`${anchorY}-${String(anchorM).padStart(2, "0")}`);
 
-  const dayHeader = (day: number, weekView: boolean) => {
-    const iso = formatDay(day);
-    const dt = new Date(day * 86_400_000);
-    const idx = dt.getUTCDay();
-    const compact = idx === 0 || idx === 6;
-    const sameMonth = iso.slice(0, 7) === month;
-    const isToday = iso === today;
-    return (
-      <div
-        key={iso}
-        data-day-header={iso}
-        className={`group/day overflow-hidden border-r border-b border-neutral-200 bg-white ${
-          weekView ? "flex h-[70px] flex-col px-2 py-2" : "flex h-7 items-center px-1.5"
-        } ${compact ? "items-center" : ""}`}
-      >
-        {weekView ? (
-          <>
-            <div className={`flex items-center gap-1 ${compact ? "text-[10px]" : "text-xs"}`}>
-              <span className={compact ? "text-neutral-400" : "text-neutral-500"}>{WEEKDAYS[idx]}</span>
-              <span
-                className={`inline-flex items-center justify-center font-normal ${
-                  isToday
-                    ? "h-7 min-w-7 rounded-lg bg-[#4075cf] px-1 text-[14px] text-white"
-                    : `text-[14px] ${sameMonth ? "text-neutral-900" : "text-neutral-400"}`
-                }`}
-              >
-                {dt.getUTCDate()}
-              </span>
-            </div>
-            {!compact && (
-              <button
-                type="button"
-                onClick={() => startInlineAdd(iso)}
-                className="mt-0.5 flex h-5 w-fit items-center rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
-              >
-                ＋ タスクを追加
-              </button>
-            )}
-          </>
-        ) : (
-          <span
-            className={`inline-flex items-center justify-center text-xs ${
-              isToday
-                ? "h-6 min-w-6 rounded-md bg-[#4075cf] px-1 font-medium text-white"
-                : sameMonth
-                  ? "text-neutral-600"
-                  : "text-neutral-400"
-            }`}
-          >
-            {sameMonth || compact
-              ? dt.getUTCDate()
-              : `${dt.getUTCMonth() + 1}月${dt.getUTCDate()}日`}
-          </span>
-        )}
-      </div>
-    );
-  };
-
   const completion = (task: TaskRow, size = "h-4 w-4") => (
-    <button
-      type="button"
-      aria-label={task.completed ? "未完了に戻す" : "完了にする"}
-      onClick={(e) => {
-        e.stopPropagation();
-        toggleComplete(task);
-      }}
-      className={`${size} flex shrink-0 items-center justify-center rounded-full border ${
-        task.completed
-          ? "border-green-600 bg-green-600 text-white"
-          : "border-neutral-400 bg-white/70 text-transparent hover:border-green-600 hover:text-green-600"
-      }`}
-    >
-      <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <path d="M2.5 6.2 5 8.6l4.5-5" />
-      </svg>
-    </button>
+    <TaskCompletionToggle completed={task.completed} onToggle={() => toggleComplete(task)} size={size} />
   );
 
   const taskFace = (task: TaskRow, bar: boolean) => {
@@ -730,464 +742,99 @@ export default function CalendarView({
     return `${base} ${task.completed ? "opacity-70" : ""}`;
   };
 
-  const taskAvatars = (task: TaskRow) =>
-    task.assignee_name ? (
-      <span
-        title={task.assignee_name}
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-neutral-900 ${avatarColor(task.assignee_name)}`}
-      >
-        {task.assignee_name.slice(0, 1)}
-      </span>
-    ) : null;
+  const taskAvatars = (task: TaskRow) => (
+    <TaskAvatar name={task.assignee_name} />
+  );
 
   const taskMeta = (task: TaskRow) => (
     <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] text-neutral-400">
-      {task.subtask_count > 0 && (
-        <span className="flex items-center gap-0.5" title="サブタスク">
-          <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.3">
-            <path d="M4 3v4.5a2 2 0 0 0 2 2h6" />
-            <path d="M9.5 7.5 12 9.5 9.5 11.5" />
-          </svg>
-          {task.subtask_count}
-        </span>
-      )}
-      {task.comment_count > 0 && (
-        <span className="flex items-center gap-0.5" title="コメント">
-          <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.3">
-            <path d="M3 3.5h10v7H7.5L4.5 13v-2.5H3z" />
-          </svg>
-          {task.comment_count}
-        </span>
-      )}
+      <TaskMetaBadges
+        subtaskCount={task.subtask_count}
+        commentCount={task.comment_count}
+        iconClassName="h-3 w-3"
+      />
     </span>
   );
 
   return (
     <div className="flex min-h-[560px] flex-col px-4 pb-2 text-sm md:h-[calc(100vh-200px)]">
-      <div className="flex shrink-0 flex-wrap items-center gap-1.5 py-2">
-        <button
-          type="button"
-          onClick={addToday}
-          data-calendar-add
-          className="mr-1 flex h-7 items-center rounded-md border border-[#e1e1e1] bg-white px-2.5 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50"
-        >
-          ＋ タスクを追加
-        </button>
-        <Link
-          href={prevHref}
-          aria-label={weekMode ? "前週" : "前月"}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-neutral-600 hover:bg-neutral-100"
-        >
-          ‹
-        </Link>
-        <Link href={todayHref} className="flex h-7 items-center rounded-md px-2 text-[13px] text-neutral-700 hover:bg-neutral-100">
-          今日
-        </Link>
-        <Link
-          href={nextHref}
-          aria-label={weekMode ? "来週" : "来月"}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-neutral-600 hover:bg-neutral-100"
-        >
-          ›
-        </Link>
-        <span className="ml-1 text-[15px] font-medium text-neutral-900">{title}</span>
+      <CalendarToolbar
+        addToday={addToday}
+        prevHref={prevHref}
+        todayHref={todayHref}
+        nextHref={nextHref}
+        weekMode={weekMode}
+        title={title}
+        undated={undated}
+        dragging={dragging}
+        openTask={openTask}
+        weekHref={weekHref}
+        monthHref={monthHref}
+        activeFilters={activeFilters}
+        clearFilters={clearFilters}
+        completedFilter={completedFilter}
+        setCompleted={setCompleted}
+        viewerId={viewerId}
+        assigneeFilter={assigneeFilter}
+        setAssignee={setAssignee}
+        users={users}
+        statusFieldEnabled={statusFieldEnabled}
+        statusFieldName={statusFieldName}
+        statusOptions={statusOptions}
+        statusFilter={statusFilter}
+        setStatus={setStatus}
+        dueFilter={dueFilter}
+        setDue={setDue}
+        createdFilter={createdFilter}
+        setCreated={setCreated}
+        updatedFilter={updatedFilter}
+        setUpdated={setUpdated}
+        completedOnFilter={completedOnFilter}
+        setCompletedOn={setCompletedOn}
+        creatorFilter={creatorFilter}
+        setCreator={setCreator}
+        selectFields={selectFields}
+        customFilter={customFilter}
+        setCustomFilterValue={setCustomFilterValue}
+        optionsActive={optionsActive}
+        colorBy={colorBy}
+        setColor={setColor}
+        colorOptions={colorOptions}
+        showWeekends={showWeekends}
+        setWeekends={setWeekends}
+        showMulti={showMulti}
+        setMulti={setMulti}
+        weekStart={weekStart}
+        setWeekStartOn={setWeekStartOn}
+        searchOpen={searchOpen}
+        search={search}
+        setSearch={setSearch}
+        setSearchOpen={setSearchOpen}
+      />
 
-        <span className="ml-auto" />
-        <details className="relative">
-          <summary
-            data-calendar-undated
-            className={`flex h-7 cursor-pointer list-none items-center rounded-md px-2 text-[13px] hover:bg-neutral-100 [&::-webkit-details-marker]:hidden ${
-              undated.length ? "text-neutral-700" : "text-neutral-400"
-            }`}
-          >
-            日付なしのタスク ({undated.length} 件)
-          </summary>
-          <div className="absolute right-0 z-30 mt-1 max-h-64 w-72 overflow-auto rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">
-            {undated.length === 0 ? (
-              <div className="px-2 py-2 text-xs text-neutral-400">日付なしのタスクはありません</div>
-            ) : (
-              undated.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  draggable
-                  onDragStart={(e) => {
-                    dragging.current = true;
-                    e.dataTransfer.setData("text/atlas-task", String(t.id));
-                  }}
-                  onDragEnd={() => {
-                    setTimeout(() => {
-                      dragging.current = false;
-                    }, 0);
-                  }}
-                  onClick={() => {
-                    if (dragging.current) return;
-                    openTask(t.id);
-                  }}
-                  className="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
-                  title="日付を設定するにはカレンダーへドラッグ"
-                >
-                  {t.name}
-                </button>
-              ))
-            )}
-          </div>
-        </details>
-        <details className="relative">
-          <summary
-            data-calendar-zoom
-            className="flex h-7 cursor-pointer list-none items-center gap-1 rounded-md px-2 text-[13px] text-neutral-700 hover:bg-neutral-100 [&::-webkit-details-marker]:hidden"
-          >
-            {weekMode ? "週" : "月"}
-            <span className="text-[10px] text-neutral-400">▾</span>
-          </summary>
-          <div className="absolute right-0 z-30 mt-1 w-40 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">
-            <Link href={weekHref} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
-              <span className="w-3 text-neutral-700">{weekMode ? "✓" : ""}</span>週
-            </Link>
-            <Link href={monthHref} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
-              <span className="w-3 text-neutral-700">{!weekMode ? "✓" : ""}</span>月
-            </Link>
-          </div>
-        </details>
-        <details className="relative">
-          <summary
-            data-calendar-filter
-            className={`flex h-7 cursor-pointer list-none items-center gap-1 rounded-md px-2 text-[13px] hover:bg-neutral-100 [&::-webkit-details-marker]:hidden ${
-              activeFilters ? "bg-[#eff4fd] font-medium text-[#2c60b8]" : "text-neutral-700"
-            }`}
-          >
-            フィルター
-            {activeFilters > 0 && <span className="text-[11px]">{activeFilters}</span>}
-          </summary>
-          <div className="absolute right-0 z-30 mt-1 w-[min(420px,calc(100vw-2rem))] rounded-lg border border-neutral-200 bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
-              <span className="text-[13px] font-medium">フィルター</span>
-              <button
-                type="button"
-                data-calendar-clear
-                onClick={clearFilters}
-                className="text-xs text-[#2c60b8] hover:underline"
-              >
-                クリア
-              </button>
-            </div>
-            <div className="max-h-[calc(100vh-220px)] overflow-y-auto p-3">
-              <div className="text-[11px] font-medium text-neutral-500">クイックフィルター</div>
-              <div className="mt-1 flex flex-wrap gap-1">
-                <button
-                  type="button"
-                  data-calendar-quick-completed="open"
-                  onClick={() => setCompleted("open")}
-                  className={`rounded-full border px-2 py-0.5 text-xs ${
-                    completedFilter === "open"
-                      ? "border-[#b8ccef] bg-[#eff4fd] text-[#2c60b8]"
-                      : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-                  }`}
-                >
-                  未完了タスク
-                </button>
-                <button
-                  type="button"
-                  data-calendar-quick-completed="done"
-                  onClick={() => setCompleted("done")}
-                  className={`rounded-full border px-2 py-0.5 text-xs ${
-                    completedFilter === "done"
-                      ? "border-[#b8ccef] bg-[#eff4fd] text-[#2c60b8]"
-                      : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-                  }`}
-                >
-                  完了したタスク
-                </button>
-                {viewerId !== null && (
-                  <button
-                    type="button"
-                    data-calendar-quick-mine
-                    onClick={() => setAssignee(assigneeFilter === String(viewerId) ? "" : String(viewerId))}
-                    className={`rounded-full border px-2 py-0.5 text-xs ${
-                      assigneeFilter === String(viewerId)
-                        ? "border-[#b8ccef] bg-[#eff4fd] text-[#2c60b8]"
-                        : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-                    }`}
-                  >
-                    自分のタスクのみ
-                  </button>
-                )}
-              </div>
-              <div className="mt-3 border-t border-neutral-100 pt-2">
-                <div className="text-[11px] font-medium text-neutral-500">フィルターを追加</div>
-                <label className="mt-1 block text-xs text-neutral-500">
-                  担当者
-                  <select
-                    data-calendar-filter-assignee
-                    value={assigneeFilter}
-                    onChange={(e) => setAssignee(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="none">未割当</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {statusFieldEnabled && (
-                  <label className="mt-2 block text-xs text-neutral-500">
-                    {statusFieldName}
-                    <select
-                      data-calendar-filter-status
-                      value={statusFilter}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                    >
-                      <option value="">すべて</option>
-                      {statusOptions.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <label className="mt-2 block text-xs text-neutral-500">
-                  期日
-                  <select
-                    data-calendar-filter-due
-                    value={dueFilter}
-                    onChange={(e) => setDue(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="overdue">期限切れ</option>
-                    <option value="today">今日</option>
-                    <option value="week">今週</option>
-                    <option value="nextweek">来週</option>
-                    <option value="month">来月まで</option>
-                    <option value="none">日付なし</option>
-                  </select>
-                </label>
-                <label className="mt-2 block text-xs text-neutral-500">
-                  作成日
-                  <select
-                    data-calendar-filter-created
-                    value={createdFilter}
-                    onChange={(e) => setCreated(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="today">今日</option>
-                    <option value="7">過去7日</option>
-                    <option value="30">過去30日</option>
-                  </select>
-                </label>
-                <label className="mt-2 block text-xs text-neutral-500">
-                  最終変更日
-                  <select
-                    data-calendar-filter-updated
-                    value={updatedFilter}
-                    onChange={(e) => setUpdated(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="today">今日</option>
-                    <option value="7">過去7日</option>
-                    <option value="30">過去30日</option>
-                  </select>
-                </label>
-                <label className="mt-2 block text-xs text-neutral-500">
-                  完了日
-                  <select
-                    data-calendar-filter-completed-on
-                    value={completedOnFilter}
-                    onChange={(e) => setCompletedOn(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="today">今日</option>
-                    <option value="7">過去7日</option>
-                    <option value="30">過去30日</option>
-                  </select>
-                </label>
-                <label className="mt-2 block text-xs text-neutral-500">
-                  作成したユーザー
-                  <select
-                    data-calendar-filter-creator
-                    value={creatorFilter}
-                    onChange={(e) => setCreator(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                  >
-                    <option value="">すべて</option>
-                    <option value="none">未設定</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {selectFields.map((field) => (
-                  <label key={field.id} className="mt-2 block text-xs text-neutral-500">
-                    {field.name}
-                    <select
-                      data-calendar-filter-field={field.id}
-                      value={customFilter[String(field.id)] ?? ""}
-                      onChange={(e) => setCustomFilterValue(field.id, e.target.value)}
-                      className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-                    >
-                      <option value="">すべて</option>
-                      {customFilter[String(field.id)] &&
-                        !field.options.includes(customFilter[String(field.id)]) && (
-                          <option value={customFilter[String(field.id)]}>{customFilter[String(field.id)]}</option>
-                        )}
-                      {field.options.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        </details>
-        <details className="relative">
-          <summary
-            data-calendar-options
-            className={`flex h-7 cursor-pointer list-none items-center gap-1 rounded-md px-2 text-[13px] hover:bg-neutral-100 [&::-webkit-details-marker]:hidden ${
-              optionsActive ? "bg-[#eff4fd] font-medium text-[#2c60b8]" : "text-neutral-700"
-            }`}
-          >
-            オプション
-            <span className="text-[10px] text-neutral-400">▾</span>
-          </summary>
-          <div className="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-neutral-200 bg-white p-3 shadow-lg">
-            <div className="text-[11px] font-medium text-neutral-500">レイアウトオプション</div>
-            <label className="mt-2 block text-xs text-neutral-500">
-              タスクのカラー
-              <select
-                data-calendar-color
-                value={colorBy}
-                onChange={(e) => setColor(e.target.value)}
-                className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-              >
-                {colorOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="mt-2 flex items-center gap-2 text-[13px]">
-              <input
-                type="checkbox"
-                data-calendar-weekends
-                checked={showWeekends}
-                onChange={(e) => setWeekends(e.target.checked)}
-              />
-              週末を表示
-            </label>
-            <label className="mt-2 flex items-center gap-2 text-[13px]">
-              <input
-                type="checkbox"
-                data-calendar-multi
-                checked={showMulti}
-                onChange={(e) => setMulti(e.target.checked)}
-              />
-              複数日にわたるタスクを表示
-            </label>
-            <label className="mt-3 block text-xs text-neutral-500">
-              週の始まり
-              <select
-                data-calendar-week-start
-                value={weekStart}
-                onChange={(e) => setWeekStartOn(e.target.value === "1" ? 1 : 0)}
-                className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[13px] text-neutral-800"
-              >
-                <option value={0}>日曜日</option>
-                <option value={1}>月曜日</option>
-              </select>
-            </label>
-          </div>
-        </details>
-        {searchOpen && (
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="このビュー内で検索"
-            aria-label="このビュー内で検索"
-            autoFocus
-            className="h-7 w-44 rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#4075cf]"
-          />
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            if (searchOpen) setSearch("");
-            setSearchOpen((v) => !v);
-          }}
-          data-calendar-search
-          aria-label="このビューで検索"
-          title="このビュー内で検索"
-          className={`flex h-7 w-7 items-center justify-center rounded-md hover:bg-neutral-100 ${
-            searchOpen ? "bg-[#eff4fd] text-[#2c60b8]" : "text-neutral-500"
-          }`}
-        >
-          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.4">
-            <circle cx="6.8" cy="6.8" r="4.3" />
-            <path d="m10.1 10.1 3 3" />
-          </svg>
-        </button>
-      </div>
+      {colorBy !== "none" && <CalendarLegend colorKeys={colorKeys} colorFor={colorFor} />}
 
-      {colorBy !== "none" && (
-        <div
-          data-calendar-legend
-          className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-neutral-200 px-4 py-1.5 text-[12px] text-neutral-600"
-        >
-          <span className="font-medium text-neutral-700">凡例</span>
-          {colorKeys.map((key) => (
-            <span key={key} data-calendar-legend-item={key} className="flex items-center gap-1">
-              <span data-calendar-legend-swatch className={`h-3 w-3 rounded-sm border ${colorFor(key)}`} />
-              {key}
-            </span>
-          ))}
-          <span data-calendar-legend-item="unset" className="flex items-center gap-1">
-            <span data-calendar-legend-swatch className={`h-3 w-3 rounded-sm border ${UNSET_COLOR}`} />
-            未設定
-          </span>
-        </div>
-      )}
-
-      <div className="min-h-0 flex-1 overflow-auto rounded-b-md border-l border-t border-neutral-200">
-        <div className="flex min-h-full min-w-[720px] flex-col">
-          {!weekMode && (
-            <div
-              className="sticky top-0 z-20 grid border-b border-neutral-200 bg-neutral-50"
-              style={{ gridTemplateColumns: cols }}
-            >
-              {weekdayOrder.map((weekday, offset) =>
-                visibleDays.includes(offset) ? (
-                  <div
-                    key={weekday}
-                    className={`flex h-6 items-center border-r border-neutral-200 px-2 text-[11px] font-medium text-neutral-500 ${
-                      weekday === 0 || weekday === 6 ? "justify-center px-0" : ""
-                    }`}
-                  >
-                    {weekday === 0 || weekday === 6 ? "" : WEEKDAYS[weekday]}
-                  </div>
-                ) : null,
-              )}
-            </div>
-          )}
+      <CalendarGrid
+        weekMode={weekMode}
+        cols={cols}
+        weekdayOrder={weekdayOrder}
+        visibleDays={visibleDays}
+      >
           {weeks.map(({ days, lanes }) => {
             const visibleWeekDays = days.filter((_, i) => visibleDays.includes(i));
             return (
               <div key={days[0]} className={weekMode ? "flex min-h-0 flex-1 flex-col" : ""}>
                 <div className="grid" style={{ gridTemplateColumns: cols }}>
-                  {visibleWeekDays.map((day) => dayHeader(day, weekMode))}
+                  {visibleWeekDays.map((day) => (
+                    <CalendarDayHeader
+                      key={day}
+                      day={day}
+                      weekView={weekMode}
+                      month={month}
+                      today={today}
+                      onAdd={startInlineAdd}
+                    />
+                  ))}
                 </div>
                 {lanes.length > 0 && (
                   <div
@@ -1210,179 +857,31 @@ export default function CalendarView({
                       {lanes.flatMap((lane, laneIdx) =>
                         lane.map((bar) => {
                           const t = bar.item.task;
-                          const cont =
-                            bar.continuesLeft && bar.continuesRight
-                              ? "both"
-                              : bar.continuesLeft
-                                ? "left"
-                                : bar.continuesRight
-                                  ? "right"
-                                  : "none";
                           return (
-                            <div
+                            <CalendarMultiDayBar
                               key={`${days[0]}-${t.id}`}
-                              data-calendar-multiday={t.id}
-                              data-calendar-color-key={colorKeyFor(t)}
-                              data-calendar-color-tone={colorKeyFor(t) === "" ? "unset" : "set"}
-                              data-calendar-continues={cont}
-                              role="button"
-                              tabIndex={0}
-                              draggable
-                              onDragStart={(e) => {
-                                if ((e.target as HTMLElement).closest("[data-calendar-resize]")) {
-                                  e.preventDefault();
-                                  return;
-                                }
-                                dragging.current = true;
-                                e.dataTransfer.setData("text/atlas-task", String(t.id));
-                              }}
-                              onDragEnd={() => {
-                                setTimeout(() => {
-                                  dragging.current = false;
-                                }, 0);
-                              }}
-                              onClick={() => {
-                                if (dragging.current) return;
-                                openTask(t.id);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") openTask(t.id);
-                              }}
-                              title="クリックで開く / ドラッグで期日を変更"
-                              onPointerDown={(e) => {
-                                if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
-                                if ((e.target as HTMLElement).closest("[data-calendar-resize]")) return;
-                                const grid = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-multi-grid]");
-                                const dayCells = [...(grid?.parentElement?.parentElement?.querySelectorAll<HTMLElement>("[data-calendar-day]") ?? [])];
-                                const start = parseDay(t.start_on ?? t.due_on ?? "");
-                                const end = parseDay(t.due_on ?? t.start_on ?? "");
-                                if (!grid || dayCells.length === 0 || start === null || end === null) return;
-                                touchMove.current = {
-                                  taskId: t.id,
-                                  startX: e.clientX,
-                                  startY: e.clientY,
-                                  start,
-                                  end,
-                                  dayWidth: Math.max(...dayCells.map((cell) => cell.getBoundingClientRect().width)),
-                                  single: false,
-                                  moved: false,
-                                };
-                                e.currentTarget.setPointerCapture(e.pointerId);
-                              }}
-                              onPointerMove={(e) => {
-                                const session = touchMove.current;
-                                if (!session) return;
-                                if (Math.abs(e.clientX - session.startX) > 6 || Math.abs(e.clientY - session.startY) > 6) {
-                                  session.moved = true;
-                                  dragging.current = true;
-                                }
-                              }}
-                              onPointerUp={(e) => {
-                                const session = touchMove.current;
-                                touchMove.current = null;
-                                if (!session || !session.moved) return;
-                                const delta = Math.round((e.clientX - session.startX) / Math.max(1, session.dayWidth));
-                                if (delta !== 0) {
-                                  void patchTask(t, {
-                                    start_on: formatDay(session.start + delta),
-                                    due_on: formatDay(session.end + delta),
-                                  });
-                                }
-                                setTimeout(() => {
-                                  dragging.current = false;
-                                }, 30);
-                              }}
-                              onPointerCancel={() => {
-                                touchMove.current = null;
-                                setTimeout(() => {
-                                  dragging.current = false;
-                                }, 30);
-                              }}
-                              className={`${taskFace(t, true)} relative touch-pan-y mx-1 rounded ${
-                                bar.continuesLeft ? "rounded-l-none" : ""
-                              } ${bar.continuesRight ? "rounded-r-none" : ""}`}
-                              style={{
-                                gridColumn: `${bar.colStart + 1} / ${bar.colEnd + 2}`,
-                                gridRow: laneIdx + 1,
-                              }}
-                            >
-                              {bar.continuesLeft && <span className="shrink-0 text-neutral-400">‹</span>}
-                              {completion(t)}
-                              {taskAvatars(t)}
-                              <span
-                                title={t.name}
-                                dir="auto"
-                                className={`min-w-0 flex-1 truncate ${t.completed ? "line-through" : ""}`}
-                              >
-                                {t.name}
-                              </span>
-                              {taskMeta(t)}
-                              {bar.continuesRight && <span className="shrink-0 text-neutral-400">›</span>}
-                              <span
-                                data-calendar-resize="start"
-                                title="開始日を変更"
-                                onPointerDown={(e) => {
-                                  const start = parseDay(t.start_on ?? t.due_on ?? "");
-                                  const end = parseDay(t.due_on ?? t.start_on ?? "");
-                                  const grid = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-multi-grid]");
-                                  const dayCells = [...(grid?.parentElement?.parentElement?.querySelectorAll<HTMLElement>("[data-calendar-day]") ?? [])];
-                                  if (start === null || end === null || !grid || dayCells.length === 0) return;
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  calendarResize.current = {
-                                    taskId: t.id,
-                                    edge: "start",
-                                    startX: e.clientX,
-                                    dayWidth: Math.max(...dayCells.map((cell) => cell.getBoundingClientRect().width)),
-                                    start,
-                                    end,
-                                  };
-                                  e.currentTarget.setPointerCapture(e.pointerId);
-                                }}
-                                onPointerUp={(e) => {
-                                  const session = calendarResize.current;
-                                  calendarResize.current = null;
-                                  if (!session) return;
-                                  const delta = Math.round((e.clientX - session.startX) / Math.max(1, session.dayWidth));
-                                  if (delta === 0) return;
-                                  const start = Math.min(session.end, session.start + delta);
-                                  void patchTask(t, { start_on: formatDay(start), due_on: formatDay(session.end) });
-                                }}
-                                className="absolute inset-y-0 left-0 z-20 w-2 touch-none cursor-ew-resize rounded-l bg-[#2c60b8]/0 hover:bg-[#2c60b8]/40"
-                              />
-                              <span
-                                data-calendar-resize="end"
-                                title="期日を変更"
-                                onPointerDown={(e) => {
-                                  const start = parseDay(t.start_on ?? t.due_on ?? "");
-                                  const end = parseDay(t.due_on ?? t.start_on ?? "");
-                                  const grid = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-multi-grid]");
-                                  const dayCells = [...(grid?.parentElement?.parentElement?.querySelectorAll<HTMLElement>("[data-calendar-day]") ?? [])];
-                                  if (start === null || end === null || !grid || dayCells.length === 0) return;
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  calendarResize.current = {
-                                    taskId: t.id,
-                                    edge: "end",
-                                    startX: e.clientX,
-                                    dayWidth: Math.max(...dayCells.map((cell) => cell.getBoundingClientRect().width)),
-                                    start,
-                                    end,
-                                  };
-                                  e.currentTarget.setPointerCapture(e.pointerId);
-                                }}
-                                onPointerUp={(e) => {
-                                  const session = calendarResize.current;
-                                  calendarResize.current = null;
-                                  if (!session) return;
-                                  const delta = Math.round((e.clientX - session.startX) / Math.max(1, session.dayWidth));
-                                  if (delta === 0) return;
-                                  const end = Math.max(session.start, session.end + delta);
-                                  void patchTask(t, { start_on: formatDay(session.start), due_on: formatDay(end) });
-                                }}
-                                className="absolute inset-y-0 right-0 z-20 w-2 touch-none cursor-ew-resize rounded-r bg-[#2c60b8]/0 hover:bg-[#2c60b8]/40"
-                              />
-                            </div>
+                              task={t}
+                              gridRow={laneIdx}
+                              colStart={bar.colStart}
+                              colEnd={bar.colEnd}
+                              continuesLeft={bar.continuesLeft}
+                              continuesRight={bar.continuesRight}
+                              colorKey={colorKeyFor(t)}
+                              taskFaceClass={taskFace(t, true)}
+                              completion={completion(t)}
+                              avatars={taskAvatars(t)}
+                              meta={taskMeta(t)}
+                              onDragStart={(event) => multiBarDragStart(t, event)}
+                              onDragEnd={multiBarDragEnd}
+                              onClick={() => multiBarClick(t)}
+                              onKeyDown={(event) => multiBarKeyDown(t, event)}
+                              onPointerDown={(event) => multiBarPointerDown(t, event)}
+                              onPointerMove={multiBarPointerMove}
+                              onPointerUp={(event) => multiBarPointerUp(t, event)}
+                              onPointerCancel={multiBarPointerCancel}
+                              onResizeDown={(edge, event) => multiBarResizeDown(t, edge, event)}
+                              onResizeUp={(edge, event) => multiBarResizeUp(t, edge, event)}
+                            />
                           );
                         }),
                       )}
@@ -1400,172 +899,70 @@ export default function CalendarView({
                     const dt = new Date(day * 86_400_000);
                     const compact = dt.getUTCDay() === 0 || dt.getUTCDay() === 6;
                     return (
-                      <div
+                      <CalendarDayCell
                         key={iso}
-                        data-calendar-day={iso}
-                        data-calendar-day-count={dayTasks.length}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
+                        iso={iso}
+                        taskCount={dayTasks.length}
+                        shownTasks={shownDayTasks}
+                        hiddenCount={hiddenDayTasks}
+                        expanded={expanded}
+                        weekMode={weekMode}
+                        adding={adding}
+                        draft={draft}
+                        compact={compact}
+                        inputRef={inputRef}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
                         }}
-                        onDrop={(e) => onDrop(e, iso)}
-                        className={`group relative border-r border-b border-neutral-200 p-1 align-top ${
-                          weekMode ? "min-h-[320px]" : "min-h-[120px] max-h-[240px] overflow-y-auto"
-                        }`}
-                      >
-                        {shownDayTasks.map((t) => (
-                          <div
-                            key={t.id}
-                            data-calendar-single={t.id}
-                            data-calendar-color-key={colorKeyFor(t)}
-                            data-calendar-color-tone={colorKeyFor(t) === "" ? "unset" : "set"}
-                            role="button"
-                            tabIndex={0}
-                            draggable
-                            onDragStart={(e) => {
-                              dragging.current = true;
-                              e.dataTransfer.setData("text/atlas-task", String(t.id));
-                            }}
-                            onDragEnd={() => {
-                              setTimeout(() => {
-                                dragging.current = false;
-                              }, 0);
-                            }}
-                            onClick={() => {
-                              if (dragging.current) return;
-                              openTask(t.id);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") openTask(t.id);
-                            }}
-                            title="クリックで開く / ドラッグで期日を変更"
-                            className={`${taskFace(t, false)} touch-pan-y`}
-                            onPointerDown={(e) => {
-                              if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
-                              const day = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-calendar-day]");
-                              const start = parseDay(t.start_on ?? t.due_on ?? "");
-                              const end = parseDay(t.due_on ?? t.start_on ?? "");
-                              if (!day || start === null || end === null) return;
-                              touchMove.current = {
-                                taskId: t.id,
-                                startX: e.clientX,
-                                startY: e.clientY,
-                                start,
-                                end,
-                                dayWidth: day.getBoundingClientRect().width,
-                                single: true,
-                                moved: false,
-                              };
-                              e.currentTarget.setPointerCapture(e.pointerId);
-                            }}
-                            onPointerMove={(e) => {
-                              const session = touchMove.current;
-                              if (!session) return;
-                              if (Math.abs(e.clientX - session.startX) > 6 || Math.abs(e.clientY - session.startY) > 6) {
-                                session.moved = true;
-                                dragging.current = true;
-                              }
-                            }}
-                            onPointerUp={(e) => {
-                              const session = touchMove.current;
-                              touchMove.current = null;
-                              if (!session || !session.moved) return;
-                              const delta = Math.round((e.clientX - session.startX) / Math.max(1, session.dayWidth));
-                              if (delta !== 0) {
-                                const next = formatDay(session.end + delta);
-                                void patchTask(t, t.start_on ? { start_on: next, due_on: next } : { due_on: next });
-                              }
-                              setTimeout(() => {
-                                dragging.current = false;
-                              }, 30);
-                            }}
-                            onPointerCancel={() => {
-                              touchMove.current = null;
-                              setTimeout(() => {
-                                dragging.current = false;
-                              }, 30);
-                            }}
-                          >
-                            {completion(t)}
-                            {taskAvatars(t)}
-                            <span
-                              title={t.name}
-                              dir="auto"
-                              className={`min-w-0 flex-1 truncate ${t.completed ? "line-through" : ""}`}
-                            >
-                              {t.name}
-                            </span>
-                            {taskMeta(t)}
-                          </div>
-                        ))}
-                        {hiddenDayTasks > 0 && (
-                          <button
-                            type="button"
-                            data-calendar-more={iso}
-                            onClick={() => {
-                              setExpandedDays((prev) => new Set(prev).add(iso));
-                            }}
-                            className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] font-medium text-[#2c60b8] hover:bg-neutral-100"
-                          >
-                            +{hiddenDayTasks} 件
-                          </button>
-                        )}
-                        {!weekMode && expanded && dayTasks.length > MONTH_SINGLE_LIMIT && (
-                          <button
-                            type="button"
-                            data-calendar-collapse={iso}
-                            onClick={() => {
-                              setExpandedDays((prev) => {
-                                const next = new Set(prev);
-                                next.delete(iso);
-                                return next;
-                              });
-                            }}
-                            className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] text-neutral-500 hover:bg-neutral-100"
-                          >
-                            折りたたむ
-                          </button>
-                        )}
-                        {adding ? (
-                          <input
-                            ref={inputRef}
-                            value={draft}
-                            onChange={(e) => setDraft(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") submitInlineAdd(iso);
-                              if (e.key === "Escape") {
-                                setAddingDate(null);
-                                setDraft("");
-                              }
-                            }}
-                            onBlur={() => {
-                              if (!draft.trim()) setAddingDate(null);
-                            }}
-                            placeholder="タスク名を入力"
-                            className="h-8 w-full rounded border border-blue-500 px-2 text-[13px] outline-none"
+                        onDrop={(event) => onDrop(event, iso)}
+                        onExpand={() => setExpandedDays((prev) => new Set(prev).add(iso))}
+                        onCollapse={() =>
+                          setExpandedDays((prev) => {
+                            const next = new Set(prev);
+                            next.delete(iso);
+                            return next;
+                          })
+                        }
+                        onStartAdd={() => startInlineAdd(iso)}
+                        onDraftChange={setDraft}
+                        onDraftKeyDown={(event) => {
+                          if (event.key === "Enter") submitInlineAdd(iso);
+                          if (event.key === "Escape") {
+                            setAddingDate(null);
+                            setDraft("");
+                          }
+                        }}
+                        onDraftBlur={() => {
+                          if (!draft.trim()) setAddingDate(null);
+                        }}
+                        renderTask={(task) => (
+                          <CalendarSingleTask
+                            key={task.id}
+                            task={task}
+                            colorKey={colorKeyFor(task)}
+                            taskFaceClass={taskFace(task, false)}
+                            completion={completion(task)}
+                            avatars={taskAvatars(task)}
+                            meta={taskMeta(task)}
+                            onDragStart={(event) => singleBarDragStart(task, event)}
+                            onDragEnd={singleBarDragEnd}
+                            onClick={() => singleBarClick(task)}
+                            onKeyDown={(event) => singleBarKeyDown(task, event)}
+                            onPointerDown={(event) => singleBarPointerDown(task, event)}
+                            onPointerMove={singleBarPointerMove}
+                            onPointerUp={(event) => singleBarPointerUp(task, event)}
+                            onPointerCancel={singleBarPointerCancel}
                           />
-                        ) : (
-                          !compact &&
-                          !weekMode && (
-                            <button
-                              type="button"
-                              onClick={() => startInlineAdd(iso)}
-                              className="flex h-8 w-full items-center rounded px-1 text-left text-[12px] text-neutral-400 opacity-0 hover:bg-neutral-100 hover:text-neutral-700 group-hover:opacity-100 focus:opacity-100"
-                            >
-                              ＋ タスクを追加
-                            </button>
-                          )
                         )}
-                      </div>
+                      />
                     );
                   })}
                 </div>
               </div>
             );
           })}
-        </div>
-      </div>
+      </CalendarGrid>
     </div>
   );
 }

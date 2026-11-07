@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const projectId = searchParams.get("project_id");
-  if (!projectId) return NextResponse.json({ error: "project_id is required" }, { status: 400 });
-  const auth = await requireProjectPermission(req, Number(projectId), "view");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const GET = withProject("view", async (_req, { projectId }) => {
   const r = await db.query(
     `SELECT t.id, t.name, t.title_template, t.description, t.assignee_id,
        u.name AS assignee_name, t.due_offset_days, t.section_id, s.name AS section_name, t.subtasks
@@ -20,15 +14,18 @@ export async function GET(req: Request) {
     [projectId],
   );
   return NextResponse.json(r.rows);
-}
+});
 
-export async function POST(req: Request) {
-  const uid = getCurrentUserIdFromRequest(req);
-  const body = await req.json().catch(() => null);
-  const { project_id, name, title_template, description, assignee_id, due_offset_days, section_id, subtasks } = body ?? {};
-  if (!project_id) return NextResponse.json({ error: "project_id is required" }, { status: 400 });
-  const auth = await requireProjectPermission(req, Number(project_id), "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+  const { name, title_template, description, assignee_id, due_offset_days, section_id, subtasks } = (body ?? {}) as {
+    name?: string;
+    title_template?: string;
+    description?: string;
+    assignee_id?: number | null;
+    due_offset_days?: number | null;
+    section_id?: number | null;
+    subtasks?: unknown;
+  };
   if (!name || String(name).trim() === "" || !title_template || String(title_template).trim() === "") {
     return NextResponse.json({ error: "project_id, name and title_template are required" }, { status: 400 });
   }
@@ -44,7 +41,7 @@ export async function POST(req: Request) {
      VALUES ($1::bigint, $2, $3, $4, $5::bigint, $6::int, $7::bigint, $8::jsonb, $9)
      RETURNING id`,
     [
-      project_id,
+      projectId,
       String(name).trim(),
       String(title_template).trim(),
       typeof description === "string" ? description : "",
@@ -55,6 +52,6 @@ export async function POST(req: Request) {
       uid,
     ],
   );
-  await notifyProject(project_id);
+  await notifyProject(projectId);
   return NextResponse.json({ id: r.rows[0].id }, { status: 201 });
-}
+}, { body: true });

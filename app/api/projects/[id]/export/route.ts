@@ -1,26 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
+import { badRequest } from "@/lib/api/errors";
+import { csvResponse, toCsv } from "@/lib/csv";
 
-function csvCell(v: unknown): string {
-  const s = v === null || v === undefined ? "" : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const auth = await requireProjectPermission(req, Number(id), "view");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const GET = withProject("view", async (req, { projectId }) => {
+  const id = projectId;
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format") ?? "json";
-  if (format !== "json" && format !== "csv") {
-    return NextResponse.json({ error: "format must be json or csv" }, { status: 400 });
-  }
-  const p = await db.query("SELECT id, name FROM projects WHERE id = $1::bigint", [id]);
-  if (p.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (format !== "json" && format !== "csv") throw badRequest("format must be json or csv");
+  const p = await db.query("SELECT id, name FROM projects WHERE id = $1::bigint", [projectId]);
   const project = p.rows[0] as { id: number; name: string };
 
   const sections = await db.query(
@@ -70,7 +59,7 @@ export async function GET(
   const valueByField = new Map(
     (fields.rows as { id: number }[]).map((f, i) => [f.id, i] as const),
   );
-  const lines = [header.map(csvCell).join(",")];
+  const rows: unknown[][] = [header];
   for (const t of tasks.rows as {
     section_id: number | null;
     parent_task_id: number | null;
@@ -93,8 +82,7 @@ export async function GET(
       const idx = valueByField.get(Number(pair.slice(0, eq)));
       if (idx !== undefined) customs[idx] = pair.slice(eq + 1);
     }
-    lines.push(
-      [
+    rows.push([
         t.section_id === null ? "" : (sectionName.get(t.section_id) ?? ""),
         t.parent_task_id === null ? "タスク" : "サブタスク",
         t.name,
@@ -107,16 +95,7 @@ export async function GET(
         t.recurrence === "none" ? "" : t.recurrence,
         t.comments ?? "",
         ...customs,
-      ]
-        .map(csvCell)
-        .join(","),
-    );
+    ]);
   }
-  const bom = "\uFEFF";
-  return new NextResponse(bom + lines.join("\n"), {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${safeName}.csv`)}`,
-    },
-  });
-}
+  return csvResponse(`${safeName}.csv`, toCsv(rows));
+});

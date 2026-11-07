@@ -1,59 +1,44 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
 import { isAutomationAction, isAutomationTrigger } from "@/lib/automations";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 
-async function requireRule(req: Request, projectId: number, automationId: string) {
-  const auth = await requireProjectPermission(req, projectId, "edit");
-  if (!auth.ok) return { ok: false as const, response: NextResponse.json({ error: auth.error }, { status: auth.status }) };
-  const row = await db.query(
+export const PATCH = withProject("edit", async (_req, { uid, projectId, params, body }) => {
+  const automationId = params.automationId;
+  const owned = await db.query(
     "SELECT id FROM project_automations WHERE id = $1::bigint AND project_id = $2::bigint",
     [automationId, projectId],
   );
-  if (row.rowCount === 0) {
-    return { ok: false as const, response: NextResponse.json({ error: "not found" }, { status: 404 }) };
-  }
-  return { ok: true as const };
-}
-
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string; automationId: string }> },
-) {
-  const { id, automationId } = await params;
-  const projectId = Number(id);
-  const checked = await requireRule(req, projectId, automationId);
-  if (!checked.ok) return checked.response;
-  const body = await req.json().catch(() => ({}));
+  if (owned.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const payload = (body ?? {}) as { name?: unknown; trigger?: unknown; action_type?: unknown; action_value?: unknown; enabled?: unknown };
   const sets: string[] = [];
   const values: unknown[] = [];
-  if (typeof body.name === "string" && body.name.trim() !== "") {
-    values.push(body.name.trim());
+  if (typeof payload.name === "string" && payload.name.trim() !== "") {
+    values.push(payload.name.trim());
     sets.push(`name = $${values.length}`);
   }
-  if (body.trigger !== undefined) {
-    if (!isAutomationTrigger(body.trigger)) {
+  if (payload.trigger !== undefined) {
+    if (!isAutomationTrigger(payload.trigger)) {
       return NextResponse.json({ error: "invalid trigger" }, { status: 400 });
     }
-    values.push(body.trigger);
+    values.push(payload.trigger);
     sets.push(`trigger = $${values.length}`);
   }
-  if (body.action_type !== undefined) {
-    if (!isAutomationAction(body.action_type)) {
+  if (payload.action_type !== undefined) {
+    if (!isAutomationAction(payload.action_type)) {
       return NextResponse.json({ error: "invalid action_type" }, { status: 400 });
     }
-    values.push(body.action_type);
+    values.push(payload.action_type);
     sets.push(`action_type = $${values.length}`);
   }
-  if (typeof body.action_value === "string" && body.action_value.trim() !== "") {
-    values.push(body.action_value.trim());
+  if (typeof payload.action_value === "string" && payload.action_value.trim() !== "") {
+    values.push(payload.action_value.trim());
     sets.push(`action_value = $${values.length}`);
   }
-  if (typeof body.enabled === "boolean") {
-    values.push(body.enabled);
+  if (typeof payload.enabled === "boolean") {
+    values.push(payload.enabled);
     sets.push(`enabled = $${values.length}`);
   }
   if (sets.length === 0) return NextResponse.json({ error: "no fields to update" }, { status: 400 });
@@ -63,28 +48,27 @@ export async function PATCH(
     values,
   );
   await notifyProject(projectId);
-  await audit(getCurrentUserIdFromRequest(req), "automation.update", {
+  await audit(uid, "automation.update", {
     entity: "automation",
     entityId: Number(automationId),
     projectId,
   });
   return NextResponse.json({ id: Number(automationId) });
-}
+}, { body: true });
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string; automationId: string }> },
-) {
-  const { id, automationId } = await params;
-  const projectId = Number(id);
-  const checked = await requireRule(req, projectId, automationId);
-  if (!checked.ok) return checked.response;
+export const DELETE = withProject("edit", async (_req, { uid, projectId, params }) => {
+  const automationId = params.automationId;
+  const owned = await db.query(
+    "SELECT id FROM project_automations WHERE id = $1::bigint AND project_id = $2::bigint",
+    [automationId, projectId],
+  );
+  if (owned.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   await db.query("DELETE FROM project_automations WHERE id = $1::bigint", [automationId]);
   await notifyProject(projectId);
-  await audit(getCurrentUserIdFromRequest(req), "automation.delete", {
+  await audit(uid, "automation.delete", {
     entity: "automation",
     entityId: Number(automationId),
     projectId,
   });
   return NextResponse.json({ deleted: Number(automationId) });
-}
+});

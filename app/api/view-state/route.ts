@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
+import { badRequest } from "@/lib/api/errors";
 import { getProjectViewStates, saveProjectViewState, type ViewState } from "@/lib/data";
 
 const VIEWS = new Set(["list", "board", "timeline", "calendar"]);
@@ -20,30 +20,19 @@ function validState(value: unknown): value is ViewState {
   );
 }
 
-export async function GET(req: Request) {
+export const GET = withProject("view", async (req, { uid, projectId }) => {
   const { searchParams } = new URL(req.url);
-  const projectId = Number(searchParams.get("project_id"));
   const view = searchParams.get("view") ?? "";
-  if (!Number.isInteger(projectId) || projectId <= 0 || !VIEWS.has(view)) {
-    return NextResponse.json({ error: "project_id and a valid view are required" }, { status: 400 });
-  }
-  const auth = await requireProjectPermission(req, projectId, "view");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const uid = getCurrentUserIdFromRequest(req);
+  if (!VIEWS.has(view)) throw badRequest("project_id and a valid view are required");
   const states = await getProjectViewStates(uid, projectId);
   return NextResponse.json({ view, state: states[view] ?? {} });
-}
+});
 
-export async function PUT(req: Request) {
-  const body = await req.json().catch(() => null);
-  const projectId = Number(body?.project_id);
-  const view = typeof body?.view === "string" ? body.view : "";
-  if (!Number.isInteger(projectId) || projectId <= 0 || !VIEWS.has(view) || !validState(body?.state)) {
-    return NextResponse.json({ error: "project_id, view and state are required" }, { status: 400 });
+export const PUT = withProject("view", async (_req, { uid, projectId, body }) => {
+  const { view, state } = (body ?? {}) as { view?: string; state?: unknown };
+  if (typeof view !== "string" || !VIEWS.has(view) || !validState(state)) {
+    throw badRequest("project_id, view and state are required");
   }
-  const auth = await requireProjectPermission(req, projectId, "view");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const uid = getCurrentUserIdFromRequest(req);
-  await saveProjectViewState(uid, projectId, view, body.state);
+  await saveProjectViewState(uid, projectId, view, state);
   return NextResponse.json({ ok: true, view });
-}
+}, { body: true });

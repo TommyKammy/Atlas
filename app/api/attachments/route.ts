@@ -3,10 +3,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
-import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
+import { requireProjectPermission, requireTaskPermission } from "@/lib/api-project-auth";
+import { withUser } from "@/lib/api/route";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "/app/uploads";
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -16,16 +16,13 @@ function safeExt(name: string): string {
   return /^[.a-z0-9]+$/.test(ext) ? ext : "";
 }
 
-export async function GET(req: Request) {
+export const GET = withUser(async (req) => {
   const { searchParams } = new URL(req.url);
   const taskId = searchParams.get("task_id");
   const projectId = searchParams.get("project_id");
   if (taskId) {
-    const projectIdForTask = await getTaskProjectId(Number(taskId));
-    if (projectIdForTask !== null) {
-      const auth = await requireProjectPermission(req, projectIdForTask, "view");
-      if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-    }
+    const auth = await requireTaskPermission(req, Number(taskId), "view");
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
     const r = await db.query(
       `SELECT a.id, a.task_id, a.file_name, a.mime_type, a.size_bytes::int AS size_bytes,
          u.name AS author_name, a.created_at::text AS created_at
@@ -51,26 +48,20 @@ export async function GET(req: Request) {
     return NextResponse.json(r.rows);
   }
   return NextResponse.json({ error: "task_id or project_id is required" }, { status: 400 });
-}
+});
 
-export async function POST(req: Request) {
-  const uid = getCurrentUserIdFromRequest(req);
-  const form = await req.formData();
-  const taskId = form.get("task_id");
-  const file = form.get("file");
+export const POST = withUser(async (req, { uid }) => {
+  const form = await req.formData().catch(() => null);
+  const taskId = form?.get("task_id");
+  const file = form?.get("file");
   if (typeof taskId !== "string" || !(file instanceof File)) {
     return NextResponse.json({ error: "task_id and file are required" }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: "file exceeds 25MB" }, { status: 413 });
   }
-  const t = await db.query("SELECT id FROM tasks WHERE id = $1::bigint", [taskId]);
-  if (t.rowCount === 0) return NextResponse.json({ error: "task not found" }, { status: 404 });
-  const projectId = await getTaskProjectId(Number(taskId));
-  if (projectId !== null) {
-    const auth = await requireProjectPermission(req, projectId, "edit");
-    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+  const auth = await requireTaskPermission(req, Number(taskId), "edit");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const original = file.name.slice(0, 255) || "unnamed";
   const stored = `${randomUUID()}${safeExt(original)}`;
@@ -84,6 +75,6 @@ export async function POST(req: Request) {
     [taskId, original, stored, file.type || "application/octet-stream", file.size, uid],
   );
   await notifyTask(taskId);
-  await audit(getCurrentUserIdFromRequest(req), "attachment.create", { entity: "attachment", entityId: r.rows[0].id, summary: original });
+  await audit(auth.uid, "attachment.create", { entity: "attachment", entityId: r.rows[0].id, summary: original });
   return NextResponse.json({ id: r.rows[0].id }, { status: 201 });
-}
+});

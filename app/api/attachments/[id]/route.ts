@@ -4,8 +4,7 @@ import path from "node:path";
 import { db } from "@/lib/db";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
-import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
+import { withAttachmentTask } from "@/lib/api/route";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "/app/uploads";
 
@@ -20,22 +19,14 @@ const INLINE_TYPES = new Set([
   "application/json",
 ]);
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const GET = withAttachmentTask("view", async (req, { params }) => {
+  const id = params.id;
   const inline = new URL(req.url).searchParams.get("inline") === "1";
   const r = await db.query(
     "SELECT file_name, stored_name, mime_type, size_bytes, task_id FROM task_attachments WHERE id = $1::bigint",
     [id],
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const projectId = await getTaskProjectId(r.rows[0].task_id);
-  if (projectId !== null) {
-    const auth = await requireProjectPermission(req, projectId, "view");
-    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
   const row = r.rows[0];
   const full = path.join(UPLOAD_DIR, path.basename(row.stored_name));
   let data: Buffer;
@@ -56,20 +47,10 @@ export async function GET(
         : `attachment; filename*=UTF-8''${encodeURIComponent(row.file_name)}`,
     },
   });
-}
+});
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const owner = await db.query("SELECT task_id FROM task_attachments WHERE id = $1::bigint", [id]);
-  if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const projectId = await getTaskProjectId(owner.rows[0].task_id);
-  if (projectId !== null) {
-    const auth = await requireProjectPermission(_req, projectId, "edit");
-    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+export const DELETE = withAttachmentTask("edit", async (_req, { uid, taskId, params }) => {
+  const id = params.id;
   const r = await db.query(
     "DELETE FROM task_attachments WHERE id = $1::bigint RETURNING stored_name",
     [id],
@@ -77,7 +58,7 @@ export async function DELETE(
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const full = path.join(UPLOAD_DIR, path.basename(r.rows[0].stored_name));
   await unlink(full).catch(() => undefined);
-  await notifyTask(owner.rows[0]?.task_id ?? null);
-  await audit(getCurrentUserIdFromRequest(_req), "attachment.delete", { entity: "attachment", entityId: id });
+  await notifyTask(taskId);
+  await audit(uid, "attachment.delete", { entity: "attachment", entityId: id });
   return NextResponse.json({ deleted: Number(id) });
-}
+});

@@ -1,30 +1,17 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { PROJECT_ICONS } from "@/lib/project-appearance";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const auth = await requireProjectPermission(_req, Number(id), "admin");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const r = await db.query("DELETE FROM projects WHERE id = $1::bigint", [id]);
+export const DELETE = withProject("admin", async (_req, { uid, projectId }) => {
+  const r = await db.query("DELETE FROM projects WHERE id = $1::bigint", [projectId]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  await audit(getCurrentUserIdFromRequest(_req), "project.delete", { entity: "project", entityId: id });
-  return NextResponse.json({ deleted: Number(id) });
-}
+  await audit(uid, "project.delete", { entity: "project", entityId: projectId });
+  return NextResponse.json({ deleted: projectId });
+});
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const auth = await requireProjectPermission(req, Number(id), "admin");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
   const body = await req.json().catch(() => ({}));
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -111,7 +98,7 @@ export async function PATCH(
       { status: 400 },
     );
   }
-  values.push(id);
+  values.push(projectId);
   const r = await db.query(
     `UPDATE projects SET ${sets.join(", ")} WHERE id = $${values.length}::bigint RETURNING id`,
     values,
@@ -121,13 +108,13 @@ export async function PATCH(
     await db.query(
       `UPDATE tasks SET status = $1, updated_at = now()
        WHERE project_id = $2::bigint AND status = $3 AND deleted_at IS NULL`,
-      [rename.to, id, rename.from],
+      [rename.to, projectId, rename.from],
     );
   }
-  await audit(getCurrentUserIdFromRequest(req), "project.update", {
+  await audit(uid, "project.update", {
     entity: "project",
-    entityId: id,
+    entityId: projectId,
   });
-  await import("@/lib/notify").then((m) => m.notifyProject(Number(id)));
-  return NextResponse.json({ id: Number(id) });
-}
+  await import("@/lib/notify").then((m) => m.notifyProject(projectId));
+  return NextResponse.json({ id: projectId });
+});

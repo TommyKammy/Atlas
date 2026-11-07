@@ -1,5 +1,9 @@
 "use client";
 
+import EmptyState from "./EmptyState";
+import InlineError from "./ui/InlineError";
+import MutationFeedback from "./ui/MutationFeedback";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -45,6 +49,7 @@ export default function MyTasksView({
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [overBucket, setOverBucket] = useState<BucketKey | null>(null);
   const [saving, setSaving] = useState(false);
+  const [persistError, setPersistError] = useState<string | null>(null);
 
   const dueOf = (task: MyTask) =>
     dueOverrides[task.id] !== undefined ? dueOverrides[task.id] : task.due_on;
@@ -64,6 +69,7 @@ export default function MyTasksView({
     setOrder(nextOrder);
     setDueOverrides(nextDue);
     setSaving(true);
+    setPersistError(null);
     const byId = new Map(tasks.map((task) => [task.id, task]));
     const items = nextOrder.map((id, index) => ({
       task_id: id,
@@ -77,7 +83,7 @@ export default function MyTasksView({
         body: JSON.stringify({ items }),
       });
       if (!res.ok) {
-        alert(`並び順の保存に失敗しました: ${res.status}`);
+        setPersistError(`並び順の保存に失敗しました: ${res.status}`);
         return;
       }
       router.refresh();
@@ -148,10 +154,18 @@ export default function MyTasksView({
   return (
     <div className="p-6" data-my-tasks-view data-my-task-saving={saving}>
       <h1 className="text-lg font-bold">マイタスク（{viewerName}）</h1>
+      <InlineError message={persistError} onDismiss={() => setPersistError(null)} className="mt-2 max-w-4xl" />
+      <MutationFeedback pending={saving} className="mt-1" />
       <p className="mt-1 text-sm text-neutral-500">
         未完了・担当が自分・全プロジェクト横断。ドラッグで並び替え、別のバケットへ移動すると期日が変わります。
       </p>
-      {tasks.length === 0 && <p className="mt-4 text-neutral-600">割当タスクはありません。</p>}
+      {tasks.length === 0 && (
+        <EmptyState
+          scope="my-tasks"
+          title="割当タスクはありません"
+          description="担当者に割り当てられた未完了タスクがここに表示されます。"
+        />
+      )}
       <div className="mt-4 max-w-4xl">
         {grouped.map((bucket) => (
           <div

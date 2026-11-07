@@ -1,18 +1,12 @@
 "use client";
 
+import { confirmAction } from "@/lib/ui-feedback";
+
+import { api } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import type { Section, TaskTemplate, User } from "@/lib/data";
-import { useApiRefresh } from "./ListView";
+import { useApiRefresh } from "@/lib/use-api-refresh";
 
-async function api(path: string, method: string, body?: unknown) {
-  const res = await fetch(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${method} ${path}: ${res.status}`);
-  return res.json();
-}
 
 export default function TemplateBar({
   projectId,
@@ -38,7 +32,10 @@ export default function TemplateBar({
     if (res.ok) setTemplates(await res.json());
   };
   useEffect(() => {
-    load();
+    const frame = window.requestAnimationFrame(() => {
+      void load();
+    });
+    return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -51,7 +48,7 @@ export default function TemplateBar({
 
   const remove = async () => {
     if (!picked) return;
-    if (!confirm("テンプレートを削除しますか？")) return;
+    if (!await confirmAction("テンプレートを削除しますか？")) return;
     await api(`/api/task-templates/${picked}`, "DELETE");
     setPicked("");
     load();

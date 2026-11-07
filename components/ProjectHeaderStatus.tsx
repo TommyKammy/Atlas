@@ -1,5 +1,7 @@
 "use client";
 
+import { toast as toastMessage } from "@/lib/ui-feedback";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -55,7 +57,7 @@ export default function ProjectHeaderStatus({
         body: JSON.stringify({ status: nextStatus, status_color: nextColor }),
       });
       if (!res.ok) {
-        alert(`ステータスの更新に失敗しました: ${res.status}`);
+        toastMessage(`ステータスの更新に失敗しました: ${res.status}`);
         return;
       }
       setStatus(nextStatus === "撤回済み" ? "撤回済み" : nextStatus);

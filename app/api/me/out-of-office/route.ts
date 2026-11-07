@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireActiveUser } from "@/lib/api-project-auth";
+import { withUser } from "@/lib/api/route";
 import { getOutOfOffice } from "@/lib/data";
 import { db } from "@/lib/db";
 
@@ -8,15 +8,11 @@ function dateOrNull(value: unknown): string | null | undefined {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
 }
 
-export async function GET(req: Request) {
-  const active = await requireActiveUser(req);
-  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
-  return NextResponse.json(await getOutOfOffice(active.uid));
-}
+export const GET = withUser(async (_req, { uid }) => {
+  return NextResponse.json(await getOutOfOffice(uid));
+});
 
-export async function PATCH(req: Request) {
-  const active = await requireActiveUser(req);
-  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
+export const PATCH = withUser(async (req, { uid }) => {
   const body = await req.json().catch(() => null);
   const from = dateOrNull(body?.from);
   const to = dateOrNull(body?.to);
@@ -30,7 +26,7 @@ export async function PATCH(req: Request) {
   await db.query(
     `UPDATE users SET out_of_office_from = $2::date, out_of_office_to = $3::date, out_of_office_note = $4
      WHERE id = $1`,
-    [active.uid, from, to, note === "" ? null : note],
+    [uid, from, to, note === "" ? null : note],
   );
-  return NextResponse.json(await getOutOfOffice(active.uid));
-}
+  return NextResponse.json(await getOutOfOffice(uid));
+});

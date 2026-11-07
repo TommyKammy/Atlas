@@ -1,9 +1,11 @@
 "use client";
 
+import { confirmAction } from "@/lib/ui-feedback";
+
 import { useRef, useState } from "react";
 import type { FormField, FormFieldType, ProjectForm } from "@/lib/forms";
 import { DEFAULT_FORM_FIELDS, FORM_FIELD_TYPES } from "@/lib/forms";
-import { useApiRefresh } from "./ListView";
+import { useApiRefresh } from "@/lib/use-api-refresh";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import EmptyState from "./EmptyState";
 
@@ -112,7 +114,7 @@ export default function FormsView({
   };
 
   const remove = async (form: ProjectForm) => {
-    if (!window.confirm(`「${form.name}」フォームを削除しますか？`)) return;
+    if (!await confirmAction(`「${form.name}」フォームを削除しますか？`)) return;
     const res = await fetch(`/api/forms/${form.id}`, { method: "DELETE" });
     if (!res.ok) {
       setError(`削除に失敗しました (${res.status})`);

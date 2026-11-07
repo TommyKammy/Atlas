@@ -1,18 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withAdmin } from "@/lib/api/route";
+import { csvResponse, toCsv } from "@/lib/csv";
 
-function csvCell(v: unknown): string {
-  const s = v === null || v === undefined ? "" : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-export async function GET(req: Request) {
-  const uid = getCurrentUserIdFromRequest(req);
-  const me = await db.query("SELECT is_admin FROM users WHERE id = $1 AND deactivated_at IS NULL", [uid]);
-  if (me.rowCount === 0 || me.rows[0].is_admin !== true) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format") ?? "json";
   if (format !== "json" && format !== "csv") {
@@ -34,7 +25,7 @@ export async function GET(req: Request) {
       },
     });
   }
-  const lines = ["id,日時,操作者,操作,対象,対象ID,プロジェクト,概要"];
+  const rows: unknown[][] = [["id", "日時", "操作者", "操作", "対象", "対象ID", "プロジェクト", "概要"]];
   for (const row of r.rows as {
     id: number;
     created_at: string;
@@ -45,16 +36,16 @@ export async function GET(req: Request) {
     project_name: string | null;
     summary: string;
   }[]) {
-    lines.push(
-      [row.id, row.created_at, row.actor_name ?? "", row.action, row.entity, row.entity_id ?? "", row.project_name ?? "", row.summary]
-        .map(csvCell)
-        .join(","),
-    );
+    rows.push([
+      row.id,
+      row.created_at,
+      row.actor_name ?? "",
+      row.action,
+      row.entity,
+      row.entity_id ?? "",
+      row.project_name ?? "",
+      row.summary,
+    ]);
   }
-  return new NextResponse("\uFEFF" + lines.join("\n"), {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="atlas-audit.csv"`,
-    },
-  });
-}
+  return csvResponse("atlas-audit.csv", toCsv(rows));
+});

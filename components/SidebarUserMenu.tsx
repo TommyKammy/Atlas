@@ -1,5 +1,7 @@
 "use client";
 
+import { toast as toastMessage } from "@/lib/ui-feedback";
+
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -74,7 +76,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
         }),
       });
       if (!res.ok) {
-        alert(`不在設定の保存に失敗しました: ${res.status}`);
+        toastMessage(`不在設定の保存に失敗しました: ${res.status}`);
         return;
       }
       setOooOpen(false);

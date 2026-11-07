@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withAdmin } from "@/lib/api/route";
 
 const ROLE_FLAGS: Record<string, { is_admin: boolean; is_guest: boolean }> = {
   admin: { is_admin: true, is_guest: false },
@@ -9,22 +9,8 @@ const ROLE_FLAGS: Record<string, { is_admin: boolean; is_guest: boolean }> = {
   guest: { is_admin: false, is_guest: true },
 };
 
-async function requireAdmin(req: Request) {
-  const uid = getCurrentUserIdFromRequest(req);
-  const r = await db.query("SELECT is_admin FROM users WHERE id = $1 AND deactivated_at IS NULL", [uid]);
-  if (r.rowCount === 0 || r.rows[0].is_admin !== true) {
-    return null;
-  }
-  return uid as number;
-}
-
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const admin = await requireAdmin(req);
-  if (admin === null) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  const { id } = await params;
+export const PATCH = withAdmin(async (req, { uid: admin, params }) => {
+  const id = params.id;
   const body = await req.json().catch(() => null);
   if (typeof body?.role === "string" && !ROLE_FLAGS[body.role]) {
     return NextResponse.json({ error: "invalid role" }, { status: 400 });
@@ -118,15 +104,10 @@ export async function PATCH(
     }
     throw e;
   }
-}
+});
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const admin = await requireAdmin(req);
-  if (admin === null) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  const { id } = await params;
+export const DELETE = withAdmin(async (_req, { uid: admin, params }) => {
+  const id = params.id;
   if (Number(id) === admin) {
     return NextResponse.json({ error: "cannot delete self" }, { status: 400 });
   }
@@ -135,4 +116,4 @@ export async function DELETE(
   // All user references are ON DELETE CASCADE / SET NULL; one delete suffices.
   await db.query("DELETE FROM users WHERE id = $1::bigint", [id]);
   return NextResponse.json({ deleted: Number(id) });
-}
+});

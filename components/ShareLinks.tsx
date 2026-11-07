@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useApiRefresh } from "./ListView";
+import { confirmAction } from "@/lib/ui-feedback";
 
-async function api(path: string, method: string, body?: unknown) {
-  const res = await fetch(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${method} ${path}: ${res.status}`);
-  return res.json();
-}
+import { api } from "@/lib/api-client";
+import { useEffect, useState } from "react";
+import { useApiRefresh } from "@/lib/use-api-refresh";
+
 
 export default function ShareLinks({ projectId }: { projectId: number }) {
   const refresh = useApiRefresh();
@@ -26,12 +20,15 @@ export default function ShareLinks({ projectId }: { projectId: number }) {
     if (res.ok) setTokens(await res.json());
   };
   useEffect(() => {
-    load();
+    const frame = window.requestAnimationFrame(() => {
+      void load();
+    });
+    return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   const create = async () => {
-    const { token } = await api(`/api/projects/${projectId}/share`, "POST", {
+    const { token } = await api<{ token: string }>(`/api/projects/${projectId}/share`, "POST", {
       label,
       expires_in_days: expiry === "" ? null : Number(expiry),
     });
@@ -42,7 +39,7 @@ export default function ShareLinks({ projectId }: { projectId: number }) {
   };
 
   const revoke = async (id: number) => {
-    if (!confirm("共有リンクを無効化しますか？")) return;
+    if (!await confirmAction("共有リンクを無効化しますか？")) return;
     await api(`/api/projects/${projectId}/share?token_id=${id}`, "DELETE");
     load();
   };

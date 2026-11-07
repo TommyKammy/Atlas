@@ -1,18 +1,12 @@
 "use client";
 
+import { confirmAction } from "@/lib/ui-feedback";
+
+import { api } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Project } from "@/lib/data";
 
-async function api(path: string, method: string, body?: unknown) {
-  const res = await fetch(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${method} ${path}: ${res.status}`);
-  return res.json();
-}
 
 export default function ProjectTemplateBar({
   workspaceId,
@@ -37,7 +31,7 @@ export default function ProjectTemplateBar({
 
   const instantiate = async () => {
     if (!tpl || !newName.trim()) return;
-    const { id } = await api(`/api/project-templates/${tpl}`, "POST", { name: newName.trim() });
+    const { id } = await api<{ id: number }>(`/api/project-templates/${tpl}`, "POST", { name: newName.trim() });
     router.push(`/projects/${id}?view=list`);
     router.refresh();
   };
@@ -51,7 +45,7 @@ export default function ProjectTemplateBar({
 
   const remove = async () => {
     if (!tpl) return;
-    if (!confirm("プロジェクトテンプレートを削除しますか？")) return;
+    if (!await confirmAction("プロジェクトテンプレートを削除しますか？")) return;
     await api(`/api/project-templates/${tpl}`, "DELETE");
     setTpl("");
     reload();

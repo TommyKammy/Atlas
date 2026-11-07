@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { recordSearchHistoryAtBoundary } from "@/lib/search-history";
 
 // Demo auth gate: every page/API except login requires a numeric atlas_uid cookie.
 // Cookie issuance itself is password-gated at /api/auth/login.
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   if (
     req.nextUrl.pathname === "/login" ||
     req.nextUrl.pathname.startsWith("/share/") ||
@@ -18,6 +19,12 @@ export function proxy(req: NextRequest) {
       return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
     }
     return NextResponse.redirect(new URL("/login", req.url));
+  }
+  if (req.method === "GET" && req.nextUrl.pathname === "/search") {
+    const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
+    if (q !== "") {
+      await recordSearchHistoryAtBoundary(Number(uid), q).catch(() => undefined);
+    }
   }
   return NextResponse.next();
 }

@@ -5,8 +5,8 @@ export function dayDeltaFromPixels(dxPx: number, contentWidthPx: number, spanDay
   return Math.round((dxPx / contentWidthPx) * spanDays);
 }
 
+import { shiftDay } from "./calendar";
+
 export function shiftDate(isoDate: string, deltaDays: number): string {
-  const t = Date.parse(`${isoDate}T00:00:00Z`);
-  if (Number.isNaN(t)) throw new Error(`invalid date: ${isoDate}`);
-  return new Date(t + deltaDays * 86400000).toISOString().slice(0, 10);
+  return shiftDay(isoDate, deltaDays);
 }

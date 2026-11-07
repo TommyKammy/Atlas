@@ -3,49 +3,41 @@ import { db } from "@/lib/db";
 import { logEvent } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { shiftDate } from "@/lib/timeline-dnd";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
 import { notifyProject } from "@/lib/notify";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withResourceProject } from "@/lib/api/route";
 
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const owner = await db.query("SELECT project_id FROM task_templates WHERE id = $1::bigint", [id]);
-  if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const auth = await requireProjectPermission(req, Number(owner.rows[0].project_id), "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const body = await req.json().catch(() => ({}));
+export const PATCH = withResourceProject("edit", "task_templates", async (_req, { projectId, params, body }) => {
+  const id = params.id;
+  const patch = (body ?? {}) as Record<string, unknown>;
   const sets: string[] = [];
   const values: unknown[] = [];
-  if (typeof body.name === "string" && body.name.trim() !== "") {
-    values.push(body.name.trim());
+  if (typeof patch.name === "string" && patch.name.trim() !== "") {
+    values.push(patch.name.trim());
     sets.push(`name = $${values.length}`);
   }
-  if (typeof body.title_template === "string" && body.title_template.trim() !== "") {
-    values.push(body.title_template.trim());
+  if (typeof patch.title_template === "string" && patch.title_template.trim() !== "") {
+    values.push(patch.title_template.trim());
     sets.push(`title_template = $${values.length}`);
   }
-  if (typeof body.description === "string") {
-    values.push(body.description);
+  if (typeof patch.description === "string") {
+    values.push(patch.description);
     sets.push(`description = $${values.length}`);
   }
-  if ("assignee_id" in body) {
-    values.push(body.assignee_id === null || body.assignee_id === "" ? null : Number(body.assignee_id));
+  if ("assignee_id" in patch) {
+    values.push(patch.assignee_id === null || patch.assignee_id === "" ? null : Number(patch.assignee_id));
     sets.push(`assignee_id = $${values.length}::bigint`);
   }
-  if ("due_offset_days" in body) {
-    values.push(body.due_offset_days === null || body.due_offset_days === "" ? null : Number(body.due_offset_days));
+  if ("due_offset_days" in patch) {
+    values.push(patch.due_offset_days === null || patch.due_offset_days === "" ? null : Number(patch.due_offset_days));
     sets.push(`due_offset_days = $${values.length}::int`);
   }
-  if ("section_id" in body) {
-    values.push(body.section_id === null || body.section_id === "" ? null : Number(body.section_id));
+  if ("section_id" in patch) {
+    values.push(patch.section_id === null || patch.section_id === "" ? null : Number(patch.section_id));
     sets.push(`section_id = $${values.length}::bigint`);
   }
-  if (Array.isArray(body.subtasks)) {
-    const subs = body.subtasks
+  if (Array.isArray(patch.subtasks)) {
+    const subs = patch.subtasks
       .filter((x: unknown) => typeof x === "object" && x !== null && typeof (x as { name?: unknown }).name === "string" && String((x as { name: string }).name).trim() !== "")
       .slice(0, 50)
       .map((x: { name: string }) => ({ name: x.name.trim().slice(0, 255) }));
@@ -55,40 +47,26 @@ export async function PATCH(
   if (sets.length === 0) return NextResponse.json({ error: "no fields to update" }, { status: 400 });
   values.push(id);
   await db.query(`UPDATE task_templates SET ${sets.join(", ")} WHERE id = $${values.length}::bigint`, values);
-  await notifyProject(Number(owner.rows[0].project_id));
+  await notifyProject(projectId);
   return NextResponse.json({ id: Number(id) });
-}
+}, { body: true });
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const owner = await db.query("SELECT project_id FROM task_templates WHERE id = $1::bigint", [id]);
-  if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const auth = await requireProjectPermission(req, Number(owner.rows[0].project_id), "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const DELETE = withResourceProject("edit", "task_templates", async (_req, { projectId, params }) => {
+  const id = params.id;
   const r = await db.query("DELETE FROM task_templates WHERE id = $1::bigint", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  await notifyProject(owner.rows[0]?.project_id ?? null);
+  await notifyProject(projectId);
   return NextResponse.json({ deleted: Number(id) });
-}
+});
 
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const uid = getCurrentUserIdFromRequest(req);
-  const body = await req.json().catch(() => null);
+export const POST = withResourceProject("edit", "task_templates", async (_req, { uid, projectId, params, body }) => {
+  const id = params.id;
   const t = await db.query(
     `SELECT project_id, title_template, description, assignee_id, due_offset_days,
        section_id, subtasks FROM task_templates WHERE id = $1::bigint`,
     [id],
   );
   if (t.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const auth = await requireProjectPermission(req, Number(t.rows[0].project_id), "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const tpl = t.rows[0] as {
     project_id: number;
     title_template: string;
@@ -115,7 +93,7 @@ export async function POST(
                    AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1)
                    AND parent_task_id IS NULL), 0) + 1000)
      RETURNING id`,
-    [tpl.project_id, overrideSection, tpl.title_template, tpl.description, tpl.assignee_id, due],
+    [projectId, overrideSection, tpl.title_template, tpl.description, tpl.assignee_id, due],
   );
   const taskId = created.rows[0].id as number;
   const subs = Array.isArray(tpl.subtasks) ? tpl.subtasks : [];
@@ -124,10 +102,10 @@ export async function POST(
     await db.query(
       `INSERT INTO tasks (project_id, section_id, parent_task_id, name, position)
        VALUES ($1, $2, $3, $4, ${(i + 1) * 1000})`,
-      [tpl.project_id, overrideSection, taskId, st.name.trim().slice(0, 255)],
+      [projectId, overrideSection, taskId, st.name.trim().slice(0, 255)],
     );
   }
   await logEvent(taskId, uid, "created", "タスクをテンプレートから作成しました").catch(() => undefined);
-  await notifyProject(tpl.project_id);
+  await notifyProject(projectId);
   return NextResponse.json({ id: taskId }, { status: 201 });
-}
+}, { body: true });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withUser } from "@/lib/api/route";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { requireProjectPermission } from "@/lib/api-project-auth";
@@ -23,8 +23,7 @@ async function loadComment(id: number): Promise<CommentOwner | null> {
   return (r.rows[0] as CommentOwner | undefined) ?? null;
 }
 
-async function canMutate(req: Request, comment: CommentOwner) {
-  const uid = getCurrentUserIdFromRequest(req);
+async function canMutate(req: Request, uid: number, comment: CommentOwner) {
   const isAuthor = comment.author_id === uid;
   const auth = await requireProjectPermission(
     req,
@@ -34,12 +33,8 @@ async function canMutate(req: Request, comment: CommentOwner) {
   return { uid, isAuthor, auth };
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const commentId = Number(id);
+export const PATCH = withUser(async (req, { uid, params }) => {
+  const commentId = Number(params.id);
   if (!Number.isInteger(commentId)) {
     return NextResponse.json({ error: "invalid comment id" }, { status: 400 });
   }
@@ -50,7 +45,7 @@ export async function PATCH(
   }
   const comment = await loadComment(commentId);
   if (!comment) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const { uid, auth } = await canMutate(req, comment);
+  const { auth } = await canMutate(req, uid, comment);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const r = await db.query(
     `UPDATE comments SET body = $2, edited_at = now()
@@ -67,20 +62,16 @@ export async function PATCH(
     summary: text.slice(0, 120),
   });
   return NextResponse.json(r.rows[0]);
-}
+});
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const commentId = Number(id);
+export const DELETE = withUser(async (req, { uid, params }) => {
+  const commentId = Number(params.id);
   if (!Number.isInteger(commentId)) {
     return NextResponse.json({ error: "invalid comment id" }, { status: 400 });
   }
   const comment = await loadComment(commentId);
   if (!comment) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const { uid, auth } = await canMutate(req, comment);
+  const { auth } = await canMutate(req, uid, comment);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   await db.query("DELETE FROM comments WHERE id = $1::bigint", [commentId]);
   await notifyTask(comment.task_id);
@@ -90,4 +81,4 @@ export async function DELETE(
     projectId: comment.project_id,
   });
   return NextResponse.json({ deleted: commentId });
-}
+});

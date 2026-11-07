@@ -1,25 +1,17 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
 
 function newAddress(projectId: number) {
   return `project-${projectId}-${randomUUID().slice(0, 8)}@inbox.atlas.local`;
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const projectId = Number(id);
-  const auth = await requireProjectPermission(req, projectId, "view");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const GET = withProject("view", async (_req, { projectId }) => {
   const project = await db.query(
     "SELECT email_address, email_enabled FROM projects WHERE id = $1::bigint",
     [projectId],
   );
-  if (project.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   let address = project.rows[0].email_address as string | null;
   if (!address) {
     address = newAddress(projectId);
@@ -36,24 +28,17 @@ export async function GET(
     enabled: project.rows[0].email_enabled !== false,
     recent: messages.rows,
   });
-}
+});
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const projectId = Number(id);
-  const auth = await requireProjectPermission(req, projectId, "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const body = await req.json().catch(() => ({}));
+export const PATCH = withProject("edit", async (_req, { projectId, body }) => {
+  const payload = (body ?? {}) as { enabled?: unknown; regenerate?: unknown };
   const sets: string[] = [];
   const values: unknown[] = [];
-  if (typeof body.enabled === "boolean") {
-    values.push(body.enabled);
+  if (typeof payload.enabled === "boolean") {
+    values.push(payload.enabled);
     sets.push(`email_enabled = $${values.length}`);
   }
-  if (body.regenerate === true) {
+  if (payload.regenerate === true) {
     values.push(newAddress(projectId));
     sets.push(`email_address = $${values.length}`);
   }
@@ -68,4 +53,4 @@ export async function PATCH(
     address: updated.rows[0].email_address,
     enabled: updated.rows[0].email_enabled !== false,
   });
-}
+}, { body: true });

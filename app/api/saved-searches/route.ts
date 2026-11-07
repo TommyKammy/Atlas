@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withUser } from "@/lib/api/route";
 import { getSavedSearches } from "@/lib/data";
 
-export async function GET(req: Request) {
+export const GET = withUser(async (req, { uid }) => {
   const { searchParams } = new URL(req.url);
   const workspaceId = searchParams.get("workspace_id");
   if (!workspaceId) return NextResponse.json({ error: "workspace_id is required" }, { status: 400 });
-  const uid = getCurrentUserIdFromRequest(req);
   return NextResponse.json(await getSavedSearches(Number(workspaceId), uid));
-}
+});
 
-export async function POST(req: Request) {
-  const uid = getCurrentUserIdFromRequest(req);
+export const POST = withUser(async (req, { uid }) => {
   const body = await req.json().catch(() => null);
   const workspaceId = Number(body?.workspace_id);
   const name = typeof body?.name === "string" ? body.name.trim().slice(0, 100) : "";
@@ -27,4 +25,4 @@ export async function POST(req: Request) {
     [workspaceId, uid, name, JSON.stringify(params)],
   );
   return NextResponse.json({ id: r.rows[0].id }, { status: 201 });
-}
+});

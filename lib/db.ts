@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { Pool, types } from "pg";
+import { Pool, types, type PoolClient } from "pg";
 
 // node-pg returns BIGINT as strings by default, which silently breaks
 // every `id === number` comparison. Parse them as integers app-wide.
@@ -9,6 +9,30 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 10,
 });
+
+export type Queryable = Pick<PoolClient, "query">;
+
+/** Run a multi-write flow atomically. Callers pass the transaction client to services. */
+export async function withTransaction<T>(fn: (q: PoolClient) => Promise<T>): Promise<T> {
+  await connection();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** Direct query for Proxy/request-boundary code where connection() is unavailable. */
+export async function queryAtRequestBoundary(text: string, params?: unknown[]) {
+  return pool.query(text, params);
+}
 
 export const db = {
   // Marks the caller as request-time rendering under Cache Components,

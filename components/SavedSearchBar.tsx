@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction } from "@/lib/ui-feedback";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -40,7 +42,7 @@ export default function SavedSearchBar({
   };
 
   const remove = async (id: number) => {
-    if (!window.confirm("この保存検索を削除しますか？")) return;
+    if (!await confirmAction("この保存検索を削除しますか？")) return;
     const res = await fetch(`/api/saved-searches/${id}`, { method: "DELETE" });
     if (res.ok) router.refresh();
   };

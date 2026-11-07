@@ -1,32 +1,21 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
+import { badRequest } from "@/lib/api/errors";
+import { csvResponse, toCsv } from "@/lib/csv";
 
-function csvCell(v: unknown): string {
-  const s = v === null || v === undefined ? "" : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const auth = await requireProjectPermission(req, Number(id), "view");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const GET = withProject("view", async (req, { projectId }) => {
+  const id = projectId;
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format") ?? "json";
-  if (format !== "json" && format !== "csv") {
-    return NextResponse.json({ error: "format must be json or csv" }, { status: 400 });
-  }
+  if (format !== "json" && format !== "csv") throw badRequest("format must be json or csv");
   const daysRaw = Number(searchParams.get("days"));
   const days = [7, 14, 30].includes(daysRaw) ? daysRaw : 14;
 
   const p = await db.query(
     "SELECT id, name, status_field_enabled FROM projects WHERE id = $1::bigint",
-    [id],
+    [projectId],
   );
-  if (p.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const project = p.rows[0] as { id: number; name: string; status_field_enabled: boolean };
   const statusFieldEnabled = project.status_field_enabled !== false;
 
@@ -87,25 +76,20 @@ export async function GET(
       },
     });
   }
-  const lines = ["種別,項目,完了,全体,備考"];
+  const rows: unknown[][] = [["種別", "項目", "完了", "全体", "備考"]];
   const t = totals.rows[0] as { total: number; done: number; overdue: number };
-  lines.push([ "サマリ", `全体`, t.done, t.total, `期限超過:${t.overdue}` ].map(csvCell).join(","));
+  rows.push(["サマリ", "全体", t.done, t.total, `期限超過:${t.overdue}`]);
   for (const s of bySection.rows as { name: string; total: number; done: number }[]) {
-    lines.push(["セクション", s.name, s.done, s.total, ""].map(csvCell).join(","));
+    rows.push(["セクション", s.name, s.done, s.total, ""]);
   }
   for (const a of byAssignee.rows as { name: string; open: number }[]) {
-    lines.push(["担当者(未完了)", a.name, "", a.open, ""].map(csvCell).join(","));
+    rows.push(["担当者(未完了)", a.name, "", a.open, ""]);
   }
   for (const s of byStatus.rows as { status: string; n: number }[]) {
-    lines.push(["Status", s.status, "", s.n, ""].map(csvCell).join(","));
+    rows.push(["Status", s.status, "", s.n, ""]);
   }
   for (const d of trend.rows as { day: string; n: number }[]) {
-    lines.push(["日別完了", d.day, d.n, "", ""].map(csvCell).join(","));
+    rows.push(["日別完了", d.day, d.n, "", ""]);
   }
-  return new NextResponse("\uFEFF" + lines.join("\n"), {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${safeName}.csv`)}`,
-    },
-  });
-}
+  return csvResponse(`${safeName}.csv`, toCsv(rows));
+});

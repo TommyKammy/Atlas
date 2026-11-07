@@ -1,42 +1,26 @@
 import { notFound } from "next/navigation";
 import {
-  getComments,
-  getTaskEvents,
-  getProjectStats,
-  getDependencies,
   getProject,
-  getCustomFields,
-  getProjectAttachments,
-  getTaskAttachments,
-  getProjectMembers,
   getProjectAccess,
-  getCommentReactions,
-  getDashboardPrefs,
-  getSubtasksBulk,
-  getProjectMessages,
-  getProjectKnowledge,
-  getProjectTabs,
-  getProjectForms,
-  getProjectApps,
-  getBundlesForProject,
-  getProjectAutomations,
-  touchRecentProject,
-  isFavorite,
-  getDashboardExtras,
-  getTaskDependencies,
-  getProjectTaskOptions,
-  getSavedView,
-  getSavedViews,
-  getTaskCustomValues,
-  getProjectTasks,
-  getSections,
-  getSubtasks,
-  getTask,
-  getTaskProjects,
-  getUsers,
   getProjectViewStates,
-  getProjectActivity,
+  getSavedView,
+  getTaskForProject,
+  touchRecentProject,
 } from "@/lib/data";
+import {
+  getProjectShellData,
+  getListViewData,
+  getBoardViewData,
+  getTimelineViewData,
+  getCalendarViewData,
+  getOverviewViewData,
+  getDashboardViewData,
+  getMessagesViewData,
+  getKnowledgeViewData,
+  getFormsViewData,
+  getFilesViewData,
+  getTaskPaneData,
+} from "@/lib/repositories/project-page";
 import ProjectTabs from "@/components/ProjectTabs";
 import ProjectIcon from "@/components/ProjectIcon";
 import ListView from "@/components/ListView";
@@ -118,73 +102,100 @@ export default async function ProjectPage(props: {
     | "status";
   const daysRaw = typeof searchParams.days === "string" ? Number(searchParams.days) : NaN;
   const days = [7, 14, 30].includes(daysRaw) ? daysRaw : 14;
-  const calendarAssignee = /^\d+$/.test(qstr("assignee")) ? qstr("assignee") : qstr("assignee") === "none" ? "none" : "";
-  const calendarCompleted = qstr("completed") === "open" || qstr("completed") === "done"
-    ? qstr("completed")
-    : qstr("hide") === "1"
-      ? "open"
+  const viewerId = await getCurrentUserId();
+  if (!viewerId) notFound();
+  const access = await getProjectAccess(viewerId, projectId);
+  if (!access.role) notFound();
+  const shell = await getProjectShellData(projectId, viewerId);
+  const {
+    sections,
+    users,
+    members,
+    projectTabs,
+    customFields,
+    projectApps,
+    projectBundles,
+    projectAutomations,
+    favorite,
+  } = shell;
+
+  const needsViewState = view === "list" || view === "board" || view === "timeline" || view === "calendar";
+  const viewStates = needsViewState ? await getProjectViewStates(viewerId, projectId) : {};
+
+  const listData = view === "list" ? await getListViewData(projectId) : null;
+  const boardData = view === "board" ? await getBoardViewData(projectId) : null;
+  const timelineData = view === "timeline" ? await getTimelineViewData(projectId) : null;
+  const calendarData = view === "calendar" ? await getCalendarViewData(projectId) : null;
+  const overviewData = view === "overview" ? await getOverviewViewData(projectId) : null;
+  const dashboardData = view === "dashboard" ? await getDashboardViewData(projectId, viewerId, days) : null;
+  const messagesData = view === "messages" ? await getMessagesViewData(projectId) : null;
+  const knowledgeData = view === "knowledge" ? await getKnowledgeViewData(projectId) : null;
+  const formsData = view === "forms" ? await getFormsViewData(projectId) : null;
+  const filesData = view === "files" ? await getFilesViewData(projectId) : null;
+
+  const calendarStored: Record<string, string | number | boolean | null> = viewStates.calendar ?? {};
+  const calendarExplicit =
+    ["completed", "hide", "assignee", "status", "due", "created", "updated", "completed_on", "creator", "weekends", "multi", "color", "start"].some(
+      (key) => qstr(key) !== "",
+    ) || Object.keys(searchParams).some((key) => key.startsWith("cf_"));
+  const calPick = (key: string) => {
+    const urlValue = qstr(key);
+    if (urlValue !== "") return urlValue;
+    if (calendarExplicit) return "";
+    const stored = calendarStored[key];
+    return typeof stored === "string" ? stored : "";
+  };
+  const calendarAssignee = /^\d+$/.test(calPick("assignee"))
+    ? calPick("assignee")
+    : calPick("assignee") === "none"
+      ? "none"
       : "";
+  const calendarCompleted =
+    qstr("completed") === "open" || qstr("completed") === "done"
+      ? qstr("completed")
+      : qstr("hide") === "1"
+        ? "open"
+        : !calendarExplicit && (calendarStored.completed === "open" || calendarStored.completed === "done")
+          ? calendarStored.completed
+          : "";
   const calendarCustom: Record<string, string> = {};
   for (const [key, value] of Object.entries(searchParams)) {
     if (key.startsWith("cf_") && typeof value === "string" && value) {
       calendarCustom[key.slice(3)] = value;
     }
   }
+  if (Object.keys(calendarCustom).length === 0 && !calendarExplicit && typeof calendarStored.custom === "string") {
+    try {
+      const parsed = JSON.parse(calendarStored.custom) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const [key, value] of Object.entries(parsed)) {
+          if (typeof value === "string" && value !== "") calendarCustom[key] = value;
+        }
+      }
+    } catch {
+      /* ignore malformed stored filter */
+    }
+  }
+  const calendarBool = (key: string, fallback: boolean) => {
+    const urlValue = qstr(key);
+    if (urlValue !== "") return urlValue !== "0";
+    if (calendarExplicit) return fallback;
+    return typeof calendarStored[key] === "boolean" ? (calendarStored[key] as boolean) : fallback;
+  };
 
-  const viewerId = await getCurrentUserId();
-  if (!viewerId) notFound();
-  const access = await getProjectAccess(viewerId, projectId);
-  if (!access.role) notFound();
-  const [sections, tasks, users, members, stats, messages, knowledge, projectTabs, projectForms, projectApps, projectBundles, projectAutomations, customFields, customValues, projectAttachments, savedViews, extras, deps, subtaskMap, prefs, projectActivity] =
-    await Promise.all([
-      getSections(projectId),
-      getProjectTasks(projectId),
-      getUsers(),
-      getProjectMembers(projectId),
-      getProjectStats(projectId),
-      getProjectMessages(projectId),
-      getProjectKnowledge(projectId),
-      getProjectTabs(projectId),
-      getProjectForms(projectId),
-      getProjectApps(projectId),
-      getBundlesForProject(projectId),
-      getProjectAutomations(projectId),
-      getCustomFields(projectId),
-      getTaskCustomValues(projectId),
-      getProjectAttachments(projectId),
-      getSavedViews(projectId),
-      getDashboardExtras(projectId, days),
-      getTaskDependencies(projectId),
-      getSubtasksBulk(projectId),
-      getDashboardPrefs(viewerId, projectId),
-      getProjectActivity(projectId),
-    ]);
-
-  const viewStates = await getProjectViewStates(viewerId, projectId);
   const storedString = (viewKey: string, key: string, allowed?: readonly string[]) => {
     const v = viewStates[viewKey]?.[key];
     return typeof v === "string" && (allowed === undefined || allowed.includes(v)) ? v : "";
   };
   const storedBool = (viewKey: string, key: string) => viewStates[viewKey]?.[key] === true;
 
-  const savedView = savedId ? await getSavedView(savedId) : undefined;
+  const savedView = view === "list" && savedId ? await getSavedView(savedId) : undefined;
   const activeSaved =
     savedView && savedView.project_id === projectId && savedView.view_type === "list" ? savedView : undefined;
 
-  const task = taskId ? await getTask(taskId) : undefined;
+  const task = taskId ? await getTaskForProject(taskId, projectId) : undefined;
   await touchRecentProject(viewerId, projectId);
-  const [subtasks, comments, memberships, dependencies, taskOptions, taskAttachments, reactions, taskEvents] = task
-    ? await Promise.all([
-        getSubtasks(task.id),
-        getComments(task.id),
-        getTaskProjects(task.id),
-        getDependencies(task.id),
-        getProjectTaskOptions(projectId),
-        getTaskAttachments(task.id),
-        getCommentReactions(task.id, viewerId),
-        getTaskEvents(task.id),
-      ])
-    : [[], [], [], [], [], [], {}, []];
+  const paneData = task ? await getTaskPaneData(task.id, projectId, viewerId) : null;
 
   return (
     <div className="flex min-h-full flex-col md:flex-row">
@@ -198,7 +209,7 @@ export default async function ProjectPage(props: {
             className="h-7 w-7 text-sm"
           />
           <ProjectTitle projectId={projectId} name={project.name} canEdit={access.role === "admin"} />
-          <StarButton projectId={projectId} initial={await isFavorite(viewerId, projectId)} />
+          <StarButton projectId={projectId} initial={favorite} />
           <ProjectHeaderStatus
             projectId={projectId}
             initialStatus={project.status}
@@ -215,6 +226,7 @@ export default async function ProjectPage(props: {
           </span>
           <ProjectShareButton projectId={projectId} projectName={project.name} />
           <ProjectCustomizeButton
+            key={`customize-${projectId}`}
             projectId={projectId}
             projectName={project.name}
             initialColor={project.color ?? null}
@@ -240,30 +252,39 @@ export default async function ProjectPage(props: {
           tabs={projectTabs}
         />
         <div data-project-view={view}>
-        {view === "overview" && (
+        {view === "overview" && overviewData && (
           <OverviewView
             projectId={projectId}
-            stats={stats}
+            stats={overviewData.stats}
             members={members.map((m) => ({ id: m.id, name: m.name, role: m.role ?? null }))}
             projectStatus={project.status}
             projectStatusColor={project.status_color ?? null}
             projectName={project.name}
             description={project.description ?? ""}
-            activity={projectActivity}
+            activity={overviewData.activity}
             canEdit={access.role === "admin" || access.role === "editor"}
           />
         )}
-        {view === "dashboard" && <DashboardView projectId={projectId} stats={stats} extras={extras} days={days} prefs={prefs} />}
-        {view === "list" && (
+        {view === "dashboard" && dashboardData && (
+          <DashboardView
+            projectId={projectId}
+            stats={dashboardData.stats}
+            extras={dashboardData.extras}
+            days={days}
+            prefs={dashboardData.prefs}
+          />
+        )}
+        {view === "list" && listData && (
           <ListView
+            key={`list-${projectId}`}
             projectId={projectId}
             sections={sections}
-            tasks={tasks}
+            tasks={listData.tasks}
             users={users}
             customFields={customFields}
-            customValues={customValues}
-            savedViews={savedViews}
-            subtaskMap={subtaskMap}
+            customValues={listData.customValues}
+            savedViews={listData.savedViews}
+            subtaskMap={listData.subtaskMap}
             activeSavedId={activeSaved?.id ?? null}
             projectStatusOptions={project.status_options ?? []}
             statusFieldName={project.status_field_name ?? "Status"}
@@ -310,11 +331,12 @@ export default async function ProjectPage(props: {
             }}
           />
         )}
-        {view === "board" && (
+        {view === "board" && boardData && (
           <BoardView
+            key={`board-${projectId}`}
             projectId={projectId}
             sections={sections}
-            tasks={tasks}
+            tasks={boardData.tasks}
             users={users}
             initialGroup={
               groupRaw !== ""
@@ -345,28 +367,38 @@ export default async function ProjectPage(props: {
             }}
           />
         )}
-        {view === "timeline" && (
+        {view === "timeline" && timelineData && (
           <TimelineView
+            key={`timeline-${projectId}`}
             projectId={projectId}
             sections={sections}
-            tasks={tasks}
-            deps={deps}
+            tasks={timelineData.tasks}
+            deps={timelineData.deps}
             startOverride={fromDay}
             initialState={viewStates.timeline}
           />
         )}
-        {view === "messages" && <MessagesView projectId={projectId} initial={messages} />}
-        {view === "knowledge" && <KnowledgeView projectId={projectId} initial={knowledge} />}
-        {view === "forms" && <FormsView projectId={projectId} initial={projectForms} />}
-        {view === "files" && <FilesView projectId={projectId} attachments={projectAttachments} />}
-        {view === "calendar" && (
+        {view === "messages" && messagesData && (
+          <MessagesView projectId={projectId} initial={messagesData.messages} />
+        )}
+        {view === "knowledge" && knowledgeData && (
+          <KnowledgeView projectId={projectId} initial={knowledgeData.knowledge} />
+        )}
+        {view === "forms" && formsData && (
+          <FormsView projectId={projectId} initial={formsData.forms} />
+        )}
+        {view === "files" && filesData && (
+          <FilesView projectId={projectId} attachments={filesData.attachments} />
+        )}
+        {view === "calendar" && calendarData && (
           <CalendarView
+            key={`calendar-${projectId}`}
             projectId={projectId}
-            tasks={tasks}
+            tasks={calendarData.tasks}
             sections={sections}
             users={users}
             customFields={customFields}
-            customValues={customValues}
+            customValues={calendarData.customValues}
             projectStatusOptions={project.status_options ?? []}
             statusFieldName={project.status_field_name ?? "Status"}
             statusFieldEnabled={project.status_field_enabled !== false}
@@ -376,39 +408,44 @@ export default async function ProjectPage(props: {
             initial={{
               completed: calendarCompleted as "" | "open" | "done",
               assignee: calendarAssignee,
-              status: qstr("status"),
+              status: calPick("status"),
               custom: calendarCustom,
-              due: dueParam,
-              created: ["today", "7", "30"].includes(qstr("created")) ? qstr("created") : "",
-              updated: ["today", "7", "30"].includes(qstr("updated")) ? qstr("updated") : "",
-              completedOn: ["today", "7", "30"].includes(qstr("completed_on")) ? qstr("completed_on") : "",
-              creator: /^\d+$/.test(qstr("creator")) ? qstr("creator") : qstr("creator") === "none" ? "none" : "",
-              weekends: qstr("weekends") !== "0",
-              multi: qstr("multi") !== "0",
-              color: qstr("color") || "none",
-              weekStart: qstr("start") === "1" ? 1 : 0,
+              due: calPick("due") || dueParam,
+              created: ["today", "7", "30"].includes(calPick("created")) ? calPick("created") : "",
+              updated: ["today", "7", "30"].includes(calPick("updated")) ? calPick("updated") : "",
+              completedOn: ["today", "7", "30"].includes(calPick("completed_on")) ? calPick("completed_on") : "",
+              creator: /^\d+$/.test(calPick("creator"))
+                ? calPick("creator")
+                : calPick("creator") === "none"
+                  ? "none"
+                  : "",
+              weekends: calendarBool("weekends", true),
+              multi: calendarBool("multi", true),
+              color: calPick("color") || "none",
+              weekStart: calPick("start") === "1" ? 1 : 0,
             }}
           />
         )}
         </div>
       </div>
       <Shortcuts projectId={projectId} />
-      {task && (
+      {task && paneData && (
         <TaskPane
+          key={`task-${task.id}`}
           projectId={projectId}
           view={view}
           task={task}
-          subtasks={subtasks}
-          comments={comments}
+          subtasks={paneData.subtasks}
+          comments={paneData.comments}
           users={users}
-          memberships={memberships}
-          dependencies={dependencies}
-          taskOptions={taskOptions}
+          memberships={paneData.memberships}
+          dependencies={paneData.dependencies}
+          taskOptions={paneData.taskOptions}
           customFields={customFields}
-          customValues={customValues[task.id] ?? {}}
-          attachments={taskAttachments}
-          reactions={reactions}
-          events={taskEvents}
+          customValues={paneData.customValues[task.id] ?? {}}
+          attachments={paneData.attachments}
+          reactions={paneData.reactions}
+          events={paneData.events}
           statusOptions={project.status_options ?? []}
           statusFieldName={project.status_field_name ?? "Status"}
           statusFieldEnabled={project.status_field_enabled !== false}

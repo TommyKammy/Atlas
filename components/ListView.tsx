@@ -1,55 +1,27 @@
 "use client";
 
-import Link from "next/link";
+import { confirmAction, toast as toastMessage } from "@/lib/ui-feedback";
+
+import { ApiError, api } from "@/lib/api-client";
+import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useRouter } from "next/navigation";
 import { useLive } from "@/lib/use-live";
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { SavedView, Section, TaskRow, TaskTemplate, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
-import { formatCustomValue, type CustomField, type CustomValue } from "@/lib/custom-fields";
+import { customValueToInput, type CustomField, type CustomValue } from "@/lib/custom-fields";
 import { positionBetween } from "@/lib/order";
-import TemplateBar from "./TemplateBar";
 import EmptyState from "./EmptyState";
 import { usePersistedViewState } from "@/lib/view-state-client";
+import { useApiRefresh } from "@/lib/use-api-refresh";
+import ListToolbar from "./list/ListToolbar";
+import ListColumnHeader from "./list/ListColumnHeader";
+import TaskListRow from "./list/TaskListRow";
+import { useListSelection } from "@/lib/use-list-selection";
+import { useColumnLayout } from "@/lib/use-column-layout";
 
-async function api(path: string, method: string, body?: unknown) {
-  const res = await fetch(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${method} ${path}: ${res.status}`);
-  return res.json();
-}
 
-export function useApiRefresh() {
-  const router = useRouter();
-  return () => router.refresh();
-}
 
-// Asana-style compact date range (measured 2026-11-06, read-only):
-// same month: "11月3日 – 13日"; each side is a no-wrap segment and the
-// line may only break at the dash (DueDate noWrapSegment pattern).
-export function dueSegs(start: string | null, due: string | null): [string, string | null] {
-  const curY = new Date().getFullYear();
-  const p = (d: string) => {
-    const [y, m, dd] = d.split("-").map(Number);
-    return { y, m, d: dd };
-  };
-  const one = (d: string) => {
-    const { y, m, d: dd } = p(d);
-    return `${y === curY ? "" : `${y}年`}${m}月${dd}日`;
-  };
-  if (start && due && start !== due) {
-    const a = p(start);
-    const b = p(due);
-    if (a.y === b.y && a.m === b.m) return [`${a.m}月${a.d}日`, `${b.d}日`];
-    if (a.y === b.y) return [`${a.m}月${a.d}日`, `${b.m}月${b.d}日`];
-    return [`${a.y}年${a.m}月${a.d}日`, `${b.y}年${b.m}月${b.d}日`];
-  }
-  const d = due ?? start;
-  return d ? [one(d), null] : ["", null];
-}
 
 export default function ListView({
   projectId,
@@ -107,17 +79,10 @@ export default function ListView({
   const [fieldType, setFieldType] = useState<"number" | "text" | "select">("text");
   const [fieldOptions, setFieldOptions] = useState("");
 
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const { selected, setSelected, toggleSelect, selectRange, toggleAll, clear: clearSelection } =
+    useListSelection();
   const [bulkSection, setBulkSection] = useState("");
   const [bulkAssignee, setBulkAssignee] = useState("");
-
-  const toggleSelect = (id: number) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   const bulk = async (op: string, extra?: Record<string, unknown>) => {
     if (selected.size === 0) return;
@@ -127,13 +92,13 @@ export default function ListView({
       body: JSON.stringify({ ids: [...selected], op, ...extra }),
     });
     if (!res.ok) throw new Error(`bulk ${op}: ${res.status}`);
-    setSelected(new Set());
+    clearSelection();
     refresh();
   };
 
   const bulkDelete = async () => {
     if (selected.size === 0) return;
-    if (!confirm(`${selected.size}件のタスクを削除しますか？`)) return;
+    if (!await confirmAction(`${selected.size}件のタスクを削除しますか？`)) return;
     await bulk("delete");
   };
 
@@ -152,7 +117,7 @@ export default function ListView({
   };
 
   const removeField = async (f: CustomField) => {
-    if (!confirm(`項目「${f.name}」を削除しますか？（全タスクの値も消えます）`)) return;
+    if (!await confirmAction(`項目「${f.name}」を削除しますか？（全タスクの値も消えます）`)) return;
     await api(`/api/custom-fields/${f.id}`, "DELETE");
     refresh();
   };
@@ -178,9 +143,6 @@ export default function ListView({
   const [hiddenCols, setHiddenCols] = useState<Set<number>>(new Set());
   const [statusHidden, setStatusHidden] = useState(false);
   const [rowLimits, setRowLimits] = useState<Record<string, number>>({});
-  const [isCompact, setIsCompact] = useState(false);
-  const [colWidths, setColWidths] = useState<Record<string, number>>({});
-  const [colOrder, setColOrder] = useState<string[]>([]);
   usePersistedViewState(projectId, "list", {
     hide_completed: hideCompleted,
     assignee: assigneeFilter,
@@ -190,133 +152,6 @@ export default function ListView({
     sortdir: sortDir,
     group: groupBy,
   });
-  const colW = (key: string) =>
-    colWidths[key] ??
-    (key.startsWith("cf-") ? 130 : ({ assignee: 119, due: 119, progress: 119, status: 119 } as Record<string, number>)[key] ?? 119);
-
-  const gripMouseDown = (e: React.MouseEvent, key: string) => {
-    e.stopPropagation();
-    startResize(e, key);
-  };
-
-  const headerMouseDown = (e: React.MouseEvent, key: string) => {
-    if (key === "name") return;
-    if ((e.target as HTMLElement).closest('[title="ドラッグで列幅を変更"],div.z-40,input,select,textarea')) return;
-    colDragCand.current = { key, x: e.clientX };
-  };
-
-  const headerMouseUp = (key: string) => {
-    if (colDragging && key !== "name" && key !== colDragging) {
-      const vis = [...visibleCols];
-      const fi = vis.indexOf(colDragging);
-      const ti = vis.indexOf(key);
-      if (fi >= 0 && ti >= 0) {
-        vis.splice(ti, 0, ...vis.splice(fi, 1));
-        setColOrder([...vis, ...colOrder.filter((k) => !vis.includes(k))]);
-        setMenuCol(null);
-      }
-    }
-    colDragCand.current = null;
-    setColDragging(null);
-    setColDropOver(null);
-  };
-
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 1023px)");
-    const update = () => setIsCompact(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
-    const onMove = (ev: MouseEvent) => {
-      const c = colDragCand.current;
-      if (c && Math.abs(ev.clientX - c.x) > 6) {
-        setColDragging(c.key);
-        colDragCand.current = null;
-      }
-    };
-    const onUp = () => {
-      colDragCand.current = null;
-      setColDragging(null);
-      setColDropOver(null);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
-
-  const storeKey = `atlas-listcols-${projectId}`;
-  useEffect(() => {
-    try {
-      const w = JSON.parse(localStorage.getItem(`${storeKey}:w`) ?? "{}");
-      const o = JSON.parse(localStorage.getItem(`${storeKey}:o`) ?? "[]");
-      if (w && typeof w === "object") setColWidths(w);
-      if (Array.isArray(o)) setColOrder(o.filter((k) => typeof k === "string"));
-    } catch {
-      /* ignore */
-    }
-  }, [storeKey]);
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${storeKey}:w`, JSON.stringify(colWidths));
-    } catch {
-      /* ignore */
-    }
-  }, [colWidths, storeKey]);
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${storeKey}:o`, JSON.stringify(colOrder));
-    } catch {
-      /* ignore */
-    }
-  }, [colOrder, storeKey]);
-
-  const collapseKey = `atlas-listcollapsed-${projectId}`;
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(collapseKey) ?? "[]");
-      if (Array.isArray(saved)) setCollapsedGroups(new Set(saved.filter((k) => typeof k === "string")));
-    } catch {
-      /* ignore */
-    }
-  }, [collapseKey]);
-  const toggleGroup = (key: string) =>
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      try {
-        localStorage.setItem(collapseKey, JSON.stringify([...next]));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-
-  const startResize = (e: React.MouseEvent, key: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const startX = e.clientX;
-    const startW =
-      key === "name" && colWidths[key] == null
-        ? ((e.currentTarget as HTMLElement).parentElement?.getBoundingClientRect().width ?? 240)
-        : colW(key);
-    const onMove = (ev: MouseEvent) => {
-      const w = Math.min(400, Math.max(60, startW + ev.clientX - startX));
-      setColWidths((m) => ({ ...m, [key]: w }));
-    };
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  };
   const [editingField, setEditingField] = useState<number | null>(null);
   const [editFieldName, setEditFieldName] = useState("");
   const [editFieldOptions, setEditFieldOptions] = useState("");
@@ -331,7 +166,8 @@ export default function ListView({
     due?: string;
     group?: string;
   }) => {
-    const q = new URLSearchParams({ view: "list" });
+    const q = new URLSearchParams(window.location.search);
+    q.set("view", "list");
     const hide = patch.hide ?? hideCompleted;
     const asn = patch.assignee ?? assigneeFilter;
     const st = patch.status ?? statusFilter;
@@ -340,14 +176,23 @@ export default function ListView({
     const du = patch.due ?? dueFilter;
     const gr = patch.group ?? groupBy;
     if (hide) q.set("hide", "1");
+    else q.delete("hide");
     if (asn !== "") q.set("assignee", asn);
+    else q.delete("assignee");
     if (st !== "") q.set("status", st);
+    else q.delete("status");
     if (so !== "position") {
       q.set("sort", so);
       if (sd === "desc") q.set("sortdir", "desc");
+      else q.delete("sortdir");
+    } else {
+      q.delete("sort");
+      q.delete("sortdir");
     }
     if (du !== "") q.set("due", du);
+    else q.delete("due");
     if (gr !== "section") q.set("group", gr);
+    else q.delete("group");
     router.push(`/projects/${projectId}?${q.toString()}`);
   };
   const [addMenu, setAddMenu] = useState(false);
@@ -364,20 +209,9 @@ export default function ListView({
     setAddMenu(false);
     refresh();
   };
-  const clearPill =
-    "flex h-7 w-5 items-center justify-center rounded-r-md text-[#2C60B8] hover:bg-[#dfe8fa]";
-  const toolbarBtn =
-    "flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-neutral-500 hover:bg-neutral-100";
-  const popoverCls =
-    "absolute top-full right-0 z-40 mt-1 w-72 rounded-lg border bg-white p-3 text-sm shadow-lg";
-  const menuSelect =
-    "mt-1 h-8 w-full rounded-md border bg-white px-2 text-[13px] text-neutral-700 outline-none focus:border-[#2C60B8]";
-  const checkItem =
-    "flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-neutral-100";
   const [saveName, setSaveName] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const dragging = useRef(false);
-  const anchorRef = useRef<number | null>(null);
   const [dropHint, setDropHint] = useState<{ id: number; before: boolean } | null>(null);
   const hintRef = useRef<{ id: number; before: boolean } | null>(null);
   const setHint = (h: { id: number; before: boolean } | null) => {
@@ -387,9 +221,6 @@ export default function ListView({
       setDropHint(h);
     }
   };
-  const colDragCand = useRef<{ key: string; x: number } | null>(null);
-  const [colDragging, setColDragging] = useState<string | null>(null);
-  const [colDropOver, setColDropOver] = useState<string | null>(null);
   const openTask = (id: number) => {
     const q = new URLSearchParams(window.location.search);
     q.set("task", String(id));
@@ -398,22 +229,11 @@ export default function ListView({
   const rowClick = (e: React.MouseEvent, id: number) => {
     if (dragging.current) return;
     if ((e.target as HTMLElement).closest("a,button,input,select,textarea,summary,[contenteditable]")) return;
-    if (e.shiftKey && anchorRef.current !== null) {
-      const ids = visible.map((t) => t.id);
-      const a = ids.indexOf(anchorRef.current);
-      const b = ids.indexOf(id);
-      if (a >= 0 && b >= 0) {
-        const [lo, hi] = a < b ? [a, b] : [b, a];
-        setSelected(new Set(ids.slice(lo, hi + 1)));
-        return;
-      }
-    }
+    if (e.shiftKey && selectRange(visible.map((t) => t.id), id)) return;
     if (e.ctrlKey || e.metaKey) {
       toggleSelect(id);
-      anchorRef.current = id;
       return;
     }
-    anchorRef.current = id;
     openTask(id);
   };
   const focusAdd = () => {
@@ -453,25 +273,49 @@ export default function ListView({
     ...(statusFieldEnabled ? ["status"] : []),
     ...customFields.map((f) => `cf-${f.id}`),
   ];
-  const orderedKeys = [...colOrder.filter((k) => baseKeys.includes(k)), ...baseKeys.filter((k) => !colOrder.includes(k))];
-  const visibleCols = orderedKeys.filter((k) =>
-    k === "status" ? !statusHidden : k.startsWith("cf-") ? !hiddenCols.has(Number(k.slice(3))) : true,
-  );
-  const moveCol = (key: string, dir: -1 | 1) => {
-    const vis = [...visibleCols];
-    const i = vis.indexOf(key);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= vis.length) return;
-    [vis[i], vis[j]] = [vis[j], vis[i]];
-    setColOrder([...vis, ...colOrder.filter((k) => !vis.includes(k))]);
-    setMenuCol(null);
-  };
-  const nameW = colWidths["name"];
-  const gridCols = isCompact
-    ? "28px minmax(0,1fr)"
-    : `28px ${nameW ? `${nameW}px` : "minmax(220px,640px)"}${visibleCols.map((k) => ` ${colW(k)}px`).join("")} minmax(40px,1fr)`;
-  const compactCells = isCompact ? "[&>*:nth-child(n+3)]:hidden" : "";
+  const {
+    colDragging,
+    colDropOver,
+    setColDropOver,
+    visibleCols,
+    gridCols,
+    compactCells,
+    gripMouseDown,
+    headerMouseDown,
+    headerMouseUp,
+    moveCol,
+  } = useColumnLayout({
+    projectId,
+    baseKeys,
+    hiddenCols,
+    statusHidden,
+    onMenuClose: () => setMenuCol(null),
+  });
 
+  const collapseKey = `atlas-listcollapsed-${projectId}`;
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(collapseKey) ?? "[]");
+        if (Array.isArray(saved)) setCollapsedGroups(new Set(saved.filter((k) => typeof k === "string")));
+      } catch {
+        /* ignore */
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [collapseKey]);
+  const toggleGroup = (key: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try {
+        localStorage.setItem(collapseKey, JSON.stringify([...next]));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
   const visible = tasks.filter(
     (t) =>
       (!hideCompleted || !t.completed) &&
@@ -492,9 +336,7 @@ export default function ListView({
       shownFields.every((f) => {
         const v = customFilter[f.id];
         if (!v) return true;
-        const val = customValues[t.id]?.[f.id];
-        const raw = val === undefined || val === null ? "" : String(typeof val === "object" ? (val as { value?: unknown }).value ?? "" : val);
-        return raw === v;
+        return customValueToInput(f, customValues[t.id]?.[f.id]) === v;
       }),
   );
 
@@ -549,22 +391,21 @@ export default function ListView({
   };
 
   const toggle = async (t: TaskRow) => {
-    const res = await fetch(`/api/tasks/${t.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ completed: !t.completed, expected_updated_at: t.updated_at }),
-    });
-    if (res.status === 409) {
-      alert("他のユーザーが先に更新しました。最新を表示します。");
-      refresh();
-      return;
+    try {
+      await patchTask(t.id, { completed: !t.completed }, t.updated_at);
+    } catch (error) {
+      if (error instanceof TaskConflictError) {
+        toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+        refresh();
+        return;
+      }
+      throw error;
     }
-    if (!res.ok) throw new Error(`PATCH /api/tasks/${t.id}: ${res.status}`);
     refresh();
   };
 
   const remove = async (t: TaskRow) => {
-    if (!confirm(`「${t.name}」を削除しますか？`)) return;
+    if (!await confirmAction(`「${t.name}」を削除しますか？`)) return;
     await api(`/api/tasks/${t.id}`, "DELETE");
     refresh();
   };
@@ -580,15 +421,14 @@ export default function ListView({
   };
 
   const patchFields = async (t: TaskRow, fields: Record<string, unknown>) => {
-    const res = await fetch(`/api/tasks/${t.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...fields, expected_updated_at: t.updated_at }),
-    });
-    if (res.status === 409) {
-      alert("他のユーザーが先に更新しました。最新を表示します。");
-    } else if (!res.ok) {
-      alert(`更新に失敗しました: ${res.status}`);
+    try {
+      await patchTask(t.id, fields, t.updated_at);
+    } catch (error) {
+      if (error instanceof TaskConflictError) {
+        toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+      } else {
+        toastMessage(`更新に失敗しました: ${error instanceof ApiError ? error.status : ""}`);
+      }
     }
     setEditing(null);
     refresh();
@@ -645,7 +485,7 @@ export default function ListView({
 
   const commitDueEdit = async (t: TaskRow, cleared = false) => {
     if (!editing || editing.id !== t.id || editing.field !== "due") return;
-    let s = cleared ? "" : editStart;
+    const s = cleared ? "" : editStart;
     let d = cleared ? "" : editVal;
     if (s && d && s > d) {
       d = s;
@@ -657,31 +497,28 @@ export default function ListView({
     else setEditing(null);
   };
 
-  const customRaw = (taskId: number, f: CustomField) => {
-    const val = customValues[taskId]?.[f.id];
-    if (val === undefined || val === null) return "";
-    return String(typeof val === "object" ? (val as { value?: unknown }).value ?? "" : val);
-  };
+  const customRaw = (taskId: number, f: CustomField) =>
+    customValueToInput(f, customValues[taskId]?.[f.id]);
 
   const editInputCls =
     "w-full min-w-0 rounded border border-blue-500 bg-white px-1 py-0.5 text-[13px] text-neutral-800 outline-none";
 
   const saveView = async () => {
     if (!saveName.trim()) return;
-    const res = await api("/api/saved-views", "POST", {
+    const res = await api<{ id: number }>("/api/saved-views", "POST", {
       project_id: projectId,
       name: saveName,
       filters: { hide_completed: hideCompleted, assignee: assigneeFilter, status: statusFilter, due: dueFilter },
       sort_key: sortKey,
       group_by: groupBy,
     });
-    window.location.href = `/projects/${projectId}?view=list&saved=${res.id}`;
+    router.push(`/projects/${projectId}?view=list&saved=${res.id}`);
   };
 
   const deleteSavedView = async (id: number) => {
-    if (!confirm("保存ビューを削除しますか？")) return;
+    if (!await confirmAction("保存ビューを削除しますか？")) return;
     await api(`/api/saved-views/${id}`, "DELETE");
-    window.location.href = `/projects/${projectId}?view=list`;
+    router.push(`/projects/${projectId}?view=list`);
   };
 
   const cycleSort = (key: "name" | "due" | "progress") => {
@@ -798,246 +635,52 @@ export default function ListView({
     );
   };
 
-  const menuItem =
-    "block w-full px-3 py-1.5 text-left text-[13px] font-normal text-neutral-700 hover:bg-neutral-100";
-  const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500";
+  const headerCell = (key: string, label: string, field?: CustomField) => (
+    <ListColumnHeader
+      key={key}
+      columnKey={key}
+      label={label}
+      field={field}
+      menuCol={menuCol}
+      setMenuCol={setMenuCol}
+      colDropOver={colDropOver}
+      colDragging={colDragging}
+      setColDropOver={setColDropOver}
+      headerMouseDown={headerMouseDown}
+      headerMouseUp={headerMouseUp}
+      gripMouseDown={gripMouseDown}
+      visibleCols={visibleCols}
+      moveCol={moveCol}
+      cycleSort={cycleSort}
+      sortMark={sortMark}
+      applySort={applySort}
+      clearSort={clearSort}
+      applyAssigneeFilter={applyAssigneeFilter}
+      assigneeFilter={assigneeFilter}
+      users={users}
+      applyDueFilter={applyDueFilter}
+      dueFilter={dueFilter}
+      statusFieldEnabled={statusFieldEnabled}
+      statusOptions={statusOptions}
+      statusFilter={statusFilter}
+      applyStatusFilter={applyStatusFilter}
+      statusFieldName={statusFieldName}
+      setStatusHidden={setStatusHidden}
+      customFilter={customFilter}
+      setCustomFilter={setCustomFilter}
+      editingField={editingField}
+      setEditingField={setEditingField}
+      editFieldName={editFieldName}
+      setEditFieldName={setEditFieldName}
+      editFieldOptions={editFieldOptions}
+      setEditFieldOptions={setEditFieldOptions}
+      saveFieldEdit={saveFieldEdit}
+      startEditField={startEditField}
+      setHiddenCols={setHiddenCols}
+      removeField={removeField}
+    />
+  );
 
-  const headerCell = (key: string, label: string, field?: CustomField) => {
-    const sortable = key === "name" || key === "due" || key === "progress";
-    const open = menuCol === key;
-    return (
-      <span
-        data-list-header={key}
-        className={`group/hd relative inline-flex min-w-0 cursor-grab items-center gap-0.5 select-none active:cursor-grabbing ${
-          colDropOver === key ? "rounded bg-blue-100 ring-2 ring-blue-400" : ""
-        } ${colDragging === key ? "opacity-50" : ""}`}
-        onMouseDown={(e) => headerMouseDown(e, key)}
-        onMouseUp={() => headerMouseUp(key)}
-        onMouseEnter={() => {
-          if (colDragging && key !== colDragging && key !== "name") setColDropOver(key);
-        }}
-        onMouseLeave={() => setColDropOver((v) => (v === key ? null : v))}
-      >
-        {sortable ? (
-          <button
-            onClick={() => cycleSort(key as "name" | "due" | "progress")}
-            title="クリックで並び替え（昇順→降順→解除）"
-            className="truncate hover:text-black"
-          >
-            {label}
-            {sortMark(key as "name" | "due" | "progress")}
-          </button>
-        ) : (
-          <span className="truncate">{label}</span>
-        )}
-        <button
-          onClick={() => setMenuCol(open ? null : key)}
-          title="列メニュー"
-          className={`rounded px-0.5 text-[10px] leading-none text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 ${
-            open ? "opacity-100" : "opacity-0 group-hover/hd:opacity-100"
-          }`}
-        >
-          ▾
-        </button>
-        {key !== "name" && (
-          <span
-            onMouseDown={(e) => gripMouseDown(e, key)}
-            title="ドラッグで列幅を変更"
-            className="absolute top-0 -right-1.5 bottom-0 z-10 w-3 cursor-col-resize hover:bg-blue-300"
-          />
-        )}
-        {key === "name" && (
-          <span
-            onMouseDown={(e) => gripMouseDown(e, key)}
-            title="ドラッグで列幅を変更"
-            className="absolute top-0 -right-1.5 bottom-0 z-10 w-3 cursor-col-resize hover:bg-blue-300"
-          />
-        )}
-        {open && (
-          <div className="absolute top-full left-0 z-40 mt-1 w-60 rounded-lg border bg-white py-1 text-sm shadow-lg">
-            {key !== "name" && (
-              <>
-                <div className={menuLabel}>列を移動</div>
-                <div className="flex gap-1 px-3 pb-1">
-                  <button
-                    disabled={visibleCols[0] === key}
-                    onClick={() => moveCol(key, -1)}
-                    className="rounded border px-2 py-0.5 text-xs hover:bg-neutral-100 disabled:opacity-40"
-                  >
-                    ← 左へ
-                  </button>
-                  <button
-                    disabled={visibleCols[visibleCols.length - 1] === key}
-                    onClick={() => moveCol(key, 1)}
-                    className="rounded border px-2 py-0.5 text-xs hover:bg-neutral-100 disabled:opacity-40"
-                  >
-                    右へ →
-                  </button>
-                </div>
-              </>
-            )}
-            {sortable && (
-              <>
-                <div className={menuLabel}>ソート</div>
-                <button className={menuItem} onClick={() => { applySort(key as "name" | "due" | "progress", "asc"); setMenuCol(null); }}>
-                  {key === "due" ? "期日の近い順（昇順）" : "昇順"}
-                </button>
-                <button className={menuItem} onClick={() => { applySort(key as "name" | "due" | "progress", "desc"); setMenuCol(null); }}>
-                  {key === "due" ? "期日の遠い順（降順）" : "降順"}
-                </button>
-                <button className={menuItem} onClick={() => { clearSort(); setMenuCol(null); }}>
-                  ソートをクリア
-                </button>
-              </>
-            )}
-            {key === "assignee" && (
-              <>
-                <div className={menuLabel}>フィルター</div>
-                <button className={menuItem} onClick={() => { applyAssigneeFilter(""); setMenuCol(null); }}>
-                  すべて（解除）
-                </button>
-                <button className={menuItem} onClick={() => { applyAssigneeFilter("none"); setMenuCol(null); }}>
-                  未割当
-                </button>
-                {users.map((u) => (
-                  <button key={u.id} className={menuItem} onClick={() => { applyAssigneeFilter(String(u.id)); setMenuCol(null); }}>
-                    {u.name}
-                    {assigneeFilter === String(u.id) ? " ✓" : ""}
-                  </button>
-                ))}
-              </>
-            )}
-            {key === "due" && (
-              <>
-                <div className={menuLabel}>フィルター</div>
-                {[
-                  ["", "すべて（解除）"],
-                  ["overdue", "期限切れ"],
-                  ["today", "今日"],
-                  ["week", "今週"],
-                  ["nextweek", "来週"],
-                  ["month", "今月"],
-                ].map(([v, l]) => (
-                  <button key={v} className={menuItem} onClick={() => { applyDueFilter(v); setMenuCol(null); }}>
-                    {l}
-                    {dueFilter === v && v !== "" ? " ✓" : ""}
-                  </button>
-                ))}
-              </>
-            )}
-            {statusFieldEnabled && key === "status" && (
-              <>
-                <div className={menuLabel}>フィルター</div>
-                <button className={menuItem} onClick={() => { applyStatusFilter(""); setMenuCol(null); }}>
-                  すべて（解除）
-                </button>
-                {statusOptions.map((st) => (
-                  <button key={st} className={menuItem} onClick={() => { applyStatusFilter(st); setMenuCol(null); }}>
-                    {st}
-                    {statusFilter === st ? " ✓" : ""}
-                  </button>
-                ))}
-                <button
-                  className={menuItem}
-                  onClick={() => {
-                    setMenuCol(null);
-                    window.dispatchEvent(
-                      new CustomEvent("atlas:open-customize", { detail: { panel: "status" } }),
-                    );
-                  }}
-                >
-                  {statusFieldName}フィールドを編集
-                </button>
-                <button
-                  className={menuItem}
-                  onClick={() => {
-                    setStatusHidden(true);
-                    setMenuCol(null);
-                  }}
-                >
-                  列を非表示
-                </button>
-              </>
-            )}
-            {field && (
-              <>
-                {field.field_type === "select" && (
-                  <>
-                    <div className={menuLabel}>フィルター</div>
-                    <button
-                      className={menuItem}
-                      onClick={() => {
-                        setCustomFilter((m) => ({ ...m, [field.id]: "" }));
-                        setMenuCol(null);
-                      }}
-                    >
-                      すべて（解除）
-                    </button>
-                    {field.options.map((o) => (
-                      <button
-                        key={o}
-                        className={menuItem}
-                        onClick={() => {
-                          setCustomFilter((m) => ({ ...m, [field.id]: o }));
-                          setMenuCol(null);
-                        }}
-                      >
-                        {o}
-                        {customFilter[field.id] === o ? " ✓" : ""}
-                      </button>
-                    ))}
-                  </>
-                )}
-                {editingField === field.id ? (
-                  <div className="px-3 py-2">
-                    <div className={menuLabel + " pt-0"}>フィールドを編集</div>
-                    <input
-                      value={editFieldName}
-                      onChange={(e) => setEditFieldName(e.target.value)}
-                      placeholder="フィールド名"
-                      className="mb-1 w-full rounded border px-2 py-1 text-[13px] outline-none focus:border-blue-500"
-                    />
-                    {field.field_type === "select" && (
-                      <input
-                        value={editFieldOptions}
-                        onChange={(e) => setEditFieldOptions(e.target.value)}
-                        placeholder="選択肢（カンマ区切り）"
-                        className="mb-1 w-full rounded border px-2 py-1 text-[13px] outline-none focus:border-blue-500"
-                      />
-                    )}
-                    <div className="flex gap-1">
-                      <button onClick={saveFieldEdit} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">
-                        保存
-                      </button>
-                      <button onClick={() => setEditingField(null)} className="rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100">
-                        キャンセル
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button className={menuItem} onClick={() => startEditField(field)}>
-                    フィールドを編集
-                  </button>
-                )}
-                <button
-                  className={menuItem}
-                  onClick={() => {
-                    setHiddenCols((prev) => new Set(prev).add(field.id));
-                    setMenuCol(null);
-                  }}
-                >
-                  列を非表示
-                </button>
-                <button className={menuItem + " text-red-600 hover:bg-red-50"} onClick={() => { removeField(field); setMenuCol(null); }}>
-                  列を削除
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </span>
-    );
-  };
   const groupKeyOf = (t: TaskRow) =>
     groupBy === "assignee" ? (t.assignee_name ?? "（未割当）") : t.status || "（未設定）";
 
@@ -1063,13 +706,6 @@ export default function ListView({
     refresh();
   };
 
-  const statusChip = (st: string) => {
-    const base = "inline-block rounded-full px-2 py-0.5 text-xs";
-    if (st === "Done" || st === "完了") return `${base} bg-green-100 text-green-800`;
-    if (st === "進行中" || st === "In Progress") return `${base} bg-blue-100 text-blue-800`;
-    if (st === "未着手" || st === "To Do") return `${base} bg-neutral-100 text-neutral-700`;
-    return `${base} bg-neutral-100 text-neutral-600`;
-  };
 
   const [addingTo, setAddingTo] = useState<number | string | null>(null);
 
@@ -1084,15 +720,14 @@ export default function ListView({
     if ((dragged.eff_section_id ?? dragged.section_id) !== sectionId) {
       fields.section_id = sectionId;
     }
-    const res = await fetch(`/api/tasks/${dragId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...fields, expected_updated_at: dragged.updated_at }),
-    });
-    if (res.status === 409) {
-      alert("他のユーザーが先に更新しました。最新を表示します。");
-    } else if (!res.ok) {
-      alert(`移動に失敗しました: ${res.status}`);
+    try {
+      await patchTask(dragId, fields, dragged.updated_at);
+    } catch (error) {
+      if (error instanceof TaskConflictError) {
+        toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+      } else {
+        toastMessage(`移動に失敗しました: ${error instanceof ApiError ? error.status : ""}`);
+      }
     }
     refresh();
   };
@@ -1113,15 +748,14 @@ export default function ListView({
     if ((dragged.eff_section_id ?? dragged.section_id) !== sectionKey) {
       fields.section_id = sectionKey;
     }
-    const res = await fetch(`/api/tasks/${dragId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...fields, expected_updated_at: dragged.updated_at }),
-    });
-    if (res.status === 409) {
-      alert("他のユーザーが先に更新しました。最新を表示します。");
-    } else if (!res.ok) {
-      alert(`移動に失敗しました: ${res.status}`);
+    try {
+      await patchTask(dragId, fields, dragged.updated_at);
+    } catch (error) {
+      if (error instanceof TaskConflictError) {
+        toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+      } else {
+        toastMessage(`移動に失敗しました: ${error instanceof ApiError ? error.status : ""}`);
+      }
     }
     refresh();
   };
@@ -1139,450 +773,56 @@ export default function ListView({
       </button>
     ) : null;
 
-  const renderRow = (t: TaskRow, depth = 0) => {
-    const overdue = !t.completed && t.due_on !== null && t.due_on < today;
-    const isToday = !t.completed && t.due_on !== null && t.due_on === today;
-    return (
-    <Fragment key={t.id}>
-    <div
-      draggable
-      data-list-row={t.id}
-      tabIndex={0}
-      role="listitem"
-      aria-label={`タスク: ${t.name}`}
-      onKeyDown={(e) => {
-        if ((e.target as HTMLElement).closest("input,select,textarea,button,a,summary")) return;
-        if (e.key === "Enter") {
-          e.preventDefault();
-          openTask(t.id);
-          return;
-        }
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-          e.preventDefault();
-          const rows = [...document.querySelectorAll<HTMLElement>("[data-list-row]")];
-          const index = rows.indexOf(e.currentTarget);
-          const next = rows[index + (e.key === "ArrowDown" ? 1 : -1)];
-          next?.focus();
-        }
-      }}
-      onDragStart={(e) => {
-        dragging.current = true;
-        e.dataTransfer.setData("text/atlas-task", String(t.id));
-        e.dataTransfer.effectAllowed = "move";
-      }}
-      onDragEnd={() => {
-        setTimeout(() => {
-          dragging.current = false;
-        }, 0);
-      }}
-      onClick={(e) => rowClick(e, t.id)}
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        setHint({ id: t.id, before: e.clientY < rect.top + rect.height / 2 });
-      }}
-      onDragLeave={() => setHint(null)}
-      onDrop={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setHint(null);
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        const before = e.clientY < rect.top + rect.height / 2;
-        const dragId = Number(e.dataTransfer.getData("text/atlas-task"));
-        if (dragId) moveTask(dragId, t, before);
-      }}
-      className={`group grid min-h-[37px] cursor-pointer items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${compactCells} ${
-        t.id === activeTaskId ? "bg-[#eff4fd]" : "hover:bg-neutral-50"
-      } ${
-        dropHint?.id === t.id
-          ? dropHint.before
-            ? "shadow-[inset_0_2px_0_0_#3b82f6]"
-            : "shadow-[inset_0_-2px_0_0_#3b82f6]"
-          : ""
-      }`}
-      style={{ gridTemplateColumns: gridCols }}
-    >
-      <span className="flex items-center justify-self-center">
-        <span
-          title="ドラッグで並替え（ホバーで表示）"
-          className="cursor-grab text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-neutral-500 active:cursor-grabbing"
-        >
-          ⋮⋮
-        </span>
-      </span>
-      <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${depth > 0 ? "pl-7" : ""}`}>
-        {(subtaskMap[t.id] ?? []).length > 0 ? (
-          <button
-            onClick={() => toggleExpand(t.id)}
-            title={expanded.has(t.id) ? "サブタスクを閉じる" : "サブタスクを開く"}
-            className="w-4 shrink-0 text-center text-xs text-neutral-600 hover:text-black"
-          >
-            {expanded.has(t.id) ? "▾" : "▸"}
-          </button>
-        ) : (
-          <span className="w-4 shrink-0" />
-        )}
-        <button
-          onClick={() => toggle(t)}
-          title={t.completed ? "未完了に戻す" : "完了にする"}
-          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px] ${
-            t.completed ? "border-green-700 bg-green-700 text-white" : "border-neutral-300 text-transparent hover:border-green-600"
-          }`}
-        >
-          ✓
-        </button>
-        {editing?.id === t.id && editing.field === "name" ? (
-          <input
-            autoFocus
-            value={editVal}
-            onChange={(e) => setEditVal(e.target.value)}
-            onBlur={(e) => commitEdit(t, "name", (e.target as HTMLInputElement).value)}
-            onFocus={(e) => (e.target as HTMLInputElement).select()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.preventDefault();
-                e.stopPropagation();
-                const el = e.target as HTMLInputElement;
-                el.blur();
-                setEditing(null);
-              }
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full min-w-0 rounded border border-blue-500 bg-white px-1 py-0.5 text-sm outline-none"
-          />
-        ) : (
-          <span
-            onClick={(e) => openEdit(e, t, "name", t.name)}
-            title={`${t.name} — クリックで名前を編集`}
-            dir="auto"
-            className="w-fit max-w-full min-w-0 flex-none cursor-text truncate rounded hover:bg-neutral-100"
-          >
-            {t.name}
-          </span>
-        )}
-        {t.recurrence && t.recurrence !== "none" && (
-          <span title="繰り返しタスク" className="shrink-0 text-xs text-neutral-500">
-            ↻
-          </span>
-        )}
-        <span className="ml-1 flex items-center gap-2 text-[11px] text-neutral-600">
-          {t.subtask_count > 0 && (
-            <span className="flex items-center gap-0.5" title="サブタスク">
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <path d="M4 3v4.5a2 2 0 0 0 2 2h6" />
-                <path d="M9.5 7.5 12 9.5 9.5 11.5" />
-              </svg>
-              {t.subtask_count}
-            </span>
-          )}
-          {t.comment_count > 0 && (
-            <span className="flex items-center gap-0.5" title="コメント">
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <path d="M3 3.5h10v7H7.5L4.5 13v-2.5H3z" />
-              </svg>
-              {t.comment_count}
-            </span>
-          )}
-        </span>
-        <span className="flex w-full flex-wrap items-center gap-2 pl-6 text-[11px] text-neutral-500 lg:hidden">
-          {t.due_on && (
-            <span className={overdue ? "font-semibold text-red-600" : isToday ? "font-semibold text-[#2c60b8]" : ""}>
-              期日 {t.due_on}
-            </span>
-          )}
-          {t.assignee_name && <span>{t.assignee_name}</span>}
-          {statusFieldEnabled && t.status !== "inbox" && t.status !== "" && <span>{t.status}</span>}
-        </span>
-      </div>
-      {editing?.id === t.id && editing.field === "assignee" ? (
-        <select
-          style={{ order: visibleCols.indexOf("assignee") }}
-          autoFocus
-          value={editVal}
-          onChange={(e) => commitEdit(t, "assignee", e.target.value)}
-          onBlur={cancelEdit}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") cancelEdit();
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white px-1 py-0.5 text-[13px] outline-none"
-        >
-          <option value="">–</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <span
-          onClick={(e) => openEdit(e, t, "assignee", t.assignee_id === null ? "" : String(t.assignee_id))}
-          title="クリックで編集"
-          style={{ order: visibleCols.indexOf("assignee") }}
-          className="flex min-w-0 cursor-pointer items-center gap-1.5 truncate rounded text-neutral-600 hover:bg-neutral-100"
-        >
-          {t.assignee_name && (
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-400 text-[10px] font-bold text-neutral-900">
-              {t.assignee_name.slice(0, 1)}
-            </span>
-          )}
-          <span className="truncate">{t.assignee_name ?? ""}</span>
-        </span>
-      )}
-      {editing?.id === t.id && editing.field === "due" ? (
-        <span style={{ order: visibleCols.indexOf("due") }} className="relative">
-          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">編集中…</span>
-          <div
-            className="absolute top-full left-0 z-40 mt-1 w-60 rounded-lg border bg-white p-3 text-sm shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <label className="block text-xs text-neutral-500">
-              開始日
-              <input
-                type="date"
-                value={editStart}
-                onChange={(e) => setEditStart(e.target.value)}
-                className="mt-0.5 w-full rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
-              />
-            </label>
-            <label className="mt-2 block text-xs text-neutral-500">
-              期日
-              <input
-                type="date"
-                value={editVal}
-                onChange={(e) => setEditVal(e.target.value)}
-                className="mt-0.5 w-full rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
-              />
-            </label>
-            <div className="mt-2 flex gap-1">
-              <button
-                onClick={() => commitDueEdit(t)}
-                className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
-              >
-                保存
-              </button>
-              <button
-                onClick={() => {
-                  setEditStart("");
-                  setEditVal("");
-                  commitDueEdit(t, true);
-                }}
-                title="開始日と期日をクリア"
-                className="rounded border px-2 py-1 text-xs hover:bg-neutral-100"
-              >
-                クリア
-              </button>
-              <button onClick={cancelEdit} className="rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100">
-                キャンセル
-              </button>
-            </div>
-          </div>
-        </span>
-      ) : (
-        <span onClick={(e) => openDueEdit(e, t)} style={{ order: visibleCols.indexOf("due") }}
-          title="クリックで編集" className="cursor-pointer rounded px-1 py-0.5 hover:bg-neutral-100">
-          {t.start_on || t.due_on ? (
-            (() => {
-              const [s1, s2] = dueSegs(t.start_on, t.due_on);
-              return (
-                <span
-                  className={`whitespace-nowrap text-[12px] ${
-                    overdue ? "font-medium text-red-700" : isToday ? "text-green-700" : "text-neutral-600"
-                  }`}
-                >
-                  {s1}
-                  {s2 && ` – ${s2}`}
-                </span>
-              );
-            })()
-          ) : (
-            <button
-              onClick={(e) => openDueEdit(e, t)}
-              title="期日を設定"
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-neutral-300 text-[11px] leading-none text-neutral-300 hover:border-neutral-500 hover:text-neutral-500"
-            >
-              ＋
-            </button>
-          )}
-        </span>
-      )}
-      {editing?.id === t.id && editing.field === "progress" ? (
-        <input
-          autoFocus
-          style={{ order: visibleCols.indexOf("progress") }}
-          type="number"
-          min={0}
-          max={100}
-          value={editVal}
-          onChange={(e) => setEditVal(e.target.value)}
-          onBlur={(e) => commitEdit(t, "progress", (e.target as HTMLInputElement).value)}
-          onFocus={(e) => (e.target as HTMLInputElement).select()}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              e.stopPropagation();
-              const el = e.target as HTMLInputElement;
-              el.blur();
-              setEditing(null);
-            }
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className={editInputCls}
-        />
-      ) : (
-        <span
-          onClick={(e) => openEdit(e, t, "progress", String(t.progress))}
-          title="クリックで編集"
-          style={{ order: visibleCols.indexOf("progress") }}
-          className="flex min-h-5 cursor-pointer items-center gap-1.5 rounded hover:bg-neutral-100"
-        >
-          {t.progress > 0 ? (
-            <>
-              <span className="h-1.5 w-16 overflow-hidden rounded bg-neutral-200">
-                <span className="block h-full rounded bg-green-500" style={{ width: `${t.progress}%` }} />
-              </span>
-              <span className="text-xs text-neutral-600">{t.progress}%</span>
-            </>
-          ) : null}
-        </span>
-      )}
-      {statusFieldEnabled && !statusHidden && (
-        editing?.id === t.id && editing.field === "status" ? (
-          <select
-          style={{ order: visibleCols.indexOf("status") }}
-            autoFocus
-            value={editVal}
-            onChange={(e) => commitEdit(t, "status", e.target.value)}
-            onBlur={cancelEdit}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") cancelEdit();
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white px-1 py-0.5 text-[13px] outline-none"
-          >
-            {!statusOptions.includes(editVal) && <option value={editVal}>{editVal}</option>}
-            {statusOptions.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span
-            onClick={(e) => openEdit(e, t, "status", t.status)}
-            title="クリックで編集"
-            style={{ order: visibleCols.indexOf("status") }}
-            className="min-h-5 cursor-pointer truncate rounded hover:bg-neutral-100"
-          >
-            {t.status && t.status !== "inbox" ? (
-              <span className={statusChip(t.status)}>{t.status}</span>
-            ) : null}
-          </span>
-        )
-      )}
-      {shownFields.map((f) =>
-        editing?.id === t.id && editing.field === `cf-${f.id}` ? (
-          f.field_type === "select" ? (
-            <select
-            style={{ order: visibleCols.indexOf(`cf-${f.id}`) }}
-              key={f.id}
-              autoFocus
-              value={editVal}
-              onChange={(e) => commitEdit(t, `cf-${f.id}`, e.target.value)}
-              onBlur={cancelEdit}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") cancelEdit();
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white px-1 py-0.5 text-[13px] outline-none"
-            >
-              <option value="">–</option>
-              {f.options.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-            style={{ order: visibleCols.indexOf(`cf-${f.id}`) }}
-              key={f.id}
-              autoFocus
-              type={f.field_type === "number" ? "number" : "text"}
-              value={editVal}
-              onChange={(e) => setEditVal(e.target.value)}
-              onBlur={(e) => commitEdit(t, `cf-${f.id}`, (e.target as HTMLInputElement).value)}
-              onFocus={(e) => (e.target as HTMLInputElement).select()}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") cancelEdit();
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className={editInputCls}
-            />
-          )
-        ) : (
-          <span
-            key={f.id}
-            onClick={(e) => openEdit(e, t, `cf-${f.id}`, customRaw(t.id, f))}
-            title="クリックで編集"
-            style={{ order: visibleCols.indexOf(`cf-${f.id}`) }}
-            className="cursor-pointer truncate rounded text-neutral-600 hover:bg-neutral-100"
-          >
-            {formatCustomValue(f, customValues[t.id]?.[f.id])}
-          </span>
-        ),
-      )}
-      <button
-        style={{ order: 999 }}
-        onClick={() => remove(t)}
-        className="invisible justify-self-end text-neutral-300 hover:text-red-600 group-hover:visible"
-        title="削除"
-      >
-        ×
-      </button>
-    </div>
-    {expanded.has(t.id) &&
-      (subtaskMap[t.id] ?? []).map((st) => (
-        <Fragment key={`sub-${st.id}`}>{renderRow(st, 1)}</Fragment>
-      ))}
-    {expanded.has(t.id) &&
-      (subAdding === t.id ? (
-        <div className="flex gap-2 py-1 pl-14">
-          <input
-            value={subDraft}
-            onChange={(e) => setSubDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") addSubtask(t);
-              if (e.key === "Escape") setSubAdding(null);
-            }}
-            onBlur={() => {
-              if (subDraft.trim() === "") setSubAdding(null);
-            }}
-            placeholder="サブタスク名を入力"
-            autoFocus
-            className="w-full max-w-md rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
-          />
-          <button
-            onClick={() => addSubtask(t)}
-            className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
-          >
-            追加
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setSubAdding(t.id)}
-          className="flex h-9 w-full items-center rounded pr-2 pl-[108px] text-left text-[13px] whitespace-nowrap text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
-        >
-          サブタスクを追加
-        </button>
-      ))}
-    </Fragment>
-    );
+  const beginRowDrag = () => {
+    dragging.current = true;
+  };
+  const endRowDrag = () => {
+    setTimeout(() => {
+      dragging.current = false;
+    }, 0);
+  };
+  const rowCtx = {
+    today,
+    compactCells,
+    activeTaskId,
+    dropHint,
+    setHint,
+    beginRowDrag,
+    endRowDrag,
+    rowClick,
+    moveTask,
+    subtaskMap,
+    expanded,
+    toggleExpand,
+    toggle,
+    editing,
+    setEditing,
+    editVal,
+    setEditVal,
+    editStart,
+    setEditStart,
+    openEdit,
+    commitEdit,
+    cancelEdit,
+    openDueEdit,
+    commitDueEdit,
+    editInputCls,
+    users,
+    visibleCols,
+    statusFieldEnabled,
+    statusHidden,
+    statusOptions,
+    shownFields,
+    customRaw,
+    customValues,
+    subAdding,
+    setSubAdding,
+    subDraft,
+    setSubDraft,
+    addSubtask,
+    remove,
+    gridCols,
+    openTask,
   };
 
   const groupHeader = (key: string, name: string, count: number) => {
@@ -1660,289 +900,55 @@ export default function ListView({
     >
       <div className="overflow-x-auto">
       <div className="min-w-[860px]">
-      <div className="flex flex-wrap items-center gap-1 border-b py-2 text-sm">
-        <span className="relative flex">
-          <button
-            onClick={focusAdd}
-            className="flex h-7 items-center gap-1 rounded-l-md border bg-white px-2.5 text-[12px] text-neutral-800 hover:bg-neutral-50"
-          >
-            <span className="text-[14px] leading-none text-neutral-500">＋</span> タスクを追加
-          </button>
-          <button
-            onClick={toggleAddMenu}
-            title="その他の追加方法"
-            className="flex h-7 items-center rounded-r-md border border-l-0 bg-white px-1.5 text-neutral-600 hover:bg-neutral-50"
-          >
-            ▾
-          </button>
-          {addMenu && (
-            <div className="absolute top-full left-0 z-40 mt-1 w-64 rounded-lg border bg-white py-1 text-sm shadow-lg">
-              <div className={menuLabel}>テンプレートから作成</div>
-              {addTemplates.length === 0 && (
-                <div className="px-3 py-1 text-xs text-neutral-500">テンプレートなし</div>
-              )}
-              {addTemplates.map((t) => (
-                <button key={t.id} className={menuItem} onClick={() => instantiateTemplate(t.id)}>
-                  {t.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </span>
-        <span className="ml-auto" />
-        <span className="relative">
-          {activeFilterCount > 0 ? (
-            <span className="flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]">
-              <button
-                onClick={openFilterMenu}
-                data-list-filter-open
-                className="flex items-center pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]"
-              >
-                絞り込み: {activeFilterCount}
-              </button>
-              <button title="絞り込みをクリア" onClick={clearFilters} className={clearPill}>
-                ×
-              </button>
-            </span>
-          ) : (
-            <button onClick={openFilterMenu} data-list-filter-open className={toolbarBtn}>
-              絞り込み
-            </button>
-          )}
-          {filterOpen && (
-            <>
-              <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
-              <div className={popoverCls}>
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-[13px] font-semibold text-neutral-800">絞り込み</span>
-                  {activeFilterCount > 0 && (
-                    <button onClick={clearFilters} className="text-[12px] text-[#2C60B8] hover:underline">
-                      クリア
-                    </button>
-                  )}
-                </div>
-                <label className={checkItem}>
-                  <input
-                    type="checkbox"
-                    checked={hideCompleted}
-                    data-list-hide-completed
-                    onChange={(e) => {
-                      setHideCompleted(e.target.checked);
-                      pushState({ hide: e.target.checked });
-                    }}
-                  />
-                  未完了のタスクのみ
-                </label>
-                <div className="mt-2 px-1.5 text-[11px] font-semibold tracking-wide text-neutral-500">担当者</div>
-                <select
-                  value={assigneeFilter}
-                  data-list-assignee-select
-                  onChange={(e) => {
-                    setAssigneeFilter(e.target.value);
-                    pushState({ assignee: e.target.value });
-                  }}
-                  className={menuSelect}
-                >
-                  <option value="">すべて</option>
-                  <option value="none">未割当</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="mt-2 px-1.5 text-[11px] font-semibold tracking-wide text-neutral-500">期日</div>
-                <select
-                  value={dueFilter}
-                  onChange={(e) => {
-                    setDueFilter(e.target.value);
-                    pushState({ due: e.target.value });
-                  }}
-                  className={menuSelect}
-                >
-                  <option value="">すべて</option>
-                  <option value="overdue">期限切れ</option>
-                  <option value="today">今日</option>
-                  <option value="week">今週</option>
-                  <option value="nextweek">来週</option>
-                  <option value="month">今月</option>
-                </select>
-                {statusFieldEnabled && (
-                  <>
-                    <div className="mt-2 px-1.5 text-[11px] font-semibold tracking-wide text-neutral-500">{statusFieldName}</div>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => {
-                        setStatusFilter(e.target.value);
-                        pushState({ status: e.target.value });
-                      }}
-                      className={menuSelect}
-                    >
-                      <option value="">すべて</option>
-                      {statusOptions.map((st) => (
-                        <option key={st} value={st}>
-                          {st}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </span>
-        <span className="relative">
-          {sortActive ? (
-            <span className="flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]">
-              <button
-                onClick={openSortMenu}
-                className="flex items-center pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]"
-              >
-                ソート: 1
-              </button>
-              <button title="ソートをクリア" onClick={clearAllSort} className={clearPill}>
-                ×
-              </button>
-            </span>
-          ) : (
-            <button onClick={openSortMenu} className={toolbarBtn}>
-              ソート
-            </button>
-          )}
-          {sortOpen && (
-            <>
-              <div className="fixed inset-0 z-30" onClick={() => setSortOpen(false)} />
-              <div className={popoverCls}>
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-[13px] font-semibold text-neutral-800">並び替え</span>
-                  {sortActive && (
-                    <button onClick={clearAllSort} className="text-[12px] text-[#2C60B8] hover:underline">
-                      クリア
-                    </button>
-                  )}
-                </div>
-                {[
-                  ["position", "手動"],
-                  ["due", "期日"],
-                  ["name", "名前"],
-                  ["progress", "進捗"],
-                ].map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      if (key === "position") {
-                        setSortKey("position");
-                        setSortDir("asc");
-                        pushState({ sort: "position" });
-                      } else {
-                        setSortKey(key as "name" | "due" | "progress");
-                        setSortDir("asc");
-                        pushState({ sort: key, sortdir: "asc" });
-                      }
-                      setSortOpen(false);
-                    }}
-                    className={checkItem}
-                  >
-                    <span className="w-4 text-[#2C60B8]">{sortKey === key ? "✓" : ""}</span>
-                    {label}
-                  </button>
-                ))}
-                {sortActive && (
-                  <button
-                    onClick={() => {
-                      const next = sortDir === "asc" ? "desc" : "asc";
-                      setSortDir(next);
-                      pushState({ sortdir: next });
-                    }}
-                    className="mt-1 flex w-full items-center justify-between rounded-md border bg-white px-2 py-1.5 text-[12px] text-neutral-600 hover:bg-neutral-50"
-                  >
-                    <span>{sortDir === "asc" ? "昇順" : "降順"}</span>
-                    <span>{sortDir === "asc" ? "↑" : "↓"}</span>
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </span>
-        <span className="relative">
-          <button onClick={openGroupMenu} className={toolbarBtn}>
-            グループ
-          </button>
-          {groupOpen && (
-            <>
-              <div className="fixed inset-0 z-30" onClick={() => setGroupOpen(false)} />
-              <div className={popoverCls}>
-                <div className="mb-1 text-[13px] font-semibold text-neutral-800">グループ</div>
-                {[
-                  ["section", "セクション"],
-                  ["assignee", "担当者"],
-                  ...(statusFieldEnabled ? [["status", statusFieldName]] : []),
-                ].map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      setGroupBy(key as typeof groupBy);
-                      pushState({ group: key });
-                      setGroupOpen(false);
-                    }}
-                    className={checkItem}
-                  >
-                    <span className="w-4 text-[#2C60B8]">{groupBy === key ? "✓" : ""}</span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </span>
-        <details className="relative">
-          <summary className="flex h-7 cursor-pointer list-none items-center gap-1 rounded-md px-2 text-[12px] font-medium text-neutral-500 hover:bg-neutral-100 [&::-webkit-details-marker]:hidden">
-            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
-              <path d="M2 4h12M2 8h12M2 12h12" />
-              <circle cx="6" cy="4" r="1.6" fill="white" />
-              <circle cx="10" cy="8" r="1.6" fill="white" />
-              <circle cx="5" cy="12" r="1.6" fill="white" />
-            </svg>
-            オプション
-          </summary>
-          <div className="absolute right-0 z-30 mt-1 w-80 rounded-lg border bg-white p-3 text-sm shadow-lg">
-            {saving ? (
-              <span className="flex items-center gap-1">
-                <input
-                  value={saveName}
-                  onChange={(e) => setSaveName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveView();
-                  }}
-                  placeholder="ビュー名"
-                  aria-label="保存するビュー名"
-                  autoFocus
-                  className="w-32 rounded border px-2 py-0.5 text-sm outline-none focus:border-blue-500"
-                />
-                <button onClick={saveView} aria-label="ビューを保存" className="rounded bg-blue-600 px-2 py-0.5 text-sm text-white">
-                  保存
-                </button>
-                <button onClick={() => setSaving(false)} aria-label="ビュー保存をキャンセル" className="text-sm text-neutral-500">
-                  ×
-                </button>
-              </span>
-            ) : (
-              <button onClick={() => setSaving(true)} aria-label="現在のビューを保存" className="text-sm text-neutral-600 hover:text-black">
-                ビューを保存
-              </button>
-            )}
-            <label className="mt-2 flex items-center gap-1 text-neutral-600" title="20秒ごとに自動更新（表示中のみ）">
-              <input
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-              />
-              自動更新{lastRefresh ? `（${lastRefresh}）` : ""}
-            </label>
-            <TemplateBar projectId={projectId} sections={sections} users={users} />
-          </div>
-        </details>
-      </div>
+      <ListToolbar
+        projectId={projectId}
+        sections={sections}
+        users={users}
+        statusFieldEnabled={statusFieldEnabled}
+        statusFieldName={statusFieldName}
+        statusOptions={statusOptions}
+        focusAdd={focusAdd}
+        toggleAddMenu={toggleAddMenu}
+        addMenu={addMenu}
+        addTemplates={addTemplates}
+        instantiateTemplate={instantiateTemplate}
+        activeFilterCount={activeFilterCount}
+        openFilterMenu={openFilterMenu}
+        clearFilters={clearFilters}
+        filterOpen={filterOpen}
+        setFilterOpen={setFilterOpen}
+        hideCompleted={hideCompleted}
+        setHideCompleted={setHideCompleted}
+        pushState={pushState}
+        assigneeFilter={assigneeFilter}
+        setAssigneeFilter={setAssigneeFilter}
+        dueFilter={dueFilter}
+        setDueFilter={setDueFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        sortActive={sortActive}
+        openSortMenu={openSortMenu}
+        clearAllSort={clearAllSort}
+        sortOpen={sortOpen}
+        setSortOpen={setSortOpen}
+        sortKey={sortKey}
+        setSortKey={setSortKey}
+        sortDir={sortDir}
+        setSortDir={setSortDir}
+        groupOpen={groupOpen}
+        setGroupOpen={setGroupOpen}
+        openGroupMenu={openGroupMenu}
+        groupBy={groupBy}
+        setGroupBy={setGroupBy}
+        saving={saving}
+        setSaving={setSaving}
+        saveName={saveName}
+        setSaveName={setSaveName}
+        saveView={saveView}
+        autoRefresh={autoRefresh}
+        setAutoRefresh={setAutoRefresh}
+        lastRefresh={lastRefresh}
+      />
       {savedViews.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 border-b py-1.5 text-sm">
           {savedViews.map((v) => (
@@ -2058,8 +1064,7 @@ export default function ListView({
           title="すべて選択/解除"
           checked={visible.length > 0 && visible.every((t) => selected.has(t.id))}
           onChange={() => {
-            if (visible.every((t) => selected.has(t.id))) setSelected(new Set());
-            else setSelected(new Set(visible.map((t) => t.id)));
+            toggleAll(visible.map((t) => t.id));
           }}
         />
         {headerCell("name", "名前")}
@@ -2117,7 +1122,9 @@ export default function ListView({
                 {groupHeader(gk, gkey, items.length)}
                 {!collapsed && (
                   <>
-                    {shownItems.map((t) => renderRow(t))}
+                    {shownItems.map((t) => (
+                      <TaskListRow key={t.id} task={t} ctx={rowCtx} />
+                    ))}
                     {showMoreRows(gk, items.length, shownItems.length)}
                     {addingTo === gk
                       ? addRow(
@@ -2192,7 +1199,9 @@ export default function ListView({
                 {groupHeader(key, s.name, items.length)}
                 {!collapsed && (
                   <>
-                    {shownItems.map((t) => renderRow(t))}
+                    {shownItems.map((t) => (
+                      <TaskListRow key={t.id} task={t} ctx={rowCtx} />
+                    ))}
                     {showMoreRows(key, items.length, shownItems.length)}
                     {addingTo === s.id
                       ? addRow(
@@ -2240,7 +1249,9 @@ export default function ListView({
             const shown = loose.slice(0, rowLimitFor("none"));
             return (
               <>
-                {shown.map((t) => renderRow(t))}
+                {shown.map((t) => (
+                  <TaskListRow key={t.id} task={t} ctx={rowCtx} />
+                ))}
                 {showMoreRows("none", loose.length, shown.length)}
               </>
             );

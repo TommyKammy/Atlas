@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction } from "@/lib/ui-feedback";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -23,7 +25,7 @@ export default function TrashList({
   };
 
   const purge = async (id: number, name: string) => {
-    if (!confirm(`「${name}」を完全に削除しますか？（元に戻せません）`)) return;
+    if (!await confirmAction(`「${name}」を完全に削除しますか？（元に戻せません）`)) return;
     setBusy(id);
     try {
       const res = await fetch(`/api/tasks/${id}?force=1`, { method: "DELETE" });

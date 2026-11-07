@@ -1,5 +1,7 @@
 "use client";
 
+import { toast as toastMessage } from "@/lib/ui-feedback";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
@@ -27,7 +29,7 @@ export default function ProjectDescriptionEditor({
         body: JSON.stringify({ description: value }),
       });
       if (!res.ok) {
-        alert(`説明の保存に失敗しました: ${res.status}`);
+        toastMessage(`説明の保存に失敗しました: ${res.status}`);
         return;
       }
       setEditing(false);

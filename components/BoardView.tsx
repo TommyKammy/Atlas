@@ -1,5 +1,9 @@
 "use client";
 
+import { toast as toastMessage } from "@/lib/ui-feedback";
+
+import { api } from "@/lib/api-client";
+import { patchTask, TaskConflictError } from "@/lib/task-client";
 import Link from "next/link";
 import { Fragment, useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,19 +11,16 @@ import type { Section, TaskRow, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { groupBoardTasks, type BoardGroup } from "@/lib/board-group";
 import { useLive } from "@/lib/use-live";
-import { useApiRefresh, dueSegs } from "./ListView";
+import { useApiRefresh } from "@/lib/use-api-refresh";
+import { dueSegs } from "@/lib/dates";
 import EmptyState from "./EmptyState";
 import { usePersistedViewState } from "@/lib/view-state-client";
+import PopoverMenu from "./ui/PopoverMenu";
+import TaskCompletionToggle from "./task/TaskCompletionToggle";
+import TaskAvatar from "./task/TaskAvatar";
+import TaskStatusChip from "./task/TaskStatusChip";
+import TaskMetaBadges from "./task/TaskMetaBadges";
 
-async function api(path: string, method: string, body?: unknown) {
-  const res = await fetch(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${method} ${path}: ${res.status}`);
-  return res.json();
-}
 
 
 
@@ -150,35 +151,45 @@ export default function BoardView({
     sort?: string;
     sortdir?: "asc" | "desc";
   } = {}) => {
-    const q = new URLSearchParams({ view: "board" });
+    const q = new URLSearchParams(window.location.search);
+    q.set("view", "board");
     const nextGroup = patch.group ?? effectiveGroupBy;
     if (nextGroup !== "section") q.set("group", nextGroup);
+    else q.delete("group");
     const nextHide = patch.hide_completed ?? hideCompleted;
     if (nextHide) q.set("hide", "1");
+    else q.delete("hide");
     const nextAssignee = patch.assignee ?? assigneeFilter;
     if (nextAssignee !== "") q.set("assignee", nextAssignee);
+    else q.delete("assignee");
     const nextStatus = patch.status ?? statusFilter;
     if (statusFieldEnabled && nextStatus !== "") q.set("status", nextStatus);
+    else q.delete("status");
     const nextSort = patch.sort ?? sortKey;
-    if (nextSort !== "position") q.set("sort", nextSort);
-    const nextDir = patch.sortdir ?? sortDir;
-    if (nextSort !== "position" && nextDir === "desc") q.set("sortdir", "desc");
+    if (nextSort !== "position") {
+      q.set("sort", nextSort);
+      const nextDir = patch.sortdir ?? sortDir;
+      if (nextDir === "desc") q.set("sortdir", "desc");
+      else q.delete("sortdir");
+    } else {
+      q.delete("sort");
+      q.delete("sortdir");
+    }
     router.push(`/projects/${projectId}?${q.toString()}`);
   };
 
-  const patchTask = async (taskId: number, fields: Record<string, unknown>) => {
+  const patchTaskFields = async (taskId: number, fields: Record<string, unknown>) => {
     const target = tasks.find((t) => t.id === taskId);
-    const res = await fetch(`/api/tasks/${taskId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...fields, expected_updated_at: target?.updated_at }),
-    });
-    if (res.status === 409) {
-      alert("他のユーザーが先に更新しました。最新を表示します。");
-      refresh();
-      return;
+    try {
+      await patchTask(taskId, fields, target?.updated_at);
+    } catch (error) {
+      if (error instanceof TaskConflictError) {
+        toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+        refresh();
+        return;
+      }
+      throw error;
     }
-    if (!res.ok) throw new Error(`PATCH /api/tasks/${taskId}: ${res.status}`);
     refresh();
   };
 
@@ -219,7 +230,7 @@ export default function BoardView({
         });
         refresh();
       } else {
-        await patchTask(taskId, {
+        await patchTaskFields(taskId, {
           section_id: g.sectionId,
           position: position ?? maxPos + 1000,
         });
@@ -276,6 +287,8 @@ export default function BoardView({
             type="button"
             data-board-filter
             onClick={() => setMenu((m) => (m === "filter" ? null : "filter"))}
+            aria-expanded={menu === "filter"}
+            aria-haspopup="menu"
             className={`flex h-7 items-center gap-1 rounded-md border px-2 text-[13px] ${
               activeFilters > 0 || menu === "filter" ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]" : "border-[#e1e1e1] bg-white text-neutral-700 hover:bg-neutral-50"
             }`}
@@ -286,10 +299,12 @@ export default function BoardView({
             フィルター
             {activeFilters > 0 && <span className="rounded-full bg-[#2c60b8] px-1 text-[10px] text-white">{activeFilters}</span>}
           </button>
-          {menu === "filter" && (
-            <>
-              <button type="button" aria-label="メニューを閉じる" onClick={() => setMenu(null)} className="fixed inset-0 z-20 cursor-default bg-transparent" />
-              <div data-board-filter-menu className="absolute right-0 top-8 z-30 w-64 rounded-lg border border-neutral-200 bg-white p-3 text-[13px] shadow-lg">
+          <PopoverMenu
+            open={menu === "filter"}
+            onClose={() => setMenu(null)}
+            panelClassName="absolute right-0 top-8 z-30 w-64 rounded-lg border border-neutral-200 bg-white p-3 text-[13px] shadow-lg"
+            panelProps={{ "data-board-filter-menu": true }}
+          >
                 <label className="flex cursor-pointer items-center gap-2 text-neutral-700">
                   <input
                     type="checkbox"
@@ -356,9 +371,7 @@ export default function BoardView({
                     フィルターを解除
                   </button>
                 )}
-              </div>
-            </>
-          )}
+          </PopoverMenu>
         </div>
 
         <div className="relative">
@@ -366,6 +379,8 @@ export default function BoardView({
             type="button"
             data-board-sort
             onClick={() => setMenu((m) => (m === "sort" ? null : "sort"))}
+            aria-expanded={menu === "sort"}
+            aria-haspopup="menu"
             className={`flex h-7 items-center gap-1 rounded-md border px-2 text-[13px] ${
               sortKey !== "position" || menu === "sort" ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]" : "border-[#e1e1e1] bg-white text-neutral-700 hover:bg-neutral-50"
             }`}
@@ -375,10 +390,12 @@ export default function BoardView({
             </svg>
             ソート
           </button>
-          {menu === "sort" && (
-            <>
-              <button type="button" aria-label="メニューを閉じる" onClick={() => setMenu(null)} className="fixed inset-0 z-20 cursor-default bg-transparent" />
-              <div data-board-sort-menu className="absolute right-0 top-8 z-30 w-56 rounded-lg border border-neutral-200 bg-white p-1.5 text-[13px] shadow-lg">
+          <PopoverMenu
+            open={menu === "sort"}
+            onClose={() => setMenu(null)}
+            panelClassName="absolute right-0 top-8 z-30 w-56 rounded-lg border border-neutral-200 bg-white p-1.5 text-[13px] shadow-lg"
+            panelProps={{ "data-board-sort-menu": true }}
+          >
                 {[
                   ["position", "ボードの順序"],
                   ["due", "期日"],
@@ -416,9 +433,7 @@ export default function BoardView({
                     <span>{sortDir === "asc" ? "昇順 ↑" : "降順 ↓"}</span>
                   </button>
                 )}
-              </div>
-            </>
-          )}
+          </PopoverMenu>
         </div>
 
         <label className="flex h-7 items-center gap-1 text-[13px] text-neutral-500">
@@ -444,6 +459,8 @@ export default function BoardView({
             type="button"
             data-board-options
             onClick={() => setMenu((m) => (m === "options" ? null : "options"))}
+            aria-expanded={menu === "options"}
+            aria-haspopup="menu"
             className={`flex h-7 items-center gap-1 rounded-md border px-2 text-[13px] ${
               !showEmptyGroups || !autoRefresh || menu === "options"
                 ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]"
@@ -455,10 +472,12 @@ export default function BoardView({
             </svg>
             オプション
           </button>
-          {menu === "options" && (
-            <>
-              <button type="button" aria-label="メニューを閉じる" onClick={() => setMenu(null)} className="fixed inset-0 z-20 cursor-default bg-transparent" />
-              <div data-board-options-menu className="absolute right-0 top-8 z-30 w-60 rounded-lg border border-neutral-200 bg-white p-3 text-[13px] shadow-lg">
+          <PopoverMenu
+            open={menu === "options"}
+            onClose={() => setMenu(null)}
+            panelClassName="absolute right-0 top-8 z-30 w-60 rounded-lg border border-neutral-200 bg-white p-3 text-[13px] shadow-lg"
+            panelProps={{ "data-board-options-menu": true }}
+          >
                 <label className="flex cursor-pointer items-center gap-2 text-neutral-700">
                   <input
                     type="checkbox"
@@ -478,9 +497,7 @@ export default function BoardView({
                   />
                   20秒ごとに自動更新
                 </label>
-              </div>
-            </>
-          )}
+          </PopoverMenu>
         </div>
       </div>
       {tasks.length === 0 && (
@@ -576,13 +593,11 @@ export default function BoardView({
                           className="cursor-pointer rounded-lg border border-[#eaeaea] bg-white p-2 text-sm shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-md active:cursor-grabbing"
                         >
                   <div className="flex items-start gap-2">
-                    <span
-                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${
-                        t.completed ? "border-green-700 bg-green-700 text-white" : "border-neutral-400"
-                      }`}
-                    >
-                      {t.completed && "✓"}
-                    </span>
+                    <TaskCompletionToggle
+                      completed={t.completed}
+                      onToggle={() => void patchTaskFields(t.id, { completed: !t.completed })}
+                      className="mt-0.5"
+                    />
                     <Link
                       href={`/projects/${projectId}?view=board&task=${t.id}`}
                       title={t.name}
@@ -600,9 +615,7 @@ export default function BoardView({
                     )}
                     {t.assignee_name && (
                       <span className="flex items-center gap-1">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-400 text-[10px] font-bold text-neutral-900">
-                          {t.assignee_name.slice(0, 1)}
-                        </span>
+                        <TaskAvatar name={t.assignee_name} />
                         {t.assignee_name}
                       </span>
                     )}
@@ -624,35 +637,13 @@ export default function BoardView({
                       })()
                     )}
                     {statusFieldEnabled && t.status !== "inbox" && (
-                      <span
-                        className={`rounded-full px-1.5 py-0.5 ${
-                          t.status === "Done" || t.status === "完了"
-                            ? "bg-green-100 text-green-800"
-                            : t.status === "進行中" || t.status === "In Progress"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-neutral-100 text-neutral-700"
-                        }`}
-                      >
-                        {t.status}
-                      </span>
+                      <TaskStatusChip status={t.status} compact />
                     )}
-                    {t.subtask_count > 0 && (
-                      <span data-board-subtask-badge className="flex items-center gap-0.5" title="サブタスク">
-                        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.2">
-                          <path d="M4 3v4.5a2 2 0 0 0 2 2h6" />
-                          <path d="M9.5 7.5 12 9.5 9.5 11.5" />
-                        </svg>
-                        {t.subtask_count}
-                      </span>
-                    )}
-                    {t.comment_count > 0 && (
-                      <span data-board-comment-badge className="flex items-center gap-0.5" title="コメント">
-                        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.2">
-                          <path d="M3 3.5h10v7H7.5L4.5 13v-2.5H3z" />
-                        </svg>
-                        {t.comment_count}
-                      </span>
-                    )}
+                    <TaskMetaBadges
+                      subtaskCount={t.subtask_count}
+                      commentCount={t.comment_count}
+                      dataScope="board"
+                    />
                   </div>
                   <div className="mt-1 flex gap-1 md:hidden">
                     <button

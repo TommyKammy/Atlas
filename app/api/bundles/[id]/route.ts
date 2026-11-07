@@ -1,22 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withAdmin } from "@/lib/api/route";
 import { normalizeBundleFields } from "@/lib/bundles";
 import { audit } from "@/lib/audit";
 
-async function requireAdmin(req: Request): Promise<number | null> {
-  const uid = getCurrentUserIdFromRequest(req);
-  const r = await db.query("SELECT is_admin FROM users WHERE id = $1 AND deactivated_at IS NULL", [uid]);
-  return (r.rowCount ?? 0) > 0 && r.rows[0].is_admin === true ? uid : null;
-}
-
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const uid = await requireAdmin(req);
-  if (uid === null) return NextResponse.json({ error: "admin only" }, { status: 403 });
-  const { id } = await params;
+export const PATCH = withAdmin(async (req, { uid, params }) => {
+  const id = params.id;
   const body = await req.json().catch(() => ({}));
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -43,17 +32,12 @@ export async function PATCH(
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   await audit(uid, "bundle.update", { entity: "bundle", entityId: Number(id) });
   return NextResponse.json({ id: Number(id) });
-}
+});
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const uid = await requireAdmin(req);
-  if (uid === null) return NextResponse.json({ error: "admin only" }, { status: 403 });
-  const { id } = await params;
+export const DELETE = withAdmin(async (_req, { uid, params }) => {
+  const id = params.id;
   const r = await db.query("DELETE FROM bundles WHERE id = $1::bigint", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   await audit(uid, "bundle.delete", { entity: "bundle", entityId: Number(id) });
   return NextResponse.json({ deleted: Number(id) });
-}
+});

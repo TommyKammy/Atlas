@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction } from "@/lib/ui-feedback";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -87,7 +89,7 @@ export default function ProjectTabs({
   };
 
   const removeTab = async (tab: ProjectTab) => {
-    if (!tab.is_custom || !window.confirm(`「${tab.name}」タブを削除しますか？`)) return;
+    if (!tab.is_custom || !await confirmAction(`「${tab.name}」タブを削除しますか？`)) return;
     const res = await fetch(`/api/project-tabs/${tab.id}`, { method: "DELETE" });
     if (res.ok) router.refresh();
   };

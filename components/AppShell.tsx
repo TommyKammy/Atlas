@@ -7,6 +7,8 @@ import SidebarRail from "./SidebarRail";
 import SidebarRailFooter from "./SidebarRailFooter";
 import SidebarToggle from "./SidebarToggle";
 import ThemeToggle from "./ThemeToggle";
+import { MOBILE_NAV } from "@/lib/navigation";
+import FeedbackHost from "./ui/FeedbackHost";
 
 export default async function AppShell({
   children,
@@ -47,15 +49,16 @@ export default async function AppShell({
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <nav className="flex gap-1 overflow-x-auto border-b bg-white px-2 py-1.5 text-sm whitespace-nowrap md:hidden">
-            <Link href="/" className="rounded px-2 py-1 hover:bg-neutral-100">ホーム</Link>
-            <Link href="/my-tasks" className="rounded px-2 py-1 hover:bg-neutral-100">マイタスク</Link>
-            <Link href="/inbox" className="rounded px-2 py-1 hover:bg-neutral-100">受信トレイ</Link>
-            <Link href="/portfolio" className="rounded px-2 py-1 hover:bg-neutral-100">ポートフォリオ</Link>
-            <Link href="/search" className="rounded px-2 py-1 hover:bg-neutral-100">検索</Link>
+            {MOBILE_NAV.map((entry) => (
+              <Link key={entry.href} href={entry.href} className="rounded px-2 py-1 hover:bg-neutral-100">
+                {entry.label}
+              </Link>
+            ))}
           </nav>
           <main className="min-h-0 flex-1 overflow-auto">{children}</main>
         </div>
       </div>
+      <FeedbackHost />
     </div>
   );
 }

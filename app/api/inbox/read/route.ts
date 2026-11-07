@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withUser } from "@/lib/api/route";
 
 // Mark feed entries as read for the current user.
 // Body: { comment_id } | { event_id } | { all: true, workspace_id }
-export async function POST(req: Request) {
-  const uid = getCurrentUserIdFromRequest(req);
-  const body = await req.json();
-  const { comment_id, event_id, all, workspace_id } = body;
+export const POST = withUser(async (req, { uid }) => {
+  const body = await req.json().catch(() => null);
+  const { comment_id, event_id, all, workspace_id } = body ?? {};
   if (all) {
     if (!workspace_id) {
       return NextResponse.json({ error: "workspace_id is required for all" }, { status: 400 });
@@ -45,4 +44,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: "comment_id, event_id or all is required" }, { status: 400 });
-}
+});

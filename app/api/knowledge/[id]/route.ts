@@ -1,29 +1,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withResourceProject } from "@/lib/api/route";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const owner = await db.query("SELECT project_id FROM project_knowledge WHERE id = $1::bigint", [id]);
-  if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const projectId = Number(owner.rows[0].project_id);
-  const auth = await requireProjectPermission(req, projectId, "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const body = await req.json().catch(() => ({}));
+export const PATCH = withResourceProject("edit", "project_knowledge", async (_req, { uid, projectId, params, body }) => {
+  const id = params.id;
+  const payload = (body ?? {}) as { title?: unknown; body?: unknown };
   const sets: string[] = [];
   const values: unknown[] = [];
-  if (typeof body.title === "string" && body.title.trim() !== "") {
-    values.push(body.title.trim());
+  if (typeof payload.title === "string" && payload.title.trim() !== "") {
+    values.push(payload.title.trim());
     sets.push(`title = $${values.length}`);
   }
-  if (typeof body.body === "string" && body.body.trim() !== "") {
-    values.push(body.body.trim());
+  if (typeof payload.body === "string" && payload.body.trim() !== "") {
+    values.push(payload.body.trim());
     sets.push(`body = $${values.length}`);
   }
   if (sets.length === 0) return NextResponse.json({ error: "no fields to update" }, { status: 400 });
@@ -33,30 +24,22 @@ export async function PATCH(
     values,
   );
   await notifyProject(projectId);
-  await audit(getCurrentUserIdFromRequest(req), "knowledge.update", {
+  await audit(uid, "knowledge.update", {
     entity: "knowledge",
     entityId: Number(id),
     projectId,
   });
   return NextResponse.json({ id: Number(id) });
-}
+}, { body: true });
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const owner = await db.query("SELECT project_id FROM project_knowledge WHERE id = $1::bigint", [id]);
-  if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const projectId = Number(owner.rows[0].project_id);
-  const auth = await requireProjectPermission(req, projectId, "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const DELETE = withResourceProject("edit", "project_knowledge", async (_req, { uid, projectId, params }) => {
+  const id = params.id;
   await db.query("DELETE FROM project_knowledge WHERE id = $1::bigint", [id]);
   await notifyProject(projectId);
-  await audit(getCurrentUserIdFromRequest(req), "knowledge.delete", {
+  await audit(uid, "knowledge.delete", {
     entity: "knowledge",
     entityId: Number(id),
     projectId,
   });
   return NextResponse.json({ deleted: Number(id) });
-}
+});

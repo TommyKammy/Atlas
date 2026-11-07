@@ -1,9 +1,11 @@
 "use client";
 
+import { confirmAction } from "@/lib/ui-feedback";
+
 import { useState } from "react";
 import type { ProjectKnowledge } from "@/lib/data";
 import { renderMarkdown } from "@/lib/markdown";
-import { useApiRefresh } from "./ListView";
+import { useApiRefresh } from "@/lib/use-api-refresh";
 import EmptyState from "./EmptyState";
 
 type Composer = { id: number | null; title: string; body: string };
@@ -53,7 +55,7 @@ export default function KnowledgeView({
   };
 
   const remove = async (note: ProjectKnowledge) => {
-    if (!window.confirm(`「${note.title}」を削除しますか？`)) return;
+    if (!await confirmAction(`「${note.title}」を削除しますか？`)) return;
     const res = await fetch(`/api/knowledge/${note.id}`, { method: "DELETE" });
     if (!res.ok) {
       setError(`削除に失敗しました (${res.status})`);

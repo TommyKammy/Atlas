@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withUser } from "@/lib/api/route";
 import { requireProjectPermission } from "@/lib/api-project-auth";
 
-export async function GET(req: Request) {
+export const GET = withUser(async (req, { uid }) => {
   const { searchParams } = new URL(req.url);
   const projectId = searchParams.get("project_id");
   if (projectId) {
@@ -15,7 +15,6 @@ export async function GET(req: Request) {
     );
     return NextResponse.json(r.rows);
   }
-  const uid = getCurrentUserIdFromRequest(req);
   const workspaceId = searchParams.get("workspace_id");
   const params: unknown[] = [uid];
   let where = "";
@@ -31,4 +30,4 @@ export async function GET(req: Request) {
     params,
   );
   return NextResponse.json(r.rows);
-}
+});

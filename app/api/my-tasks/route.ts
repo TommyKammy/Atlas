@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireActiveUser } from "@/lib/api-project-auth";
+import { withUser } from "@/lib/api/route";
 
 type Item = { task_id: number; position: number; due_on: string | null };
 
-export async function PUT(req: Request) {
-  const active = await requireActiveUser(req);
-  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
+export const PUT = withUser(async (req, { uid }) => {
   const body = await req.json().catch(() => null);
   const raw = Array.isArray(body?.items) ? body.items : null;
   if (!raw || raw.length === 0 || raw.length > 500) {
@@ -36,7 +34,7 @@ export async function PUT(req: Request) {
     `SELECT id FROM tasks
      WHERE assignee_id = $1 AND completed = FALSE AND parent_task_id IS NULL
        AND deleted_at IS NULL AND id = ANY($2::bigint[])`,
-    [active.uid, ids],
+    [uid, ids],
   );
   if ((owned.rowCount ?? 0) !== ids.length) {
     return NextResponse.json({ error: "task is not assigned to the current user" }, { status: 400 });
@@ -51,12 +49,12 @@ export async function PUT(req: Request) {
          VALUES ($1, $2, $3, now())
          ON CONFLICT (user_id, task_id)
          DO UPDATE SET position = EXCLUDED.position, updated_at = now()`,
-        [active.uid, item.task_id, item.position],
+        [uid, item.task_id, item.position],
       );
       await client.query(
         `UPDATE tasks SET due_on = $2::date, updated_at = now()
          WHERE id = $1 AND assignee_id = $3 AND deleted_at IS NULL`,
-        [item.task_id, item.due_on, active.uid],
+        [item.task_id, item.due_on, uid],
       );
     }
     await client.query("COMMIT");
@@ -67,4 +65,4 @@ export async function PUT(req: Request) {
     client.release();
   }
   return NextResponse.json({ ok: true, count: items.length });
-}
+});

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withAdmin } from "@/lib/api/route";
 import { sendInvitationEmail } from "@/lib/mailer";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -11,19 +11,7 @@ const ROLE_LABEL: Record<string, string> = {
   guest: "ゲスト",
 };
 
-async function requireAdmin(req: Request) {
-  const uid = getCurrentUserIdFromRequest(req);
-  const r = await db.query(
-    "SELECT is_admin FROM users WHERE id = $1 AND deactivated_at IS NULL",
-    [uid],
-  );
-  if (r.rowCount === 0 || r.rows[0].is_admin !== true) return null;
-  return uid;
-}
-
-export async function GET(req: Request) {
-  const admin = await requireAdmin(req);
-  if (admin === null) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+export const GET = withAdmin(async (req) => {
   const r = await db.query(
     `SELECT i.id, i.email, i.role, i.token, i.created_at::text AS created_at,
        i.expires_at::text AS expires_at, i.accepted_at::text AS accepted_at,
@@ -39,11 +27,9 @@ export async function GET(req: Request) {
       url: `${origin}/invite/${row.token ?? ""}`,
     })),
   });
-}
+});
 
-export async function POST(req: Request) {
-  const admin = await requireAdmin(req);
-  if (admin === null) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+export const POST = withAdmin(async (req, { uid: admin }) => {
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase().slice(0, 255) : "";
   const role = typeof body?.role === "string" ? body.role : "member";
@@ -88,4 +74,4 @@ export async function POST(req: Request) {
     },
     { status: 201 },
   );
-}
+});

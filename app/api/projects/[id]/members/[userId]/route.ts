@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { notifyProject } from "@/lib/notify";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
 import { normalizeProjectRole } from "@/lib/project-roles";
 
 async function adminCount(projectId: number): Promise<number> {
@@ -13,20 +13,13 @@ async function adminCount(projectId: number): Promise<number> {
   return r.rows[0].n as number;
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string; userId: string }> },
-) {
-  const { id, userId } = await params;
-  const projectId = Number(id);
-  const targetId = Number(userId);
-  if (!Number.isInteger(projectId) || !Number.isInteger(targetId)) {
+export const PATCH = withProject("admin", async (_req, { uid, projectId, params, body }) => {
+  const targetId = Number(params.userId);
+  if (!Number.isInteger(targetId)) {
     return NextResponse.json({ error: "invalid member" }, { status: 400 });
   }
-  const auth = await requireProjectPermission(req, projectId, "admin");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  const body = await req.json().catch(() => null);
-  const role = normalizeProjectRole(typeof body?.role === "string" ? body.role : "");
+  const payload = (body ?? {}) as { role?: unknown };
+  const role = normalizeProjectRole(typeof payload.role === "string" ? payload.role : "");
   if (!role) return NextResponse.json({ error: "valid role required" }, { status: 400 });
 
   const current = await db.query(
@@ -43,27 +36,20 @@ export async function PATCH(
     [role, projectId, targetId],
   );
   await notifyProject(projectId);
-  await audit(auth.uid, "project.member_role", {
+  await audit(uid, "project.member_role", {
     entity: "project",
     entityId: projectId,
     projectId,
     summary: `user ${targetId} → ${role}`,
   });
   return NextResponse.json({ user_id: targetId, role });
-}
+}, { body: true });
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string; userId: string }> },
-) {
-  const { id, userId } = await params;
-  const projectId = Number(id);
-  const targetId = Number(userId);
-  if (!Number.isInteger(projectId) || !Number.isInteger(targetId)) {
+export const DELETE = withProject("admin", async (_req, { uid, projectId, params }) => {
+  const targetId = Number(params.userId);
+  if (!Number.isInteger(targetId)) {
     return NextResponse.json({ error: "invalid member" }, { status: 400 });
   }
-  const auth = await requireProjectPermission(req, projectId, "admin");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const current = await db.query(
     "SELECT role FROM project_members WHERE project_id = $1 AND user_id = $2",
@@ -79,11 +65,11 @@ export async function DELETE(
     targetId,
   ]);
   await notifyProject(projectId);
-  await audit(auth.uid, "project.member_remove", {
+  await audit(uid, "project.member_remove", {
     entity: "project",
     entityId: projectId,
     projectId,
     summary: `user ${targetId}`,
   });
   return NextResponse.json({ removed: targetId });
-}
+});

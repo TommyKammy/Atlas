@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireActiveUser } from "@/lib/api-project-auth";
+import { withUser } from "@/lib/api/route";
 import {
   getSearchHistory,
   getWorkspace,
@@ -11,15 +11,13 @@ import {
   type AdvancedSearchFilters,
 } from "@/lib/data";
 
-export async function GET(req: Request) {
-  const active = await requireActiveUser(req);
-  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
+export const GET = withUser(async (req, { uid }) => {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim().slice(0, 200);
   const ws = await getWorkspace();
   if (!ws) return NextResponse.json({ history: [], groups: {} });
   if (q === "") {
-    return NextResponse.json({ history: await getSearchHistory(active.uid), groups: {} });
+    return NextResponse.json({ history: await getSearchHistory(uid), groups: {} });
   }
   const filters: AdvancedSearchFilters = {
     q,
@@ -36,11 +34,11 @@ export async function GET(req: Request) {
     custom: [],
   };
   const [tasks, projects, messages, knowledge, files] = await Promise.all([
-    searchTasksAdvanced(ws.id, filters, active.uid),
-    searchProjectsGlobal(ws.id, q, active.uid),
-    searchMessagesGlobal(ws.id, q, active.uid),
-    searchKnowledgeGlobal(ws.id, q, active.uid),
-    searchFilesGlobal(ws.id, q, active.uid),
+    searchTasksAdvanced(ws.id, filters, uid),
+    searchProjectsGlobal(ws.id, q, uid),
+    searchMessagesGlobal(ws.id, q, uid),
+    searchKnowledgeGlobal(ws.id, q, uid),
+    searchFilesGlobal(ws.id, q, uid),
   ]);
   return NextResponse.json({
     history: [],
@@ -73,4 +71,4 @@ export async function GET(req: Request) {
       })),
     },
   });
-}
+});

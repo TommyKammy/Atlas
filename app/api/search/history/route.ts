@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server";
-import { requireActiveUser } from "@/lib/api-project-auth";
+import { withUser } from "@/lib/api/route";
 import { clearSearchHistory, getSearchHistory, saveSearchHistory } from "@/lib/data";
 
-export async function GET(req: Request) {
-  const active = await requireActiveUser(req);
-  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
-  return NextResponse.json({ history: await getSearchHistory(active.uid) });
-}
+export const GET = withUser(async (_req, { uid }) => {
+  return NextResponse.json({ history: await getSearchHistory(uid) });
+});
 
-export async function POST(req: Request) {
-  const active = await requireActiveUser(req);
-  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
+export const POST = withUser(async (req, { uid }) => {
   const body = await req.json().catch(() => null);
   const query = typeof body?.query === "string" ? body.query.trim().slice(0, 200) : "";
   if (query === "") return NextResponse.json({ error: "query is required" }, { status: 400 });
-  await saveSearchHistory(active.uid, query);
-  return NextResponse.json({ ok: true, history: await getSearchHistory(active.uid) });
-}
+  await saveSearchHistory(uid, query);
+  return NextResponse.json({ ok: true, history: await getSearchHistory(uid) });
+});
 
-export async function DELETE(req: Request) {
-  const active = await requireActiveUser(req);
-  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
-  await clearSearchHistory(active.uid);
+export const DELETE = withUser(async (_req, { uid }) => {
+  await clearSearchHistory(uid);
   return NextResponse.json({ ok: true, history: [] });
-}
+});

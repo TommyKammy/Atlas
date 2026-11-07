@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withAdmin } from "@/lib/api/route";
 
-export async function GET(req: Request) {
-  const uid = getCurrentUserIdFromRequest(req);
-  const me = await db.query("SELECT is_admin FROM users WHERE id = $1 AND deactivated_at IS NULL", [uid]);
-  if (me.rowCount === 0 || me.rows[0].is_admin !== true) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
+export const GET = withAdmin(async () => {
   const byDay = async (table: string, extra = "") => {
     const r = await db.query(
       `SELECT to_char(d, 'YYYY-MM-DD') AS day, COUNT(t.id)::int AS n
@@ -36,4 +31,4 @@ export async function GET(req: Request) {
     comments,
     active_users_7d: active.rows[0].n as number,
   });
-}
+});

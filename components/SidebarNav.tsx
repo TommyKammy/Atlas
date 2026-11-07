@@ -10,8 +10,9 @@ import {
   getUsers,
   getWorkspace,
 } from "@/lib/data";
+import { ADMIN_NAV, MAIN_NAV, NAV_LABELS, TRASH_NAV, type NavItem, type SidebarIconName } from "@/lib/navigation";
 
-function NavIcon({ name }: { name: "home" | "inbox" | "check" | "portfolio" | "trash" | "shield" | "star" }) {
+function NavIcon({ name }: { name: SidebarIconName }) {
   const common = {
     viewBox: "0 0 24 24",
     fill: "none",
@@ -71,6 +72,26 @@ function NavIcon({ name }: { name: "home" | "inbox" | "check" | "portfolio" | "t
   );
 }
 
+function NavLink({
+  item,
+  className,
+  unread = 0,
+}: {
+  item: NavItem;
+  className: string;
+  unread?: number;
+}) {
+  return (
+    <Link href={item.href} className={className}>
+      <NavIcon name={item.icon} />
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {unread > 0 && (
+        <span className="rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">{unread}</span>
+      )}
+    </Link>
+  );
+}
+
 export default async function SidebarNav() {
   const cuid = await getCurrentUserId();
   const ws = await getWorkspace();
@@ -92,34 +113,13 @@ export default async function SidebarNav() {
         <span className="truncate">{ws?.name ?? "Atlas"}</span>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 pb-4 text-sm">
-        <Link href="/" className={item}>
-          <NavIcon name="home" />
-          ホーム
-        </Link>
-        <Link href="/inbox" className={item}>
-          <NavIcon name="inbox" />
-          <span className="min-w-0 flex-1 truncate">受信トレイ</span>
-          {unread > 0 && (
-            <span className="rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">{unread}</span>
-          )}
-        </Link>
-        <Link href="/my-tasks" className={item}>
-          <NavIcon name="check" />
-          マイタスク
-        </Link>
-        <Link href="/portfolio" className={item}>
-          <NavIcon name="portfolio" />
-          ポートフォリオ
-        </Link>
-        {me?.is_admin && (
-          <Link href="/admin" className={item}>
-            <NavIcon name="shield" />
-            管理
-          </Link>
-        )}
+        {MAIN_NAV.map((entry) => (
+          <NavLink key={entry.key} item={entry} className={item} unread={entry.key === "inbox" ? unread : 0} />
+        ))}
+        {me?.is_admin && <NavLink item={ADMIN_NAV} className={item} />}
         {favorites.length > 0 && (
           <>
-            <div className={label}>お気に入り</div>
+            <div className={label}>{NAV_LABELS.favorites}</div>
             {favorites.map((p) => (
               <SidebarProjectLink
                 key={p.id}
@@ -134,7 +134,7 @@ export default async function SidebarNav() {
         )}
         {recents.length > 0 && (
           <>
-            <div className={label}>最近開いた項目</div>
+            <div className={label}>{NAV_LABELS.recent}</div>
             {recents.map((p) => (
               <SidebarProjectLink
                 key={p.id}
@@ -146,12 +146,9 @@ export default async function SidebarNav() {
             ))}
           </>
         )}
-        <Link href="/trash" className={item}>
-          <NavIcon name="trash" />
-          削除済み
-        </Link>
+        <NavLink item={TRASH_NAV} className={item} />
         <div className={`${label} flex items-center justify-between pr-1`}>
-          <span>プロジェクト</span>
+          <span>{NAV_LABELS.projects}</span>
           {ws && <SidebarAddProject workspaceId={ws.id} />}
         </div>
         {projects.map((p) => (

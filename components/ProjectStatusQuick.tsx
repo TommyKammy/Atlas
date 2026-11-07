@@ -1,5 +1,7 @@
 "use client";
 
+import { toast as toastMessage } from "@/lib/ui-feedback";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -42,7 +44,7 @@ export default function ProjectStatusQuick({
         body: JSON.stringify({ status: label, status_color: nextColor }),
       });
       if (!res.ok) {
-        alert(`ステータスの更新に失敗しました: ${res.status}`);
+        toastMessage(`ステータスの更新に失敗しました: ${res.status}`);
         return;
       }
       setStatus(label);

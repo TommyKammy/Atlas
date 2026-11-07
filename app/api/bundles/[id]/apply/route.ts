@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { withProject } from "@/lib/api/route";
 import type { BundleField } from "@/lib/bundles";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const body = await req.json().catch(() => ({}));
-  const projectId = Number(body?.project_id);
-  if (!Number.isInteger(projectId) || projectId <= 0) {
-    return NextResponse.json({ error: "project_id is required" }, { status: 400 });
-  }
-  const auth = await requireProjectPermission(req, projectId, "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+export const POST = withProject("edit", async (_req, { uid, projectId, params }) => {
+  const id = params.id;
   const bundle = await db.query(
     `SELECT b.id, b.fields
      FROM bundles b JOIN projects p ON p.workspace_id = b.workspace_id
@@ -49,13 +38,17 @@ export async function POST(
     `INSERT INTO bundle_applications (bundle_id, project_id, applied_by)
      VALUES ($1::bigint, $2::bigint, $3)
      ON CONFLICT (bundle_id, project_id) DO NOTHING`,
-    [id, projectId, getCurrentUserIdFromRequest(req)],
+    [id, projectId, uid],
   );
   await notifyProject(projectId);
-  await audit(getCurrentUserIdFromRequest(req), "bundle.apply", {
+  await audit(uid, "bundle.apply", {
     entity: "bundle",
     entityId: Number(id),
     projectId,
   });
   return NextResponse.json({ ok: true, applied: true, created_fields: created }, { status: 201 });
-}
+}, {
+  body: true,
+  resolveProjectId: (_req, _params, body) =>
+    Number((body as { project_id?: unknown } | null)?.project_id),
+});

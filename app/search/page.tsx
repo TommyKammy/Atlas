@@ -5,7 +5,6 @@ import {
   getSearchCustomFields,
   getSearchUsers,
   getSearchHistory,
-  saveSearchHistory,
   getWorkspace,
   searchTasksAdvanced,
   searchProjectsGlobal,
@@ -17,6 +16,7 @@ import { getCurrentUserId } from "@/lib/current-user";
 import { redirect } from "next/navigation";
 import SavedSearchBar from "@/components/SavedSearchBar";
 import SearchHistoryClear from "@/components/SearchHistoryClear";
+import SearchResults from "@/components/search/SearchResults";
 
 export const instant = false;
 
@@ -47,7 +47,6 @@ export default async function SearchPage(props: {
     : [[], [], [], [], []];
 
   const q = str(sp, "q").trim();
-  if (q !== "") await saveSearchHistory(viewerId, q);
   const projectRaw = str(sp, "project");
   const assigneeRaw = str(sp, "assignee");
   const completedRaw = str(sp, "completed");
@@ -101,8 +100,6 @@ export default async function SearchPage(props: {
   const total = results.length + projectHits.length + messageHits.length + knowledgeHits.length + fileHits.length;
 
   const field = "rounded border px-2 py-1 text-sm";
-  const sectionTitle = "mb-1 mt-4 text-[13px] font-semibold text-neutral-700";
-  const rowCls = "flex items-center gap-3 border-b border-neutral-200 py-2 text-sm hover:bg-neutral-50";
   return (
     <div className="p-6">
       <h1 className="text-lg font-bold">検索</h1>
@@ -247,133 +244,17 @@ export default async function SearchPage(props: {
       {ws && <SavedSearchBar workspaceId={ws.id} saved={savedSearches} />}
 
       {searched && <p className="mt-3 text-sm text-neutral-500">{total}件</p>}
-      <div className="mt-1 max-w-5xl">
-        {results.length > 0 && (
-          <div data-search-section="tasks">
-            {q !== "" && <div className={sectionTitle}>タスク（{results.length}）</div>}
-            {results.map((task) => (
-              <div key={task.id} className={rowCls}>
-                <span
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                    task.completed ? "border-green-700 bg-green-700 text-white" : "border-neutral-400"
-                  }`}
-                >
-                  {task.completed && "✓"}
-                </span>
-                <Link
-                  href={`/projects/${task.project_id}?view=list&task=${task.id}`}
-                  className={`min-w-0 flex-1 truncate hover:underline ${task.completed ? "text-neutral-500 line-through" : ""}`}
-                >
-                  {task.name}
-                </Link>
-                <span className="hidden w-32 shrink-0 truncate text-xs text-neutral-500 md:inline">
-                  {task.project_name}
-                </span>
-                <span className="hidden w-24 shrink-0 truncate text-xs text-neutral-500 md:inline">
-                  {task.assignee_name ?? "–"}
-                </span>
-                <span className="w-24 shrink-0 text-neutral-600">{task.due_on ?? "–"}</span>
-              </div>
-            ))}
-          </div>
-        )}
+      <SearchResults
+        q={q}
+        searched={searched}
+        total={total}
+        tasks={results}
+        projects={projectHits}
+        messages={messageHits}
+        knowledge={knowledgeHits}
+        files={fileHits}
+      />
 
-        {projectHits.length > 0 && (
-          <div data-search-section="projects">
-            <div className={sectionTitle}>プロジェクト（{projectHits.length}）</div>
-            {projectHits.map((project) => (
-              <div key={project.id} className={rowCls}>
-                <span
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[10px] font-bold"
-                  style={{ backgroundColor: project.color ?? "#f1bd6c", color: "#171717" }}
-                >
-                  {project.name.slice(0, 1)}
-                </span>
-                <Link
-                  href={`/projects/${project.id}?view=list`}
-                  className="min-w-0 flex-1 truncate font-medium hover:underline"
-                >
-                  {project.name}
-                </Link>
-                <span className="w-20 shrink-0 text-right text-xs text-neutral-500">プロジェクト</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {messageHits.length > 0 && (
-          <div data-search-section="messages">
-            <div className={sectionTitle}>メッセージ（{messageHits.length}）</div>
-            {messageHits.map((message) => (
-              <div key={message.id} className={rowCls}>
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-100 text-[10px] text-blue-800">
-                  M
-                </span>
-                <Link
-                  href={`/projects/${message.project_id}?view=messages`}
-                  className="min-w-0 flex-1 hover:underline"
-                >
-                  <span className="block truncate font-medium">{message.title || "(件名なし)"}</span>
-                  <span className="block truncate text-xs text-neutral-500">{message.body}</span>
-                </Link>
-                <span className="hidden w-32 shrink-0 truncate text-xs text-neutral-500 md:inline">
-                  {message.project_name}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {knowledgeHits.length > 0 && (
-          <div data-search-section="knowledge">
-            <div className={sectionTitle}>知識（{knowledgeHits.length}）</div>
-            {knowledgeHits.map((note) => (
-              <div key={note.id} className={rowCls}>
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-amber-100 text-[10px] text-amber-800">
-                  K
-                </span>
-                <Link
-                  href={`/projects/${note.project_id}?view=knowledge`}
-                  className="min-w-0 flex-1 hover:underline"
-                >
-                  <span className="block truncate font-medium">{note.title}</span>
-                  <span className="block truncate text-xs text-neutral-500">{note.body}</span>
-                </Link>
-                <span className="hidden w-32 shrink-0 truncate text-xs text-neutral-500 md:inline">
-                  {note.project_name}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {fileHits.length > 0 && (
-          <div data-search-section="files">
-            <div className={sectionTitle}>ファイル（{fileHits.length}）</div>
-            {fileHits.map((file) => (
-              <div key={file.id} className={rowCls}>
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-neutral-100 text-[10px] text-neutral-700">
-                  F
-                </span>
-                <Link
-                  href={`/projects/${file.project_id}?view=list&task=${file.task_id}`}
-                  className="min-w-0 flex-1 hover:underline"
-                >
-                  <span className="block truncate font-medium">{file.file_name}</span>
-                  <span className="block truncate text-xs text-neutral-500">{file.task_name} / {file.project_name}</span>
-                </Link>
-                <span className="w-20 shrink-0 text-right text-xs text-neutral-500">ファイル</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {searched && total === 0 && (
-          <div data-search-empty className="rounded-lg border border-dashed border-neutral-200 px-4 py-10 text-center text-[13px] text-neutral-500">
-            条件に一致する結果はありません。
-          </div>
-        )}
-      </div>
     </div>
   );
 }

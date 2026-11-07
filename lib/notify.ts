@@ -1,5 +1,4 @@
 import { createClient, type RedisClientType } from "redis";
-import { db } from "./db";
 
 // Live fan-out through Redis pub/sub (works across app replicas; a lone
 // instance receives its own publishes back). Best-effort: failures never

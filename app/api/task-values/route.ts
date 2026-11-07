@@ -1,23 +1,19 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { notifyField, notifyTask } from "@/lib/notify";
-import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
+import { withTask } from "@/lib/api/route";
 
 // Upsert a task's value for a custom field. `value` is a number for number
 // fields, a string otherwise. Null/empty clears the value but keeps no row.
-export async function POST(req: Request) {
-  const body = await req.json();
-  const { task_id, field_id, value } = body;
-  if (!task_id || !field_id) {
+export const POST = withTask("edit", async (_req, { taskId: task_id, projectId, body }) => {
+  const { field_id, value } = (body ?? {}) as { field_id?: number; value?: unknown };
+  if (!field_id) {
     return NextResponse.json({ error: "task_id and field_id are required" }, { status: 400 });
   }
-  const projectId = await getTaskProjectId(Number(task_id));
-  if (projectId !== null) {
-    const auth = await requireProjectPermission(req, projectId, "edit");
-    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const f = await db.query("SELECT field_type, project_id FROM custom_fields WHERE id = $1::bigint", [field_id]);
+  if (f.rowCount === 0 || Number(f.rows[0].project_id) !== projectId) {
+    return NextResponse.json({ error: "field not found" }, { status: 404 });
   }
-  const f = await db.query("SELECT field_type FROM custom_fields WHERE id = $1::bigint", [field_id]);
-  if (f.rowCount === 0) return NextResponse.json({ error: "field not found" }, { status: 404 });
   const isNumber = f.rows[0].field_type === "number";
   const num = isNumber && value !== null && value !== "" ? Number(value) : null;
   const text = !isNumber && value !== null && value !== "" ? String(value) : null;
@@ -42,4 +38,4 @@ export async function POST(req: Request) {
   await notifyTask(task_id);
   await notifyField(field_id);
   return NextResponse.json({ ok: true }, { status: 201 });
-}
+}, { body: true });

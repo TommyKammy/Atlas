@@ -3,39 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { RAIL_FLYOUTS, RAIL_ITEMS, type SidebarIconName } from "@/lib/navigation";
 
-const ITEMS = [
-  { href: "/", label: "ホーム", icon: "home" },
-  { href: "/my-tasks", label: "マイタスク", icon: "check" },
-  { href: "/inbox", label: "受信トレイ", icon: "inbox" },
-  { href: "/search", label: "検索", icon: "search" },
-  { href: "/portfolio", label: "ポートフォリオ", icon: "portfolio" },
-] as const;
-
-const FLYOUTS: Record<string, { label: string; href: string }[]> = {
-  "/": [
-    { label: "ホーム", href: "/" },
-    { label: "マイタスク", href: "/my-tasks" },
-    { label: "受信トレイ", href: "/inbox" },
-  ],
-  "/my-tasks": [
-    { label: "マイタスク", href: "/my-tasks" },
-    { label: "期限超過", href: "/my-tasks#overdue" },
-    { label: "今日が期日", href: "/my-tasks#today" },
-    { label: "今週", href: "/my-tasks#week" },
-  ],
-  "/inbox": [
-    { label: "受信トレイ", href: "/inbox" },
-    { label: "未読を確認", href: "/inbox" },
-  ],
-  "/search": [
-    { label: "検索", href: "/search" },
-    { label: "詳細検索", href: "/search" },
-  ],
-  "/portfolio": [{ label: "ポートフォリオ", href: "/portfolio" }],
-};
-
-function RailIcon({ name }: { name: (typeof ITEMS)[number]["icon"] }) {
+function RailIcon({ name }: { name: SidebarIconName }) {
   const common = {
     viewBox: "0 0 24 24",
     fill: "none",
@@ -102,7 +72,7 @@ export default function SidebarRail({ collapsed }: { collapsed: boolean }) {
 
   return (
     <div data-sidebar-rail className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-visible py-2">
-      {ITEMS.map((item) => {
+      {RAIL_ITEMS.map((item) => {
         const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (
           <div
@@ -134,7 +104,7 @@ export default function SidebarRail({ collapsed }: { collapsed: boolean }) {
               <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
                 {item.label}
               </div>
-              {FLYOUTS[item.href].map((link) => (
+              {RAIL_FLYOUTS[item.href].map((link) => (
                 <Link
                   key={`${item.href}-${link.label}`}
                   href={link.href}

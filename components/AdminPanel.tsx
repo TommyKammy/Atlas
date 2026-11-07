@@ -1,20 +1,13 @@
 "use client";
 
+import { confirmAction } from "@/lib/ui-feedback";
+
+import { api } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@/lib/data";
 import UserAvatar from "./UserAvatar";
 
-async function api(path: string, method: string, body?: unknown) {
-  const res = await fetch(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.error ?? `${method} ${path}: ${res.status}`);
-  return data;
-}
 
 const roleOf = (u: User) => (u.is_admin ? "admin" : u.is_guest ? "guest" : "member");
 export default function AdminPanel({
@@ -94,7 +87,11 @@ export default function AdminPanel({
     setMsg("");
     setInviteResult(null);
     try {
-      const data = await api("/api/admin/invitations", "POST", { email: inviteEmail, role: inviteRole });
+      const data = await api<{ invitation: { url: string }; emailed?: boolean; mail_reason?: string | null }>(
+        "/api/admin/invitations",
+        "POST",
+        { email: inviteEmail, role: inviteRole },
+      );
       setInviteEmail("");
       setInviteResult({
         url: data.invitation.url,
@@ -175,7 +172,7 @@ export default function AdminPanel({
   };
 
   const remove = async (id: number, userName: string) => {
-    if (!confirm(`「${userName}」を削除しますか？ 担当は外れ、投稿は残ります。`)) return;
+    if (!await confirmAction(`「${userName}」を削除しますか？ 担当は外れ、投稿は残ります。`)) return;
     try {
       await api(`/api/admin/users/${id}`, "DELETE");
       setMsg("削除しました");

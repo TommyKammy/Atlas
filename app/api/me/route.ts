@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserIdFromRequest } from "@/lib/current-user";
+import { withUser } from "@/lib/api/route";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 
-export async function GET(req: Request) {
-  const id = getCurrentUserIdFromRequest(req);
+export const GET = withUser(async (_req, { uid: id }) => {
   const r = await db.query(
     `SELECT id, name, email, title, avatar_url, is_guest, is_admin
      FROM users WHERE id = $1 AND deactivated_at IS NULL`,
@@ -12,10 +11,9 @@ export async function GET(req: Request) {
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json(r.rows[0]);
-}
+}, { inactiveStatus: 404 });
 
-export async function PATCH(req: Request) {
-  const id = getCurrentUserIdFromRequest(req);
+export const PATCH = withUser(async (req, { uid: id }) => {
   const me = await db.query(
     "SELECT id, name, email, password_hash FROM users WHERE id = $1 AND deactivated_at IS NULL",
     [id],
@@ -84,4 +82,4 @@ export async function PATCH(req: Request) {
     [id],
   );
   return NextResponse.json(r.rows[0]);
-}
+}, { inactiveStatus: 404 });

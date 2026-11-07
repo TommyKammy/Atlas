@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireActiveUser } from "@/lib/api-project-auth";
+import { withUser } from "@/lib/api/route";
 import { todayISO } from "@/lib/dates";
 import { db } from "@/lib/db";
 
-export async function GET(req: Request) {
-  const active = await requireActiveUser(req);
-  if (!active.ok) return NextResponse.json({ error: active.error }, { status: active.status });
+export const GET = withUser(async (req) => {
   const { searchParams } = new URL(req.url);
   const raw = searchParams.get("at");
   const at = raw ? new Date(raw) : new Date();
@@ -25,4 +23,4 @@ export async function GET(req: Request) {
     utc_today: r.rows[0].utc_today,
     session_timezone: r.rows[0].session_timezone,
   });
-}
+});
