@@ -238,3 +238,117 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
     animation: none;
   }
 }
+
+/* Rich text (ProseMirror/Tiptap) read-only and editor styles. */
+.atlas-rich-text {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #404040;
+  overflow-wrap: anywhere;
+}
+.atlas-rich-text p {
+  margin: 0.2em 0;
+}
+.atlas-rich-text h1 {
+  margin: 0.6em 0 0.25em;
+  font-size: 1.35em;
+  font-weight: 650;
+  color: #262626;
+}
+.atlas-rich-text h2 {
+  margin: 0.55em 0 0.2em;
+  font-size: 1.15em;
+  font-weight: 650;
+  color: #262626;
+}
+.atlas-rich-text h3 {
+  margin: 0.5em 0 0.15em;
+  font-size: 1em;
+  font-weight: 650;
+  color: #262626;
+}
+.atlas-rich-text ul,
+.atlas-rich-text ol {
+  margin: 0.25em 0;
+  padding-left: 1.35rem;
+}
+.atlas-rich-text ul {
+  list-style: disc;
+}
+.atlas-rich-text ol {
+  list-style: decimal;
+}
+.atlas-rich-text blockquote {
+  margin: 0.45em 0;
+  border-left: 3px solid #d4d4d4;
+  padding-left: 0.75rem;
+  color: #666;
+}
+.atlas-rich-text pre {
+  margin: 0.4em 0;
+  overflow-x: auto;
+  border-radius: 0.4rem;
+  background: #f5f5f5;
+  padding: 0.55rem 0.75rem;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.atlas-rich-text code {
+  border-radius: 3px;
+  background: #f0f0f0;
+  padding: 0.05rem 0.25rem;
+  font-size: 0.9em;
+}
+.atlas-rich-text pre code {
+  background: transparent;
+  padding: 0;
+}
+.atlas-rich-text a {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+.atlas-rich-text mark {
+  border-radius: 2px;
+  background: #fef08a;
+  padding: 0 0.1rem;
+}
+.atlas-rich-text hr {
+  margin: 0.75rem 0;
+  border: 0;
+  border-top: 1px solid #e5e5e5;
+}
+.atlas-rich-text .atlas-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+.atlas-rich-text .atlas-task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+.atlas-rich-text .atlas-task-item input {
+  margin-top: 0.3rem;
+}
+.atlas-rich-text .atlas-task-item p {
+  margin: 0;
+}
+.atlas-rich-text .atlas-mention {
+  border-radius: 4px;
+  background: #eef4ff;
+  padding: 0 0.2rem;
+  color: #1d4f91;
+  font-weight: 500;
+}
+.atlas-rich-text p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: #a3a3a3;
+  pointer-events: none;
+}
+.atlas-rich-editor .ProseMirror {
+  outline: none;
+}
+.atlas-rich-editor .ProseMirror p {
+  margin: 0.2em 0;
+}

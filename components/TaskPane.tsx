@@ -8,8 +8,8 @@ import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
+import type { RichTextDoc } from "@/lib/rich-text-types";
 import { todayISO } from "@/lib/dates";
-import { renderMarkdown } from "@/lib/markdown";
 import { customValueToInput, type CustomField, type CustomValue } from "@/lib/custom-fields";
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import { useFocusTrap } from "@/lib/use-focus-trap";
@@ -79,13 +79,6 @@ export default function TaskPane({
   viewerCanModerate: boolean;
 }) {
   const refresh = useApiRefresh();
-  const [commentDraft, setCommentDraft] = useState("");
-  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
-  const [commentEditDraft, setCommentEditDraft] = useState("");
-  const [mentionOpen, setMentionOpen] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [mentionIndex, setMentionIndex] = useState(0);
-  const commentRef = useRef<HTMLTextAreaElement | null>(null);
   const [subtaskDraft, setSubtaskDraft] = useState("");
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [depDraft, setDepDraft] = useState("");
@@ -133,6 +126,7 @@ export default function TaskPane({
     if (key === "completed") return value === true ? "完了" : "未完了";
     if (key === "assignee_id") return userName(typeof value === "number" ? value : null);
     if (key === "progress") return `${value}%`;
+    if (key === "description_doc") return "リッチテキスト";
     return String(value);
   };
 
@@ -145,6 +139,7 @@ export default function TaskPane({
     progress: "進捗",
     status: statusFieldName,
     description: "説明",
+    description_doc: "説明",
     section_id: "セクション",
   };
 
@@ -220,96 +215,26 @@ export default function TaskPane({
     await copyTaskLink();
   };
 
-  const addComment = async () => {
-    if (!commentDraft.trim()) return;
-    await api("/api/comments", "POST", { task_id: task.id, body: commentDraft });
-    setCommentDraft("");
-    setMentionOpen(false);
+  const mentionUsers = users.map((user) => ({
+    id: user.id,
+    name: user.name,
+    avatar_url: user.avatar_url,
+  }));
+
+  const addComment = async (doc: RichTextDoc, text: string) => {
+    await api("/api/comments", "POST", { task_id: task.id, body_doc: doc, body: text });
     refresh();
   };
 
-  const startEditComment = (comment: CommentRow) => {
-    setEditingCommentId(comment.id);
-    setCommentEditDraft(comment.body);
-  };
-
-  const saveComment = async (commentId: number) => {
-    if (!commentEditDraft.trim()) return;
-    await api(`/api/comments/${commentId}`, "PATCH", { body: commentEditDraft });
-    setEditingCommentId(null);
-    setCommentEditDraft("");
+  const saveComment = async (commentId: number, doc: RichTextDoc) => {
+    await api(`/api/comments/${commentId}`, "PATCH", { body_doc: doc });
     refresh();
   };
 
   const deleteComment = async (commentId: number) => {
     if (!(await confirmAction("このコメントを削除しますか？"))) return;
     await api(`/api/comments/${commentId}`, "DELETE");
-    if (editingCommentId === commentId) setEditingCommentId(null);
     refresh();
-  };
-
-  const renderCommentBody = (body: string): string => {
-    const names = [...users]
-      .map((user) => user.name)
-      .filter((name) => name !== "")
-      .sort((a, b) => b.length - a.length);
-    if (names.length === 0) return body;
-    const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(`@(${names.map(escape).join("|")})`, "g");
-    return body
-      .split(/(<[^>]+>)/)
-      .map((part) => {
-        if (part.startsWith("<")) return part;
-        return part.replace(
-          pattern,
-          (match) =>
-            `<span data-comment-mention="${match.slice(1)}" class="rounded bg-blue-50 px-1 font-medium text-blue-700">${match}</span>`,
-        );
-      })
-      .join("");
-  };
-
-  const renderCommentWithMarkdown = (body: string): string => {
-    // The feed component receives escaped markdown HTML; mention highlighting
-    // still runs on text nodes so mentions remain consistent with the API.
-    return renderCommentBody(renderMarkdown(body));
-  };
-
-  const mentionCandidates = users.filter((user) =>
-    mentionQuery === "" ? true : user.name.toLowerCase().includes(mentionQuery.toLowerCase()),
-  );
-
-  const onCommentChange = (value: string, cursor: number | null) => {
-    setCommentDraft(value);
-    if (cursor === null) {
-      setMentionOpen(false);
-      return;
-    }
-    const before = value.slice(0, cursor);
-    const match = before.match(/@([^@\s]*)$/);
-    if (match) {
-      setMentionQuery(match[1]);
-      setMentionIndex(0);
-      setMentionOpen(true);
-    } else {
-      setMentionOpen(false);
-    }
-  };
-
-  const pickMention = (name: string) => {
-    const element = commentRef.current;
-    if (!element) return;
-    const position = element.selectionStart ?? commentDraft.length;
-    const before = commentDraft.slice(0, position);
-    const after = commentDraft.slice(position);
-    const replaced = before.replace(/@([^@\s]*)$/, `@${name} `);
-    const next = replaced + after;
-    setCommentDraft(next);
-    setMentionOpen(false);
-    requestAnimationFrame(() => {
-      element.focus();
-      element.setSelectionRange(replaced.length, replaced.length);
-    });
   };
 
   const addSubtask = async () => {
@@ -754,10 +679,10 @@ export default function TaskPane({
 
           <TaskDescriptionSection
             key={`description-${task.id}`}
-            value={task.description}
-            onSave={(value) => {
-              if (value !== task.description) patch({ description: value });
-            }}
+            doc={task.description_doc ?? null}
+            legacy={task.description}
+            mentionUsers={mentionUsers}
+            onSave={(doc) => patch({ description_doc: doc })}
           />
 
           <TaskSubtasksSection
@@ -796,34 +721,17 @@ export default function TaskPane({
             events={events}
             viewerId={viewerId}
             viewerCanModerate={viewerCanModerate}
-            editingCommentId={editingCommentId}
-            commentEditDraft={commentEditDraft}
-            onCommentEditDraft={setCommentEditDraft}
-            onStartEdit={startEditComment}
-            onCancelEdit={() => setEditingCommentId(null)}
-            onSaveEdit={(commentId) => void saveComment(commentId)}
+            onSaveEdit={saveComment}
             onDelete={(commentId) => void deleteComment(commentId)}
             reactionMap={reactionMap}
             quickEmojis={QUICK}
             onToggleReaction={toggleReaction}
-            renderCommentBody={renderCommentWithMarkdown}
+            mentionUsers={mentionUsers}
           />
         </div>
       </div>
 
-      <TaskCommentComposer
-        commentRef={commentRef}
-        draft={commentDraft}
-        onDraftChange={setCommentDraft}
-        onCommentChange={onCommentChange}
-        mentionOpen={mentionOpen}
-        mentionCandidates={mentionCandidates}
-        mentionIndex={mentionIndex}
-        onMentionHover={setMentionIndex}
-        onMentionPick={pickMention}
-        onMentionClose={() => setMentionOpen(false)}
-        onSubmit={addComment}
-      />
+      <TaskCommentComposer mentionUsers={mentionUsers} onSubmit={addComment} />
     </aside>
   );
 }

@@ -4,7 +4,8 @@ import { withUser } from "@/lib/api/route";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { requireProjectPermission } from "@/lib/api-project-auth";
-import { mentionedUserIds, replaceCommentMentions } from "@/lib/mentions";
+import { replaceCommentMentions } from "@/lib/mentions";
+import { parseCommentPayload } from "@/lib/comment-payload";
 
 type CommentOwner = {
   id: number;
@@ -39,27 +40,27 @@ export const PATCH = withUser(async (req, { uid, params }) => {
     return NextResponse.json({ error: "invalid comment id" }, { status: 400 });
   }
   const body = await req.json().catch(() => null);
-  const text = typeof body?.body === "string" ? body.body.trim() : "";
-  if (text === "") {
-    return NextResponse.json({ error: "body is required" }, { status: 400 });
-  }
   const comment = await loadComment(commentId);
   if (!comment) return NextResponse.json({ error: "not found" }, { status: 404 });
   const { auth } = await canMutate(req, uid, comment);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  const parsed = await parseCommentPayload(comment.project_id, body);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
   const r = await db.query(
-    `UPDATE comments SET body = $2, edited_at = now()
-     WHERE id = $1::bigint RETURNING id, body, edited_at::text AS edited_at`,
-    [commentId, text],
+    `UPDATE comments SET body = $2, body_doc = $3::jsonb, edited_at = now()
+     WHERE id = $1::bigint
+     RETURNING id, body, body_doc, edited_at::text AS edited_at`,
+    [commentId, parsed.markdown, parsed.doc ? JSON.stringify(parsed.doc) : null],
   );
-  const mentionIds = await mentionedUserIds(comment.project_id, text);
-  await replaceCommentMentions(commentId, mentionIds);
+  await replaceCommentMentions(commentId, parsed.mentionIds);
   await notifyTask(comment.task_id);
   await audit(uid, "comment.update", {
     entity: "comment",
     entityId: commentId,
     projectId: comment.project_id,
-    summary: text.slice(0, 120),
+    summary: parsed.text.slice(0, 120),
   });
   return NextResponse.json(r.rows[0]);
 });

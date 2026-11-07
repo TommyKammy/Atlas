@@ -5,7 +5,7 @@ import type { TaskRow } from "../data";
  * query must return the full row so UI code never sees partial shapes.
  */
 export const TASK_SELECT_COLS = `
-  t.id, t.project_id, t.section_id, t.parent_task_id, t.name, t.description,
+  t.id, t.project_id, t.section_id, t.parent_task_id, t.name, t.description, t.description_doc,
   t.assignee_id, u.name AS assignee_name, t.created_by, cu.name AS creator_name, t.completed,
   t.completed_at::text AS completed_at,
   t.start_on::text, t.due_on::text, t.progress, t.status, t.position,

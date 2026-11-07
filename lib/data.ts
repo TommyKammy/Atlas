@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { db } from "./db";
+import type { RichTextDoc } from "./rich-text-types";
 
 export type { CustomField, CustomValue } from "./custom-fields";
 export * from "./repositories/tasks";
@@ -31,6 +32,7 @@ export type CommentRow = {
   author_id: number | null;
   author_name: string | null;
   body: string;
+  body_doc?: RichTextDoc | null;
   created_at: string;
   edited_at: string | null;
 };

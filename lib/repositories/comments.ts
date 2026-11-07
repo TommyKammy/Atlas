@@ -3,7 +3,7 @@ import type { CommentRow } from "../data";
 
 export async function getComments(taskId: number): Promise<CommentRow[]> {
   const r = await db.query(
-    `SELECT c.id, c.author_id, u.name AS author_name, c.body, c.created_at::text,
+    `SELECT c.id, c.author_id, u.name AS author_name, c.body, c.body_doc, c.created_at::text,
        c.edited_at::text AS edited_at
      FROM comments c LEFT JOIN users u ON u.id = c.author_id
      WHERE c.task_id = $1 ORDER BY c.id`,

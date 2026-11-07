@@ -1,4 +1,6 @@
 import { db } from "./db";
+import { mentionIdsFromDoc } from "./rich-text-validation";
+import type { RichTextDoc, RichTextNode } from "./rich-text-types";
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -39,4 +41,62 @@ export async function replaceCommentMentions(
      SELECT $1::bigint, unnest($2::bigint[]) ON CONFLICT DO NOTHING`,
     [commentId, userIds],
   );
+}
+
+
+/** Resolve structured mention nodes against project membership. */
+export async function mentionedUserIdsFromDoc(
+  projectId: number | null,
+  doc: RichTextDoc,
+): Promise<number[]> {
+  const ids = mentionIdsFromDoc(doc);
+  if (ids.length === 0) return [];
+  const r = await db.query(
+    `SELECT u.id FROM users u
+     WHERE u.deactivated_at IS NULL
+       AND u.id = ANY($2::bigint[])
+       AND ($1::bigint IS NULL
+         OR EXISTS (SELECT 1 FROM users ux WHERE ux.id = u.id AND ux.is_admin)
+         OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = $1::bigint AND pm.user_id = u.id))`,
+    [projectId, ids],
+  );
+  return (r.rows as { id: number }[]).map((row) => Number(row.id));
+}
+
+/** Replace client-supplied mention labels with canonical project-member names. */
+export async function normalizeMentionLabels(
+  doc: RichTextDoc,
+  projectId: number | null,
+): Promise<RichTextDoc> {
+  const ids = mentionIdsFromDoc(doc);
+  if (ids.length === 0) return doc;
+  const r = await db.query(
+    `SELECT u.id, u.name FROM users u
+     WHERE u.deactivated_at IS NULL
+       AND u.id = ANY($2::bigint[])
+       AND ($1::bigint IS NULL
+         OR EXISTS (SELECT 1 FROM users ux WHERE ux.id = u.id AND ux.is_admin)
+         OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = $1::bigint AND pm.user_id = u.id))`,
+    [projectId, ids],
+  );
+  const names = new Map<number, string>();
+  for (const row of r.rows as { id: number; name: string }[]) names.set(Number(row.id), row.name);
+
+  const walk = (node: RichTextNode): RichTextNode => {
+    if (node.type === "mention") {
+      const id = Number(node.attrs?.id);
+      const fallback = String(node.attrs?.label ?? node.attrs?.id ?? "");
+      const name = names.get(id);
+      return name
+        ? { type: "mention", attrs: { id: String(id), label: name } }
+        : { type: "text", text: `@${fallback}` };
+    }
+    if (!node.content) return node;
+    return { ...node, content: node.content.map((child) => walk(child)) };
+  };
+
+  return {
+    type: "doc",
+    content: (doc.content ?? []).map((child) => walk(child)),
+  };
 }

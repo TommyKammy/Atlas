@@ -7,10 +7,14 @@ import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-au
 import { withTask } from "@/lib/api/route";
 import { runAutomations } from "@/lib/automation-runner";
 import { nextOccurrence } from "@/lib/recurrence";
+import { validateRichTextDoc } from "@/lib/rich-text-validation";
+import { normalizeMentionLabels } from "@/lib/mentions";
+import { docToMarkdown } from "@/lib/rich-text-markdown";
 
 const PATCHABLE = new Set([
   "name",
   "description",
+  "description_doc",
   "assignee_id",
   "completed",
   "start_on",
@@ -108,11 +112,33 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
   }
   if ("project_id" in body) body.project_id = targetProjectId;
 
+  if ("description_doc" in body) {
+    if (body.description_doc === null) {
+      body.description = "";
+    } else {
+      const parsed = validateRichTextDoc(body.description_doc, {
+        maxBytes: 256_000,
+        maxChars: 50_000,
+        maxNodes: 4_000,
+        maxDepth: 20,
+      });
+      if (!parsed.ok) {
+        return NextResponse.json({ error: `invalid description_doc: ${parsed.error}` }, { status: 400 });
+      }
+      const normalized = await normalizeMentionLabels(parsed.doc, targetProjectId);
+      body.description_doc = normalized;
+      body.description = docToMarkdown(normalized);
+    }
+  } else if ("description" in body) {
+    // Legacy markdown edits invalidate a stale rich-text document.
+    body.description_doc = null;
+  }
+
   const sets: string[] = [];
   const values: unknown[] = [];
   for (const [k, v] of Object.entries(body)) {
     if (!PATCHABLE.has(k)) continue;
-    values.push(v === "" ? null : v);
+    values.push(v === "" && k !== "description" ? null : v);
     sets.push(`${k} = $${values.length}`);
   }
   if (typeof body.completed === "boolean") {

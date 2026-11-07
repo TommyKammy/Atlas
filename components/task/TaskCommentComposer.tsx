@@ -1,58 +1,45 @@
 "use client";
 
-import type { MouseEvent, RefObject } from "react";
+import type { Editor } from "@tiptap/core";
 import { useState } from "react";
-import MarkdownToolbar from "../MarkdownToolbar";
+import type { MouseEvent } from "react";
+import { emptyRichTextDoc, type MentionUser, type RichTextDoc } from "@/lib/rich-text-types";
+import { toast } from "@/lib/ui-feedback";
+import RichTextEditor from "../rich-text/RichTextEditor";
 
 /** Asana-style pinned comment composer with @mentions and quick actions. */
 export default function TaskCommentComposer({
-  commentRef,
-  draft,
-  onDraftChange,
-  onCommentChange,
-  mentionOpen,
-  mentionCandidates,
-  mentionIndex,
-  onMentionHover,
-  onMentionPick,
-  onMentionClose,
+  mentionUsers,
   onSubmit,
 }: {
-  commentRef: RefObject<HTMLTextAreaElement | null>;
-  draft: string;
-  onDraftChange: (value: string) => void;
-  onCommentChange: (value: string, cursor: number | null) => void;
-  mentionOpen: boolean;
-  mentionCandidates: { id: number; name: string }[];
-  mentionIndex: number;
-  onMentionHover: (index: number) => void;
-  onMentionPick: (name: string) => void;
-  onMentionClose: () => void;
-  onSubmit: () => void | Promise<void>;
+  mentionUsers: MentionUser[];
+  onSubmit: (doc: RichTextDoc, text: string) => void | Promise<void>;
 }) {
+  const [editorKey, setEditorKey] = useState(0);
+  const [doc, setDoc] = useState<RichTextDoc>(emptyRichTextDoc);
+  const [text, setText] = useState("");
+  const [editor, setEditor] = useState<Editor | null>(null);
   const [focused, setFocused] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [sending, setSending] = useState(false);
 
-  const insert = (text: string) => {
-    const element = commentRef.current;
-    const start = element?.selectionStart ?? draft.length;
-    const end = element?.selectionEnd ?? start;
-    const next = draft.slice(0, start) + text + draft.slice(end);
-    onCommentChange(next, start + text.length);
-    requestAnimationFrame(() => {
-      element?.focus();
-      element?.setSelectionRange(start + text.length, start + text.length);
-    });
+  const insert = (content: string) => {
+    editor?.chain().focus().insertContent(content).run();
+    setFocused(true);
   };
 
   const submit = async () => {
-    if (!draft.trim() || sending) return;
+    if (!text.trim() || sending) return;
     setSending(true);
     try {
-      await onSubmit();
+      await onSubmit(doc, text);
+      setEditorKey((value) => value + 1);
+      setDoc(emptyRichTextDoc());
+      setText("");
       setFocused(false);
       setEmojiOpen(false);
+    } catch (error) {
+      toast(`コメントの投稿に失敗しました: ${error instanceof Error ? error.message : error}`);
     } finally {
       setSending(false);
     }
@@ -68,73 +55,28 @@ export default function TaskCommentComposer({
         className={`rounded-lg border bg-white transition-shadow ${
           focused ? "border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]" : "border-neutral-300"
         }`}
+        onFocusCapture={() => setFocused(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+        }}
       >
-        {focused && (
-          <div className="border-b border-neutral-100 px-2 py-1">
-            <MarkdownToolbar target={commentRef} onChange={onDraftChange} />
-          </div>
-        )}
-
-        {mentionOpen && mentionCandidates.length > 0 && (
-          <div data-mention-menu className="mx-2 mt-1 max-h-36 overflow-auto rounded-md border border-neutral-200 bg-white py-1 shadow-lg">
-            {mentionCandidates.map((user, index) => (
-              <button
-                key={user.id}
-                type="button"
-                data-mention-option={user.id}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  onMentionPick(user.name);
-                }}
-                onMouseEnter={() => onMentionHover(index)}
-                className={`flex w-full items-center gap-2 px-2 py-1 text-left text-[12px] ${
-                  index === mentionIndex ? "bg-blue-50" : ""
-                }`}
-              >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#d8e3f3] text-[9px] font-semibold text-[#38506e]">
-                  {user.name.slice(0, 1)}
-                </span>
-                {user.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <textarea
-          ref={commentRef}
-          data-comment-input
-          value={draft}
-          onFocus={() => setFocused(true)}
-          onBlur={() => {
-            if (!draft.trim()) setFocused(false);
-          }}
-          onChange={(event) => onCommentChange(event.target.value, event.target.selectionStart)}
-          onKeyDown={(event) => {
-            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-              event.preventDefault();
-              void submit();
-              return;
-            }
-            if (!mentionOpen) return;
-            if (event.key === "ArrowDown") {
-              event.preventDefault();
-              onMentionHover(Math.min(mentionIndex + 1, mentionCandidates.length - 1));
-            } else if (event.key === "ArrowUp") {
-              event.preventDefault();
-              onMentionHover(Math.max(mentionIndex - 1, 0));
-            } else if (event.key === "Enter" || event.key === "Tab") {
-              const pick = mentionCandidates[mentionIndex];
-              if (pick) {
-                event.preventDefault();
-                onMentionPick(pick.name);
-              }
-            } else if (event.key === "Escape") {
-              onMentionClose();
-            }
-          }}
+        <RichTextEditor
+          key={editorKey}
+          initialDoc={emptyRichTextDoc()}
+          mentionUsers={mentionUsers}
           placeholder="コメントを追加するか、チームメイトを @メンションします"
-          rows={focused || draft ? 3 : 1}
-          className="max-h-48 min-h-[34px] w-full resize-none bg-transparent px-3 py-2 text-[13px] leading-5 outline-none placeholder:text-neutral-400"
+          ariaLabel="コメント"
+          dataAttributes={{ "data-comment-input": "true" }}
+          minHeightClass="min-h-[34px]"
+          compact
+          toolbar
+          borderless
+          onChange={(nextDoc, nextText) => {
+            setDoc(nextDoc);
+            setText(nextText);
+          }}
+          onSubmit={submit}
+          onReady={setEditor}
         />
 
         {emojiOpen && (
@@ -163,10 +105,7 @@ export default function TaskCommentComposer({
             title="コンテンツを追加"
             aria-label="コンテンツを追加"
             onMouseDown={keepFocus}
-            onClick={() => {
-              insert("/");
-              setFocused(true);
-            }}
+            onClick={() => insert("/")}
           >
             ＋
           </button>
@@ -186,10 +125,7 @@ export default function TaskCommentComposer({
             title="@メンション"
             aria-label="@メンション"
             onMouseDown={keepFocus}
-            onClick={() => {
-              insert("@");
-              setFocused(true);
-            }}
+            onClick={() => insert("@")}
           >
             @
           </button>
@@ -207,14 +143,14 @@ export default function TaskCommentComposer({
           </button>
 
           <span className="ml-auto text-[10px] text-neutral-400">
-            {focused ? "⌘+Enter で投稿" : ""}
+            {focused && text.trim() ? "⌘+Enter で投稿" : ""}
           </span>
           <button
             type="button"
             data-comment-submit
             aria-label="コメント"
             title="コメント"
-            disabled={!draft.trim() || sending}
+            disabled={!text.trim() || sending}
             onClick={() => void submit()}
             className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#2f6fd0] text-white hover:bg-[#2459ad] disabled:bg-neutral-200 disabled:text-neutral-400"
           >

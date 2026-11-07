@@ -8,6 +8,7 @@ import type { Bundle, BundleField } from "../bundles";
 import type { ProjectAutomation } from "../automations";
 import type { CustomField } from "../custom-fields";
 import type { Attachment, User } from "../data";
+import type { RichTextDoc } from "../rich-text-types";
 import { projectTaskScope } from "./scope";
 
 export type Project = {
@@ -34,6 +35,7 @@ export type TaskRow = {
   parent_task_id: number | null;
   name: string;
   description: string;
+  description_doc?: RichTextDoc | null;
   assignee_id: number | null;
   assignee_name: string | null;
   created_by: number | null;

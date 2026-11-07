@@ -2,6 +2,11 @@
 
 import { useMemo, useState } from "react";
 import type { CommentRow } from "@/lib/data";
+import { docToText, markdownToDoc } from "@/lib/rich-text-markdown";
+import type { MentionUser, RichTextDoc } from "@/lib/rich-text-types";
+import { toast } from "@/lib/ui-feedback";
+import RichTextEditor from "../rich-text/RichTextEditor";
+import RichTextView from "../rich-text/RichTextView";
 
 type FeedEvent = { id: number; summary: string; actor_name: string | null; created_at: string };
 type Reaction = { emoji: string; n: number; mine: boolean };
@@ -35,6 +40,70 @@ function Avatar({ name, className = "h-7 w-7" }: { name: string | null; classNam
   );
 }
 
+function CommentEditForm({
+  comment,
+  mentionUsers,
+  onCancel,
+  onSave,
+}: {
+  comment: CommentRow;
+  mentionUsers: MentionUser[];
+  onCancel: () => void;
+  onSave: (doc: RichTextDoc) => void | Promise<void>;
+}) {
+  const initial = comment.body_doc ?? markdownToDoc(comment.body, mentionUsers);
+  const [doc, setDoc] = useState<RichTextDoc>(initial);
+  const [text, setText] = useState(() => docToText(initial));
+
+  const save = async () => {
+    if (!text.trim()) return;
+    try {
+      await onSave(doc);
+    } catch (error) {
+      toast(`コメントの保存に失敗しました: ${error instanceof Error ? error.message : error}`);
+    }
+  };
+
+  return (
+    <div className="mt-1">
+      <RichTextEditor
+        initialDoc={initial}
+        mentionUsers={mentionUsers}
+        placeholder="コメントを編集"
+        ariaLabel="コメントを編集"
+        dataAttributes={{ "data-comment-edit-input": String(comment.id) }}
+        autoFocus
+        compact
+        minHeightClass="min-h-[64px]"
+        onChange={(nextDoc, nextText) => {
+          setDoc(nextDoc);
+          setText(nextText);
+        }}
+        onSubmit={() => void save()}
+      />
+      <div className="mt-1 flex justify-end gap-1.5">
+        <button
+          type="button"
+          data-comment-edit-cancel={comment.id}
+          onClick={onCancel}
+          className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100"
+        >
+          キャンセル
+        </button>
+        <button
+          type="button"
+          data-comment-edit-save={comment.id}
+          disabled={!text.trim()}
+          onClick={() => void save()}
+          className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad] disabled:bg-neutral-200 disabled:text-neutral-500"
+        >
+          保存
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** Asana-style comments and activity feed in the task pane. */
 export default function TaskFeedSection({
   feedTab,
@@ -43,17 +112,12 @@ export default function TaskFeedSection({
   events,
   viewerId,
   viewerCanModerate,
-  editingCommentId,
-  commentEditDraft,
-  onCommentEditDraft,
-  onStartEdit,
-  onCancelEdit,
   onSaveEdit,
   onDelete,
   reactionMap,
   quickEmojis,
   onToggleReaction,
-  renderCommentBody,
+  mentionUsers,
 }: {
   feedTab: "comments" | "activity";
   onFeedTab: (tab: "comments" | "activity") => void;
@@ -61,20 +125,16 @@ export default function TaskFeedSection({
   events: FeedEvent[];
   viewerId: number;
   viewerCanModerate: boolean;
-  editingCommentId: number | null;
-  commentEditDraft: string;
-  onCommentEditDraft: (value: string) => void;
-  onStartEdit: (comment: CommentRow) => void;
-  onCancelEdit: () => void;
-  onSaveEdit: (commentId: number) => void;
+  onSaveEdit: (commentId: number, doc: RichTextDoc) => void | Promise<void>;
   onDelete: (commentId: number) => void;
   reactionMap: Record<number, Reaction[]>;
   quickEmojis: string[];
   onToggleReaction: (commentId: number, emoji: string) => void;
-  renderCommentBody: (body: string) => string;
+  mentionUsers: MentionUser[];
 }) {
   const [oldestFirst, setOldestFirst] = useState(true);
   const [expandedUpdates, setExpandedUpdates] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
 
   const items = useMemo<FeedItem[]>(() => {
     const commentItems: FeedItem[] = comments.map((comment) => ({
@@ -117,7 +177,7 @@ export default function TaskFeedSection({
                 <button
                   type="button"
                   data-comment-edit={comment.id}
-                  onClick={() => onStartEdit(comment)}
+                  onClick={() => setEditingCommentId(comment.id)}
                   className="text-[10px] text-neutral-500 hover:text-neutral-800 hover:underline"
                 >
                   編集
@@ -135,39 +195,24 @@ export default function TaskFeedSection({
           </div>
 
           {editingCommentId === comment.id ? (
-            <div className="mt-1">
-              <textarea
-                data-comment-edit-input={comment.id}
-                value={commentEditDraft}
-                onChange={(event) => onCommentEditDraft(event.target.value)}
-                rows={3}
-                className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-[13px] outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10"
-              />
-              <div className="mt-1 flex justify-end gap-1.5">
-                <button
-                  type="button"
-                  data-comment-edit-cancel={comment.id}
-                  onClick={onCancelEdit}
-                  className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100"
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="button"
-                  data-comment-edit-save={comment.id}
-                  onClick={() => onSaveEdit(comment.id)}
-                  className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]"
-                >
-                  保存
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              data-comment-body={comment.id}
-              className="mt-0.5 text-[13px] leading-5 text-neutral-700 [&_a]:text-blue-700 [&_a]:underline [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_p]:my-0.5 [&_ul]:list-disc [&_ul]:pl-5"
-              dangerouslySetInnerHTML={{ __html: renderCommentBody(comment.body) }}
+            <CommentEditForm
+              comment={comment}
+              mentionUsers={mentionUsers}
+              onCancel={() => setEditingCommentId(null)}
+              onSave={async (doc) => {
+                await onSaveEdit(comment.id, doc);
+                setEditingCommentId(null);
+              }}
             />
+          ) : (
+            <div data-comment-body={comment.id} className="mt-0.5">
+              <RichTextView
+                doc={comment.body_doc}
+                legacy={comment.body}
+                mentionUsers={mentionUsers}
+                className="text-[13px] leading-5 text-neutral-700"
+              />
+            </div>
           )}
 
           <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -272,9 +317,7 @@ export default function TaskFeedSection({
           {feedTab === "comments" ? "まだコメントはありません" : "アクティビティはまだありません"}
         </div>
       ) : feedTab === "comments" ? (
-        <div>
-          {items.map((item) => (item.kind === "comment" ? renderComment(item.comment) : null))}
-        </div>
+        <div>{items.map((item) => (item.kind === "comment" ? renderComment(item.comment) : null))}</div>
       ) : (
         <div className="pt-1">
           {headItems.map(renderItem)}

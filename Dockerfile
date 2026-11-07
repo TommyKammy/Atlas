@@ -20,5 +20,6 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/next.config.ts ./
 COPY --from=build /app/server.js ./
 COPY --from=build /app/lib ./lib
+COPY --from=build /app/scripts ./scripts
 EXPOSE 3000
 CMD ["node", "server.js"]

@@ -2,36 +2,47 @@
 
 import { useRef, useState } from "react";
 import type { FocusEvent } from "react";
-import { renderMarkdown } from "@/lib/markdown";
-import MarkdownToolbar from "../MarkdownToolbar";
+import { docToText, markdownToDoc } from "@/lib/rich-text-markdown";
+import type { MentionUser, RichTextDoc } from "@/lib/rich-text-types";
+import { toast } from "@/lib/ui-feedback";
+import RichTextEditor from "../rich-text/RichTextEditor";
+import RichTextView from "../rich-text/RichTextView";
 
 /**
  * Asana-style description block. The empty state is always visible so the
  * description field cannot be mistaken for missing UI.
  */
 export default function TaskDescriptionSection({
-  value,
+  doc,
+  legacy,
+  mentionUsers,
   onSave,
 }: {
-  value: string;
-  onSave: (value: string) => void;
+  doc: RichTextDoc | null;
+  legacy: string;
+  mentionUsers: MentionUser[];
+  onSave: (doc: RichTextDoc) => void | Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const ref = useRef<HTMLTextAreaElement | null>(null);
+  const initial = doc ?? markdownToDoc(legacy, mentionUsers);
+  const draftRef = useRef<RichTextDoc>(initial);
+  const hasText = docToText(initial).length > 0;
 
   const start = () => {
-    setDraft(value);
+    draftRef.current = doc ?? markdownToDoc(legacy, mentionUsers);
     setEditing(true);
   };
 
-  const save = () => {
-    onSave(draft);
-    setEditing(false);
+  const save = async () => {
+    try {
+      await onSave(draftRef.current);
+      setEditing(false);
+    } catch (error) {
+      toast(`説明の保存に失敗しました: ${error instanceof Error ? error.message : error}`);
+    }
   };
 
   const cancel = () => {
-    setDraft(value);
     setEditing(false);
   };
 
@@ -39,7 +50,7 @@ export default function TaskDescriptionSection({
     <section className="mt-5" data-task-description>
       <div className="mb-1 flex min-h-8 items-center gap-2">
         <h3 className="text-[12px] font-semibold text-neutral-700">説明</h3>
-        {!editing && value && (
+        {!editing && hasText && (
           <button
             type="button"
             onClick={start}
@@ -52,36 +63,25 @@ export default function TaskDescriptionSection({
 
       {editing ? (
         <div
-          className="rounded-lg border border-neutral-300 bg-white focus-within:border-[#4075cf] focus-within:ring-2 focus-within:ring-[#4075cf]/10"
           onBlur={(event: FocusEvent<HTMLDivElement>) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) save();
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) void save();
           }}
         >
-          <div className="border-b border-neutral-100 px-2 py-1.5">
-            <MarkdownToolbar target={ref} onChange={setDraft} />
-          </div>
-          <textarea
-            ref={ref}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                event.preventDefault();
-                save();
-              }
-              if (event.key === "Escape") {
-                event.preventDefault();
-                cancel();
-              }
-            }}
-            rows={5}
-            autoFocus
-            data-task-description-input
+          <RichTextEditor
+            initialDoc={doc ?? markdownToDoc(legacy, mentionUsers)}
+            mentionUsers={mentionUsers}
             placeholder="このタスクの内容を入力します"
-            className="min-h-[120px] w-full resize-y bg-transparent px-3 py-2 text-[13px] leading-6 outline-none placeholder:text-neutral-400"
+            ariaLabel="説明"
+            dataAttributes={{ "data-task-description-input": "true" }}
+            autoFocus
+            minHeightClass="min-h-[140px]"
+            onChange={(next) => {
+              draftRef.current = next;
+            }}
+            onSubmit={() => void save()}
           />
-          <div className="flex items-center justify-between gap-2 border-t border-neutral-100 px-2 py-1.5">
-            <span className="text-[10px] text-neutral-400">Markdown / ⌘+Enter で保存</span>
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <span className="text-[10px] text-neutral-400">⌘+Enter で保存</span>
             <div className="flex gap-1.5">
               <button
                 type="button"
@@ -92,7 +92,7 @@ export default function TaskDescriptionSection({
               </button>
               <button
                 type="button"
-                onClick={save}
+                onClick={() => void save()}
                 className="rounded bg-[#2f6fd0] px-3 py-1 text-[12px] font-medium text-white hover:bg-[#2459ad]"
               >
                 保存
@@ -100,16 +100,17 @@ export default function TaskDescriptionSection({
             </div>
           </div>
         </div>
-      ) : value ? (
+      ) : hasText ? (
         <div
           onClick={(event) => {
             if ((event.target as Element).closest("a")) return;
             start();
           }}
           title="クリックして編集"
-          className="min-h-[96px] cursor-text rounded-lg px-2 py-2 text-[13px] leading-6 text-neutral-700 hover:bg-neutral-50 [&_a]:text-blue-700 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:text-[13px] [&_h3]:font-semibold [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(value) }}
-        />
+          className="min-h-[96px] cursor-text rounded-lg px-2 py-2 hover:bg-neutral-50"
+        >
+          <RichTextView doc={doc} legacy={legacy} mentionUsers={mentionUsers} />
+        </div>
       ) : (
         <button
           type="button"
