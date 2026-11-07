@@ -48,6 +48,8 @@ export type TaskRow = {
   created_at: string;
   updated_at: string;
   recurrence: string;
+  project_name?: string | null;
+  like_count?: number;
   comment_count: number;
   subtask_count: number;
   eff_section_id?: number | null;
@@ -171,6 +173,7 @@ export type ProjectTab = {
   view_type: string;
   position: number;
   is_custom: boolean;
+  icon: string | null;
 };
 
 export const DEFAULT_PROJECT_TABS = [
@@ -204,7 +207,7 @@ export async function ensureDefaultProjectTabs(
 /** Pure read: seeding happens on project creation, not during page render. */
 export async function getProjectTabs(projectId: number): Promise<ProjectTab[]> {
   const r = await db.query(
-    "SELECT id, tab_key, name, view_type, position, is_custom FROM project_tabs WHERE project_id = $1 ORDER BY position, id",
+    "SELECT id, tab_key, name, view_type, position, is_custom, icon FROM project_tabs WHERE project_id = $1 ORDER BY position, id",
     [projectId],
   );
   if (r.rowCount === 0) {
@@ -215,6 +218,7 @@ export async function getProjectTabs(projectId: number): Promise<ProjectTab[]> {
       view_type: tab.view,
       position: index * 1000,
       is_custom: false,
+      icon: null,
     }));
   }
   return r.rows as ProjectTab[];
@@ -350,6 +354,9 @@ export type SavedView = {
     created?: string;
     updated?: string;
     completed_on?: string;
+    group2?: string;
+    groupdir?: string;
+    subtasks_collapsed?: boolean;
   };
   sort_key: string;
   group_by: string;

@@ -6,7 +6,7 @@ import { LIST_GROUP_OPTIONS, LIST_SORT_OPTIONS } from "@/lib/list-view";
 
 const SORTS = new Set<string>(["position", ...LIST_SORT_OPTIONS]);
 const GROUPS = new Set<string>(["section", ...LIST_GROUP_OPTIONS]);
-const FILTER_TEXT_KEYS = ["assignee", "status", "due", "start", "creator", "created", "updated", "completed_on"] as const;
+const FILTER_TEXT_KEYS = ["assignee", "status", "due", "start", "creator", "created", "updated", "completed_on", "group2", "groupdir"] as const;
 
 export const GET = withProject("view", async (_req, { projectId }) => {
   const r = await db.query(
@@ -31,6 +31,7 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
     if (filters.hide_completed === true) f.hide_completed = true;
     if (filters.completed_only === true) f.completed_only = true;
     if (filters.mine_only === true) f.mine_only = true;
+    if (filters.subtasks_collapsed === true) f.subtasks_collapsed = true;
     for (const key of FILTER_TEXT_KEYS) {
       if (typeof filters[key] === "string") f[key] = filters[key];
     }

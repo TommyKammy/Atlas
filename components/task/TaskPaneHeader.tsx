@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { TaskRow } from "@/lib/data";
 
 /** Top action bar of the task pane. */
@@ -17,6 +18,32 @@ export default function TaskPaneHeader({
   onToggle: () => void;
   onRemove: () => void;
 }) {
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(task.like_count ?? 0);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/tasks/${task.id}/like`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { count?: number; liked?: boolean } | null) => {
+        if (!active || !data) return;
+        setLiked(data.liked === true);
+        setLikeCount(Number(data.count ?? 0));
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [task.id]);
+
+  const toggleLike = async () => {
+    const res = await fetch(`/api/tasks/${task.id}/like`, { method: "POST" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { count?: number; liked?: boolean };
+    setLiked(data.liked === true);
+    setLikeCount(Number(data.count ?? 0));
+  };
+
   return (
     <div className="flex items-center gap-2 border-b px-3 py-2">
       <button
@@ -36,8 +63,18 @@ export default function TaskPaneHeader({
         {collaborators}
       </span>
       <span className="flex-1 lg:hidden" />
-      <button title="いいね（v1では無効）" className="cursor-default px-1.5 text-lg leading-none text-neutral-500">
-        ♡
+      <button
+        type="button"
+        onClick={() => void toggleLike()}
+        aria-label={liked ? "いいねを取り消す" : "いいね"}
+        aria-pressed={liked}
+        title={liked ? "いいねを取り消す" : "いいね"}
+        className={`flex items-center gap-1 px-1.5 text-lg leading-none ${
+          liked ? "text-rose-500" : "text-neutral-500 hover:text-rose-500"
+        }`}
+      >
+        {liked ? "♥" : "♡"}
+        {likeCount > 0 && <span className="text-[11px] font-medium">{likeCount}</span>}
       </button>
       <button onClick={onRemove} title="削除" className="px-2 text-sm text-neutral-500 hover:text-red-600">
         削除

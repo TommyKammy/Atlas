@@ -7,9 +7,11 @@ export type ListSortKey =
   | "created"
   | "updated"
   | "completed"
+  | "likes"
   | "name"
   | "progress"
-  | "status";
+  | "status"
+  | "project";
 
 export const LIST_SORT_LABELS: Record<ListSortKey, string> = {
   position: "手動",
@@ -20,9 +22,11 @@ export const LIST_SORT_LABELS: Record<ListSortKey, string> = {
   created: "作成日",
   updated: "最終変更日",
   completed: "完了日",
+  likes: "いいね",
   name: "アルファベット順",
   progress: "進捗",
   status: "Status",
+  project: "プロジェクト",
 };
 
 /** Sort fields shown in the toolbar, in Asana order. */
@@ -34,9 +38,11 @@ export const LIST_SORT_OPTIONS: readonly Exclude<ListSortKey, "position">[] = [
   "created",
   "updated",
   "completed",
+  "likes",
   "name",
   "progress",
   "status",
+  "project",
 ];
 
 export type ListGroupBy =
@@ -48,9 +54,11 @@ export type ListGroupBy =
   | "start"
   | "created"
   | "updated"
-  | "completed";
+  | "completed"
+  | "project"
+  | `cf-${number}`;
 
-export const LIST_GROUP_LABELS: Record<ListGroupBy, string> = {
+export const LIST_GROUP_LABELS: Record<string, string> = {
   section: "セクション",
   assignee: "担当者",
   status: "Status",
@@ -60,10 +68,11 @@ export const LIST_GROUP_LABELS: Record<ListGroupBy, string> = {
   created: "作成日",
   updated: "最終変更日",
   completed: "完了日",
+  project: "プロジェクト",
 };
 
 /** Group fields shown in the toolbar, in Asana order. */
-export const LIST_GROUP_OPTIONS: readonly Exclude<ListGroupBy, "section">[] = [
+export const LIST_GROUP_OPTIONS: readonly Exclude<ListGroupBy, "section" | `cf-${number}`>[] = [
   "start",
   "due",
   "assignee",
@@ -71,6 +80,7 @@ export const LIST_GROUP_OPTIONS: readonly Exclude<ListGroupBy, "section">[] = [
   "created",
   "updated",
   "completed",
+  "project",
   "status",
 ];
 
@@ -108,7 +118,9 @@ export function parseListSortKey(value: unknown): ListSortKey {
 }
 
 export function parseListGroupBy(value: unknown, statusEnabled: boolean): ListGroupBy {
-  if (typeof value !== "string" || !GROUP_KEYS.has(value)) return "section";
+  if (typeof value !== "string") return "section";
+  if (/^cf-\d+$/.test(value)) return value as ListGroupBy;
+  if (!GROUP_KEYS.has(value)) return "section";
   if (value === "status" && !statusEnabled) return "section";
   return value as ListGroupBy;
 }

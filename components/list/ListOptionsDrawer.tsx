@@ -15,14 +15,41 @@ const row =
   "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50";
 const sectionTitle = "px-2 pt-3 pb-1 text-[11px] font-medium tracking-wide text-neutral-500";
 
+const ICON_CHOICES = [
+  "📋",
+  "📝",
+  "✅",
+  "🚀",
+  "🎯",
+  "📊",
+  "📅",
+  "🗓️",
+  "💬",
+  "📁",
+  "📌",
+  "⭐",
+  "🔥",
+  "💡",
+  "🧭",
+  "🛠️",
+  "🧪",
+  "🎨",
+  "🔔",
+  "🏁",
+] as const;
+
 /** Asana-style right-side options drawer for the list view. */
 export default function ListOptionsDrawer({
   open,
   onClose,
   viewName,
+  viewIcon,
   viewTabId,
   canEdit,
   onRenameView,
+  onUpdateIcon,
+  subtasksCollapsed,
+  onToggleSubtasks,
   columns,
   onToggleColumn,
   onAddField,
@@ -47,9 +74,13 @@ export default function ListOptionsDrawer({
   open: boolean;
   onClose: () => void;
   viewName: string;
+  viewIcon: string | null;
   viewTabId: number | null;
   canEdit: boolean;
   onRenameView: (name: string) => Promise<void>;
+  onUpdateIcon: (icon: string | null) => Promise<void>;
+  subtasksCollapsed: boolean;
+  onToggleSubtasks: (collapsed: boolean) => void;
   columns: ListColumnOption[];
   onToggleColumn: (key: string) => void;
   onAddField: () => void;
@@ -74,13 +105,21 @@ export default function ListOptionsDrawer({
   const panelRef = useRef<HTMLElement>(null);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState(viewName);
+  const [iconDraft, setIconDraft] = useState(viewIcon);
+  const [iconOpen, setIconOpen] = useState(false);
   const [renameBusy, setRenameBusy] = useState(false);
+  const [iconBusy, setIconBusy] = useState(false);
   useFocusTrap(panelRef, open, onClose);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setNameDraft(viewName);
   }, [viewName]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIconDraft(viewIcon);
+  }, [viewIcon]);
 
   useEffect(() => {
     if (!open) return;
@@ -102,6 +141,18 @@ export default function ListOptionsDrawer({
       await onRenameView(next);
     } finally {
       setRenameBusy(false);
+    }
+  };
+
+  const chooseIcon = async (icon: string | null) => {
+    if (renameDisabled || iconBusy) return;
+    setIconBusy(true);
+    setIconDraft(icon);
+    try {
+      await onUpdateIcon(icon);
+      setIconOpen(false);
+    } finally {
+      setIconBusy(false);
     }
   };
 
@@ -137,22 +188,69 @@ export default function ListOptionsDrawer({
         </div>
 
         <div className="p-3">
-          <label className="block px-2 text-[11px] font-medium text-neutral-500">ビューの名前</label>
-          <input
-            value={nameDraft}
-            onChange={(event) => setNameDraft(event.target.value)}
-            onBlur={() => void commitName()}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void commitName();
-              }
-            }}
-            disabled={renameDisabled || renameBusy}
-            aria-label="ビューの名前"
-            data-list-view-name
-            className="mt-1 h-9 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500"
-          />
+          <div className="flex items-end gap-2 px-2">
+            <div className="relative shrink-0">
+              <label className="block text-[11px] font-medium text-neutral-500">アイコン</label>
+              <button
+                type="button"
+                data-list-view-icon
+                aria-label="ビューのアイコン"
+                aria-expanded={iconOpen}
+                disabled={renameDisabled || iconBusy}
+                onClick={() => setIconOpen((value) => !value)}
+                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 text-lg hover:bg-neutral-50 disabled:bg-neutral-50"
+              >
+                {iconDraft ?? "📋"}
+              </button>
+              {iconOpen && (
+                <div
+                  data-list-icon-picker
+                  className="absolute top-full left-0 z-20 mt-1 w-[250px] rounded-lg border border-neutral-200 bg-white p-2 shadow-lg"
+                >
+                  <div className="grid grid-cols-8 gap-1">
+                    {ICON_CHOICES.map((icon) => (
+                      <button
+                        key={icon}
+                        type="button"
+                        data-list-icon-choice={icon}
+                        onClick={() => void chooseIcon(icon)}
+                        className={`flex h-7 w-7 items-center justify-center rounded text-base hover:bg-neutral-100 ${
+                          iconDraft === icon ? "bg-[#eff4fd]" : ""
+                        }`}
+                      >
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void chooseIcon(null)}
+                    className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-neutral-600 hover:bg-neutral-50"
+                  >
+                    アイコンをクリア
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <label className="block text-[11px] font-medium text-neutral-500">ビューの名前</label>
+              <input
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+                onBlur={() => void commitName()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void commitName();
+                  }
+                }}
+                disabled={renameDisabled || renameBusy}
+                aria-label="ビューの名前"
+                data-list-view-name
+                className="mt-1 h-9 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500"
+              />
+            </div>
+          </div>
 
           <div className="mt-2">
             <button
@@ -221,6 +319,21 @@ export default function ListOptionsDrawer({
               </svg>
               <span className="flex-1">グループ</span>
               <span className="text-[11px] text-neutral-400">{groupSummary}</span>
+            </button>
+            <button
+              type="button"
+              data-list-options-subtasks
+              aria-pressed={subtasksCollapsed}
+              onClick={() => onToggleSubtasks(!subtasksCollapsed)}
+              className={row}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M4 6h10M8 12h10M12 18h8" />
+              </svg>
+              <span className="flex-1">サブタスク</span>
+              <span className="text-[11px] text-neutral-400">
+                {subtasksCollapsed ? "折り畳み済み" : "展開済み"}
+              </span>
             </button>
           </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type Dispatch, type SetStateAction } from "react";
-import type { Section, TaskTemplate, User } from "@/lib/data";
+import type { CustomField, Section, TaskTemplate, User } from "@/lib/data";
 import {
   LIST_GROUP_LABELS,
   LIST_SORT_LABELS,
@@ -60,6 +60,7 @@ export default function ListToolbar({
   statusFieldEnabled,
   statusFieldName,
   statusOptions,
+  customFields,
   focusAdd,
   toggleAddMenu,
   addMenu,
@@ -84,7 +85,12 @@ export default function ListToolbar({
   setGroupOpen,
   openGroupMenu,
   groupBy,
+  group2,
+  groupDir,
   applyGroupBy,
+  applyGroup2,
+  clearGroup2,
+  applyGroupDir,
   clearGroup,
   saving,
   setSaving,
@@ -97,9 +103,13 @@ export default function ListToolbar({
   optionsOpen,
   setOptionsOpen,
   viewName,
+  viewIcon,
   viewTabId,
   canEdit,
   renameView,
+  updateViewIcon,
+  subtasksCollapsed,
+  toggleSubtasksCollapsed,
   columns,
   onToggleColumn,
   openFieldAdd,
@@ -110,6 +120,7 @@ export default function ListToolbar({
   statusFieldEnabled: boolean;
   statusFieldName: string;
   statusOptions: string[];
+  customFields: CustomField[];
   focusAdd: () => void;
   toggleAddMenu: () => void;
   addMenu: boolean;
@@ -134,7 +145,12 @@ export default function ListToolbar({
   setGroupOpen: Dispatch<SetStateAction<boolean>>;
   openGroupMenu: () => void;
   groupBy: ListGroupBy;
+  group2: ListGroupBy | null;
+  groupDir: "asc" | "desc";
   applyGroupBy: (key: ListGroupBy) => void;
+  applyGroup2: (key: ListGroupBy | null) => void;
+  clearGroup2: () => void;
+  applyGroupDir: (dir: "asc" | "desc") => void;
   clearGroup: () => void;
   saving: boolean;
   setSaving: Dispatch<SetStateAction<boolean>>;
@@ -147,9 +163,13 @@ export default function ListToolbar({
   optionsOpen: boolean;
   setOptionsOpen: Dispatch<SetStateAction<boolean>>;
   viewName: string;
+  viewIcon: string | null;
   viewTabId: number | null;
   canEdit: boolean;
   renameView: (name: string) => Promise<void>;
+  updateViewIcon: (icon: string | null) => Promise<void>;
+  subtasksCollapsed: boolean;
+  toggleSubtasksCollapsed: (collapsed: boolean) => void;
   columns: ListColumnOption[];
   onToggleColumn: (key: string) => void;
   openFieldAdd: () => void;
@@ -157,10 +177,23 @@ export default function ListToolbar({
   const sortLabel =
     sortKey === "position" ? "" : sortKey === "status" ? statusFieldName : LIST_SORT_LABELS[sortKey];
   const sortArrow = sortDir === "asc" ? "↑" : "↓";
-  const groupLabel = groupBy === "section" ? "" : groupBy === "status" ? statusFieldName : LIST_GROUP_LABELS[groupBy];
+  const groupLabelFor = (key: ListGroupBy) => {
+    if (key === "status") return statusFieldName || "Status";
+    if (key.startsWith("cf-")) {
+      const id = Number(key.slice(3));
+      return customFields.find((field) => field.id === id)?.name ?? "カスタムフィールド";
+    }
+    return LIST_GROUP_LABELS[key] ?? key;
+  };
+  const groupLabel = groupBy === "section" ? "" : groupLabelFor(groupBy);
   const filterSummary = activeFilterCount > 0 ? `適用中: ${activeFilterCount}` : "なし";
   const sortSummary = sortKey === "position" ? "なし" : `${sortLabel} ${sortArrow}`;
-  const groupSummary = groupBy === "section" ? "セクション" : groupLabel;
+  const groupSummary =
+    groupBy === "section" && group2 === null
+      ? "セクション"
+      : group2
+        ? `${groupBy === "section" ? "セクション" : groupLabel} > ${groupLabelFor(group2)}`
+        : groupLabel;
 
   useEffect(() => {
     if (!filterOpen && !sortOpen && !groupOpen && !optionsOpen) return;
@@ -285,10 +318,10 @@ export default function ListToolbar({
         </span>
 
         <span className="relative">
-          {groupBy !== "section" ? (
+          {groupBy !== "section" || group2 !== null ? (
             <span className={activePill}>
               <button onClick={openGroupMenu} data-list-group-open className={activePillMain}>
-                <GroupIcon /> グループ: {groupLabel}
+                <GroupIcon /> グループ: {groupSummary}
               </button>
               <button title="グループを解除" onClick={clearGroup} className={clearPill}>
                 ×
@@ -302,17 +335,24 @@ export default function ListToolbar({
           {groupOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setGroupOpen(false)} />
-              <div className={`${popoverBase} right-0 w-60`}>
+              <div className={`${popoverBase} right-0 w-[440px] max-w-[calc(100vw-2rem)]`}>
                 <ListGroupMenu
                   groupBy={groupBy}
+                  group2={group2}
+                  groupDir={groupDir}
+                  customFields={customFields}
                   statusFieldEnabled={statusFieldEnabled}
-                  onSelect={(key) => {
+                  statusFieldName={statusFieldName}
+                  onSelectPrimary={(key) => {
                     applyGroupBy(key);
-                    setGroupOpen(false);
                   }}
+                  onSelectSecondary={(key) => {
+                    applyGroup2(key);
+                  }}
+                  onClearSecondary={clearGroup2}
+                  onSetGroupDir={applyGroupDir}
                   onClear={() => {
                     clearGroup();
-                    setGroupOpen(false);
                   }}
                 />
               </div>
@@ -341,9 +381,13 @@ export default function ListToolbar({
         open={optionsOpen}
         onClose={() => setOptionsOpen(false)}
         viewName={viewName}
+        viewIcon={viewIcon}
         viewTabId={viewTabId}
         canEdit={canEdit}
         onRenameView={renameView}
+        onUpdateIcon={updateViewIcon}
+        subtasksCollapsed={subtasksCollapsed}
+        onToggleSubtasks={toggleSubtasksCollapsed}
         columns={columns}
         onToggleColumn={onToggleColumn}
         onAddField={() => {

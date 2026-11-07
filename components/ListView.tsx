@@ -51,6 +51,7 @@ export default function ListView({
   activeTaskId,
   viewerId,
   viewName,
+  viewIcon,
   viewTabId,
   canEdit,
 }: {
@@ -69,6 +70,7 @@ export default function ListView({
   activeTaskId: number | null;
   viewerId: number;
   viewName: string;
+  viewIcon: string | null;
   viewTabId: number | null;
   canEdit: boolean;
   initial: {
@@ -86,6 +88,9 @@ export default function ListView({
     sort?: string;
     sortdir?: "asc" | "desc";
     group?: string;
+    group2?: string;
+    groupdir?: "asc" | "desc";
+    subtasks_collapsed?: boolean;
   };
 }) {
   const refresh = useApiRefresh();
@@ -153,6 +158,11 @@ export default function ListView({
   const [groupBy, setGroupBy] = useState<ListGroupBy>(() =>
     parseListGroupBy(initial.group, statusFieldEnabled),
   );
+  const [group2, setGroup2] = useState<ListGroupBy | null>(() => {
+    if (!initial.group2) return null;
+    return parseListGroupBy(initial.group2, statusFieldEnabled);
+  });
+  const [groupDir, setGroupDir] = useState<"asc" | "desc">(initial.groupdir === "desc" ? "desc" : "asc");
   const [groupSections, setGroupSections] = useState<Record<string, number | null>>({});
   const [assigneeFilter, setAssigneeFilter] = useState(initial.assignee ?? "");
   const [sortKey, setSortKey] = useState<ListSortKey>(() => parseListSortKey(initial.sort));
@@ -166,6 +176,7 @@ export default function ListView({
   const [completedDateFilter, setCompletedDateFilter] = useState<ListDateFilter>(() =>
     parseListDateFilter(initial.completed_on),
   );
+  const [subtasksCollapsed, setSubtasksCollapsed] = useState(initial.subtasks_collapsed === true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
@@ -212,6 +223,9 @@ export default function ListView({
     sort: sortKey,
     sortdir: sortDir,
     group: groupBy,
+    group2: group2 ?? "",
+    groupdir: groupDir,
+    subtasks_collapsed: subtasksCollapsed,
   });
   const [editingField, setEditingField] = useState<number | null>(null);
   const [editFieldName, setEditFieldName] = useState("");
@@ -233,6 +247,9 @@ export default function ListView({
     updated?: string;
     completed_on?: string;
     group?: string;
+    group2?: string | null;
+    groupdir?: "asc" | "desc";
+    subtasks?: "collapsed" | "expanded";
   }) => {
     const q = new URLSearchParams(window.location.search);
     q.set("view", "list");
@@ -251,6 +268,9 @@ export default function ListView({
     const updated = patch.updated ?? updatedFilter;
     const completedOn = patch.completed_on ?? completedDateFilter;
     const gr = patch.group ?? groupBy;
+    const gr2 = patch.group2 !== undefined ? patch.group2 : group2;
+    const grd = patch.groupdir ?? groupDir;
+    const subtasks = patch.subtasks ?? (subtasksCollapsed ? "collapsed" : "expanded");
     if (hide) q.set("hide", "1");
     else q.delete("hide");
     if (completed) q.set("completed", "done");
@@ -283,6 +303,13 @@ export default function ListView({
     else q.delete("completed_on");
     if (gr !== "section") q.set("group", gr);
     else q.delete("group");
+    if (gr2 && gr2 !== gr && gr2 !== "section") q.set("group2", gr2);
+    else if (gr2 === "section" && gr !== "section") q.set("group2", "section");
+    else q.delete("group2");
+    if (grd === "desc") q.set("groupdir", "desc");
+    else q.delete("groupdir");
+    if (subtasks === "collapsed") q.set("subtasks", "collapsed");
+    else q.delete("subtasks");
     router.push(`/projects/${projectId}?${q.toString()}`);
   };
   const setFilter = (key: keyof ListFilters, value: string | boolean) => {
@@ -348,6 +375,7 @@ export default function ListView({
   };
   const [saveName, setSaveName] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
   const dragging = useRef(false);
   const [dropHint, setDropHint] = useState<{ id: number; before: boolean } | null>(null);
   const hintRef = useRef<{ id: number; before: boolean } | null>(null);
@@ -378,13 +406,15 @@ export default function ListView({
     else if (groupBy !== "section" && groupOrder[0]) setAddingTo(`g:${groupOrder[0][0]}`);
     requestAnimationFrame(() => document.querySelector<HTMLInputElement>("input[data-add-task]")?.focus());
   };
-  const toggleExpand = (id: number) =>
+  const toggleExpand = (id: number) => {
+    if (subtasksCollapsed) return;
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+  };
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("focus") === "add") {
       document.querySelector<HTMLInputElement>("input[data-add-task]")?.focus();
@@ -511,9 +541,11 @@ export default function ListView({
     if (sortKey === "created") return date(a.created_at, b.created_at);
     if (sortKey === "updated") return date(a.updated_at, b.updated_at);
     if (sortKey === "completed") return date(a.completed_at, b.completed_at);
+    if (sortKey === "likes") return ((a.like_count ?? 0) - (b.like_count ?? 0)) * dir;
     if (sortKey === "name") return text(a.name, b.name);
     if (sortKey === "progress") return (a.progress - b.progress) * dir;
     if (sortKey === "status") return text(a.status, b.status);
+    if (sortKey === "project") return nullableText(a.project_name, b.project_name);
     return a.position - b.position || a.id - b.id;
   };
 
@@ -668,7 +700,12 @@ export default function ListView({
     const res = await api<{ id: number }>("/api/saved-views", "POST", {
       project_id: projectId,
       name: saveName,
-      filters: { ...filters },
+      filters: {
+        ...filters,
+        group2: group2 ?? "",
+        groupdir: groupDir,
+        subtasks_collapsed: subtasksCollapsed,
+      },
       sort_key: sortKey,
       group_by: groupBy,
     });
@@ -725,12 +762,34 @@ export default function ListView({
     pushState({ sort: sortKey, sortdir: next });
   };
   const applyGroupBy = (key: ListGroupBy) => {
+    const nextSecondary = group2 === key ? null : group2;
     setGroupBy(key);
-    pushState({ group: key });
+    setGroup2(nextSecondary);
+    pushState({ group: key, group2: nextSecondary });
+  };
+  const applyGroup2 = (key: ListGroupBy | null) => {
+    if (key !== null && key === groupBy) return;
+    setGroup2(key);
+    pushState({ group2: key });
+  };
+  const clearGroup2 = () => {
+    setGroup2(null);
+    pushState({ group2: null });
+  };
+  const applyGroupDir = (dir: "asc" | "desc") => {
+    setGroupDir(dir);
+    pushState({ groupdir: dir });
   };
   const clearGroup = () => {
     setGroupBy("section");
-    pushState({ group: "section" });
+    setGroup2(null);
+    setGroupDir("asc");
+    pushState({ group: "section", group2: null, groupdir: "asc" });
+  };
+  const changeSubtasksCollapsed = (collapsed: boolean) => {
+    setSubtasksCollapsed(collapsed);
+    if (collapsed) setExpanded(new Set());
+    pushState({ subtasks: collapsed ? "collapsed" : "expanded" });
   };
 
   const applyDueFilter = (v: string) => {
@@ -815,6 +874,16 @@ export default function ListView({
       router.refresh();
     } catch (error) {
       toastMessage(error instanceof Error ? error.message : "ビュー名を変更できませんでした");
+    }
+  };
+  const updateViewIcon = async (icon: string | null) => {
+    if (!canEdit || viewTabId === null) return;
+    try {
+      await api(`/api/project-tabs/${viewTabId}`, "PATCH", { icon });
+      toastMessage("ビューのアイコンを変更しました");
+      router.refresh();
+    } catch (error) {
+      toastMessage(error instanceof Error ? error.message : "アイコンを変更できませんでした");
     }
   };
 
@@ -946,19 +1015,45 @@ export default function ListView({
     />
   );
 
-  const groupKeyOf = (t: TaskRow) => {
-    if (groupBy === "assignee") return t.assignee_name ?? "（未割当）";
-    if (groupBy === "creator") return t.creator_name ?? "（作成者なし）";
-    if (groupBy === "status") return t.status || "（未設定）";
-    if (groupBy === "due") return t.due_on ?? "（期日なし）";
-    if (groupBy === "start") return t.start_on ?? "（開始日なし）";
-    if (groupBy === "created") return t.created_at.slice(0, 10);
-    if (groupBy === "updated") return t.updated_at.slice(0, 10);
-    if (groupBy === "completed") {
+  const groupKeyFor = (t: TaskRow, key: ListGroupBy) => {
+    if (key === "assignee") return t.assignee_name ?? "（未割当）";
+    if (key === "creator") return t.creator_name ?? "（作成者なし）";
+    if (key === "status") return t.status || "（未設定）";
+    if (key === "due") return t.due_on ?? "（期日なし）";
+    if (key === "start") return t.start_on ?? "（開始日なし）";
+    if (key === "created") return t.created_at.slice(0, 10);
+    if (key === "updated") return t.updated_at.slice(0, 10);
+    if (key === "completed") {
       if (!t.completed) return "（未完了）";
       return t.completed_at?.slice(0, 10) ?? "（完了日なし）";
     }
+    if (key === "project") return t.project_name ?? "（プロジェクトなし）";
+    if (key.startsWith("cf-")) {
+      const field = customFields.find((item) => `cf-${item.id}` === key);
+      if (!field) return "（未設定）";
+      const value = customValueToInput(field, customValues[t.id]?.[field.id]);
+      return value === "" ? "（未設定）" : value;
+    }
     return "";
+  };
+  const groupKeyOf = (t: TaskRow) => groupKeyFor(t, groupBy);
+
+  const sortGroupEntries = (entries: [string, TaskRow[]][]) =>
+    entries.sort(([a], [b]) => {
+      if (a.startsWith("（") && !b.startsWith("（")) return 1;
+      if (!a.startsWith("（") && b.startsWith("（")) return -1;
+      return a.localeCompare(b, "ja") * (groupDir === "asc" ? 1 : -1);
+    });
+
+  const splitGroups = (items: TaskRow[], key: ListGroupBy) => {
+    const map = new Map<string, TaskRow[]>();
+    for (const t of items) {
+      const groupKey = groupKeyFor(t, key);
+      if (!map.has(groupKey)) map.set(groupKey, []);
+      map.get(groupKey)!.push(t);
+    }
+    for (const list of map.values()) list.sort(sorter);
+    return sortGroupEntries([...map.entries()]);
   };
 
   const grouped = new Map<string, TaskRow[]>();
@@ -970,9 +1065,7 @@ export default function ListView({
     }
     for (const list of grouped.values()) list.sort(sorter);
   }
-  const groupOrder = [...grouped.entries()].sort(([a], [b]) =>
-    a.startsWith("（") && !b.startsWith("（") ? 1 : !a.startsWith("（") && b.startsWith("（") ? -1 : a.localeCompare(b, "ja"),
-  );
+  const groupOrder = sortGroupEntries([...grouped.entries()]);
 
   const addTaskGrouped = async (gkey: string) => {
     const name = (drafts[gkey] ?? "").trim();
@@ -1102,10 +1195,14 @@ export default function ListView({
     openTask,
   };
 
-  const groupHeader = (key: string, name: string, count: number) => {
+  const groupHeader = (key: string, name: string, count: number, depth = 0) => {
     const collapsed = collapsedGroups.has(key);
     return (
-      <div data-list-section-header={key} className="flex h-[37px] items-center gap-2 pl-6">
+      <div
+        data-list-section-header={key}
+        data-list-section-depth={depth}
+        className={`flex h-[37px] items-center gap-2 ${depth > 0 ? "pl-10" : "pl-6"}`}
+      >
         <button
           onClick={() => toggleGroup(key)}
           title={collapsed ? "展開する" : "折りたたむ"}
@@ -1120,11 +1217,27 @@ export default function ListView({
           </svg>
         </button>
         <span className="text-[14px] leading-6 font-semibold text-neutral-900">{name}</span>
-        {groupBy !== "section" && (
+        {groupBy !== "section" || group2 !== null ? (
           <span data-list-section-count={count} className="text-[13px] font-normal text-neutral-500">{count}</span>
-        )}
+        ) : null}
       </div>
     );
+  };
+
+  const renderGroupedItems = (items: TaskRow[], baseKey: string) => {
+    if (group2 !== null) {
+      return splitGroups(items, group2).map(([subKey, subItems]) => {
+        const key = `${baseKey}|g:${subKey}`;
+        const collapsed = collapsedGroups.has(key);
+        return (
+          <div key={subKey} data-list-subgroup={subKey}>
+            {groupHeader(key, subKey, subItems.length, 1)}
+            {!collapsed && subItems.map((t) => <TaskListRow key={t.id} task={t} ctx={rowCtx} />)}
+          </div>
+        );
+      });
+    }
+    return items.map((t) => <TaskListRow key={t.id} task={t} ctx={rowCtx} />);
   };
 
   const ghostRow = (onClick: () => void) => (
@@ -1173,6 +1286,9 @@ export default function ListView({
       data-list-sort={sortKey}
       data-list-sortdir={sortDir}
       data-list-group={groupBy}
+      data-list-group2={group2 ?? ""}
+      data-list-groupdir={groupDir}
+      data-list-subtasks-collapsed={subtasksCollapsed}
       data-list-assignee={assigneeFilter}
       data-list-status={statusFilter}
       data-list-due={dueFilter}
@@ -1191,6 +1307,7 @@ export default function ListView({
         statusFieldEnabled={statusFieldEnabled}
         statusFieldName={statusFieldName}
         statusOptions={statusOptions}
+        customFields={customFields}
         focusAdd={focusAdd}
         toggleAddMenu={toggleAddMenu}
         addMenu={addMenu}
@@ -1215,7 +1332,12 @@ export default function ListView({
         setGroupOpen={setGroupOpen}
         openGroupMenu={openGroupMenu}
         groupBy={groupBy}
+        group2={group2}
+        groupDir={groupDir}
         applyGroupBy={applyGroupBy}
+        applyGroup2={applyGroup2}
+        clearGroup2={clearGroup2}
+        applyGroupDir={applyGroupDir}
         clearGroup={clearGroup}
         saving={saving}
         setSaving={setSaving}
@@ -1228,9 +1350,13 @@ export default function ListView({
         optionsOpen={optionsOpen}
         setOptionsOpen={setOptionsOpen}
         viewName={viewName}
+        viewIcon={viewIcon}
         viewTabId={viewTabId}
         canEdit={canEdit}
         renameView={renameView}
+        updateViewIcon={updateViewIcon}
+        subtasksCollapsed={subtasksCollapsed}
+        toggleSubtasksCollapsed={changeSubtasksCollapsed}
         columns={columnOptions}
         onToggleColumn={toggleColumn}
         openFieldAdd={openFieldAdd}
@@ -1430,9 +1556,7 @@ export default function ListView({
                 {groupHeader(gk, gkey, items.length)}
                 {!collapsed && (
                   <>
-                    {shownItems.map((t) => (
-                      <TaskListRow key={t.id} task={t} ctx={rowCtx} />
-                    ))}
+                    {renderGroupedItems(shownItems, gk)}
                     {showMoreRows(gk, items.length, shownItems.length)}
                     {addingTo === gk
                       ? addRow(
@@ -1507,9 +1631,7 @@ export default function ListView({
                 {groupHeader(key, s.name, items.length)}
                 {!collapsed && (
                   <>
-                    {shownItems.map((t) => (
-                      <TaskListRow key={t.id} task={t} ctx={rowCtx} />
-                    ))}
+                    {renderGroupedItems(shownItems, key)}
                     {showMoreRows(key, items.length, shownItems.length)}
                     {addingTo === s.id
                       ? addRow(

@@ -8,19 +8,43 @@ export const PATCH = withResourceProject("edit", "project_tabs", async (_req, { 
   const id = params.id;
   const owner = await db.query("SELECT id FROM project_tabs WHERE id = $1::bigint", [id]);
   if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const payload = (body ?? {}) as { name?: unknown };
-  if (typeof payload.name !== "string" || payload.name.trim() === "") {
-    return NextResponse.json({ error: "name is required" }, { status: 400 });
+  const payload = (body ?? {}) as { name?: unknown; icon?: unknown };
+  const hasName = "name" in payload;
+  const hasIcon = "icon" in payload;
+  if (!hasName && !hasIcon) {
+    return NextResponse.json({ error: "name or icon is required" }, { status: 400 });
   }
-  const name = payload.name.trim().slice(0, 120);
-  await db.query("UPDATE project_tabs SET name = $1 WHERE id = $2::bigint", [name, id]);
+  let name: string | undefined;
+  if (hasName) {
+    if (typeof payload.name !== "string" || payload.name.trim() === "") {
+      return NextResponse.json({ error: "name is required" }, { status: 400 });
+    }
+    name = payload.name.trim().slice(0, 120);
+  }
+  let icon: string | null | undefined;
+  if (hasIcon) {
+    if (payload.icon === null || payload.icon === "") {
+      icon = null;
+    } else if (typeof payload.icon === "string" && payload.icon.length <= 32) {
+      icon = payload.icon;
+    } else {
+      return NextResponse.json({ error: "icon must be a short string or null" }, { status: 400 });
+    }
+  }
+  if (name !== undefined && icon !== undefined) {
+    await db.query("UPDATE project_tabs SET name = $1, icon = $2 WHERE id = $3::bigint", [name, icon, id]);
+  } else if (name !== undefined) {
+    await db.query("UPDATE project_tabs SET name = $1 WHERE id = $2::bigint", [name, id]);
+  } else if (icon !== undefined) {
+    await db.query("UPDATE project_tabs SET icon = $1 WHERE id = $2::bigint", [icon, id]);
+  }
   await notifyProject(projectId);
   await audit(uid, "project_tab.update", {
     entity: "project_tab",
     entityId: Number(id),
     projectId,
   });
-  return NextResponse.json({ id: Number(id), name });
+  return NextResponse.json({ id: Number(id), name: name ?? null, icon: icon ?? null });
 }, { body: true });
 
 export const DELETE = withResourceProject("edit", "project_tabs", async (_req, { uid, projectId, params }) => {

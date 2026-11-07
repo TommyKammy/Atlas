@@ -379,6 +379,7 @@ export default function ProjectTabs({
                   }}
                   className={linkClass}
                 >
+                  {tab.icon && <span className="mr-1 text-[13px] leading-none">{tab.icon}</span>}
                   {tab.name}
                 </Link>
               )}

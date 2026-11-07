@@ -233,6 +233,30 @@ export default async function ProjectPage(props: {
         : storedString("list", "group"),
     project.status_field_enabled !== false,
   );
+  const rawGroup2 =
+    activeSaved
+      ? (activeSaved.filters.group2 ?? "")
+      : qstr("group2") !== ""
+        ? qstr("group2")
+        : storedString("list", "group2");
+  const parsedGroup2 = rawGroup2 ? parseListGroupBy(rawGroup2, project.status_field_enabled !== false) : null;
+  const listGroup2 =
+    parsedGroup2 && (parsedGroup2 !== "section" || rawGroup2 === "section") ? parsedGroup2 : null;
+  const listGroupDir =
+    activeSaved
+      ? activeSaved.filters.groupdir === "desc"
+        ? "desc"
+        : "asc"
+      : qstr("groupdir") !== ""
+        ? qstr("groupdir") === "desc"
+          ? "desc"
+          : "asc"
+        : ((storedString("list", "groupdir", ["asc", "desc"]) || "asc") as "asc" | "desc");
+  const listSubtasksCollapsed = activeSaved
+    ? activeSaved.filters.subtasks_collapsed === true
+    : qstr("subtasks") !== ""
+      ? qstr("subtasks") === "collapsed"
+      : storedBool("list", "subtasks_collapsed");
   const listInitial = {
     hide_completed: activeSaved
       ? activeSaved.filters.hide_completed === true
@@ -294,6 +318,9 @@ export default async function ProjectPage(props: {
     sort: listSort,
     sortdir: listSortDir,
     group: listGroup,
+    group2: listGroup2 ?? undefined,
+    groupdir: listGroupDir,
+    subtasks_collapsed: listSubtasksCollapsed,
   };
 
   return (
@@ -391,6 +418,7 @@ export default async function ProjectPage(props: {
             activeTaskId={taskId}
             viewerId={viewerId}
             viewName={activeListTab?.name ?? "リスト"}
+            viewIcon={activeListTab?.icon ?? null}
             viewTabId={activeListTab && activeListTab.id > 0 ? activeListTab.id : null}
             canEdit={access.role === "admin" || access.role === "editor"}
             initial={listInitial}

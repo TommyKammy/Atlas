@@ -67,9 +67,8 @@ export async function getSubtasks(taskId: number): Promise<TaskRow[]> {
 
 export async function getMyTasks(userId: number): Promise<(TaskRow & { project_name: string | null })[]> {
   const r = await db.query(
-    `SELECT ${TASK_SELECT_COLS}, p.name AS project_name
+    `SELECT ${TASK_SELECT_COLS}
      ${TASK_FROM}
-     LEFT JOIN projects p ON p.id = t.project_id
      LEFT JOIN my_task_orders o ON o.task_id = t.id AND o.user_id = $1
      WHERE t.assignee_id = $1 AND t.completed = FALSE
        AND t.parent_task_id IS NULL AND t.deleted_at IS NULL
