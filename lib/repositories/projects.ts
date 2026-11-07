@@ -2,6 +2,7 @@ import { cache } from "react";
 import { db } from "../db";
 import { normalizeProjectRole, type ProjectRole } from "../project-roles";
 import { DEFAULT_WIDGETS, normalizeWidgets } from "../dashboard-widgets";
+import { normalizeCustomFieldConfig } from "../custom-fields";
 import type { FormField, ProjectForm } from "../forms";
 import type { ProjectApp } from "../integrations";
 import type { Bundle, BundleField } from "../bundles";
@@ -320,10 +321,16 @@ export async function getProjectMessages(projectId: number): Promise<ProjectMess
 
 export async function getCustomFields(projectId: number): Promise<CustomField[]> {
   const r = await db.query(
-    "SELECT id, name, field_type, options FROM custom_fields WHERE project_id = $1 ORDER BY position, id",
+    `SELECT id, name, field_type, options, description, config
+     FROM custom_fields WHERE project_id = $1 ORDER BY position, id`,
     [projectId],
   );
-  return r.rows.map((row) => ({ ...row, options: (row.options ?? []) as string[] }));
+  return r.rows.map((row) => ({
+    ...row,
+    options: (row.options ?? []) as string[],
+    description: row.description ?? "",
+    config: normalizeCustomFieldConfig(row.config),
+  }));
 }
 
 export async function getProjectAttachments(projectId: number): Promise<Attachment[]> {

@@ -1,6 +1,11 @@
 "use client";
 
-import type { CustomField } from "@/lib/custom-fields";
+import {
+  COLUMN_FUNCTION_LABELS,
+  columnFunctionOf,
+  type ColumnFunction,
+  type CustomField,
+} from "@/lib/custom-fields";
 import type { User } from "@/lib/data";
 
 const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500";
@@ -37,14 +42,9 @@ export default function ListColumnHeader({
   setStatusHidden,
   customFilter,
   setCustomFilter,
-  editingField,
-  setEditingField,
-  editFieldName,
-  setEditFieldName,
-  editFieldOptions,
-  setEditFieldOptions,
-  saveFieldEdit,
-  startEditField,
+  onEditField,
+  setColumnFunction,
+  toggleSubtaskTotals,
   setHiddenCols,
   removeField,
 }: {
@@ -78,14 +78,9 @@ export default function ListColumnHeader({
   setStatusHidden: (value: boolean) => void;
   customFilter: Record<number, string>;
   setCustomFilter: (updater: (previous: Record<number, string>) => Record<number, string>) => void;
-  editingField: number | null;
-  setEditingField: (value: number | null) => void;
-  editFieldName: string;
-  setEditFieldName: (value: string) => void;
-  editFieldOptions: string;
-  setEditFieldOptions: (value: string) => void;
-  saveFieldEdit: () => void;
-  startEditField: (field: CustomField) => void;
+  onEditField: (field: CustomField) => void;
+  setColumnFunction: (field: CustomField, fn: ColumnFunction) => void;
+  toggleSubtaskTotals: (field: CustomField) => void;
   setHiddenCols: (updater: (previous: Set<number>) => Set<number>) => void;
   removeField: (field: CustomField) => void;
 }) {
@@ -275,37 +270,43 @@ export default function ListColumnHeader({
                     ))}
                   </>
                 )}
-                {editingField === field.id ? (
-                  <div className="px-3 py-2">
-                    <div className={menuLabel + " pt-0"}>フィールドを編集</div>
-                    <input
-                      value={editFieldName}
-                      onChange={(e) => setEditFieldName(e.target.value)}
-                      placeholder="フィールド名"
-                      className="mb-1 w-full rounded border px-2 py-1 text-[13px] outline-none focus:border-blue-500"
-                    />
-                    {field.field_type === "select" && (
-                      <input
-                        value={editFieldOptions}
-                        onChange={(e) => setEditFieldOptions(e.target.value)}
-                        placeholder="選択肢（カンマ区切り）"
-                        className="mb-1 w-full rounded border px-2 py-1 text-[13px] outline-none focus:border-blue-500"
-                      />
-                    )}
-                    <div className="flex gap-1">
-                      <button onClick={saveFieldEdit} className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700">
-                        保存
+                {field.field_type === "number" && (
+                  <>
+                    <div className={menuLabel}>列の関数</div>
+                    {(["none", "sum", "average", "count", "min", "max"] as ColumnFunction[]).map((fn) => (
+                      <button
+                        key={fn}
+                        className={menuItem}
+                        onClick={() => {
+                          setColumnFunction(field, fn);
+                          setMenuCol(null);
+                        }}
+                      >
+                        <span className="w-3 text-[11px]">{columnFunctionOf(field) === fn ? "✓" : ""}</span>
+                        {COLUMN_FUNCTION_LABELS[fn]}
                       </button>
-                      <button onClick={() => setEditingField(null)} className="rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100">
-                        キャンセル
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button className={menuItem} onClick={() => startEditField(field)}>
-                    フィールドを編集
-                  </button>
+                    ))}
+                    <button
+                      className={menuItem}
+                      onClick={() => {
+                        toggleSubtaskTotals(field);
+                        setMenuCol(null);
+                      }}
+                    >
+                      <span className="w-3 text-[11px]">{field.config?.include_subtasks ? "✓" : ""}</span>
+                      サブタスクの合計を含める
+                    </button>
+                  </>
                 )}
+                <button
+                  className={menuItem}
+                  onClick={() => {
+                    onEditField(field);
+                    setMenuCol(null);
+                  }}
+                >
+                  フィールドを編集
+                </button>
                 <button
                   className={menuItem}
                   onClick={() => {
@@ -316,7 +317,7 @@ export default function ListColumnHeader({
                   列を非表示
                 </button>
                 <button className={menuItem + " text-red-600 hover:bg-red-50"} onClick={() => { removeField(field); setMenuCol(null); }}>
-                  列を削除
+                  フィールドを削除
                 </button>
               </>
             )}

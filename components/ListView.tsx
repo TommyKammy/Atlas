@@ -9,7 +9,16 @@ import { useLive } from "@/lib/use-live";
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { SavedView, Section, TaskRow, TaskTemplate, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
-import { customValueToInput, type CustomField, type CustomValue } from "@/lib/custom-fields";
+import {
+  COLUMN_FUNCTION_LABELS,
+  columnFunctionOf,
+  customValueToInput,
+  formatNumberValue,
+  type ColumnFunction,
+  type CustomField,
+  type CustomFieldType,
+  type CustomValue,
+} from "@/lib/custom-fields";
 import { positionBetween } from "@/lib/order";
 import EmptyState from "./EmptyState";
 import { usePersistedViewState } from "@/lib/view-state-client";
@@ -17,6 +26,8 @@ import { useApiRefresh } from "@/lib/use-api-refresh";
 import ListToolbar from "./list/ListToolbar";
 import type { ListColumnOption } from "./list/ListOptionsDrawer";
 import ListColumnHeader from "./list/ListColumnHeader";
+import FieldTypeMenu from "./list/FieldTypeMenu";
+import FieldDialog from "./list/FieldDialog";
 import TaskListRow from "./list/TaskListRow";
 import { useListSelection } from "@/lib/use-list-selection";
 import { useColumnLayout } from "@/lib/use-column-layout";
@@ -105,10 +116,15 @@ export default function ListView({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [addingSection, setAddingSection] = useState(false);
   const [sectionName, setSectionName] = useState("");
-  const [addingField, setAddingField] = useState(false);
-  const [fieldName, setFieldName] = useState("");
-  const [fieldType, setFieldType] = useState<"number" | "text" | "select">("text");
-  const [fieldOptions, setFieldOptions] = useState("");
+  const [fieldMenuAnchor, setFieldMenuAnchor] = useState<{
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+  } | null>(null);
+  const [fieldDialog, setFieldDialog] = useState<
+    { mode: "create"; type: CustomFieldType } | { mode: "edit"; field: CustomField } | null
+  >(null);
 
   const { selected, setSelected, toggleSelect, selectRange, toggleAll, clear: clearSelection } =
     useListSelection();
@@ -131,20 +147,6 @@ export default function ListView({
     if (selected.size === 0) return;
     if (!await confirmAction(`${selected.size}件のタスクを削除しますか？`)) return;
     await bulk("delete");
-  };
-
-  const addField = async () => {
-    if (!fieldName.trim()) return;
-    await api("/api/custom-fields", "POST", {
-      project_id: projectId,
-      name: fieldName,
-      field_type: fieldType,
-      options: fieldOptions,
-    });
-    setFieldName("");
-    setFieldOptions("");
-    setAddingField(false);
-    refresh();
   };
 
   const removeField = async (f: CustomField) => {
@@ -227,9 +229,6 @@ export default function ListView({
     groupdir: groupDir,
     subtasks_collapsed: subtasksCollapsed,
   });
-  const [editingField, setEditingField] = useState<number | null>(null);
-  const [editFieldName, setEditFieldName] = useState("");
-  const [editFieldOptions, setEditFieldOptions] = useState("");
   const [customFilter, setCustomFilter] = useState<Record<number, string>>({});
 
   const pushState = (patch: {
@@ -692,6 +691,61 @@ export default function ListView({
   const customRaw = (taskId: number, f: CustomField) =>
     customValueToInput(f, customValues[taskId]?.[f.id]);
 
+  const aggregateFor = (field: CustomField, items: TaskRow[]) => {
+    if (field.field_type !== "number") return null;
+    const fn = columnFunctionOf(field);
+    if (fn === "none") return null;
+    const values: number[] = [];
+    const pushTask = (task: TaskRow) => {
+      const value = customValues[task.id]?.[field.id]?.value_number;
+      if (value !== null && value !== undefined && Number.isFinite(Number(value))) {
+        values.push(Number(value));
+      }
+    };
+    const pushWithSubtasks = (task: TaskRow, seen: Set<number>) => {
+      pushTask(task);
+      if (!field.config?.include_subtasks || seen.has(task.id)) return;
+      seen.add(task.id);
+      for (const subtask of subtaskMap[task.id] ?? []) pushWithSubtasks(subtask, seen);
+    };
+    for (const task of items) pushWithSubtasks(task, new Set());
+    if (fn === "count") {
+      return { label: COLUMN_FUNCTION_LABELS.count, value: formatNumberValue(values.length, { ...field.config, decimals: 0 }) };
+    }
+    if (values.length === 0) return null;
+    let result: number;
+    if (fn === "sum") result = values.reduce((sum, value) => sum + value, 0);
+    else if (fn === "average") result = values.reduce((sum, value) => sum + value, 0) / values.length;
+    else if (fn === "min") result = Math.min(...values);
+    else result = Math.max(...values);
+    return {
+      label: COLUMN_FUNCTION_LABELS[fn],
+      value: formatNumberValue(result, field.config ?? {}),
+    };
+  };
+
+  const footerTotals = (items: TaskRow[]) => {
+    const out: Record<number, { label: string; value: string }> = {};
+    for (const field of customFields) {
+      const total = aggregateFor(field, items);
+      if (total) out[field.id] = total;
+    }
+    return out;
+  };
+
+  const footerCell = (key: string, totals: Record<number, { label: string; value: string }>) => {
+    if (!key.startsWith("cf-")) return <span key={key} />;
+    const field = customFields.find((item) => `cf-${item.id}` === key);
+    const total = field ? totals[field.id] : undefined;
+    if (!field || !total) return <span key={key} />;
+    return (
+      <span key={key} className="flex min-w-0 items-center gap-1 text-[11px] text-neutral-500" title={total.label}>
+        <span className="shrink-0">{total.label}</span>
+        <span className="truncate font-medium text-neutral-700">{total.value}</span>
+      </span>
+    );
+  };
+
   const editInputCls =
     "w-full min-w-0 rounded border border-blue-500 bg-white px-1 py-0.5 text-[13px] text-neutral-800 outline-none";
 
@@ -936,19 +990,23 @@ export default function ListView({
     }
   };
 
-  const startEditField = (f: CustomField) => {
-    setEditingField(f.id);
-    setEditFieldName(f.name);
-    setEditFieldOptions(Array.isArray(f.options) ? f.options.join(",") : "");
+  const openEditField = (field: CustomField) => {
+    setFieldDialog({ mode: "edit", field });
+    setMenuCol(null);
   };
-  const saveFieldEdit = async () => {
-    if (editingField === null) return;
-    const body: Record<string, unknown> = { name: editFieldName.trim() };
-    if (editFieldOptions.trim() !== "") {
-      body.options = editFieldOptions.split(",").map((s) => s.trim()).filter((s) => s !== "");
-    }
-    await api(`/api/custom-fields/${editingField}`, "PATCH", body);
-    setEditingField(null);
+
+  const setColumnFunction = async (field: CustomField, fn: ColumnFunction) => {
+    await api(`/api/custom-fields/${field.id}`, "PATCH", {
+      config: { ...(field.config ?? {}), column_function: fn },
+    });
+    setMenuCol(null);
+    refresh();
+  };
+
+  const toggleSubtaskTotals = async (field: CustomField) => {
+    await api(`/api/custom-fields/${field.id}`, "PATCH", {
+      config: { ...(field.config ?? {}), include_subtasks: !field.config?.include_subtasks },
+    });
     setMenuCol(null);
     refresh();
   };
@@ -962,11 +1020,13 @@ export default function ListView({
     return f ? headerCell(key, f.name, f) : null;
   };
 
-  const openFieldAdd = () => {
-    setAddingField(true);
-    requestAnimationFrame(() =>
-      document.getElementById("custom-field-add")?.scrollIntoView({ block: "nearest" }),
-    );
+  const openFieldAdd = (rect: DOMRect) => {
+    setFieldMenuAnchor({
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+    });
   };
 
   const headerCell = (key: string, label: string, field?: CustomField) => (
@@ -1002,14 +1062,9 @@ export default function ListView({
       setStatusHidden={setStatusHidden}
       customFilter={customFilter}
       setCustomFilter={setCustomFilter}
-      editingField={editingField}
-      setEditingField={setEditingField}
-      editFieldName={editFieldName}
-      setEditFieldName={setEditFieldName}
-      editFieldOptions={editFieldOptions}
-      setEditFieldOptions={setEditFieldOptions}
-      saveFieldEdit={saveFieldEdit}
-      startEditField={startEditField}
+      onEditField={openEditField}
+      setColumnFunction={setColumnFunction}
+      toggleSubtaskTotals={toggleSubtaskTotals}
       setHiddenCols={setHiddenCols}
       removeField={removeField}
     />
@@ -1240,7 +1295,9 @@ export default function ListView({
     return items.map((t) => <TaskListRow key={t.id} task={t} ctx={rowCtx} />);
   };
 
-  const ghostRow = (onClick: () => void) => (
+  const ghostRow = (onClick: () => void, items: TaskRow[]) => {
+    const totals = footerTotals(items);
+    return (
     <div
       className="grid items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 text-sm"
       style={{ gridTemplateColumns: gridCols }}
@@ -1255,26 +1312,26 @@ export default function ListView({
           タスクを追加
         </button>
       </div>
-      {visibleCols.map((k) => (
-        <span key={k} />
-      ))}
+      {visibleCols.map((k) => footerCell(k, totals))}
       <span />
     </div>
-  );
+    );
+  };
 
-  const addRow = (input: ReactNode) => (
+  const addRow = (input: ReactNode, items: TaskRow[]) => {
+    const totals = footerTotals(items);
+    return (
     <div
       className="grid items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 py-1.5 text-sm"
       style={{ gridTemplateColumns: gridCols }}
     >
       <span />
       <div className="flex min-w-0 items-center gap-1 pl-12">{input}</div>
-      {visibleCols.map((k) => (
-        <span key={k} />
-      ))}
+      {visibleCols.map((k) => footerCell(k, totals))}
       <span />
     </div>
-  );
+    );
+  };
 
   return (
     <div
@@ -1359,7 +1416,11 @@ export default function ListView({
         toggleSubtasksCollapsed={changeSubtasksCollapsed}
         columns={columnOptions}
         onToggleColumn={toggleColumn}
-        openFieldAdd={openFieldAdd}
+        openFieldAdd={() => {
+          const button = document.querySelector<HTMLElement>("[data-field-add-button]");
+          if (button) openFieldAdd(button.getBoundingClientRect());
+          else setFieldDialog({ mode: "create", type: "text" });
+        }}
       />
       {savedViews.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 border-b py-1.5 text-sm">
@@ -1484,10 +1545,13 @@ export default function ListView({
           <Fragment key={k}>{headerCellFor(k)}</Fragment>
         ))}
         <button
+          type="button"
           style={{ order: 999 }}
-          onClick={openFieldAdd}
-          title="フィールド（カスタム項目）を追加"
-          className="justify-self-end rounded px-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+          data-field-add-button
+          aria-label="フィールドを追加"
+          onClick={(event) => openFieldAdd(event.currentTarget.getBoundingClientRect())}
+          title="フィールドを追加"
+          className="flex h-6 w-6 items-center justify-center justify-self-end rounded text-[15px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
         >
           ＋
         </button>
@@ -1603,8 +1667,9 @@ export default function ListView({
                               追加
                             </button>
                           </>,
+                          items,
                         )
-                      : ghostRow(() => setAddingTo(gk))}
+                      : ghostRow(() => setAddingTo(gk), items)}
                   </>
                 )}
               </div>
@@ -1664,8 +1729,9 @@ export default function ListView({
                               追加
                             </button>
                           </>,
+                          items,
                         )
-                      : ghostRow(() => setAddingTo(s.id))}
+                      : ghostRow(() => setAddingTo(s.id), items)}
                   </>
                 )}
               </div>
@@ -1714,51 +1780,29 @@ export default function ListView({
             ＋ セクションを追加
           </button>
         )}
-        <span className="mx-2 text-neutral-500">|</span>
-        {addingField ? (
-          <span className="inline-flex items-center gap-1">
-            <input
-              value={fieldName}
-              onChange={(e) => setFieldName(e.target.value)}
-              placeholder="項目名"
-              autoFocus
-              className="w-28 rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
-            />
-            <select
-              value={fieldType}
-              onChange={(e) => setFieldType(e.target.value as typeof fieldType)}
-              className="rounded border px-1 py-1 text-sm"
-            >
-              <option value="text">テキスト</option>
-              <option value="number">数値</option>
-              <option value="select">選択肢</option>
-            </select>
-            {fieldType === "select" && (
-              <input
-                value={fieldOptions}
-                onChange={(e) => setFieldOptions(e.target.value)}
-                placeholder="選択肢（カンマ区切り）"
-                className="w-40 rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
-              />
-            )}
-            <button
-              onClick={addField}
-              className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
-            >
-              追加
-            </button>
-            <button onClick={() => setAddingField(false)} className="px-1 text-sm text-neutral-500">
-              キャンセル
-            </button>
-          </span>
-        ) : (
-          <button onClick={() => setAddingField(true)} className="text-sm text-neutral-500 hover:text-neutral-800">
-            ＋ カスタム項目
-          </button>
-        )}
       </div>
       </div>
       </div>
+      {fieldMenuAnchor && (
+        <FieldTypeMenu
+          anchor={fieldMenuAnchor}
+          onClose={() => setFieldMenuAnchor(null)}
+          onPick={(type) => {
+            setFieldMenuAnchor(null);
+            setFieldDialog({ mode: "create", type });
+          }}
+        />
+      )}
+      {fieldDialog && (
+        <FieldDialog
+          projectId={projectId}
+          mode={fieldDialog.mode}
+          initialType={fieldDialog.mode === "create" ? fieldDialog.type : fieldDialog.field.field_type}
+          field={fieldDialog.mode === "edit" ? fieldDialog.field : null}
+          onClose={() => setFieldDialog(null)}
+          onSaved={refresh}
+        />
+      )}
     </div>
   );
 }

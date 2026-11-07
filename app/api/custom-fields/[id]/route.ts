@@ -2,30 +2,60 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { notifyField } from "@/lib/notify";
 import { withResourceProject } from "@/lib/api/route";
+import {
+  normalizeCustomFieldConfig,
+  parseCustomFieldConfig,
+  type CustomFieldType,
+} from "@/lib/custom-fields";
 
 export const PATCH = withResourceProject("edit", "custom_fields", async (_req, { params, body }) => {
   const id = params.id;
-  const { name, options } = (body ?? {}) as { name?: unknown; options?: unknown };
+  const payload = (body ?? {}) as { name?: unknown; options?: unknown; description?: unknown; config?: unknown };
+  const current = await db.query(
+    "SELECT field_type, config FROM custom_fields WHERE id = $1::bigint",
+    [id],
+  );
+  if (current.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const fieldType = current.rows[0].field_type as CustomFieldType;
   const sets: string[] = [];
   const values: unknown[] = [];
-  if (typeof name === "string" && name.trim() !== "") {
-    values.push(name.trim());
+  if (typeof payload.name === "string" && payload.name.trim() !== "") {
+    values.push(payload.name.trim());
     sets.push(`name = $${values.length}`);
   }
-  if (Array.isArray(options)) {
-    values.push(JSON.stringify(options.map((o) => String(o).trim()).filter((o) => o !== "")));
+  if (payload.description !== undefined) {
+    values.push(typeof payload.description === "string" ? payload.description.trim().slice(0, 500) : "");
+    sets.push(`description = $${values.length}`);
+  }
+  if (Array.isArray(payload.options) && fieldType === "select") {
+    values.push(JSON.stringify(payload.options.map((o) => String(o).trim()).filter((o) => o !== "")));
     sets.push(`options = $${values.length}::jsonb`);
   }
+  if (payload.config !== undefined) {
+    const parsed = parseCustomFieldConfig(fieldType, payload.config);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    values.push(JSON.stringify(parsed.config));
+    sets.push(`config = $${values.length}::jsonb`);
+  }
   if (sets.length === 0) {
-    return NextResponse.json({ error: "name or options required" }, { status: 400 });
+    return NextResponse.json({ error: "name, description, options or config required" }, { status: 400 });
   }
   values.push(id);
   const r = await db.query(
-    `UPDATE custom_fields SET ${sets.join(", ")} WHERE id = $${values.length}::bigint RETURNING id`,
+    `UPDATE custom_fields SET ${sets.join(", ")} WHERE id = $${values.length}::bigint
+     RETURNING id, name, field_type, options, description, config`,
     values,
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  return NextResponse.json({ id: Number(id) });
+  const row = r.rows[0];
+  return NextResponse.json({
+    id: Number(row.id),
+    name: row.name,
+    field_type: row.field_type,
+    options: row.options ?? [],
+    description: row.description ?? "",
+    config: normalizeCustomFieldConfig(row.config),
+  });
 }, { body: true });
 
 export const DELETE = withResourceProject("edit", "custom_fields", async (_req, { params }) => {
