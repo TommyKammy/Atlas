@@ -1,11 +1,41 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import type { CommentRow } from "@/lib/data";
 
 type FeedEvent = { id: number; summary: string; actor_name: string | null; created_at: string };
 type Reaction = { emoji: string; n: number; mine: boolean };
 
-/** Comments and activity feed in the task pane. */
+type FeedItem =
+  | { kind: "comment"; id: number; at: string; comment: CommentRow }
+  | { kind: "event"; id: number; at: string; event: FeedEvent };
+
+function formatWhen(value: string): string {
+  const normalized = value.replace(" ", "T").replace(/([+-]\d{2})$/, "$1:00");
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return value.slice(0, 16).replace("T", " ");
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function Avatar({ name, className = "h-7 w-7" }: { name: string | null; className?: string }) {
+  const label = (name ?? "?").trim() || "?";
+  return (
+    <span
+      className={`${className} flex shrink-0 items-center justify-center rounded-full bg-[#d8e3f3] text-[10px] font-semibold text-[#38506e]`}
+      title={label}
+    >
+      {label.slice(0, 1)}
+    </span>
+  );
+}
+
+/** Asana-style comments and activity feed in the task pane. */
 export default function TaskFeedSection({
   feedTab,
   onFeedTab,
@@ -43,158 +73,226 @@ export default function TaskFeedSection({
   onToggleReaction: (commentId: number, emoji: string) => void;
   renderCommentBody: (body: string) => string;
 }) {
+  const [oldestFirst, setOldestFirst] = useState(true);
+  const [expandedUpdates, setExpandedUpdates] = useState(false);
+
+  const items = useMemo<FeedItem[]>(() => {
+    const commentItems: FeedItem[] = comments.map((comment) => ({
+      kind: "comment",
+      id: comment.id,
+      at: comment.created_at,
+      comment,
+    }));
+    const eventItems: FeedItem[] = events.map((event) => ({
+      kind: "event",
+      id: event.id,
+      at: event.created_at,
+      event,
+    }));
+    const merged = feedTab === "comments" ? commentItems : [...commentItems, ...eventItems];
+    return merged.sort((a, b) => (oldestFirst ? a.at.localeCompare(b.at) : b.at.localeCompare(a.at)));
+  }, [comments, events, feedTab, oldestFirst]);
+
+  const renderComment = (comment: CommentRow) => {
+    const canEdit = comment.author_id === viewerId || viewerCanModerate;
+    return (
+      <div
+        key={`comment-${comment.id}`}
+        data-comment-id={comment.id}
+        data-comment-author-id={comment.author_id ?? ""}
+        className="group/comment flex gap-2.5 py-2.5"
+      >
+        <Avatar name={comment.author_name} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-[12px]">
+            <span className="font-semibold text-neutral-800">{comment.author_name ?? "–"}</span>
+            <span className="text-neutral-400">{formatWhen(comment.created_at)}</span>
+            {comment.edited_at && (
+              <span data-comment-edited={comment.id} className="text-[10px] text-neutral-400">
+                編集済み
+              </span>
+            )}
+            {canEdit && editingCommentId !== comment.id && (
+              <span className="ml-auto flex items-center gap-2 opacity-0 transition-opacity group-hover/comment:opacity-100">
+                <button
+                  type="button"
+                  data-comment-edit={comment.id}
+                  onClick={() => onStartEdit(comment)}
+                  className="text-[10px] text-neutral-500 hover:text-neutral-800 hover:underline"
+                >
+                  編集
+                </button>
+                <button
+                  type="button"
+                  data-comment-delete={comment.id}
+                  onClick={() => onDelete(comment.id)}
+                  className="text-[10px] text-red-500 hover:text-red-700 hover:underline"
+                >
+                  削除
+                </button>
+              </span>
+            )}
+          </div>
+
+          {editingCommentId === comment.id ? (
+            <div className="mt-1">
+              <textarea
+                data-comment-edit-input={comment.id}
+                value={commentEditDraft}
+                onChange={(event) => onCommentEditDraft(event.target.value)}
+                rows={3}
+                className="w-full rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-[13px] outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10"
+              />
+              <div className="mt-1 flex justify-end gap-1.5">
+                <button
+                  type="button"
+                  data-comment-edit-cancel={comment.id}
+                  onClick={onCancelEdit}
+                  className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  data-comment-edit-save={comment.id}
+                  onClick={() => onSaveEdit(comment.id)}
+                  className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]"
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              data-comment-body={comment.id}
+              className="mt-0.5 text-[13px] leading-5 text-neutral-700 [&_a]:text-blue-700 [&_a]:underline [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_p]:my-0.5 [&_ul]:list-disc [&_ul]:pl-5"
+              dangerouslySetInnerHTML={{ __html: renderCommentBody(comment.body) }}
+            />
+          )}
+
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            {(reactionMap[comment.id] ?? []).map((reaction) => (
+              <button
+                key={reaction.emoji}
+                type="button"
+                data-comment-reaction={reaction.emoji}
+                aria-pressed={reaction.mine}
+                onClick={() => onToggleReaction(comment.id, reaction.emoji)}
+                title="リアクション切替"
+                className={`rounded-full border px-1.5 py-0.5 text-[11px] ${
+                  reaction.mine
+                    ? "border-blue-400 bg-blue-50 text-blue-700"
+                    : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
+                }`}
+              >
+                {reaction.emoji} {reaction.n}
+              </button>
+            ))}
+            {quickEmojis
+              .filter((emoji) => !(reactionMap[comment.id] ?? []).some((reaction) => reaction.emoji === emoji))
+              .slice(0, 3)
+              .map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  data-comment-reaction-add={emoji}
+                  onClick={() => onToggleReaction(comment.id, emoji)}
+                  title="リアクションする"
+                  className="rounded-full border border-dashed border-neutral-200 px-1.5 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
+                >
+                  {emoji} ＋
+                </button>
+              ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderEvent = (event: FeedEvent) => (
+    <div key={`event-${event.id}`} data-task-event-id={event.id} className="flex gap-2.5 py-1.5">
+      <Avatar name={event.actor_name} className="h-6 w-6" />
+      <div className="min-w-0 flex-1 text-[12px] leading-5">
+        <span className="font-medium text-neutral-700">{event.actor_name ?? "システム"}</span>{" "}
+        <span className="text-neutral-500">{event.summary}</span>
+        <span className="ml-1.5 text-[10px] text-neutral-400">{formatWhen(event.created_at)}</span>
+      </div>
+    </div>
+  );
+
+  const renderItem = (item: FeedItem) =>
+    item.kind === "comment" ? renderComment(item.comment) : renderEvent(item.event);
+
+  const collapsed = feedTab === "activity" && !expandedUpdates && items.length > 8;
+  const headItems = collapsed ? items.slice(0, 2) : items;
+  const hiddenItems = collapsed ? items.slice(2, -4) : [];
+  const tailItems = collapsed ? items.slice(-4) : [];
+
   return (
-    <div className="mt-4">
-      <div className="flex items-center gap-3 border-b pb-1 text-sm">
+    <section className="mt-5" data-task-feed>
+      <div className="flex min-h-8 items-center gap-1 border-b border-neutral-200 pb-1">
         <button
+          type="button"
           onClick={() => onFeedTab("comments")}
-          className={`rounded px-2 py-1 ${feedTab === "comments" ? "font-semibold text-neutral-900" : "text-neutral-500 hover:text-neutral-800"}`}
+          className={`rounded-full px-2.5 py-1 text-[12px] ${
+            feedTab === "comments"
+              ? "bg-blue-50 font-semibold text-blue-800"
+              : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+          }`}
         >
-          コメント
+          コメント{comments.length > 0 ? ` ${comments.length}` : ""}
         </button>
         <button
+          type="button"
           onClick={() => onFeedTab("activity")}
-          className={`rounded px-2 py-1 ${feedTab === "activity" ? "font-semibold text-neutral-900" : "text-neutral-500 hover:text-neutral-800"}`}
+          className={`rounded-full px-2.5 py-1 text-[12px] ${
+            feedTab === "activity"
+              ? "bg-blue-50 font-semibold text-blue-800"
+              : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+          }`}
         >
           すべてのアクティビティ
         </button>
+        <button
+          type="button"
+          onClick={() => setOldestFirst((value) => !value)}
+          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+          title="並べ替え"
+        >
+          <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.2">
+            <circle cx="8" cy="8" r="5.5" />
+            <path d="M8 4.8V8l2.2 1.4" />
+          </svg>
+          {oldestFirst ? "古い順" : "新しい順"}
+        </button>
       </div>
-      {feedTab === "comments" ? (
-        comments.length === 0 ? (
-          <div className="py-3 text-sm text-neutral-500">まだコメントはありません</div>
-        ) : (
-          comments.map((c) => {
-            const canEdit = c.author_id === viewerId || viewerCanModerate;
-            return (
-              <div
-                key={c.id}
-                data-comment-id={c.id}
-                data-comment-author-id={c.author_id ?? ""}
-                className="flex gap-2 py-2 text-sm"
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-300 text-xs font-bold text-neutral-800">
-                  {(c.author_name ?? "?").slice(0, 1)}
-                </span>
-                <div className="min-w-0 flex-1 rounded-lg bg-neutral-50 px-3 py-2">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-neutral-600">
-                    <span>{c.author_name ?? "–"}</span>
-                    {c.edited_at && (
-                      <span data-comment-edited={c.id} className="font-normal text-neutral-400">
-                        編集済み
-                      </span>
-                    )}
-                    {canEdit && editingCommentId !== c.id && (
-                      <span className="ml-auto flex items-center gap-2 font-normal">
-                        <button
-                          type="button"
-                          data-comment-edit={c.id}
-                          onClick={() => onStartEdit(c)}
-                          className="text-[11px] text-neutral-500 hover:underline"
-                        >
-                          編集
-                        </button>
-                        <button
-                          type="button"
-                          data-comment-delete={c.id}
-                          onClick={() => onDelete(c.id)}
-                          className="text-[11px] text-red-600 hover:underline"
-                        >
-                          削除
-                        </button>
-                      </span>
-                    )}
-                  </div>
-                  {editingCommentId === c.id ? (
-                    <div className="mt-1">
-                      <textarea
-                        data-comment-edit-input={c.id}
-                        value={commentEditDraft}
-                        onChange={(e) => onCommentEditDraft(e.target.value)}
-                        rows={3}
-                        className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-sm outline-none focus:border-blue-500"
-                      />
-                      <div className="mt-1 flex justify-end gap-2">
-                        <button
-                          type="button"
-                          data-comment-edit-cancel={c.id}
-                          onClick={onCancelEdit}
-                          className="rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100"
-                        >
-                          キャンセル
-                        </button>
-                        <button
-                          type="button"
-                          data-comment-edit-save={c.id}
-                          onClick={() => onSaveEdit(c.id)}
-                          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
-                        >
-                          保存
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      data-comment-body={c.id}
-                      className="mt-0.5 text-sm [&_a]:text-blue-700 [&_code]:rounded [&_code]:bg-neutral-200 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
-                      dangerouslySetInnerHTML={{ __html: renderCommentBody(c.body) }}
-                    />
-                  )}
-                  <div className="mt-1 flex flex-wrap items-center gap-1">
-                    {(reactionMap[c.id] ?? []).map((r) => (
-                      <button
-                        key={r.emoji}
-                        type="button"
-                        data-comment-reaction={r.emoji}
-                        aria-pressed={r.mine}
-                        onClick={() => onToggleReaction(c.id, r.emoji)}
-                        title="リアクション切替"
-                        className={`rounded-full border px-1.5 py-0.5 text-xs ${
-                          r.mine ? "border-blue-500 bg-blue-50" : "hover:bg-neutral-100"
-                        }`}
-                      >
-                        {r.emoji} {r.n}
-                      </button>
-                    ))}
-                    {quickEmojis
-                      .filter((e) => !(reactionMap[c.id] ?? []).some((r) => r.emoji === e))
-                      .slice(0, 3)
-                      .map((e) => (
-                        <button
-                          key={e}
-                          type="button"
-                          data-comment-reaction-add={e}
-                          onClick={() => onToggleReaction(c.id, e)}
-                          title="リアクションする"
-                          className="rounded-full border border-dashed px-1.5 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100"
-                        >
-                          {e} ＋
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )
-      ) : (
+
+      {items.length === 0 ? (
+        <div className="py-4 text-center text-[12px] text-neutral-400">
+          {feedTab === "comments" ? "まだコメントはありません" : "アクティビティはまだありません"}
+        </div>
+      ) : feedTab === "comments" ? (
         <div>
-          {events.length === 0 && (
-            <div className="py-3 text-sm text-neutral-500">アクティビティはまだありません</div>
+          {items.map((item) => (item.kind === "comment" ? renderComment(item.comment) : null))}
+        </div>
+      ) : (
+        <div className="pt-1">
+          {headItems.map(renderItem)}
+          {collapsed && (
+            <>
+              <button
+                type="button"
+                onClick={() => setExpandedUpdates(true)}
+                className="my-1 rounded px-1 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-50 hover:underline"
+              >
+                過去の更新を表示（{hiddenItems.length} 件）
+              </button>
+              <div hidden>{hiddenItems.map(renderItem)}</div>
+            </>
           )}
-          {events.map((ev) => (
-            <div key={ev.id} className="flex gap-2 py-1.5 text-sm">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-[10px] font-bold text-neutral-600">
-                {(ev.actor_name ?? "?").slice(0, 1)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <span className="font-medium text-neutral-700">{ev.actor_name ?? "システム"}</span>{" "}
-                <span className="text-neutral-600">{ev.summary}</span>
-                <div className="text-xs text-neutral-500">{ev.created_at.slice(0, 16).replace("T", " ")}</div>
-              </div>
-            </div>
-          ))}
+          {tailItems.map(renderItem)}
         </div>
       )}
-    </div>
+    </section>
   );
 }

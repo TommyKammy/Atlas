@@ -5,22 +5,37 @@ import { confirmAction, toast as toastMessage } from "@/lib/ui-feedback";
 import { ApiError, api } from "@/lib/api-client";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
-import { customValueToInput, type CustomField, type CustomValue } from "@/lib/custom-fields";
 import { renderMarkdown } from "@/lib/markdown";
-import MarkdownToolbar from "./MarkdownToolbar";
+import { customValueToInput, type CustomField, type CustomValue } from "@/lib/custom-fields";
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import TaskPaneHeader from "./task/TaskPaneHeader";
+import TaskVisibilityBanner from "./task/TaskVisibilityBanner";
+import TaskDescriptionSection from "./task/TaskDescriptionSection";
+import TaskDueDateField from "./task/TaskDueDateField";
 import TaskSubtasksSection from "./task/TaskSubtasksSection";
 import TaskAttachmentsSection from "./task/TaskAttachmentsSection";
 import TaskDependenciesSection from "./task/TaskDependenciesSection";
 import TaskCustomFieldsSection from "./task/TaskCustomFieldsSection";
 import TaskCommentComposer from "./task/TaskCommentComposer";
 import TaskFeedSection from "./task/TaskFeedSection";
+import TaskAvatar from "./task/TaskAvatar";
+import TaskStatusChip from "./task/TaskStatusChip";
 
+function FieldRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-h-9 items-start gap-2 rounded-md px-1 py-1 hover:bg-neutral-50">
+      <span className="w-[88px] shrink-0 truncate pt-1.5 text-[12px] text-neutral-500" title={label}>
+        {label}
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
 
 export default function TaskPane({
   projectId,
@@ -70,8 +85,6 @@ export default function TaskPane({
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionIndex, setMentionIndex] = useState(0);
-  const [editingDesc, setEditingDesc] = useState(false);
-  const descRef = useRef<HTMLTextAreaElement | null>(null);
   const commentRef = useRef<HTMLTextAreaElement | null>(null);
   const [subtaskDraft, setSubtaskDraft] = useState("");
   const [addingSubtask, setAddingSubtask] = useState(false);
@@ -82,10 +95,13 @@ export default function TaskPane({
     stamp: string;
   } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [maximized, setMaximized] = useState(false);
+  const [showTitle, setShowTitle] = useState(false);
   const router = useRouter();
   const paneRef = useRef<HTMLElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [reactionMap, setReactionMap] = useState(reactions);
-  const [feedTab, setFeedTab] = useState<"comments" | "activity">("comments");
+  const [feedTab, setFeedTab] = useState<"comments" | "activity">("activity");
 
   const toggleReaction = async (commentId: number, emoji: string) => {
     const res = await fetch(`/api/comments/${commentId}/reactions`, {
@@ -95,7 +111,7 @@ export default function TaskPane({
     });
     if (!res.ok) return;
     const data = await res.json();
-    setReactionMap((m) => ({ ...m, [commentId]: data.reactions }));
+    setReactionMap((map) => ({ ...map, [commentId]: data.reactions }));
   };
 
   const QUICK = ["👍", "🎉", "❤️", "😄", "😮"];
@@ -110,14 +126,14 @@ export default function TaskPane({
   const isOverdue = !task.completed && task.due_on !== null && task.due_on < todayStr;
 
   const userName = (id: number | null) =>
-    id === null ? "–" : (users.find((u) => u.id === id)?.name ?? `ID:${id}`);
+    id === null ? "–" : (users.find((user) => user.id === id)?.name ?? `ID:${id}`);
 
-  const describeValue = (key: string, v: unknown): string => {
-    if (v === null || v === undefined || v === "") return "–";
-    if (key === "completed") return v === true ? "完了" : "未完了";
-    if (key === "assignee_id") return userName(typeof v === "number" ? v : null);
-    if (key === "progress") return `${v}%`;
-    return String(v);
+  const describeValue = (key: string, value: unknown): string => {
+    if (value === null || value === undefined || value === "") return "–";
+    if (key === "completed") return value === true ? "完了" : "未完了";
+    if (key === "assignee_id") return userName(typeof value === "number" ? value : null);
+    if (key === "progress") return `${value}%`;
+    return String(value);
   };
 
   const FIELD_LABELS: Record<string, string> = {
@@ -138,7 +154,7 @@ export default function TaskPane({
     } catch (error) {
       if (error instanceof TaskConflictError) {
         if (error.current && error.updatedAt) {
-          const keys = Object.keys(fields).filter((k) => k in FIELD_LABELS);
+          const keys = Object.keys(fields).filter((key) => key in FIELD_LABELS);
           setConflict({
             current: error.current as Record<string, string | number | boolean | null>,
             attempted: fields,
@@ -176,9 +192,32 @@ export default function TaskPane({
   const toggle = () => patch({ completed: !task.completed });
 
   const remove = async () => {
-    if (!await confirmAction(`「${task.name}」を削除しますか？`)) return;
+    if (!(await confirmAction(`「${task.name}」を削除しますか？`))) return;
     await api(`/api/tasks/${task.id}`, "DELETE");
     router.push(closeHref);
+  };
+
+  const copyTaskLink = async () => {
+    const url = `${window.location.origin}/projects/${projectId}?view=${view}&task=${task.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toastMessage("タスクのリンクをコピーしました");
+    } catch {
+      window.prompt("タスクのリンク", url);
+    }
+  };
+
+  const shareTask = async () => {
+    const url = `${window.location.origin}/projects/${projectId}?view=${view}&task=${task.id}`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: task.name, url });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+    await copyTaskLink();
   };
 
   const addComment = async () => {
@@ -203,22 +242,21 @@ export default function TaskPane({
   };
 
   const deleteComment = async (commentId: number) => {
-    if (!await confirmAction("このコメントを削除しますか？")) return;
+    if (!(await confirmAction("このコメントを削除しますか？"))) return;
     await api(`/api/comments/${commentId}`, "DELETE");
     if (editingCommentId === commentId) setEditingCommentId(null);
     refresh();
   };
 
   const renderCommentBody = (body: string): string => {
-    const html = renderMarkdown(body);
     const names = [...users]
-      .map((u) => u.name)
+      .map((user) => user.name)
       .filter((name) => name !== "")
       .sort((a, b) => b.length - a.length);
-    if (names.length === 0) return html;
+    if (names.length === 0) return body;
     const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = new RegExp(`@(${names.map(escape).join("|")})`, "g");
-    return html
+    return body
       .split(/(<[^>]+>)/)
       .map((part) => {
         if (part.startsWith("<")) return part;
@@ -231,8 +269,14 @@ export default function TaskPane({
       .join("");
   };
 
-  const mentionCandidates = users.filter((u) =>
-    mentionQuery === "" ? true : u.name.toLowerCase().includes(mentionQuery.toLowerCase()),
+  const renderCommentWithMarkdown = (body: string): string => {
+    // The feed component receives escaped markdown HTML; mention highlighting
+    // still runs on text nodes so mentions remain consistent with the API.
+    return renderCommentBody(renderMarkdown(body));
+  };
+
+  const mentionCandidates = users.filter((user) =>
+    mentionQuery === "" ? true : user.name.toLowerCase().includes(mentionQuery.toLowerCase()),
   );
 
   const onCommentChange = (value: string, cursor: number | null) => {
@@ -242,9 +286,9 @@ export default function TaskPane({
       return;
     }
     const before = value.slice(0, cursor);
-    const m = before.match(/@([^@\s]*)$/);
-    if (m) {
-      setMentionQuery(m[1]);
+    const match = before.match(/@([^@\s]*)$/);
+    if (match) {
+      setMentionQuery(match[1]);
       setMentionIndex(0);
       setMentionOpen(true);
     } else {
@@ -253,18 +297,18 @@ export default function TaskPane({
   };
 
   const pickMention = (name: string) => {
-    const el = commentRef.current;
-    if (!el) return;
-    const pos = el.selectionStart ?? commentDraft.length;
-    const before = commentDraft.slice(0, pos);
-    const after = commentDraft.slice(pos);
+    const element = commentRef.current;
+    if (!element) return;
+    const position = element.selectionStart ?? commentDraft.length;
+    const before = commentDraft.slice(0, position);
+    const after = commentDraft.slice(position);
     const replaced = before.replace(/@([^@\s]*)$/, `@${name} `);
     const next = replaced + after;
     setCommentDraft(next);
     setMentionOpen(false);
     requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(replaced.length, replaced.length);
+      element.focus();
+      element.setSelectionRange(replaced.length, replaced.length);
     });
   };
 
@@ -293,14 +337,14 @@ export default function TaskPane({
     setAddingProject(true);
   };
 
-  const onPickMemberProject = async (pid: string) => {
-    setNewMemberProject(pid);
+  const onPickMemberProject = async (projectIdValue: string) => {
+    setNewMemberProject(projectIdValue);
     setNewMemberSection("");
-    if (!pid) {
+    if (!projectIdValue) {
       setNewMemberSections([]);
       return;
     }
-    const res = await fetch(`/api/lookup?project_id=${pid}`);
+    const res = await fetch(`/api/lookup?project_id=${projectIdValue}`);
     setNewMemberSections(await res.json());
   };
 
@@ -322,31 +366,33 @@ export default function TaskPane({
     refresh();
   };
 
-  const renderCustomEditor = (f: CustomField) => {
-    const v = customValues[f.id];
-    if (f.field_type === "number") {
+  const renderCustomEditor = (field: CustomField) => {
+    const value = customValues[field.id];
+    if (field.field_type === "number") {
       return (
         <input
           type="number"
-          defaultValue={customValueToInput(f, v)}
-          key={`cf-${task.id}-${f.id}`}
-          onBlur={(e) => setCustomValue(f.id, e.target.value === "" ? null : Number(e.target.value))}
-          className="w-28 rounded border px-2 py-1"
+          defaultValue={customValueToInput(field, value)}
+          key={`cf-${task.id}-${field.id}`}
+          onBlur={(event) =>
+            setCustomValue(field.id, event.target.value === "" ? null : Number(event.target.value))
+          }
+          className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
         />
       );
     }
-    if (f.field_type === "select") {
+    if (field.field_type === "select") {
       return (
         <select
-          defaultValue={customValueToInput(f, v)}
-          key={`cf-${task.id}-${f.id}`}
-          onChange={(e) => setCustomValue(f.id, e.target.value === "" ? null : e.target.value)}
-          className="rounded border px-2 py-1"
+          defaultValue={customValueToInput(field, value)}
+          key={`cf-${task.id}-${field.id}`}
+          onChange={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
+          className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
         >
           <option value="">–</option>
-          {f.options.map((o) => (
-            <option key={o} value={o}>
-              {o}
+          {field.options.map((option) => (
+            <option key={option} value={option}>
+              {option}
             </option>
           ))}
         </select>
@@ -354,10 +400,10 @@ export default function TaskPane({
     }
     return (
       <input
-        defaultValue={customValueToInput(f, v)}
-        key={`cf-${task.id}-${f.id}`}
-        onBlur={(e) => setCustomValue(f.id, e.target.value === "" ? null : e.target.value)}
-        className="w-full rounded border px-2 py-1"
+        defaultValue={customValueToInput(field, value)}
+        key={`cf-${task.id}-${field.id}`}
+        onBlur={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
+        className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
       />
     );
   };
@@ -376,33 +422,38 @@ export default function TaskPane({
     }
   };
 
-  const removeAttachment = async (aid: number) => {
-    if (!await confirmAction("添付を削除しますか？")) return;
-    await fetch(`/api/attachments/${aid}`, { method: "DELETE" });
+  const removeAttachment = async (attachmentId: number) => {
+    if (!(await confirmAction("添付を削除しますか？"))) return;
+    await fetch(`/api/attachments/${attachmentId}`, { method: "DELETE" });
     refresh();
   };
 
-  const removeMembership = async (pid: number) => {
-    await fetch(`/api/memberships?task_id=${task.id}&project_id=${pid}`, { method: "DELETE" });
+  const removeMembership = async (projectIdValue: number) => {
+    await fetch(`/api/memberships?task_id=${task.id}&project_id=${projectIdValue}`, { method: "DELETE" });
     refresh();
   };
 
-  const removeDependency = async (depId: number) => {
-    await fetch(`/api/dependencies?task_id=${task.id}&depends_on_id=${depId}`, { method: "DELETE" });
+  const removeDependency = async (dependencyId: number) => {
+    await fetch(`/api/dependencies?task_id=${task.id}&depends_on_id=${dependencyId}`, { method: "DELETE" });
     refresh();
   };
 
-  const collaboratorNames = (() => {
-    const names = [
-      ...(task.assignee_id !== null
-        ? [users.find((u) => u.id === task.assignee_id)?.name ?? null]
-        : []),
-      ...comments.map((c) => c.author_name),
-    ].filter((n): n is string => Boolean(n));
-    const uniq = [...new Set(names)];
-    return uniq.length > 0 ? uniq.slice(0, 3).join("・") + (uniq.length > 3 ? ` 他${uniq.length - 3}人` : "") : "誰にも";
+  const collaboratorList = (() => {
+    const map = new Map<number, { id: number; name: string; avatar_url?: string | null }>();
+    const add = (id: number | null, name: string | null | undefined) => {
+      if (id === null || !name) return;
+      map.set(id, { id, name, avatar_url: users.find((user) => user.id === id)?.avatar_url ?? null });
+    };
+    add(task.assignee_id, userName(task.assignee_id));
+    add(task.created_by, task.creator_name ?? null);
+    for (const comment of comments) add(comment.author_id, comment.author_name);
+    return [...map.values()];
   })();
-  const collaborators = `このタスクは${collaboratorNames}に表示されています。`;
+
+  const assignee = users.find((user) => user.id === task.assignee_id);
+  const statusChoices = statusOptions.includes(task.status)
+    ? statusOptions
+    : [task.status, ...statusOptions];
 
   return (
     <aside
@@ -411,330 +462,368 @@ export default function TaskPane({
       role="dialog"
       aria-modal="true"
       aria-label="タスク詳細"
-      className="taskpane-enter fixed inset-0 z-[80] flex w-full shrink-0 flex-col overflow-y-auto border-t bg-white md:static md:z-auto md:w-[520px] md:overflow-y-auto md:border-l md:border-t-0 xl:w-[600px] 2xl:w-[700px]"
+      data-task-pane
+      className={`taskpane-enter flex w-full shrink-0 flex-col overflow-hidden border-t bg-white ${
+        maximized
+          ? "fixed inset-0 z-[120]"
+          : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[calc(100dvh-3rem)] md:w-[560px] md:self-start md:border-l md:border-t-0 xl:w-[680px] 2xl:w-[760px]"
+      }`}
     >
       <TaskPaneHeader
         task={task}
-        collaborators={collaborators}
+        collaborators={collaboratorList}
+        showTitle={showTitle}
         closeHref={closeHref}
+        maximized={maximized}
         onToggle={toggle}
         onRemove={remove}
+        onShare={() => void shareTask()}
+        onCopyLink={() => void copyTaskLink()}
+        onToggleFullscreen={() => setMaximized((value) => !value)}
       />
-      <div className="flex-1 overflow-y-auto p-4">
-        {conflict && (
-          <div className="mb-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm">
-            <div className="font-semibold text-red-700">他のユーザーが先に更新しました</div>
-            <div className="mt-1 space-y-0.5">
-              {Object.keys(conflict.attempted)
-                .filter((k) => k in FIELD_LABELS)
-                .map((k) => (
-                  <div key={k}>
-                    {FIELD_LABELS[k]}: {describeValue(k, conflict.attempted[k])} →{" "}
-                    {k === "assignee_id"
-                      ? (conflict.current.assignee_name as string) ?? "–"
-                      : describeValue(k, conflict.current[k])}
-                    （現在値）
-                  </div>
-                ))}
-            </div>
-            <div className="mt-2 flex gap-2">
-              <button
-                onClick={retryOverwrite}
-                className="rounded bg-red-600 px-3 py-1 text-white hover:bg-red-700"
-              >
-                最新で上書きする
-              </button>
-              <button
-                onClick={() => {
-                  setConflict(null);
-                  refresh();
-                }}
-                className="rounded border px-3 py-1 hover:bg-white"
-              >
-                破棄して最新表示
-              </button>
-            </div>
-          </div>
-        )}
-        <input
-          defaultValue={task.name}
-          key={`name-${task.id}`}
-          onBlur={(e) => e.target.value.trim() && e.target.value !== task.name && patch({ name: e.target.value.trim() })}
-          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-          className="w-full text-2xl font-medium outline-none focus:border-b focus:border-blue-500"
-        />
-        <div className="mt-3 space-y-0.5">
-          <div className="flex h-9 items-center gap-2 rounded-md px-1 hover:bg-neutral-50">
-            <span className="w-28 shrink-0 text-sm text-neutral-500">担当者</span>
-            <select
-              value={task.assignee_id ?? ""}
-              onChange={(e) => patch({ assignee_id: e.target.value === "" ? null : Number(e.target.value) })}
-              className="min-w-0 flex-1 cursor-pointer appearance-none truncate rounded bg-transparent py-1 pr-6 text-sm text-neutral-800 outline-none hover:bg-white"
-            >
-              <option value="">未割当</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                  {u.is_guest ? "（ゲスト）" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex h-9 items-center gap-2 rounded-md px-1 hover:bg-neutral-50">
-            <span className="w-28 shrink-0 text-sm text-neutral-500">期日</span>
-            <span className="flex min-w-0 flex-1 items-center gap-1">
-              <input
-                type="date"
-                defaultValue={task.start_on ?? ""}
-                key={`s-${task.id}`}
-                onChange={(e) => patch({ start_on: e.target.value || null })}
-                title="開始日"
-                className="w-[130px] cursor-pointer rounded bg-transparent px-1 py-1 text-sm text-neutral-800 outline-none hover:bg-white"
-              />
-              <span className="text-neutral-500">〜</span>
-              <input
-                type="date"
-                defaultValue={task.due_on ?? ""}
-                key={`d-${task.id}`}
-                onChange={(e) => patch({ due_on: e.target.value || null })}
-                title="期日"
-                className={`w-[130px] cursor-pointer rounded bg-transparent px-1 py-1 text-sm outline-none hover:bg-white ${
-                  isOverdue ? "font-semibold text-red-700" : "text-neutral-800"
-                }`}
-              />
-            </span>
-          </div>
-          <div className="flex h-9 items-center gap-2 rounded-md px-1 hover:bg-neutral-50">
-            <span className="w-28 shrink-0 text-sm text-neutral-500">進捗</span>
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                defaultValue={task.progress}
-                key={`p-${task.id}`}
-                onBlur={(e) => patch({ progress: Math.max(0, Math.min(100, Number(e.target.value))) })}
-                className="w-16 rounded bg-transparent px-1 py-1 text-sm text-neutral-800 outline-none hover:bg-white"
-              />
-              <span className="h-1.5 w-24 overflow-hidden rounded bg-neutral-200">
-                <span className="block h-full rounded bg-green-500" style={{ width: `${task.progress}%` }} />
-              </span>
-            </span>
-          </div>
-          {statusFieldEnabled && (
-            <div className="flex h-9 items-center gap-2 rounded-md px-1 hover:bg-neutral-50">
-              <span className="w-28 shrink-0 truncate text-sm text-neutral-500">{statusFieldName}</span>
-              <select
-                value={task.status}
-                key={`st-${task.id}`}
-                onChange={(e) => e.target.value && patch({ status: e.target.value })}
-                className="min-w-0 flex-1 cursor-pointer appearance-none rounded bg-transparent px-1 py-1 text-sm text-neutral-800 outline-none hover:bg-white"
-              >
-                {!statusOptions.includes(task.status) && <option value={task.status}>{task.status}</option>}
-                {statusOptions.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
+
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto"
+        onScroll={(event) => setShowTitle(event.currentTarget.scrollTop > 28)}
+        data-task-pane-scroll
+      >
+        <TaskVisibilityBanner onShare={() => void shareTask()} />
+
+        <div className="px-4 pb-8 pt-3">
+          {conflict && (
+            <div className="mb-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm">
+              <div className="font-semibold text-red-700">他のユーザーが先に更新しました</div>
+              <div className="mt-1 space-y-0.5">
+                {Object.keys(conflict.attempted)
+                  .filter((key) => key in FIELD_LABELS)
+                  .map((key) => (
+                    <div key={key}>
+                      {FIELD_LABELS[key]}: {describeValue(key, conflict.attempted[key])} →{" "}
+                      {key === "assignee_id"
+                        ? ((conflict.current.assignee_name as string) ?? "–")
+                        : describeValue(key, conflict.current[key])}
+                      （現在値）
+                    </div>
+                  ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={retryOverwrite}
+                  className="rounded bg-red-600 px-3 py-1 text-white hover:bg-red-700"
+                >
+                  最新で上書きする
+                </button>
+                <button
+                  onClick={() => {
+                    setConflict(null);
+                    refresh();
+                  }}
+                  className="rounded border px-3 py-1 hover:bg-white"
+                >
+                  破棄して最新表示
+                </button>
+              </div>
             </div>
           )}
-          <div className="flex h-9 items-center gap-2 rounded-md px-1 hover:bg-neutral-50">
-            <span className="w-28 shrink-0 text-sm text-neutral-500">繰り返し</span>
-            <select
-              value={task.recurrence ?? "none"}
-              onChange={(e) => patch({ recurrence: e.target.value })}
-              className="min-w-0 flex-1 cursor-pointer appearance-none rounded bg-transparent py-1 pr-6 text-sm text-neutral-800 outline-none hover:bg-white"
-            >
-              <option value="none">なし</option>
-              <option value="daily">毎日</option>
-              <option value="weekly">毎週</option>
-              <option value="monthly">毎月</option>
-            </select>
-          </div>
-          <div className="flex min-h-9 items-start gap-2 rounded-md px-1 py-1 hover:bg-neutral-50">
-            <span className="w-28 shrink-0 pt-1.5 text-sm text-neutral-500">プロジェクト</span>
-            <div className="min-w-0 flex-1 text-neutral-800">
-              {memberships.map((m) => {
-                const isPrimary = m.id === task.project_id;
-                return (
-                  <div key={m.id} className="flex h-8 items-center gap-2 text-sm">
-                    <span className="min-w-0 flex-1 truncate">
-                      {m.name}
-                      {m.section_name ? ` / ${m.section_name}` : ""}
-                      {isPrimary && <span className="ml-1 text-xs text-neutral-500">（主）</span>}
-                    </span>
-                    {!isPrimary && (
-                      <button
-                        onClick={() => removeMembership(m.id)}
-                        className="text-neutral-500 hover:text-red-600"
-                        title="所属を外す"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-              {!addingProject ? (
-                <button onClick={openAddProject} className="flex h-8 items-center text-sm text-neutral-500 hover:text-neutral-700">
-                  ＋ 他プロジェクトに追加
-                </button>
-              ) : (
-                <div className="mt-1 flex flex-col gap-1">
-                  <select
-                    value={newMemberProject}
-                    onChange={(e) => onPickMemberProject(e.target.value)}
-                    className="rounded border px-2 py-1 text-sm"
+
+          <input
+            defaultValue={task.name}
+            key={`name-${task.id}`}
+            aria-label="タスク名"
+            onBlur={(event) =>
+              event.target.value.trim() &&
+              event.target.value !== task.name &&
+              patch({ name: event.target.value.trim() })
+            }
+            onKeyDown={(event) => event.key === "Enter" && (event.target as HTMLInputElement).blur()}
+            className="w-full border-b border-transparent bg-transparent pb-1 text-[24px] font-semibold leading-8 tracking-[-0.01em] text-neutral-900 outline-none placeholder:text-neutral-300 focus:border-[#4075cf]"
+            placeholder="タスク名を入力"
+          />
+
+          <div className="mt-2 space-y-0.5" data-task-fields>
+            <FieldRow label="担当者">
+              <div className="flex h-7 items-center gap-2">
+                {assignee ? (
+                  <TaskAvatar name={assignee.name} url={assignee.avatar_url} className="h-5 w-5" textClassName="text-[9px]" />
+                ) : (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-neutral-300 text-neutral-300">
+                    <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.1">
+                      <circle cx="8" cy="5.5" r="2.3" />
+                      <path d="M3.5 13c.5-2.4 2.2-3.6 4.5-3.6s4 1.2 4.5 3.6" />
+                    </svg>
+                  </span>
+                )}
+                <select
+                  value={task.assignee_id ?? ""}
+                  onChange={(event) =>
+                    patch({ assignee_id: event.target.value === "" ? null : Number(event.target.value) })
+                  }
+                  className="h-7 min-w-0 flex-1 cursor-pointer appearance-none truncate rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+                  aria-label="担当者"
+                >
+                  <option value="">担当者なし</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                      {user.is_guest ? "（ゲスト）" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </FieldRow>
+
+            <FieldRow label="期日">
+              <TaskDueDateField
+                start={task.start_on}
+                due={task.due_on}
+                overdue={isOverdue}
+                onPatch={patch}
+              />
+            </FieldRow>
+
+            <TaskDependenciesSection
+              projectId={projectId}
+              view={view}
+              taskId={task.id}
+              dependencies={dependencies}
+              taskOptions={taskOptions}
+              draft={depDraft}
+              onDraftChange={setDepDraft}
+              onAdd={addDependency}
+              onRemove={removeDependency}
+            />
+
+            <FieldRow label="プロジェクト">
+              <div className="min-w-0 text-neutral-800">
+                {memberships.map((membership) => {
+                  const isPrimary = membership.id === task.project_id;
+                  return (
+                    <div key={membership.id} className="flex min-h-7 items-center gap-1.5 text-[13px]">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[#e8eef8] text-[#38506e]">
+                        <svg viewBox="0 0 16 16" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.4">
+                          <path d="M3 13V3h10v10zM3 6h10M6 6v7" />
+                        </svg>
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {membership.name}
+                        {membership.section_name ? ` / ${membership.section_name}` : ""}
+                      </span>
+                      {isPrimary ? (
+                        <span className="shrink-0 text-[10px] text-neutral-400">主</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => removeMembership(membership.id)}
+                          className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
+                          title="所属を外す"
+                          aria-label={`${membership.name} から外す`}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {!addingProject ? (
+                  <button
+                    type="button"
+                    onClick={openAddProject}
+                    className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
                   >
-                    <option value="">プロジェクトを選択</option>
-                    {allProjects
-                      .filter((p) => !memberships.some((m) => m.id === p.id))
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                  </select>
-                  {newMemberProject && (
-                    <div className="flex gap-1">
-                      <select
-                        value={newMemberSection}
-                        onChange={(e) => setNewMemberSection(e.target.value)}
-                        className="w-full rounded border px-2 py-1 text-sm"
-                      >
-                        <option value="">セクションなし</option>
-                        {newMemberSections.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
+                    <span className="text-sm leading-none">＋</span>
+                    プロジェクトを追加
+                  </button>
+                ) : (
+                  <div className="mt-1 flex flex-col gap-1">
+                    <select
+                      value={newMemberProject}
+                      onChange={(event) => onPickMemberProject(event.target.value)}
+                      className="h-8 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                      aria-label="プロジェクトを選択"
+                    >
+                      <option value="">プロジェクトを選択</option>
+                      {allProjects
+                        .filter((project) => !memberships.some((membership) => membership.id === project.id))
+                        .map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
                           </option>
                         ))}
-                      </select>
-                      <button
-                        onClick={addMembership}
-                        className="shrink-0 rounded bg-neutral-200 px-3 py-1 text-sm hover:bg-neutral-300"
-                      >
-                        追加
-                      </button>
-                    </div>
-                  )}
-                  <button onClick={() => setAddingProject(false)} className="self-start text-sm text-neutral-500">
-                    キャンセル
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <TaskDependenciesSection
-          taskId={task.id}
-          dependencies={dependencies}
-          taskOptions={taskOptions}
-          draft={depDraft}
-          onDraftChange={setDepDraft}
-          onAdd={addDependency}
-          onRemove={removeDependency}
-        />
-        <div className="mt-4">
-          {editingDesc ? (
-            <div>
-              <div className="mb-1">
-                <MarkdownToolbar
-                  target={descRef}
-                  onChange={() => undefined}
-                />
+                    </select>
+                    {newMemberProject && (
+                      <div className="flex gap-1">
+                        <select
+                          value={newMemberSection}
+                          onChange={(event) => setNewMemberSection(event.target.value)}
+                          className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                          aria-label="セクションを選択"
+                        >
+                          <option value="">セクションなし</option>
+                          {newMemberSections.map((section) => (
+                            <option key={section.id} value={section.id}>
+                              {section.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={addMembership}
+                          className="shrink-0 rounded bg-[#2f6fd0] px-3 text-[12px] font-medium text-white hover:bg-[#2459ad]"
+                        >
+                          追加
+                        </button>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setAddingProject(false)}
+                      className="self-start rounded px-1 py-0.5 text-[11px] text-neutral-500 hover:bg-neutral-100"
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                )}
               </div>
-              <textarea
-                ref={descRef}
-                defaultValue={task.description}
-                key={`desc-${task.id}`}
-                onBlur={(e) => {
-                  if (e.target.value !== task.description) patch({ description: e.target.value });
-                  setEditingDesc(false);
-                }}
-                placeholder="このタスクの内容を入力します（Markdown可）"
-                rows={4}
-                autoFocus
-                className="w-full rounded-md bg-neutral-50 p-2 text-sm outline-none focus:bg-white focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          ) : task.description ? (
-            <div
-              onClick={() => setEditingDesc(true)}
-              title="クリックで編集"
-              className="prose-sm max-w-none cursor-pointer rounded-md p-2 text-sm hover:bg-neutral-50 [&_a]:text-blue-700 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(task.description) }}
-            />
-          ) : (
-            <button
-              onClick={() => setEditingDesc(true)}
-              className="w-full rounded-md p-2 text-left text-sm text-neutral-500 hover:bg-neutral-50 hover:text-neutral-600"
-            >
-              このタスクの内容を入力します
-            </button>
-          )}
+            </FieldRow>
+
+            <FieldRow label="進捗">
+              <div className="flex h-7 items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  defaultValue={task.progress}
+                  key={`progress-${task.id}`}
+                  onBlur={(event) =>
+                    patch({ progress: Math.max(0, Math.min(100, Number(event.target.value))) })
+                  }
+                  aria-label="進捗"
+                  className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+                />
+                <span className="text-[10px] text-neutral-400">%</span>
+                <span className="h-1.5 w-28 overflow-hidden rounded-full bg-neutral-200">
+                  <span className="block h-full rounded-full bg-green-500" style={{ width: `${task.progress}%` }} />
+                </span>
+              </div>
+            </FieldRow>
+
+            {statusFieldEnabled && (
+              <FieldRow label={statusFieldName}>
+                <details className="relative inline-block">
+                  <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
+                    <TaskStatusChip status={task.status} />
+                  </summary>
+                  <div className="absolute left-0 top-full z-[130] mt-1 w-44 rounded-lg border border-neutral-200 bg-white p-1 text-[12px] shadow-xl">
+                    {statusChoices.map((choice) => (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={(event) => {
+                          patch({ status: choice });
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}
+                        className={`flex w-full items-center rounded px-2 py-1 text-left hover:bg-neutral-100 ${
+                          choice === task.status ? "font-semibold text-neutral-900" : "text-neutral-700"
+                        }`}
+                      >
+                        {choice}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              </FieldRow>
+            )}
+
+            <FieldRow label="繰り返し">
+              <select
+                value={task.recurrence ?? "none"}
+                onChange={(event) => patch({ recurrence: event.target.value })}
+                className="h-7 max-w-[180px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+                aria-label="繰り返し"
+              >
+                <option value="none">なし</option>
+                <option value="daily">毎日</option>
+                <option value="weekly">毎週</option>
+                <option value="monthly">毎月</option>
+              </select>
+            </FieldRow>
+          </div>
+
+          <TaskCustomFieldsSection customFields={customFields} renderEditor={renderCustomEditor} />
+
+          <TaskDescriptionSection
+            key={`description-${task.id}`}
+            value={task.description}
+            onSave={(value) => {
+              if (value !== task.description) patch({ description: value });
+            }}
+          />
+
+          <TaskSubtasksSection
+            projectId={projectId}
+            view={view}
+            subtasks={subtasks}
+            adding={addingSubtask}
+            draft={subtaskDraft}
+            onStartAdd={() => setAddingSubtask(true)}
+            onCancelAdd={() => {
+              setAddingSubtask(false);
+              setSubtaskDraft("");
+            }}
+            onDraftChange={setSubtaskDraft}
+            onAdd={addSubtask}
+            onToggle={(subtask) =>
+              void api(`/api/tasks/${subtask.id}`, "PATCH", { completed: !subtask.completed }).then(refresh)
+            }
+            onDelete={async (subtask) => {
+              if (!(await confirmAction(`サブタスク「${subtask.name}」を削除しますか？`))) return;
+              void api(`/api/tasks/${subtask.id}`, "DELETE").then(refresh);
+            }}
+          />
+
+          <TaskAttachmentsSection
+            attachments={attachments}
+            uploading={uploading}
+            onUpload={uploadFile}
+            onDelete={removeAttachment}
+          />
+
+          <TaskFeedSection
+            feedTab={feedTab}
+            onFeedTab={setFeedTab}
+            comments={comments}
+            events={events}
+            viewerId={viewerId}
+            viewerCanModerate={viewerCanModerate}
+            editingCommentId={editingCommentId}
+            commentEditDraft={commentEditDraft}
+            onCommentEditDraft={setCommentEditDraft}
+            onStartEdit={startEditComment}
+            onCancelEdit={() => setEditingCommentId(null)}
+            onSaveEdit={(commentId) => void saveComment(commentId)}
+            onDelete={(commentId) => void deleteComment(commentId)}
+            reactionMap={reactionMap}
+            quickEmojis={QUICK}
+            onToggleReaction={toggleReaction}
+            renderCommentBody={renderCommentWithMarkdown}
+          />
         </div>
-        <TaskCommentComposer
-          commentRef={commentRef}
-          draft={commentDraft}
-          onDraftChange={setCommentDraft}
-          onCommentChange={onCommentChange}
-          mentionOpen={mentionOpen}
-          mentionCandidates={mentionCandidates}
-          mentionIndex={mentionIndex}
-          onMentionHover={setMentionIndex}
-          onMentionPick={pickMention}
-          onMentionClose={() => setMentionOpen(false)}
-          onSubmit={addComment}
-        />
-        <TaskCustomFieldsSection customFields={customFields} renderEditor={renderCustomEditor} />
-        <TaskSubtasksSection
-          projectId={projectId}
-          view={view}
-          subtasks={subtasks}
-          adding={addingSubtask}
-          draft={subtaskDraft}
-          onStartAdd={() => setAddingSubtask(true)}
-          onCancelAdd={() => {
-            setAddingSubtask(false);
-            setSubtaskDraft("");
-          }}
-          onDraftChange={setSubtaskDraft}
-          onAdd={addSubtask}
-          onToggle={(s) =>
-            void api(`/api/tasks/${s.id}`, "PATCH", { completed: !s.completed }).then(refresh)
-          }
-          onDelete={async (s) => {
-            if (!await confirmAction(`サブタスク「${s.name}」を削除しますか？`)) return;
-            void api(`/api/tasks/${s.id}`, "DELETE").then(refresh);
-          }}
-        />
-        <TaskAttachmentsSection
-          attachments={attachments}
-          uploading={uploading}
-          onUpload={uploadFile}
-          onDelete={removeAttachment}
-        />
-        <TaskFeedSection
-          feedTab={feedTab}
-          onFeedTab={setFeedTab}
-          comments={comments}
-          events={events}
-          viewerId={viewerId}
-          viewerCanModerate={viewerCanModerate}
-          editingCommentId={editingCommentId}
-          commentEditDraft={commentEditDraft}
-          onCommentEditDraft={setCommentEditDraft}
-          onStartEdit={startEditComment}
-          onCancelEdit={() => setEditingCommentId(null)}
-          onSaveEdit={(commentId) => void saveComment(commentId)}
-          onDelete={(commentId) => void deleteComment(commentId)}
-          reactionMap={reactionMap}
-          quickEmojis={QUICK}
-          onToggleReaction={toggleReaction}
-          renderCommentBody={renderCommentBody}
-        />
       </div>
+
+      <TaskCommentComposer
+        commentRef={commentRef}
+        draft={commentDraft}
+        onDraftChange={setCommentDraft}
+        onCommentChange={onCommentChange}
+        mentionOpen={mentionOpen}
+        mentionCandidates={mentionCandidates}
+        mentionIndex={mentionIndex}
+        onMentionHover={setMentionIndex}
+        onMentionPick={pickMention}
+        onMentionClose={() => setMentionOpen(false)}
+        onSubmit={addComment}
+      />
     </aside>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefObject } from "react";
+import type { MouseEvent, RefObject } from "react";
 
 export function insertWrap(ref: RefObject<HTMLTextAreaElement | null>, before: string, after = "") {
   const el = ref.current;
@@ -25,25 +25,33 @@ export default function MarkdownToolbar({
     insertWrap(target, b, a);
     if (target.current) onChange(target.current.value);
   };
-  const btn = "rounded border px-1.5 py-0.5 text-xs hover:bg-neutral-100";
+  const btn = "rounded px-1.5 py-0.5 text-xs text-neutral-600 hover:bg-neutral-100";
+  const keepFocus = (event: MouseEvent) => event.preventDefault();
   return (
-    <span className="flex gap-1">
-      <button type="button" className={btn} title="太字" onClick={() => wrap("**", "**")}>
-        B
+    <span className="flex items-center gap-0.5">
+      <span className="mr-1 flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-neutral-500">
+        <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.2">
+          <path d="M3 4h10M3 8h7M3 12h10" />
+        </svg>
+        ノーマルテキスト
+      </span>
+      <button type="button" className={btn} title="太字" onMouseDown={keepFocus} onClick={() => wrap("**", "**")}>
+        <strong>B</strong>
       </button>
-      <button type="button" className={btn} title="斜体" onClick={() => wrap("*", "*")}>
-        I
+      <button type="button" className={btn} title="斜体" onMouseDown={keepFocus} onClick={() => wrap("*", "*")}>
+        <em>I</em>
       </button>
-      <button type="button" className={btn} title="コード" onClick={() => wrap("`", "`")}>
+      <button type="button" className={btn} title="コード" onMouseDown={keepFocus} onClick={() => wrap("`", "`")}>
         {"<>"}
       </button>
-      <button type="button" className={btn} title="箇条書き" onClick={() => wrap("- ", "")}>
+      <button type="button" className={btn} title="箇条書き" onMouseDown={keepFocus} onClick={() => wrap("- ", "")}>
         •
       </button>
       <button
         type="button"
         className={btn}
         title="リンク"
+        onMouseDown={keepFocus}
         onClick={() => {
           const url = prompt("URL (https://…):", "https://");
           if (url) wrap("[", `](${url})`);
