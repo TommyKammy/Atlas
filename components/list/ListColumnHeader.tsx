@@ -130,14 +130,14 @@ export default function ListColumnHeader({
           <span
             onMouseDown={(e) => gripMouseDown(e, columnKey)}
             title="ドラッグで列幅を変更"
-            className="absolute top-0 -right-1.5 bottom-0 z-10 w-3 cursor-col-resize hover:bg-blue-300"
+            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-blue-300"
           />
         )}
         {columnKey === "name" && (
           <span
             onMouseDown={(e) => gripMouseDown(e, columnKey)}
             title="ドラッグで列幅を変更"
-            className="absolute top-0 -right-1.5 bottom-0 z-10 w-3 cursor-col-resize hover:bg-blue-300"
+            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-blue-300"
           />
         )}
         {open && (

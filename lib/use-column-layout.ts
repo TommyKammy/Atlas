@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const DEFAULT_WIDTH: Record<string, number> = {
   assignee: 119,
@@ -27,6 +27,7 @@ export function useColumnLayout({
 }) {
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   const [colOrder, setColOrder] = useState<string[]>([]);
+  const [loadedStoreKey, setLoadedStoreKey] = useState<string | null>(null);
   const [colDragging, setColDragging] = useState<string | null>(null);
   const [colDropOver, setColDropOver] = useState<string | null>(null);
   const [isCompact, setIsCompact] = useState(false);
@@ -84,33 +85,41 @@ export function useColumnLayout({
   }, []);
 
   const storeKey = `atlas-listcols-${projectId}`;
-  useEffect(() => {
+  const loaded = loadedStoreKey === storeKey;
+  useLayoutEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       try {
         const widths = JSON.parse(localStorage.getItem(`${storeKey}:w`) ?? "{}");
         const order = JSON.parse(localStorage.getItem(`${storeKey}:o`) ?? "[]");
-        if (widths && typeof widths === "object") setColWidths(widths);
+        if (widths && typeof widths === "object" && !Array.isArray(widths)) setColWidths(widths);
+        else setColWidths({});
         if (Array.isArray(order)) setColOrder(order.filter((key) => typeof key === "string"));
+        else setColOrder([]);
       } catch {
-        /* ignore */
+        setColWidths({});
+        setColOrder([]);
+      } finally {
+        setLoadedStoreKey(storeKey);
       }
     });
     return () => window.cancelAnimationFrame(frame);
   }, [storeKey]);
   useEffect(() => {
+    if (!loaded) return;
     try {
       localStorage.setItem(`${storeKey}:w`, JSON.stringify(colWidths));
     } catch {
       /* ignore */
     }
-  }, [colWidths, storeKey]);
+  }, [colWidths, storeKey, loaded]);
   useEffect(() => {
+    if (!loaded) return;
     try {
       localStorage.setItem(`${storeKey}:o`, JSON.stringify(colOrder));
     } catch {
       /* ignore */
     }
-  }, [colOrder, storeKey]);
+  }, [colOrder, storeKey, loaded]);
 
   const startResize = (event: React.MouseEvent, key: string) => {
     event.preventDefault();
@@ -120,6 +129,18 @@ export function useColumnLayout({
       key === "name" && colWidths[key] == null
         ? ((event.currentTarget as HTMLElement).parentElement?.getBoundingClientRect().width ?? 240)
         : colW(key);
+
+    // The name column is elastic while idle. Freeze it at its rendered width
+    // before resizing a fixed column so that the resized column's left edge
+    // stays put instead of the name column shrinking underneath it.
+    if (key !== "name" && colWidths.name == null) {
+      const nameHeader = document.querySelector<HTMLElement>('[data-list-header="name"]');
+      const measured = nameHeader?.getBoundingClientRect().width;
+      if (measured && measured > 0) {
+        setColWidths((previous) => ({ ...previous, name: Math.round(measured) }));
+      }
+    }
+
     const onMove = (moveEvent: MouseEvent) => {
       const width = Math.min(400, Math.max(60, startW + moveEvent.clientX - startX));
       setColWidths((previous) => ({ ...previous, [key]: width }));
@@ -140,6 +161,10 @@ export function useColumnLayout({
   const headerMouseDown = (event: React.MouseEvent, key: string) => {
     if (key === "name") return;
     if ((event.target as HTMLElement).closest('[title="ドラッグで列幅を変更"],div.z-40,input,select,textarea')) return;
+    // The right edge belongs to the resize handle. Without this guard a
+    // slightly missed resize grab becomes a column reorder.
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    if (event.clientX >= rect.right - 10) return;
     colDragCand.current = { key, x: event.clientX };
   };
 
