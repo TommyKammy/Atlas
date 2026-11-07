@@ -338,7 +338,19 @@ export type SavedView = {
   id: number;
   name: string;
   view_type: string;
-  filters: { hide_completed?: boolean; assignee?: string; status?: string; due?: string };
+  filters: {
+    hide_completed?: boolean;
+    completed_only?: boolean;
+    mine_only?: boolean;
+    assignee?: string;
+    status?: string;
+    due?: string;
+    start?: string;
+    creator?: string;
+    created?: string;
+    updated?: string;
+    completed_on?: string;
+  };
   sort_key: string;
   group_by: string;
 };

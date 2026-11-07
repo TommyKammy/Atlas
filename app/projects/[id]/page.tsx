@@ -42,6 +42,7 @@ import ProjectShareButton from "@/components/ProjectShareButton";
 import ProjectCustomizeButton from "@/components/ProjectCustomizeButton";
 import TaskPane from "@/components/TaskPane";
 import { getCurrentUserId } from "@/lib/current-user";
+import { parseListDateFilter, parseListGroupBy, parseListSortKey } from "@/lib/list-view";
 
 export const instant = false;
 
@@ -84,11 +85,6 @@ export default async function ProjectPage(props: {
       : null;
   const qstr = (k: string) => (typeof searchParams[k] === "string" ? (searchParams[k] as string) : "");
   const sortRaw = qstr("sort");
-  const sortParam = (sortRaw === "due" || sortRaw === "name" || sortRaw === "progress" ? sortRaw : "position") as
-    | "position"
-    | "due"
-    | "name"
-    | "progress";
   const sortDirParam = qstr("sortdir") === "desc" ? "desc" : "asc";
   const dueParam = ["overdue", "today", "week", "nextweek", "month"].includes(qstr("due"))
     ? qstr("due")
@@ -212,6 +208,94 @@ export default async function ProjectPage(props: {
   await touchRecentProject(viewerId, projectId);
   const paneData = task ? await getTaskPaneData(task.id, projectId, viewerId) : null;
 
+  const tabParam = qstr("tab");
+  const activeTab = tabParam ? projectTabs.find((tab) => tab.tab_key === tabParam) : undefined;
+  const activeListTab =
+    activeTab?.view_type === "list"
+      ? activeTab
+      : projectTabs.find((tab) => tab.view_type === "list");
+  const listSort = parseListSortKey(
+    activeSaved
+      ? activeSaved.sort_key
+      : sortRaw !== ""
+        ? sortRaw
+        : storedString("list", "sort"),
+  );
+  const listSortDir =
+    qstr("sortdir") !== ""
+      ? sortDirParam
+      : ((storedString("list", "sortdir", ["asc", "desc"]) || "asc") as "asc" | "desc");
+  const listGroup = parseListGroupBy(
+    activeSaved
+      ? activeSaved.group_by
+      : groupRaw !== ""
+        ? groupRaw
+        : storedString("list", "group"),
+    project.status_field_enabled !== false,
+  );
+  const listInitial = {
+    hide_completed: activeSaved
+      ? activeSaved.filters.hide_completed === true
+      : searchParams.hide !== undefined
+        ? qstr("hide") === "1"
+        : qstr("completed") === "open"
+          ? true
+          : storedBool("list", "hide_completed"),
+    completed_only: activeSaved
+      ? activeSaved.filters.completed_only === true
+      : qstr("completed") === "done"
+        ? true
+        : storedBool("list", "completed_only"),
+    mine_only: activeSaved
+      ? activeSaved.filters.mine_only === true
+      : qstr("mine") !== ""
+        ? qstr("mine") === "1"
+        : storedBool("list", "mine_only"),
+    assignee: activeSaved
+      ? (activeSaved.filters.assignee ?? "")
+      : qstr("assignee") !== ""
+        ? qstr("assignee")
+        : storedString("list", "assignee"),
+    status: activeSaved
+      ? (activeSaved.filters.status ?? "")
+      : qstr("status") !== ""
+        ? qstr("status")
+        : storedString("list", "status"),
+    due: activeSaved
+      ? (activeSaved.filters.due ?? "")
+      : dueParam !== ""
+        ? dueParam
+        : storedString("list", "due", ["overdue", "today", "week", "nextweek", "month"]),
+    start: activeSaved
+      ? parseListDateFilter(activeSaved.filters.start)
+      : qstr("start") !== ""
+        ? parseListDateFilter(qstr("start"))
+        : parseListDateFilter(storedString("list", "start")),
+    creator: activeSaved
+      ? (activeSaved.filters.creator ?? "")
+      : qstr("creator") !== ""
+        ? qstr("creator")
+        : storedString("list", "creator"),
+    created: activeSaved
+      ? parseListDateFilter(activeSaved.filters.created)
+      : qstr("created") !== ""
+        ? parseListDateFilter(qstr("created"))
+        : parseListDateFilter(storedString("list", "created")),
+    updated: activeSaved
+      ? parseListDateFilter(activeSaved.filters.updated)
+      : qstr("updated") !== ""
+        ? parseListDateFilter(qstr("updated"))
+        : parseListDateFilter(storedString("list", "updated")),
+    completed_on: activeSaved
+      ? parseListDateFilter(activeSaved.filters.completed_on)
+      : qstr("completed_on") !== ""
+        ? parseListDateFilter(qstr("completed_on"))
+        : parseListDateFilter(storedString("list", "completed_on")),
+    sort: listSort,
+    sortdir: listSortDir,
+    group: listGroup,
+  };
+
   return (
     <div className="flex min-h-full flex-col md:flex-row">
       <div className="min-w-0 flex-1">
@@ -305,45 +389,11 @@ export default async function ProjectPage(props: {
             statusFieldName={project.status_field_name ?? "Status"}
             statusFieldEnabled={project.status_field_enabled !== false}
             activeTaskId={taskId}
-            initial={{
-              hide_completed: activeSaved
-                ? activeSaved.filters.hide_completed
-                : searchParams.hide !== undefined
-                  ? qstr("hide") === "1"
-                  : storedBool("list", "hide_completed"),
-              assignee: activeSaved
-                ? (activeSaved.filters.assignee ?? "")
-                : qstr("assignee") !== ""
-                  ? qstr("assignee")
-                  : storedString("list", "assignee"),
-              status: activeSaved
-                ? (activeSaved.filters.status ?? "")
-                : qstr("status") !== ""
-                  ? qstr("status")
-                  : storedString("list", "status"),
-              due: activeSaved
-                ? (activeSaved.filters.due ?? "")
-                : dueParam !== ""
-                  ? dueParam
-                  : storedString("list", "due", ["overdue", "today", "week", "nextweek", "month"]),
-              sort:
-                activeSaved?.sort_key ??
-                (sortRaw !== ""
-                  ? sortParam
-                  : (storedString("list", "sort", ["due", "name", "progress"]) || "position")),
-              sortdir:
-                qstr("sortdir") !== ""
-                  ? sortDirParam
-                  : ((storedString("list", "sortdir", ["asc", "desc"]) || "asc") as "asc" | "desc"),
-              group:
-                activeSaved?.group_by ??
-                (groupRaw !== ""
-                  ? boardGroup
-                  : ((storedString("list", "group", ["assignee", "status"]) || "section") as
-                      | "section"
-                      | "assignee"
-                      | "status")),
-            }}
+            viewerId={viewerId}
+            viewName={activeListTab?.name ?? "リスト"}
+            viewTabId={activeListTab && activeListTab.id > 0 ? activeListTab.id : null}
+            canEdit={access.role === "admin" || access.role === "editor"}
+            initial={listInitial}
           />
         )}
         {view === "board" && boardData && (

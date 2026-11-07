@@ -15,10 +15,21 @@ import EmptyState from "./EmptyState";
 import { usePersistedViewState } from "@/lib/view-state-client";
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import ListToolbar from "./list/ListToolbar";
+import type { ListColumnOption } from "./list/ListOptionsDrawer";
 import ListColumnHeader from "./list/ListColumnHeader";
 import TaskListRow from "./list/TaskListRow";
 import { useListSelection } from "@/lib/use-list-selection";
 import { useColumnLayout } from "@/lib/use-column-layout";
+import {
+  listDateInRange,
+  parseListDateFilter,
+  parseListGroupBy,
+  parseListSortKey,
+  type ListDateFilter,
+  type ListFilters,
+  type ListGroupBy,
+  type ListSortKey,
+} from "@/lib/list-view";
 
 
 
@@ -38,6 +49,10 @@ export default function ListView({
   statusFieldName,
   statusFieldEnabled,
   activeTaskId,
+  viewerId,
+  viewName,
+  viewTabId,
+  canEdit,
 }: {
   projectId: number;
   sections: Section[];
@@ -52,13 +67,24 @@ export default function ListView({
   statusFieldName: string;
   statusFieldEnabled: boolean;
   activeTaskId: number | null;
+  viewerId: number;
+  viewName: string;
+  viewTabId: number | null;
+  canEdit: boolean;
   initial: {
     hide_completed?: boolean;
+    completed_only?: boolean;
+    mine_only?: boolean;
     assignee?: string;
     status?: string;
+    due?: string;
+    start?: string;
+    creator?: string;
+    created?: string;
+    updated?: string;
+    completed_on?: string;
     sort?: string;
     sortdir?: "asc" | "desc";
-    due?: string;
     group?: string;
   };
 }) {
@@ -122,32 +148,67 @@ export default function ListView({
     refresh();
   };
   const [hideCompleted, setHideCompleted] = useState(initial.hide_completed === true);
-  const [groupBy, setGroupBy] = useState<"section" | "assignee" | "status">(
-    initial.group === "assignee" || (initial.group === "status" && statusFieldEnabled)
-      ? initial.group
-      : "section",
+  const [completedOnly, setCompletedOnly] = useState(initial.completed_only === true);
+  const [mineOnly, setMineOnly] = useState(initial.mine_only === true);
+  const [groupBy, setGroupBy] = useState<ListGroupBy>(() =>
+    parseListGroupBy(initial.group, statusFieldEnabled),
   );
   const [groupSections, setGroupSections] = useState<Record<string, number | null>>({});
   const [assigneeFilter, setAssigneeFilter] = useState(initial.assignee ?? "");
-  const [sortKey, setSortKey] = useState<"position" | "due" | "name" | "progress">(
-    initial.sort === "due" || initial.sort === "name" || initial.sort === "progress" ? initial.sort : "position",
-  );
+  const [sortKey, setSortKey] = useState<ListSortKey>(() => parseListSortKey(initial.sort));
   const [sortDir, setSortDir] = useState<"asc" | "desc">(initial.sortdir === "desc" ? "desc" : "asc");
   const [dueFilter, setDueFilter] = useState(initial.due ?? "");
   const [statusFilter, setStatusFilter] = useState(initial.status ?? "");
+  const [startFilter, setStartFilter] = useState<ListDateFilter>(() => parseListDateFilter(initial.start));
+  const [creatorFilter, setCreatorFilter] = useState(initial.creator ?? "");
+  const [createdFilter, setCreatedFilter] = useState<ListDateFilter>(() => parseListDateFilter(initial.created));
+  const [updatedFilter, setUpdatedFilter] = useState<ListDateFilter>(() => parseListDateFilter(initial.updated));
+  const [completedDateFilter, setCompletedDateFilter] = useState<ListDateFilter>(() =>
+    parseListDateFilter(initial.completed_on),
+  );
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [menuCol, setMenuCol] = useState<string | null>(null);
   const [hiddenCols, setHiddenCols] = useState<Set<number>>(new Set());
+  const [hiddenCore, setHiddenCore] = useState<Set<string>>(new Set());
   const [statusHidden, setStatusHidden] = useState(false);
   const [rowLimits, setRowLimits] = useState<Record<string, number>>({});
+  const hiddenCoreKey = `atlas-listcols-${projectId}:h`;
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(hiddenCoreKey) ?? "[]");
+        if (Array.isArray(saved)) {
+          setHiddenCore(new Set(saved.filter((key): key is string => typeof key === "string")));
+        }
+      } catch {
+        /* ignore malformed saved layout */
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [hiddenCoreKey]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(hiddenCoreKey, JSON.stringify([...hiddenCore]));
+    } catch {
+      /* ignore */
+    }
+  }, [hiddenCore, hiddenCoreKey]);
   usePersistedViewState(projectId, "list", {
     hide_completed: hideCompleted,
+    completed_only: completedOnly,
+    mine_only: mineOnly,
     assignee: assigneeFilter,
     status: statusFilter,
     due: dueFilter,
+    start: startFilter,
+    creator: creatorFilter,
+    created: createdFilter,
+    updated: updatedFilter,
+    completed_on: completedDateFilter,
     sort: sortKey,
     sortdir: sortDir,
     group: groupBy,
@@ -159,24 +220,43 @@ export default function ListView({
 
   const pushState = (patch: {
     hide?: boolean;
+    completed?: boolean;
+    mine?: boolean;
     assignee?: string;
     status?: string;
     sort?: string;
     sortdir?: "asc" | "desc";
     due?: string;
+    start?: string;
+    creator?: string;
+    created?: string;
+    updated?: string;
+    completed_on?: string;
     group?: string;
   }) => {
     const q = new URLSearchParams(window.location.search);
     q.set("view", "list");
+    q.delete("saved");
     const hide = patch.hide ?? hideCompleted;
+    const completed = patch.completed ?? completedOnly;
+    const mine = patch.mine ?? mineOnly;
     const asn = patch.assignee ?? assigneeFilter;
     const st = patch.status ?? statusFilter;
     const so = patch.sort ?? sortKey;
     const sd = patch.sortdir ?? sortDir;
     const du = patch.due ?? dueFilter;
+    const start = patch.start ?? startFilter;
+    const creator = patch.creator ?? creatorFilter;
+    const created = patch.created ?? createdFilter;
+    const updated = patch.updated ?? updatedFilter;
+    const completedOn = patch.completed_on ?? completedDateFilter;
     const gr = patch.group ?? groupBy;
     if (hide) q.set("hide", "1");
     else q.delete("hide");
+    if (completed) q.set("completed", "done");
+    else q.delete("completed");
+    if (mine) q.set("mine", "1");
+    else q.delete("mine");
     if (asn !== "") q.set("assignee", asn);
     else q.delete("assignee");
     if (st !== "") q.set("status", st);
@@ -191,9 +271,66 @@ export default function ListView({
     }
     if (du !== "") q.set("due", du);
     else q.delete("due");
+    if (start !== "") q.set("start", start);
+    else q.delete("start");
+    if (creator !== "") q.set("creator", creator);
+    else q.delete("creator");
+    if (created !== "") q.set("created", created);
+    else q.delete("created");
+    if (updated !== "") q.set("updated", updated);
+    else q.delete("updated");
+    if (completedOn !== "") q.set("completed_on", completedOn);
+    else q.delete("completed_on");
     if (gr !== "section") q.set("group", gr);
     else q.delete("group");
     router.push(`/projects/${projectId}?${q.toString()}`);
+  };
+  const setFilter = (key: keyof ListFilters, value: string | boolean) => {
+    if (key === "hide_completed") {
+      const next = value === true;
+      setHideCompleted(next);
+      pushState({ hide: next });
+    } else if (key === "completed_only") {
+      const next = value === true;
+      setCompletedOnly(next);
+      pushState({ completed: next });
+    } else if (key === "mine_only") {
+      const next = value === true;
+      setMineOnly(next);
+      pushState({ mine: next });
+    } else if (key === "assignee") {
+      const next = String(value);
+      setAssigneeFilter(next);
+      pushState({ assignee: next });
+    } else if (key === "status") {
+      const next = String(value);
+      setStatusFilter(next);
+      pushState({ status: next });
+    } else if (key === "due") {
+      const next = String(value);
+      setDueFilter(next);
+      pushState({ due: next });
+    } else if (key === "start") {
+      const next = parseListDateFilter(value);
+      setStartFilter(next);
+      pushState({ start: next });
+    } else if (key === "creator") {
+      const next = String(value);
+      setCreatorFilter(next);
+      pushState({ creator: next });
+    } else if (key === "created") {
+      const next = parseListDateFilter(value);
+      setCreatedFilter(next);
+      pushState({ created: next });
+    } else if (key === "updated") {
+      const next = parseListDateFilter(value);
+      setUpdatedFilter(next);
+      pushState({ updated: next });
+    } else if (key === "completed_on") {
+      const next = parseListDateFilter(value);
+      setCompletedDateFilter(next);
+      pushState({ completed_on: next });
+    }
   };
   const [addMenu, setAddMenu] = useState(false);
   const [addTemplates, setAddTemplates] = useState<TaskTemplate[]>([]);
@@ -288,6 +425,7 @@ export default function ListView({
     projectId,
     baseKeys,
     hiddenCols,
+    hiddenKeys: hiddenCore,
     statusHidden,
     onMenuClose: () => setMenuCol(null),
   });
@@ -318,10 +456,17 @@ export default function ListView({
     });
   const visible = tasks.filter(
     (t) =>
-      (!hideCompleted || !t.completed) &&
+      (completedOnly ? t.completed : !hideCompleted || !t.completed) &&
+      (!mineOnly || t.assignee_id === viewerId) &&
       (assigneeFilter === "" ||
         (assigneeFilter === "none" ? t.assignee_id === null : t.assignee_id === Number(assigneeFilter))) &&
       (!statusFieldEnabled || statusFilter === "" || t.status === statusFilter) &&
+      (creatorFilter === "" ||
+        (creatorFilter === "none" ? t.created_by === null : t.created_by === Number(creatorFilter))) &&
+      listDateInRange(t.start_on, startFilter, today) &&
+      listDateInRange(t.created_at, createdFilter, today) &&
+      listDateInRange(t.updated_at, updatedFilter, today) &&
+      listDateInRange(t.completed_at, completedDateFilter, today) &&
       (dueFilter === "" ||
         (t.due_on !== null &&
           (dueFilter === "overdue"
@@ -341,19 +486,34 @@ export default function ListView({
   );
 
   const sorter = (a: TaskRow, b: TaskRow) => {
-    if (sortKey === "due") {
-      const av = a.due_on ?? "9999";
-      const bv = b.due_on ?? "9999";
-      return sortDir === "asc" ? (av < bv ? -1 : 1) : av > bv ? -1 : 1;
-    }
-    if (sortKey === "name") {
-      const c = a.name.localeCompare(b.name, "ja");
-      return sortDir === "asc" ? c : -c;
-    }
-    if (sortKey === "progress") {
-      const c = a.progress - b.progress;
-      return sortDir === "asc" ? c : -c;
-    }
+    const dir = sortDir === "asc" ? 1 : -1;
+    const text = (av: string | null | undefined, bv: string | null | undefined) => {
+      const left = av ?? "";
+      const right = bv ?? "";
+      return left.localeCompare(right, "ja") * dir;
+    };
+    const nullableText = (av: string | null | undefined, bv: string | null | undefined) => {
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      return av.localeCompare(bv, "ja") * dir;
+    };
+    const date = (av: string | null | undefined, bv: string | null | undefined) => {
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      return av.localeCompare(bv) * dir;
+    };
+    if (sortKey === "start") return date(a.start_on, b.start_on);
+    if (sortKey === "due") return date(a.due_on, b.due_on);
+    if (sortKey === "assignee") return nullableText(a.assignee_name, b.assignee_name);
+    if (sortKey === "creator") return nullableText(a.creator_name, b.creator_name);
+    if (sortKey === "created") return date(a.created_at, b.created_at);
+    if (sortKey === "updated") return date(a.updated_at, b.updated_at);
+    if (sortKey === "completed") return date(a.completed_at, b.completed_at);
+    if (sortKey === "name") return text(a.name, b.name);
+    if (sortKey === "progress") return (a.progress - b.progress) * dir;
+    if (sortKey === "status") return text(a.status, b.status);
     return a.position - b.position || a.id - b.id;
   };
 
@@ -508,7 +668,7 @@ export default function ListView({
     const res = await api<{ id: number }>("/api/saved-views", "POST", {
       project_id: projectId,
       name: saveName,
-      filters: { hide_completed: hideCompleted, assignee: assigneeFilter, status: statusFilter, due: dueFilter },
+      filters: { ...filters },
       sort_key: sortKey,
       group_by: groupBy,
     });
@@ -548,6 +708,31 @@ export default function ListView({
   const sortMark = (key: "name" | "due" | "progress") =>
     sortKey === key ? (sortDir === "asc" ? " ▲" : " ▼") : "";
 
+  const applySortKey = (key: Exclude<ListSortKey, "position">) => {
+    if (sortKey === key) {
+      const next = sortDir === "asc" ? "desc" : "asc";
+      setSortDir(next);
+      pushState({ sort: key, sortdir: next });
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+      pushState({ sort: key, sortdir: "asc" });
+    }
+  };
+  const toggleSortDir = () => {
+    const next = sortDir === "asc" ? "desc" : "asc";
+    setSortDir(next);
+    pushState({ sort: sortKey, sortdir: next });
+  };
+  const applyGroupBy = (key: ListGroupBy) => {
+    setGroupBy(key);
+    pushState({ group: key });
+  };
+  const clearGroup = () => {
+    setGroupBy("section");
+    pushState({ group: "section" });
+  };
+
   const applyDueFilter = (v: string) => {
     setDueFilter(v);
     pushState({ due: v });
@@ -563,17 +748,34 @@ export default function ListView({
 
   const activeFilterCount =
     (hideCompleted ? 1 : 0) +
+    (completedOnly ? 1 : 0) +
+    (mineOnly ? 1 : 0) +
     (assigneeFilter !== "" ? 1 : 0) +
     (dueFilter !== "" ? 1 : 0) +
+    (startFilter !== "" ? 1 : 0) +
+    (creatorFilter !== "" ? 1 : 0) +
+    (createdFilter !== "" ? 1 : 0) +
+    (updatedFilter !== "" ? 1 : 0) +
+    (completedDateFilter !== "" ? 1 : 0) +
     (statusFieldEnabled && statusFilter !== "" ? 1 : 0);
   const sortActive = sortKey !== "position";
 
   const clearFilters = () => {
     setHideCompleted(false);
+    setCompletedOnly(false);
+    setMineOnly(false);
     setAssigneeFilter("");
     setDueFilter("");
     setStatusFilter("");
+    setStartFilter("");
+    setCreatorFilter("");
+    setCreatedFilter("");
+    setUpdatedFilter("");
+    setCompletedDateFilter("");
+    const current = new URLSearchParams(window.location.search);
     const q = new URLSearchParams({ view: "list" });
+    const tab = current.get("tab");
+    if (tab) q.set("tab", tab);
     if (sortActive) {
       q.set("sort", sortKey);
       if (sortDir === "desc") q.set("sortdir", "desc");
@@ -589,17 +791,80 @@ export default function ListView({
   const openFilterMenu = () => {
     setSortOpen(false);
     setGroupOpen(false);
+    setOptionsOpen(false);
     setFilterOpen((v) => !v);
   };
   const openSortMenu = () => {
     setFilterOpen(false);
     setGroupOpen(false);
+    setOptionsOpen(false);
     setSortOpen((v) => !v);
   };
   const openGroupMenu = () => {
     setFilterOpen(false);
     setSortOpen(false);
+    setOptionsOpen(false);
     setGroupOpen((v) => !v);
+  };
+
+  const renameView = async (name: string) => {
+    if (!canEdit || viewTabId === null) return;
+    try {
+      await api(`/api/project-tabs/${viewTabId}`, "PATCH", { name });
+      toastMessage("ビュー名を変更しました");
+      router.refresh();
+    } catch (error) {
+      toastMessage(error instanceof Error ? error.message : "ビュー名を変更できませんでした");
+    }
+  };
+
+  const filters: ListFilters = {
+    hide_completed: hideCompleted,
+    completed_only: completedOnly,
+    mine_only: mineOnly,
+    assignee: assigneeFilter,
+    status: statusFilter,
+    due: dueFilter,
+    start: startFilter,
+    creator: creatorFilter,
+    created: createdFilter,
+    updated: updatedFilter,
+    completed_on: completedDateFilter,
+  };
+
+  const columnOptions: ListColumnOption[] = [
+    { key: "assignee", label: "担当者", visible: !hiddenCore.has("assignee") },
+    { key: "due", label: "期日", visible: !hiddenCore.has("due") },
+    { key: "progress", label: "進捗", visible: !hiddenCore.has("progress") },
+    ...(statusFieldEnabled
+      ? [{ key: "status", label: statusFieldName, visible: !statusHidden }]
+      : []),
+    ...customFields.map((field) => ({
+      key: `cf-${field.id}`,
+      label: field.name,
+      visible: !hiddenCols.has(field.id),
+    })),
+  ];
+
+  const toggleColumn = (key: string) => {
+    if (key === "status") {
+      setStatusHidden((value) => !value);
+    } else if (key.startsWith("cf-")) {
+      const id = Number(key.slice(3));
+      setHiddenCols((previous) => {
+        const next = new Set(previous);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    } else {
+      setHiddenCore((previous) => {
+        const next = new Set(previous);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    }
   };
 
   const startEditField = (f: CustomField) => {
@@ -681,8 +946,20 @@ export default function ListView({
     />
   );
 
-  const groupKeyOf = (t: TaskRow) =>
-    groupBy === "assignee" ? (t.assignee_name ?? "（未割当）") : t.status || "（未設定）";
+  const groupKeyOf = (t: TaskRow) => {
+    if (groupBy === "assignee") return t.assignee_name ?? "（未割当）";
+    if (groupBy === "creator") return t.creator_name ?? "（作成者なし）";
+    if (groupBy === "status") return t.status || "（未設定）";
+    if (groupBy === "due") return t.due_on ?? "（期日なし）";
+    if (groupBy === "start") return t.start_on ?? "（開始日なし）";
+    if (groupBy === "created") return t.created_at.slice(0, 10);
+    if (groupBy === "updated") return t.updated_at.slice(0, 10);
+    if (groupBy === "completed") {
+      if (!t.completed) return "（未完了）";
+      return t.completed_at?.slice(0, 10) ?? "（完了日なし）";
+    }
+    return "";
+  };
 
   const grouped = new Map<string, TaskRow[]>();
   if (groupBy !== "section") {
@@ -891,12 +1168,19 @@ export default function ListView({
       className="px-4 pb-16"
       data-list-view
       data-list-hide-completed={hideCompleted}
+      data-list-completed-only={completedOnly}
+      data-list-mine-only={mineOnly}
       data-list-sort={sortKey}
       data-list-sortdir={sortDir}
       data-list-group={groupBy}
       data-list-assignee={assigneeFilter}
       data-list-status={statusFilter}
       data-list-due={dueFilter}
+      data-list-start={startFilter}
+      data-list-creator={creatorFilter}
+      data-list-created={createdFilter}
+      data-list-updated={updatedFilter}
+      data-list-completed-on={completedDateFilter}
     >
       <div className="overflow-x-auto">
       <div className="min-w-[860px]">
@@ -917,29 +1201,22 @@ export default function ListView({
         clearFilters={clearFilters}
         filterOpen={filterOpen}
         setFilterOpen={setFilterOpen}
-        hideCompleted={hideCompleted}
-        setHideCompleted={setHideCompleted}
-        pushState={pushState}
-        assigneeFilter={assigneeFilter}
-        setAssigneeFilter={setAssigneeFilter}
-        dueFilter={dueFilter}
-        setDueFilter={setDueFilter}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        sortActive={sortActive}
-        openSortMenu={openSortMenu}
-        clearAllSort={clearAllSort}
+        filters={filters}
+        onFilterChange={setFilter}
         sortOpen={sortOpen}
         setSortOpen={setSortOpen}
+        openSortMenu={openSortMenu}
+        clearAllSort={clearAllSort}
         sortKey={sortKey}
-        setSortKey={setSortKey}
         sortDir={sortDir}
-        setSortDir={setSortDir}
+        applySortKey={applySortKey}
+        toggleSortDir={toggleSortDir}
         groupOpen={groupOpen}
         setGroupOpen={setGroupOpen}
         openGroupMenu={openGroupMenu}
         groupBy={groupBy}
-        setGroupBy={setGroupBy}
+        applyGroupBy={applyGroupBy}
+        clearGroup={clearGroup}
         saving={saving}
         setSaving={setSaving}
         saveName={saveName}
@@ -948,6 +1225,15 @@ export default function ListView({
         autoRefresh={autoRefresh}
         setAutoRefresh={setAutoRefresh}
         lastRefresh={lastRefresh}
+        optionsOpen={optionsOpen}
+        setOptionsOpen={setOptionsOpen}
+        viewName={viewName}
+        viewTabId={viewTabId}
+        canEdit={canEdit}
+        renameView={renameView}
+        columns={columnOptions}
+        onToggleColumn={toggleColumn}
+        openFieldAdd={openFieldAdd}
       />
       {savedViews.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 border-b py-1.5 text-sm">
@@ -1080,9 +1366,31 @@ export default function ListView({
           ＋
         </button>
       </div>
-      {((statusFieldEnabled && statusHidden) || customFields.some((f) => hiddenCols.has(f.id))) && (
+      {((statusFieldEnabled && statusHidden) ||
+        hiddenCore.has("assignee") ||
+        hiddenCore.has("due") ||
+        hiddenCore.has("progress") ||
+        customFields.some((f) => hiddenCols.has(f.id))) && (
         <div className="flex items-center gap-1 py-1 text-[11px] font-normal text-neutral-500">
           非表示:
+          {(["assignee", "due", "progress"] as const)
+            .filter((key) => hiddenCore.has(key))
+            .map((key) => (
+              <button
+                key={key}
+                onClick={() =>
+                  setHiddenCore((prev) => {
+                    const next = new Set(prev);
+                    next.delete(key);
+                    return next;
+                  })
+                }
+                title={`${key === "assignee" ? "担当者" : key === "due" ? "期日" : "進捗"}列を再表示`}
+                className="rounded-full border px-2 py-0.5 hover:bg-neutral-100 hover:text-neutral-600"
+              >
+                {key === "assignee" ? "担当者" : key === "due" ? "期日" : "進捗"}を再表示
+              </button>
+            ))}
           {statusFieldEnabled && statusHidden && (
             <button
               onClick={() => setStatusHidden(false)}

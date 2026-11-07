@@ -14,12 +14,14 @@ export function useColumnLayout({
   projectId,
   baseKeys,
   hiddenCols,
+  hiddenKeys,
   statusHidden,
   onMenuClose,
 }: {
   projectId: number;
   baseKeys: string[];
   hiddenCols: Set<number>;
+  hiddenKeys: Set<string>;
   statusHidden: boolean;
   onMenuClose: () => void;
 }) {
@@ -38,7 +40,13 @@ export function useColumnLayout({
     ...baseKeys.filter((k) => !colOrder.includes(k)),
   ];
   const visibleCols = orderedKeys.filter((k) =>
-    k === "status" ? !statusHidden : k.startsWith("cf-") ? !hiddenCols.has(Number(k.slice(3))) : true,
+    hiddenKeys.has(k)
+      ? false
+      : k === "status"
+        ? !statusHidden
+        : k.startsWith("cf-")
+          ? !hiddenCols.has(Number(k.slice(3)))
+          : true,
   );
   const nameW = colWidths["name"];
   const gridCols = isCompact
