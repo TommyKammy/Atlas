@@ -141,8 +141,10 @@ export function useColumnLayout({
       }
     }
 
+    const minWidth = key === "name" ? 220 : 60;
+    const maxWidth = key === "name" ? 1200 : 400;
     const onMove = (moveEvent: MouseEvent) => {
-      const width = Math.min(400, Math.max(60, startW + moveEvent.clientX - startX));
+      const width = Math.min(maxWidth, Math.max(minWidth, startW + moveEvent.clientX - startX));
       setColWidths((previous) => ({ ...previous, [key]: width }));
     };
     const onUp = () => {
