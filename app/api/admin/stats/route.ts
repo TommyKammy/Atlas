@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { withAdmin } from "@/lib/api/route";
+import { withAdminPermission } from "@/lib/api/route";
 
-export const GET = withAdmin(async () => {
+export const GET = withAdminPermission("insights.view", async () => {
   const byDay = async (table: string, extra = "") => {
     const r = await db.query(
       `SELECT to_char(d, 'YYYY-MM-DD') AS day, COUNT(t.id)::int AS n

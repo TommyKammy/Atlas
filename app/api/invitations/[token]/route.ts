@@ -2,12 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { COOKIE_NAME } from "@/lib/current-user";
-
-const ROLE_FLAGS: Record<string, { is_admin: boolean; is_guest: boolean }> = {
-  admin: { is_admin: true, is_guest: false },
-  member: { is_admin: false, is_guest: false },
-  guest: { is_admin: false, is_guest: true },
-};
+import { validatePassword } from "@/lib/password-policy";
+import { getRoleByKey } from "@/lib/permissions";
 
 async function loadInvitation(token: string) {
   const r = await db.query(
@@ -55,8 +51,12 @@ export async function POST(
   const body = await req.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim().slice(0, 120) : "";
   const password = typeof body?.password === "string" ? body.password : "";
-  if (!name || password.length < 8) {
-    return NextResponse.json({ error: "name and 8+ char password required" }, { status: 400 });
+  if (!name || password === "") {
+    return NextResponse.json({ error: "name and password required" }, { status: 400 });
+  }
+  const passwordError = await validatePassword(password);
+  if (passwordError) {
+    return NextResponse.json({ error: passwordError }, { status: 400 });
   }
   const client = await db.connect();
   try {
@@ -80,8 +80,8 @@ export async function POST(
       await client.query("ROLLBACK");
       return NextResponse.json({ error: "invitation is invalid or expired" }, { status: 410 });
     }
-    const flags = ROLE_FLAGS[row.role];
-    if (!flags) {
+    const role = await getRoleByKey(row.role);
+    if (!role) {
       await client.query("ROLLBACK");
       return NextResponse.json({ error: "invalid invitation role" }, { status: 400 });
     }
@@ -91,10 +91,10 @@ export async function POST(
       return NextResponse.json({ error: "user already exists" }, { status: 409 });
     }
     const user = await client.query(
-      `INSERT INTO users (name, email, is_guest, is_admin, password_hash)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, name, email, is_guest, is_admin`,
-      [name, row.email, flags.is_guest, flags.is_admin, hashPassword(password)],
+      `INSERT INTO users (name, email, is_guest, is_admin, role_id, password_hash)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, email, is_guest, is_admin, role_id`,
+      [name, row.email, role.isGuest, role.isAdmin, role.id, hashPassword(password)],
     );
     await client.query("UPDATE invitations SET accepted_at = now() WHERE id = $1", [row.id]);
     await client.query("COMMIT");

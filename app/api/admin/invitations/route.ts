@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { withAdmin } from "@/lib/api/route";
+import { withAdminPermission } from "@/lib/api/route";
 import { sendInvitationEmail } from "@/lib/mailer";
+import { canGrantRole, getEffectiveRole, getRoleByKey } from "@/lib/permissions";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "管理者",
@@ -11,7 +12,7 @@ const ROLE_LABEL: Record<string, string> = {
   guest: "ゲスト",
 };
 
-export const GET = withAdmin(async (req) => {
+export const GET = withAdminPermission("members.manage", async (req) => {
   const r = await db.query(
     `SELECT i.id, i.email, i.role, i.token, i.created_at::text AS created_at,
        i.expires_at::text AS expires_at, i.accepted_at::text AS accepted_at,
@@ -29,14 +30,22 @@ export const GET = withAdmin(async (req) => {
   });
 });
 
-export const POST = withAdmin(async (req, { uid: admin }) => {
+export const POST = withAdminPermission("members.manage", async (req, { uid: admin }) => {
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase().slice(0, 255) : "";
   const role = typeof body?.role === "string" ? body.role : "member";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "valid email required" }, { status: 400 });
   }
-  if (!ROLE_LABEL[role]) return NextResponse.json({ error: "invalid role" }, { status: 400 });
+  const roleRecord = ROLE_LABEL[role] ? await getRoleByKey(role) : null;
+  if (!roleRecord) return NextResponse.json({ error: "invalid role" }, { status: 400 });
+  const actor = await getEffectiveRole(admin);
+  if (!canGrantRole(actor, roleRecord)) {
+    return NextResponse.json(
+      { error: "cannot grant a role with more permissions than your own" },
+      { status: 403 },
+    );
+  }
   const existing = await db.query("SELECT id FROM users WHERE email = $1", [email]);
   if ((existing.rowCount ?? 0) > 0) {
     return NextResponse.json({ error: "user already exists" }, { status: 409 });

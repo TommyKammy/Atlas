@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withUser } from "@/lib/api/route";
 import { hashPassword, verifyPassword } from "@/lib/auth";
+import { validatePassword } from "@/lib/password-policy";
 
 export const GET = withUser(async (_req, { uid: id }) => {
   const r = await db.query(
-    `SELECT id, name, email, title, avatar_url, is_guest, is_admin
+    `SELECT id, name, email, title, avatar_url, is_guest, is_admin, role_id, totp_enabled
      FROM users WHERE id = $1 AND deactivated_at IS NULL`,
     [id],
   );
@@ -53,8 +54,9 @@ export const PATCH = withUser(async (req, { uid: id }) => {
   }
   const wantsPassword = typeof body?.new_password === "string" && body.new_password !== "";
   if (wantsPassword) {
-    if (String(body.new_password).length < 8) {
-      return NextResponse.json({ error: "new password must be 8+ chars" }, { status: 400 });
+    const passwordError = await validatePassword(String(body.new_password));
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
     }
     const current = typeof body?.current_password === "string" ? body.current_password : "";
     const stored = me.rows[0].password_hash as string | null;
@@ -77,7 +79,7 @@ export const PATCH = withUser(async (req, { uid: id }) => {
     throw e;
   }
   const r = await db.query(
-    `SELECT id, name, email, title, avatar_url, is_guest, is_admin
+    `SELECT id, name, email, title, avatar_url, is_guest, is_admin, role_id, totp_enabled
      FROM users WHERE id = $1 AND deactivated_at IS NULL`,
     [id],
   );

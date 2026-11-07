@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { withAdmin } from "@/lib/api/route";
+import { withAdminPermission } from "@/lib/api/route";
 
-export const DELETE = withAdmin(async (_req, { uid, params }) => {
+export const DELETE = withAdminPermission("members.manage", async (_req, { uid, params }) => {
   const id = params.id;
   const r = await db.query("DELETE FROM invitations WHERE id = $1::bigint RETURNING id", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });

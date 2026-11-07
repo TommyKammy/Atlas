@@ -4,6 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import UserAvatar from "./UserAvatar";
 
+type TotpSetup = {
+  secret: string;
+  otpauth_uri: string;
+  qr_data_url: string;
+};
+
 export default function ProfileForm({
   userId,
   initialName,
@@ -11,6 +17,10 @@ export default function ProfileForm({
   initialTitle,
   initialAvatarUrl,
   isGuest,
+  initialTotpEnabled,
+  twoFactorPolicy,
+  passwordMinLength,
+  passwordPolicyText,
 }: {
   userId: number;
   initialName: string;
@@ -18,6 +28,10 @@ export default function ProfileForm({
   initialTitle: string;
   initialAvatarUrl: string;
   isGuest: boolean;
+  initialTotpEnabled: boolean;
+  twoFactorPolicy: "optional" | "required";
+  passwordMinLength: number;
+  passwordPolicyText: string;
 }) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -28,6 +42,13 @@ export default function ProfileForm({
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [msg, setMsg] = useState("");
+  const [totpEnabled, setTotpEnabled] = useState(initialTotpEnabled);
+  const [totpSetup, setTotpSetup] = useState<TotpSetup | null>(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [twoFaMsg, setTwoFaMsg] = useState("");
+  const [disablePassword, setDisablePassword] = useState("");
+  const [twoFaBusy, setTwoFaBusy] = useState(false);
 
   const saveProfile = async () => {
     setMsg("");
@@ -56,8 +77,8 @@ export default function ProfileForm({
 
   const savePassword = async () => {
     setMsg("");
-    if (newPw.length < 8) {
-      setMsg("新しいパスワードは8文字以上にしてください");
+    if (newPw.length < passwordMinLength) {
+      setMsg(`新しいパスワードは${passwordMinLength}文字以上にしてください`);
       return;
     }
     if (newPw !== confirmPw) {
@@ -77,6 +98,76 @@ export default function ProfileForm({
       setConfirmPw("");
     } else {
       setMsg(`更新に失敗しました: ${data?.error ?? res.status}`);
+    }
+  };
+
+  const beginTotpSetup = async () => {
+    setTwoFaMsg("");
+    setRecoveryCodes([]);
+    setTwoFaBusy(true);
+    try {
+      const res = await fetch("/api/me/2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "begin" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setTwoFaMsg(`設定を開始できませんでした: ${data?.error ?? res.status}`);
+        return;
+      }
+      setTotpSetup(data as TotpSetup);
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
+  const enableTotp = async () => {
+    setTwoFaMsg("");
+    setTwoFaBusy(true);
+    try {
+      const res = await fetch("/api/me/2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "enable", code: totpCode }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setTwoFaMsg(`有効化に失敗しました: ${data?.error ?? res.status}`);
+        return;
+      }
+      setTotpEnabled(true);
+      setTotpSetup(null);
+      setTotpCode("");
+      setRecoveryCodes(Array.isArray(data?.recovery_codes) ? data.recovery_codes : []);
+      setTwoFaMsg("二要素認証を有効化しました");
+      router.refresh();
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
+  const disableTotp = async () => {
+    setTwoFaMsg("");
+    setTwoFaBusy(true);
+    try {
+      const res = await fetch("/api/me/2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "disable", password: disablePassword }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setTwoFaMsg(`無効化に失敗しました: ${data?.error ?? res.status}`);
+        return;
+      }
+      setTotpEnabled(false);
+      setDisablePassword("");
+      setRecoveryCodes([]);
+      setTwoFaMsg("二要素認証を無効化しました");
+      router.refresh();
+    } finally {
+      setTwoFaBusy(false);
     }
   };
 
@@ -143,7 +234,7 @@ export default function ProfileForm({
             type="password"
             value={newPw}
             onChange={(e) => setNewPw(e.target.value)}
-            placeholder="新しいパスワード（8文字以上）"
+            placeholder={`新しいパスワード（${passwordMinLength}文字以上）`}
             autoComplete="new-password"
             className={field}
           />
@@ -155,6 +246,7 @@ export default function ProfileForm({
             autoComplete="new-password"
             className={field}
           />
+          <p className="text-[11px] text-neutral-400">パスワード要件: {passwordPolicyText}</p>
           <button
             onClick={savePassword}
             className="self-start rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
@@ -163,6 +255,125 @@ export default function ProfileForm({
           </button>
         </div>
       </section>
+
+      <section className="rounded-lg border p-4" id="two-factor" data-two-factor-section>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-semibold">二要素認証</h2>
+          <span
+            className={`rounded px-2 py-0.5 text-[11px] ${
+              totpEnabled ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"
+            }`}
+            data-two-factor-status
+          >
+            {totpEnabled ? "有効" : "未設定"}
+          </span>
+        </div>
+        {twoFactorPolicy === "required" && !totpEnabled && (
+          <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900" data-two-factor-required>
+            このワークスペースでは二要素認証が必須です。設定を完了してください。
+          </p>
+        )}
+        <p className="mt-1 text-[12px] text-neutral-500">
+          認証アプリ（Google Authenticator、1Password など）で6桁のコードを生成し、サインイン時に使用します。
+        </p>
+
+        {!totpEnabled && !totpSetup && (
+          <button
+            onClick={beginTotpSetup}
+            disabled={twoFaBusy}
+            data-two-factor-begin
+            className="mt-3 rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {twoFaBusy ? "準備中…" : "二要素認証を設定"}
+          </button>
+        )}
+
+        {totpSetup && (
+          <div className="mt-3 rounded-lg border border-neutral-200 p-3" data-two-factor-setup>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={totpSetup.qr_data_url}
+                alt="二要素認証のQRコード"
+                className="h-[220px] w-[220px] shrink-0 self-center rounded border"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-neutral-600">
+                  認証アプリでQRコードをスキャンするか、下のセットアップキーを入力してください。
+                </p>
+                <div className="mt-2 rounded bg-neutral-50 px-2 py-1.5 font-mono text-[11px] break-all" data-two-factor-secret>
+                  {totpSetup.secret}
+                </div>
+                <label className="mt-3 block text-xs text-neutral-600">
+                  6桁の確認コード
+                  <input
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value)}
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="123456"
+                    className={`${field} mt-1 w-32 text-center font-mono tracking-widest`}
+                    data-two-factor-code
+                  />
+                </label>
+                <button
+                  onClick={enableTotp}
+                  disabled={twoFaBusy || totpCode.trim().length !== 6}
+                  data-two-factor-enable
+                  className="mt-3 rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {twoFaBusy ? "確認中…" : "有効化"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {totpEnabled && (
+          <div className="mt-3">
+            <p className="text-xs text-neutral-500">
+              二要素認証は有効です。無効化するには現在のパスワードを入力してください。
+            </p>
+            <div className="mt-2 flex max-w-sm gap-2">
+              <input
+                type="password"
+                value={disablePassword}
+                onChange={(e) => setDisablePassword(e.target.value)}
+                placeholder="現在のパスワード"
+                autoComplete="current-password"
+                className={field}
+              />
+              <button
+                onClick={disableTotp}
+                disabled={twoFaBusy || disablePassword === ""}
+                data-two-factor-disable
+                className="shrink-0 rounded border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+              >
+                無効化
+              </button>
+            </div>
+          </div>
+        )}
+
+        {recoveryCodes.length > 0 && (
+          <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-3" data-two-factor-recovery>
+            <div className="text-xs font-medium text-emerald-900">
+              リカバリーコード（この画面を閉じると再表示できません）
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-1 font-mono text-[12px] text-emerald-900 sm:grid-cols-4">
+              {recoveryCodes.map((code) => (
+                <span key={code}>{code}</span>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-emerald-800">
+              安全な場所に保管してください。各コードは1回だけ使用できます。
+            </p>
+          </div>
+        )}
+
+        {twoFaMsg && <p className="mt-2 text-sm text-neutral-600">{twoFaMsg}</p>}
+      </section>
+
       {msg && <p className="text-sm text-neutral-600">{msg}</p>}
       <p className="text-xs text-neutral-400">ユーザーID: {userId}</p>
     </div>

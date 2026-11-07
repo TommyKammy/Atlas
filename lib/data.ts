@@ -18,6 +18,10 @@ export type User = {
   deactivated_at?: string | null;
   open_tasks?: number;
   role?: string | null;
+  role_id?: number | null;
+  role_key?: string | null;
+  role_name?: string | null;
+  totp_enabled?: boolean;
 };
 
 
@@ -42,8 +46,11 @@ export const getWorkspace = cache(async () => {
 
 export const getUsers = cache(async (): Promise<User[]> => {
   const r = await db.query(
-    `SELECT id, name, email, title, avatar_url, is_guest, is_admin, deactivated_at::text AS deactivated_at
-     FROM users WHERE deactivated_at IS NULL ORDER BY id`,
+    `SELECT u.id, u.name, u.email, u.title, u.avatar_url, u.is_guest, u.is_admin,
+       u.role_id, u.totp_enabled, u.deactivated_at::text AS deactivated_at,
+       r.key AS role_key, r.name AS role_name
+     FROM users u LEFT JOIN workspace_roles r ON r.id = u.role_id
+     WHERE u.deactivated_at IS NULL ORDER BY u.id`,
   );
   return r.rows;
 });

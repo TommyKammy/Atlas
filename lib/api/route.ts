@@ -8,6 +8,7 @@ import {
   type ProjectPermission,
 } from "@/lib/api-project-auth";
 import type { ProjectRole } from "@/lib/project-roles";
+import { hasPermission, type Permission } from "@/lib/permissions";
 import { ApiError, badRequest, jsonError, notFound } from "./errors";
 
 type Params = Record<string, string>;
@@ -96,6 +97,19 @@ export function withAdmin<P extends Params = Params>(
       return jsonError(error);
     }
   };
+}
+
+/** Resolve a workspace administrator with a specific RBAC permission. */
+export function withAdminPermission<P extends Params = Params>(
+  permission: Permission,
+  handler: (req: NextRequest, ctx: UserContext<P>) => Promise<Response>,
+) {
+  return withAdmin<P>(async (req, ctx) => {
+    if (!(await hasPermission(ctx.uid, permission))) {
+      throw new ApiError(403, "permission denied", "forbidden");
+    }
+    return handler(req, ctx);
+  });
 }
 
 /**

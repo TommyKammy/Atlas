@@ -1,24 +1,38 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
-import { withAdmin } from "@/lib/api/route";
+import { withAdminPermission } from "@/lib/api/route";
+import { validatePassword } from "@/lib/password-policy";
+import { canGrantRole, getEffectiveRole, getRoleByKey } from "@/lib/permissions";
 
-const ROLE_FLAGS: Record<string, { is_admin: boolean; is_guest: boolean }> = {
-  admin: { is_admin: true, is_guest: false },
-  member: { is_admin: false, is_guest: false },
-  guest: { is_admin: false, is_guest: true },
-};
-
-export const PATCH = withAdmin(async (req, { uid: admin, params }) => {
+export const PATCH = withAdminPermission("members.manage", async (req, { uid: admin, params }) => {
   const id = params.id;
   const body = await req.json().catch(() => null);
-  if (typeof body?.role === "string" && !ROLE_FLAGS[body.role]) {
+  const role =
+    typeof body?.role === "string" && body.role !== "" ? await getRoleByKey(body.role) : null;
+  if (typeof body?.role === "string" && body.role !== "" && !role) {
     return NextResponse.json({ error: "invalid role" }, { status: 400 });
   }
-  const roleFlags =
-    typeof body?.role === "string" ? ROLE_FLAGS[body.role] : null;
-  if (Number(id) === admin && (roleFlags ? roleFlags.is_admin !== true : body?.is_admin === false)) {
-    return NextResponse.json({ error: "cannot demote self" }, { status: 400 });
+  const actor = await getEffectiveRole(admin);
+  if (role) {
+    if (!canGrantRole(actor, role)) {
+      return NextResponse.json(
+        { error: "cannot grant a role with more permissions than your own" },
+        { status: 403 },
+      );
+    }
+    if (Number(id) === admin && role.id !== actor?.roleId) {
+      return NextResponse.json({ error: "cannot change your own role" }, { status: 400 });
+    }
+    if (Number(id) === admin && role.isAdmin !== true) {
+      return NextResponse.json({ error: "cannot demote self" }, { status: 400 });
+    }
+  }
+  if (
+    Number(id) === admin &&
+    (typeof body?.is_admin === "boolean" || typeof body?.is_guest === "boolean")
+  ) {
+    return NextResponse.json({ error: "cannot change your own role" }, { status: 400 });
   }
   if (Number(id) === admin && body?.deactivated === true) {
     return NextResponse.json({ error: "cannot deactivate self" }, { status: 400 });
@@ -63,10 +77,12 @@ export const PATCH = withAdmin(async (req, { uid: admin, params }) => {
   if (typeof body?.deactivated === "boolean") {
     sets.push(body.deactivated ? "deactivated_at = now()" : "deactivated_at = NULL");
   }
-  if (roleFlags) {
-    values.push(roleFlags.is_guest);
+  if (role) {
+    values.push(role.id);
+    sets.push(`role_id = $${values.length}`);
+    values.push(role.isGuest);
     sets.push(`is_guest = $${values.length}`);
-    values.push(roleFlags.is_admin);
+    values.push(role.isAdmin);
     sets.push(`is_admin = $${values.length}`);
   } else {
     if (typeof body?.is_guest === "boolean") {
@@ -79,8 +95,9 @@ export const PATCH = withAdmin(async (req, { uid: admin, params }) => {
     }
   }
   if (typeof body?.password === "string" && body.password !== "") {
-    if (body.password.length < 8) {
-      return NextResponse.json({ error: "password must be 8+ chars" }, { status: 400 });
+    const passwordError = await validatePassword(body.password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
     }
     values.push(hashPassword(body.password));
     sets.push(`password_hash = $${values.length}`);
@@ -92,12 +109,21 @@ export const PATCH = withAdmin(async (req, { uid: admin, params }) => {
   try {
     const r = await db.query(
       `UPDATE users SET ${sets.join(", ")} WHERE id = $${values.length}::bigint
-       RETURNING id, name, email, title, avatar_url, is_guest, is_admin,
-         deactivated_at::text AS deactivated_at`,
+       RETURNING id, name, email, title, avatar_url, is_guest, is_admin, role_id,
+         totp_enabled, deactivated_at::text AS deactivated_at`,
       values,
     );
     if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-    return NextResponse.json(r.rows[0]);
+    const updated = r.rows[0];
+    const roleRow = await db.query(
+      "SELECT key, name FROM workspace_roles WHERE id = $1",
+      [updated.role_id],
+    );
+    return NextResponse.json({
+      ...updated,
+      role_key: roleRow.rows[0]?.key ?? null,
+      role_name: roleRow.rows[0]?.name ?? null,
+    });
   } catch (e) {
     if ((e as { code?: string }).code === "23505") {
       return NextResponse.json({ error: "email already used" }, { status: 409 });
@@ -106,7 +132,7 @@ export const PATCH = withAdmin(async (req, { uid: admin, params }) => {
   }
 });
 
-export const DELETE = withAdmin(async (_req, { uid: admin, params }) => {
+export const DELETE = withAdminPermission("members.manage", async (_req, { uid: admin, params }) => {
   const id = params.id;
   if (Number(id) === admin) {
     return NextResponse.json({ error: "cannot delete self" }, { status: 400 });

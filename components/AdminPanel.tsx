@@ -5,27 +5,33 @@ import { confirmAction } from "@/lib/ui-feedback";
 import { api } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { User } from "@/lib/data";
+import type { AdminRole, AdminUser } from "@/lib/admin-data";
 import UserAvatar from "./UserAvatar";
 
+const roleOf = (u: AdminUser) =>
+  u.role_key ?? (u.is_admin ? "super_admin" : u.is_guest ? "guest" : "member");
 
-const roleOf = (u: User) => (u.is_admin ? "admin" : u.is_guest ? "guest" : "member");
 export default function AdminPanel({
   initial,
   currentUserId,
+  roles,
+  passwordPolicyText,
 }: {
-  initial: User[];
+  initial: AdminUser[];
   currentUserId: number;
+  roles: AdminRole[];
+  passwordPolicyText: string;
 }) {
   const router = useRouter();
   const [users, setUsers] = useState(initial);
+  const [roleOptions, setRoleOptions] = useState(roles);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [title, setTitle] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("member");
   const [msg, setMsg] = useState("");
-  const [editing, setEditing] = useState<User | null>(null);
+  const [editing, setEditing] = useState<AdminUser | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editTitle, setEditTitle] = useState("");
@@ -51,6 +57,7 @@ export default function AdminPanel({
     if (res.ok) {
       const data = await res.json();
       setUsers(data.users);
+      if (Array.isArray(data.roles)) setRoleOptions(data.roles);
     }
     await reloadInvitations();
     router.refresh();
@@ -114,7 +121,7 @@ export default function AdminPanel({
     }
   };
 
-  const toggleActive = async (u: User) => {
+  const toggleActive = async (u: AdminUser) => {
     try {
       await api(`/api/admin/users/${u.id}`, "PATCH", { deactivated: !u.deactivated_at });
       setMsg(u.deactivated_at ? "ユーザーを有効化しました" : "ユーザーを無効化しました");
@@ -133,7 +140,7 @@ export default function AdminPanel({
     }
   };
 
-  const openEdit = (u: User) => {
+  const openEdit = (u: AdminUser) => {
     setEditing(u);
     setEditName(u.name);
     setEditEmail(u.email ?? "");
@@ -161,7 +168,7 @@ export default function AdminPanel({
   };
 
   const resetPw = async (id: number, userName: string) => {
-    const pw = prompt(`${userName} の新しいパスワード（8文字以上）:`);
+    const pw = prompt(`${userName} の新しいパスワード（${passwordPolicyText}）:`);
     if (!pw) return;
     try {
       await api(`/api/admin/users/${id}`, "PATCH", { password: pw });
@@ -187,7 +194,7 @@ export default function AdminPanel({
     <div className="mt-4">
       <div className="overflow-x-auto">
         <div className="min-w-[760px]">
-          <div className="grid grid-cols-[minmax(220px,1fr)_220px_150px_80px_280px] gap-2 border-b px-2 py-2 text-xs font-semibold text-neutral-500">
+          <div className="grid grid-cols-[minmax(180px,1fr)_200px_140px_64px_240px] gap-2 border-b px-2 py-2 text-xs font-semibold text-neutral-500">
             <span>名前</span>
             <span>メール</span>
             <span>権限</span>
@@ -197,7 +204,7 @@ export default function AdminPanel({
           {users.map((u) => (
             <div
               key={u.id}
-              className={`grid grid-cols-[minmax(220px,1fr)_220px_150px_80px_280px] items-center gap-2 border-b px-2 py-1.5 text-sm ${
+              className={`grid grid-cols-[minmax(180px,1fr)_200px_140px_64px_240px] items-center gap-2 border-b px-2 py-1.5 text-sm ${
                 u.deactivated_at ? "bg-neutral-50 opacity-60" : ""
               }`}
             >
@@ -208,6 +215,11 @@ export default function AdminPanel({
                     <span className="truncate font-medium">{u.name}</span>
                     {u.deactivated_at && (
                       <span className="rounded bg-neutral-200 px-1 text-[10px] text-neutral-600">無効</span>
+                    )}
+                    {u.totp_enabled && (
+                      <span className="rounded bg-emerald-100 px-1 text-[10px] text-emerald-700" title="二要素認証が有効です">
+                        2FA
+                      </span>
                     )}
                   </span>
                   {u.title && <span className="block truncate text-[11px] text-neutral-500">{u.title}</span>}
@@ -222,9 +234,11 @@ export default function AdminPanel({
                   className="h-7 w-full rounded border bg-white px-1 text-xs disabled:bg-neutral-100 disabled:text-neutral-400"
                   title={u.id === currentUserId ? "自分自身の権限は変更できません" : undefined}
                 >
-                  <option value="admin">管理者</option>
-                  <option value="member">メンバー</option>
-                  <option value="guest">ゲスト</option>
+                  {roleOptions.map((r) => (
+                    <option key={r.key} value={r.key}>
+                      {r.name}
+                    </option>
+                  ))}
                 </select>
               </span>
               <span className="text-neutral-600">{u.open_tasks ?? "–"}</span>
@@ -282,20 +296,23 @@ export default function AdminPanel({
         <input
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="パスワード（8文字以上）"
+          placeholder="パスワード"
           type="password"
           autoComplete="new-password"
           className={`${field} w-44`}
         />
         <select value={role} onChange={(e) => setRole(e.target.value)} className={`${field} h-[34px]`}>
-          <option value="member">メンバー</option>
-          <option value="guest">ゲスト</option>
-          <option value="admin">管理者</option>
+          {roleOptions.map((r) => (
+            <option key={r.key} value={r.key}>
+              {r.name}
+            </option>
+          ))}
         </select>
         <button onClick={create} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700">
           作成
         </button>
       </div>
+      <p className="mt-1 text-[11px] text-neutral-400">パスワード要件: {passwordPolicyText}</p>
       {msg && <p className="mt-2 text-sm text-neutral-600">{msg}</p>}
 
       <h2 className="mt-6 font-semibold">メール招待</h2>
@@ -309,9 +326,13 @@ export default function AdminPanel({
           className={`${field} w-64`}
         />
         <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className={`${field} h-[34px]`}>
-          <option value="member">メンバー</option>
-          <option value="guest">ゲスト</option>
-          <option value="admin">管理者</option>
+          {roleOptions
+            .filter((r) => ["member", "guest", "admin"].includes(r.key))
+            .map((r) => (
+              <option key={r.key} value={r.key}>
+                {r.name}
+              </option>
+            ))}
         </select>
         <button onClick={invite} className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8]">
           招待
@@ -383,9 +404,11 @@ export default function AdminPanel({
                   disabled={editing.id === currentUserId}
                   className={`${field} mt-1 w-full`}
                 >
-                  <option value="admin">管理者</option>
-                  <option value="member">メンバー</option>
-                  <option value="guest">ゲスト</option>
+                  {roleOptions.map((r) => (
+                    <option key={r.key} value={r.key}>
+                      {r.name}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>

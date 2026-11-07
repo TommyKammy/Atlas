@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { withAdmin } from "@/lib/api/route";
+import { withAdminPermission } from "@/lib/api/route";
 import { csvResponse, toCsv } from "@/lib/csv";
 
-export const GET = withAdmin(async (req) => {
+export const GET = withAdminPermission("audit.view", async (req) => {
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format") ?? "json";
   if (format !== "json" && format !== "csv") {

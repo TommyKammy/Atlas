@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/current-user";
 import LoginForm from "@/components/LoginForm";
+import { getSecuritySettings } from "@/lib/admin-data";
 
 export const instant = false;
 
@@ -18,9 +19,10 @@ export default async function LoginPage() {
       </div>
     );
   }
+  const security = await getSecuritySettings();
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
-      <LoginForm />
+      <LoginForm samlMode={security.saml_mode} />
     </div>
   );
 }
