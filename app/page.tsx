@@ -1,6 +1,7 @@
 import Link from "next/link";
 import NewProjectForm from "@/components/NewProjectForm";
 import ProjectTemplateBar from "@/components/ProjectTemplateBar";
+import NavPending from "@/components/NavPending";
 import { getMyTasks, getProjectsForUser, getProjectTemplateList, getUnreadCount, getUsers, getWorkspace } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -47,9 +48,11 @@ export default async function Home() {
       <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
         <Link href="/my-tasks" className="rounded-md border bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50">
           マイタスク（担当 {myTasks.length}）
+          <NavPending className="ml-1" />
         </Link>
         <Link href="/inbox" className="rounded-md border bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50">
           受信トレイ（未読 {unread}）
+          <NavPending className="ml-1" />
         </Link>
       </div>
       {overdue.length > 0 && (
@@ -65,6 +68,7 @@ export default async function Home() {
                 <span className="min-w-0 flex-1 truncate font-medium">{t.name}</span>
                 <span className="shrink-0 text-xs text-neutral-400">{t.project_name}</span>
                 <span className="w-24 shrink-0 text-right text-xs font-semibold text-red-600">{t.due_on}</span>
+                <NavPending className="ml-1" />
               </Link>
             ))}
           </div>
@@ -83,6 +87,7 @@ export default async function Home() {
                 <span className="min-w-0 flex-1 truncate font-medium">{t.name}</span>
                 <span className="shrink-0 text-xs text-neutral-400">{t.project_name}</span>
                 <span className="w-24 shrink-0 text-right text-xs text-neutral-600">{t.due_on}</span>
+                <NavPending className="ml-1" />
               </Link>
             ))}
           </div>
@@ -105,6 +110,7 @@ export default async function Home() {
                 {p.name.slice(0, 1)}
               </span>
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-800">{p.name}</span>
+              <NavPending className="ml-auto" />
             </Link>
           ))}
         </div>

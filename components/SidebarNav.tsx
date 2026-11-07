@@ -1,4 +1,5 @@
 import Link from "next/link";
+import NavPending from "./NavPending";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getFavorites, getRecentProjects } from "@/lib/data";
 import SidebarProjectLink from "./SidebarProjectLink";
@@ -85,6 +86,7 @@ function NavLink({
     <Link href={item.href} className={className}>
       <NavIcon name={item.icon} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      <NavPending className="ml-auto" />
       {unread > 0 && (
         <span className="rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">{unread}</span>
       )}

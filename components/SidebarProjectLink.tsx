@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ProjectIcon from "./ProjectIcon";
+import NavPending from "./NavPending";
 import { useMutation } from "@/lib/use-mutation";
 import { toast } from "@/lib/ui-feedback";
 import ProjectContextMenu from "./project/ProjectContextMenu";
@@ -174,6 +175,7 @@ export default function SidebarProjectLink({
           />
         )}
         <span className="truncate">{project.name}</span>
+        <NavPending className="ml-auto" />
       </Link>
 
       {pos && (

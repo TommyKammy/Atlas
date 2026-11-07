@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import NavPending from "./NavPending";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ProjectTab } from "@/lib/data";
@@ -381,6 +382,7 @@ export default function ProjectTabs({
                 >
                   {tab.icon && <span className="mr-1 text-[13px] leading-none">{tab.icon}</span>}
                   {tab.name}
+                  <NavPending className="ml-1" />
                 </Link>
               )}
             </div>

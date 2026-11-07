@@ -24,15 +24,18 @@ import {
 import ProjectTabs from "@/components/ProjectTabs";
 import ProjectIcon from "@/components/ProjectIcon";
 import ListView from "@/components/ListView";
-import BoardView from "@/components/BoardView";
-import TimelineView from "@/components/TimelineView";
-import CalendarView from "@/components/CalendarView";
-import DashboardView from "@/components/DashboardView";
-import FilesView from "@/components/FilesView";
-import MessagesView from "@/components/MessagesView";
-import KnowledgeView from "@/components/KnowledgeView";
-import FormsView from "@/components/FormsView";
-import OverviewView from "@/components/OverviewView";
+import {
+  LazyBoardView,
+  LazyTimelineView,
+  LazyCalendarView,
+  LazyDashboardView,
+  LazyFilesView,
+  LazyMessagesView,
+  LazyKnowledgeView,
+  LazyFormsView,
+  LazyOverviewView,
+  LazyTaskPane,
+} from "@/components/project/LazyViews";
 import Shortcuts from "@/components/Shortcuts";
 import StarButton from "@/components/StarButton";
 import ProjectTitle from "@/components/ProjectTitle";
@@ -40,7 +43,6 @@ import ProjectHeaderStatus from "@/components/ProjectHeaderStatus";
 import ProjectMemberFacepile from "@/components/project/ProjectMemberFacepile";
 import ProjectShareButton from "@/components/ProjectShareButton";
 import ProjectCustomizeButton from "@/components/ProjectCustomizeButton";
-import TaskPane from "@/components/TaskPane";
 import { getCurrentUserId } from "@/lib/current-user";
 import { parseListDateFilter, parseListGroupBy, parseListSortKey } from "@/lib/list-view";
 
@@ -383,7 +385,7 @@ export default async function ProjectPage(props: {
         />
         <div data-project-view={view}>
         {view === "overview" && overviewData && (
-          <OverviewView
+          <LazyOverviewView
             projectId={projectId}
             stats={overviewData.stats}
             members={members.map((m) => ({ id: m.id, name: m.name, role: m.role ?? null }))}
@@ -396,7 +398,7 @@ export default async function ProjectPage(props: {
           />
         )}
         {view === "dashboard" && dashboardData && (
-          <DashboardView
+          <LazyDashboardView
             projectId={projectId}
             stats={dashboardData.stats}
             extras={dashboardData.extras}
@@ -429,7 +431,7 @@ export default async function ProjectPage(props: {
           />
         )}
         {view === "board" && boardData && (
-          <BoardView
+          <LazyBoardView
             key={`board-${projectId}`}
             projectId={projectId}
             sections={sections}
@@ -498,7 +500,7 @@ export default async function ProjectPage(props: {
           />
         )}
         {view === "timeline" && timelineData && (
-          <TimelineView
+          <LazyTimelineView
             key={`timeline-${projectId}`}
             projectId={projectId}
             sections={sections}
@@ -518,19 +520,19 @@ export default async function ProjectPage(props: {
           />
         )}
         {view === "messages" && messagesData && (
-          <MessagesView projectId={projectId} initial={messagesData.messages} />
+          <LazyMessagesView projectId={projectId} initial={messagesData.messages} />
         )}
         {view === "knowledge" && knowledgeData && (
-          <KnowledgeView projectId={projectId} initial={knowledgeData.knowledge} />
+          <LazyKnowledgeView projectId={projectId} initial={knowledgeData.knowledge} />
         )}
         {view === "forms" && formsData && (
-          <FormsView projectId={projectId} initial={formsData.forms} />
+          <LazyFormsView projectId={projectId} initial={formsData.forms} />
         )}
         {view === "files" && filesData && (
-          <FilesView projectId={projectId} attachments={filesData.attachments} />
+          <LazyFilesView projectId={projectId} attachments={filesData.attachments} />
         )}
         {view === "calendar" && calendarData && (
-          <CalendarView
+          <LazyCalendarView
             key={`calendar-${projectId}`}
             projectId={projectId}
             tasks={calendarData.tasks}
@@ -573,7 +575,7 @@ export default async function ProjectPage(props: {
       </div>
       <Shortcuts projectId={projectId} />
       {task && paneData && (
-        <TaskPane
+        <LazyTaskPane
           key={`task-${task.id}`}
           projectId={projectId}
           view={view}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import NavPending from "./NavPending";
 import { RAIL_FLYOUTS, RAIL_ITEMS, type SidebarIconName } from "@/lib/navigation";
 
 function RailIcon({ name }: { name: SidebarIconName }) {
@@ -89,11 +90,12 @@ export default function SidebarRail({ collapsed }: { collapsed: boolean }) {
               href={item.href}
               title={item.label}
               aria-label={item.label}
-              className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+              className={`relative flex h-9 w-9 items-center justify-center rounded-lg ${
                 active ? "bg-white/15 text-white" : "text-neutral-400 hover:bg-white/10 hover:text-white"
               }`}
             >
               <RailIcon name={item.icon} />
+              <NavPending className="absolute -right-0.5 -top-0.5" />
             </Link>
             <div
               data-sidebar-flyout={item.href}
@@ -110,9 +112,10 @@ export default function SidebarRail({ collapsed }: { collapsed: boolean }) {
                   href={link.href}
                   data-sidebar-flyout-link={link.label}
                   onClick={() => setOpenHref(null)}
-                  className="block rounded px-2 py-1.5 text-[13px] text-neutral-200 hover:bg-white/10 hover:text-white"
+                  className="flex items-center rounded px-2 py-1.5 text-[13px] text-neutral-200 hover:bg-white/10 hover:text-white"
                 >
-                  {link.label}
+                  <span className="min-w-0 flex-1 truncate">{link.label}</span>
+                  <NavPending className="ml-auto" />
                 </Link>
               ))}
             </div>
