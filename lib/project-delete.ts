@@ -51,6 +51,17 @@ export async function detachMultiHomedTasks(q: Queryable, projectId: number): Pr
        WHERE id IN (SELECT id FROM descendants) AND project_id = $4::bigint`,
       [row.id, nextProject, nextSection, projectId],
     );
+    await q.query(
+      `WITH RECURSIVE descendants AS (
+         SELECT id FROM tasks WHERE parent_task_id = $1::bigint
+         UNION ALL
+         SELECT t.id FROM tasks t JOIN descendants d ON t.parent_task_id = d.id
+       )
+       DELETE FROM task_project_memberships m
+       USING descendants d
+       WHERE m.task_id = d.id AND m.project_id IN ($2::bigint, $3::bigint)`,
+      [row.id, projectId, nextProject],
+    );
     moved++;
   }
   return moved;

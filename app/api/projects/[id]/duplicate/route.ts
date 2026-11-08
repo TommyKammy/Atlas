@@ -4,6 +4,7 @@ import { audit } from "@/lib/audit";
 import { withProject } from "@/lib/api/route";
 import { badRequest } from "@/lib/api/errors";
 import { ensureDefaultProjectTabs } from "@/lib/repositories/projects";
+import { getProjectTaskForest } from "@/lib/project-task-forest";
 
 type DuplicateBody = {
   name?: unknown;
@@ -14,32 +15,12 @@ type DuplicateBody = {
   include_members?: unknown;
 };
 
-type SourceTask = {
-  id: number;
-  project_id: number | null;
-  section_id: number | null;
-  membership_section_id: number | null;
-  parent_task_id: number | null;
-  name: string;
-  description: string;
-  description_doc: unknown;
-  assignee_id: number | null;
-  completed: boolean;
-  completed_at: string | null;
-  start_on: string | null;
-  due_on: string | null;
-  progress: number;
-  status: string;
-  position: number;
-  recurrence: string;
-};
-
 /**
  * Duplicate a project's structure. The copy is independent: sections, tasks,
  * custom fields/values and members are recreated with new ids.
  */
 export const POST = withProject(
-  "admin",
+  "edit",
   async (_req, { uid, projectId, body }) => {
     const payload = (body ?? {}) as DuplicateBody;
     const name = typeof payload.name === "string" ? payload.name.trim().slice(0, 100) : "";
@@ -163,39 +144,13 @@ export const POST = withProject(
       // Tasks visible in the source project, including secondary multi-homes.
       const taskMap = new Map<number, number>();
       if (includeTasks) {
-        const tasks = await q.query(
-          `SELECT t.id, t.project_id, t.section_id, m.section_id AS membership_section_id,
-             t.parent_task_id, t.name, t.description, t.description_doc,
-             t.assignee_id, t.completed, t.completed_at::text AS completed_at,
-             t.start_on::text AS start_on, t.due_on::text AS due_on,
-             t.progress, t.status, t.position, t.recurrence
-           FROM tasks t
-           LEFT JOIN task_project_memberships m
-             ON m.task_id = t.id AND m.project_id = $1::bigint
-           WHERE (t.project_id = $1::bigint OR m.project_id = $1::bigint)
-             AND t.deleted_at IS NULL
-           ORDER BY (t.parent_task_id IS NOT NULL), t.position, t.id`,
-          [projectId],
-        );
-        if (tasks.rows.length > 5000) throw badRequest("project has too many tasks to duplicate (max 5000)");
-        const sourceTasks = tasks.rows as SourceTask[];
-        const sourceById = new Map(sourceTasks.map((task) => [Number(task.id), task]));
-        const depthOf = (task: SourceTask, seen = new Set<number>()): number => {
-          if (task.parent_task_id === null || seen.has(task.id)) return 0;
-          const parent = sourceById.get(Number(task.parent_task_id));
-          if (!parent) return 0;
-          seen.add(task.id);
-          return 1 + depthOf(parent, seen);
-        };
-        sourceTasks.sort(
-          (a, b) => depthOf(a) - depthOf(b) || a.position - b.position || a.id - b.id,
-        );
+        const sourceTasks = await getProjectTaskForest(q, projectId);
+        if (sourceTasks.length > 5000) throw badRequest("project has too many tasks to duplicate (max 5000)");
         for (const task of sourceTasks) {
           if (task.completed && !includeCompleted) continue;
           if (task.parent_task_id !== null && !includeSubtasks) continue;
           if (task.parent_task_id !== null && !taskMap.has(task.parent_task_id)) continue;
-          const effectiveSection =
-            task.project_id === projectId ? task.section_id : task.membership_section_id;
+          const effectiveSection = task.effective_section_id;
           const inserted = await q.query(
             `INSERT INTO tasks (
                project_id, section_id, parent_task_id, name, description, description_doc,

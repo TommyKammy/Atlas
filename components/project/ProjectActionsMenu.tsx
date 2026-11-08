@@ -257,7 +257,7 @@ export default function ProjectActionsMenu({
               className={itemClass(false)}
               onClick={() => select(sub.key)}
               onMouseEnter={(event) => {
-                event.currentTarget.focus();
+                event.currentTarget.focus({ preventScroll: true });
               }}
             >
               <ProjectMenuIcon name={sub.icon} className="h-4 w-4 text-neutral-500" />

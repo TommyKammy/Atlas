@@ -4,21 +4,7 @@ import { todayISO } from "@/lib/dates";
 import { audit } from "@/lib/audit";
 import { withProject } from "@/lib/api/route";
 import { badRequest } from "@/lib/api/errors";
-
-type SnapshotTask = {
-  id: number;
-  parent_task_id: number | null;
-  section_id: number | null;
-  name: string;
-  description: string;
-  assignee_id: number | null;
-  start_on: string | null;
-  due_on: string | null;
-  progress: number;
-  status: string;
-  completed: boolean;
-  position: number;
-};
+import { getProjectTaskForest, type ProjectTaskForestNode } from "@/lib/project-task-forest";
 
 type SnapshotValue = {
   field_index: number;
@@ -31,6 +17,7 @@ type SnapshotValue = {
 type SnapshotNode = {
   name: string;
   description: string;
+  description_doc: unknown;
   assignee_id: number | null;
   status: string;
   progress: number;
@@ -62,7 +49,8 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
 
   const projectResult = await db.query(
     `SELECT workspace_id, name, description, color, icon, status, status_color,
-       status_options, status_field_name, status_field_enabled
+       status_options, status_field_name, status_field_enabled,
+       owner_id, team_id, settings
      FROM projects WHERE id = $1::bigint`,
     [projectId],
   );
@@ -82,18 +70,7 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
   const fieldIndex = new Map<number, number>();
   (fieldsResult.rows as { id: number }[]).forEach((field, index) => fieldIndex.set(Number(field.id), index));
 
-  const tasksResult = includeTasks
-    ? await db.query(
-        `SELECT id, parent_task_id, section_id, name, description, assignee_id,
-           start_on::text AS start_on, due_on::text AS due_on, progress, status,
-           completed, position
-         FROM tasks
-         WHERE project_id = $1::bigint AND deleted_at IS NULL
-         ORDER BY position, id`,
-        [projectId],
-      )
-    : { rows: [] as SnapshotTask[] };
-  const tasks = tasksResult.rows as SnapshotTask[];
+  const tasks: ProjectTaskForestNode[] = includeTasks ? await getProjectTaskForest(db, projectId) : [];
   const taskIds = tasks.map((t) => Number(t.id));
   const valuesByTask = new Map<number, SnapshotValue[]>();
   if (includeCustomFields && taskIds.length > 0) {
@@ -124,14 +101,15 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
     }
   }
 
-  const children = new Map<number | null, SnapshotTask[]>();
+  const taskIdSet = new Set(tasks.map((task) => Number(task.id)));
+  const children = new Map<number | null, ProjectTaskForestNode[]>();
   for (const task of tasks) {
     const key = task.parent_task_id === null ? null : Number(task.parent_task_id);
     const list = children.get(key) ?? [];
     list.push(task);
     children.set(key, list);
   }
-  const toNode = (task: SnapshotTask): SnapshotNode | null => {
+  const toNode = (task: ProjectTaskForestNode): SnapshotNode | null => {
     if (task.completed && !includeCompleted) return null;
     const subtasks = (children.get(Number(task.id)) ?? [])
       .map(toNode)
@@ -139,6 +117,7 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
     return {
       name: task.name,
       description: task.description ?? "",
+      description_doc: task.description_doc ?? null,
       assignee_id: task.assignee_id === null ? null : Number(task.assignee_id),
       status: task.status ?? "inbox",
       progress: Number(task.progress ?? 0),
@@ -149,13 +128,29 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
     };
   };
 
-  const payloadSections = (sectionsResult.rows as { id: number; name: string }[]).map((section) => ({
+  const sectionRows = sectionsResult.rows as { id: number; name: string }[];
+  const tasksBySection = new Map<number | null, SnapshotNode[]>();
+  for (const task of tasks) {
+    if (task.parent_task_id !== null && taskIdSet.has(Number(task.parent_task_id))) continue;
+    const node = toNode(task);
+    if (!node) continue;
+    const key = task.effective_section_id === null ? null : Number(task.effective_section_id);
+    const list = tasksBySection.get(key) ?? [];
+    list.push(node);
+    tasksBySection.set(key, list);
+  }
+  const sectionIds = new Set(sectionRows.map((section) => Number(section.id)));
+  const payloadSections = sectionRows.map((section) => ({
     name: section.name,
-    tasks: (children.get(null) ?? [])
-      .filter((task) => Number(task.section_id) === Number(section.id))
-      .map(toNode)
-      .filter((node): node is SnapshotNode => node !== null),
+    tasks: tasksBySection.get(Number(section.id)) ?? [],
   }));
+  const unclassified: SnapshotNode[] = [];
+  for (const [sectionId, list] of tasksBySection) {
+    if (sectionId === null || !sectionIds.has(sectionId)) unclassified.push(...list);
+  }
+  if (unclassified.length > 0) {
+    payloadSections.push({ name: "未分類", tasks: unclassified });
+  }
 
   const templatePayload = {
     version: 2,
@@ -169,6 +164,9 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
       status_options: project.status_options ?? [],
       status_field_name: project.status_field_name ?? "Status",
       status_field_enabled: project.status_field_enabled !== false,
+      owner_id: project.owner_id === null ? null : Number(project.owner_id),
+      team_id: project.team_id === null ? null : Number(project.team_id),
+      settings: project.settings ?? {},
     },
     sections: payloadSections,
     custom_fields: (fieldsResult.rows as {

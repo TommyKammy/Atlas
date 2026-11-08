@@ -133,8 +133,11 @@ export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
   }
   if ("due_on" in body) {
     const due = body.due_on === null || body.due_on === "" ? null : String(body.due_on);
-    if (due !== null && !/^\d{4}-\d{2}-\d{2}$/.test(due)) {
-      return NextResponse.json({ error: "due_on must be YYYY-MM-DD or null" }, { status: 400 });
+    if (due !== null) {
+      const parsed = /^\d{4}-\d{2}-\d{2}$/.test(due) ? Date.parse(`${due}T00:00:00Z`) : Number.NaN;
+      if (Number.isNaN(parsed) || new Date(parsed).toISOString().slice(0, 10) !== due) {
+        return NextResponse.json({ error: "due_on must be a valid YYYY-MM-DD date or null" }, { status: 400 });
+      }
     }
     values.push(due);
     sets.push(`due_on = $${values.length}::date`);
@@ -145,6 +148,9 @@ export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
     }
     const current = await db.query("SELECT settings FROM projects WHERE id = $1::bigint", [projectId]);
     const merged = mergeProjectSettings(current.rows[0]?.settings, body.settings);
+    if (merged.work_hours.start >= merged.work_hours.end) {
+      return NextResponse.json({ error: "work_hours.start must be before work_hours.end" }, { status: 400 });
+    }
     values.push(JSON.stringify(merged));
     sets.push(`settings = $${values.length}::jsonb`);
   }

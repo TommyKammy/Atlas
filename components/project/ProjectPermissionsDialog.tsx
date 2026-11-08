@@ -11,9 +11,14 @@ import type { CustomField } from "@/lib/custom-fields";
 
 type SettingsPayload = { project: { settings: ProjectSettings } };
 
-const LEVEL_OPTIONS: { value: ProjectSharingLevel; label: string; description: string }[] = [
-  { value: "editors", label: "編集可能ユーザー以上", description: "プロジェクトの編集者がワークフローを変更できます。" },
-  { value: "admins", label: "プロジェクト管理者のみ", description: "管理者だけがワークフローを変更できます。" },
+const EDIT_LEVEL_OPTIONS: { value: ProjectSharingLevel; label: string; description: string }[] = [
+  { value: "editors", label: "編集可能ユーザー以上", description: "プロジェクトの編集者がワークフロー、ステータス、外観を変更できます。" },
+  { value: "admins", label: "プロジェクト管理者のみ", description: "管理者だけがワークフロー、ステータス、外観を変更できます。" },
+];
+
+const SHARE_LEVEL_OPTIONS: { value: ProjectSharingLevel; label: string; description: string }[] = [
+  { value: "editors", label: "編集可能ユーザー以上", description: "プロジェクトの編集者がメンバーと共有リンクを管理できます。" },
+  { value: "admins", label: "プロジェクト管理者のみ", description: "管理者だけがメンバーと共有リンクを管理できます。" },
 ];
 
 function accessLabel(field: CustomField): string {
@@ -96,7 +101,7 @@ export default function ProjectPermissionsDialog({
           <section className="rounded-lg border border-neutral-200 p-4">
             <h3 className="font-semibold">ワークフローと外観を編集できるユーザー</h3>
             <div className="mt-2 space-y-2">
-              {LEVEL_OPTIONS.map((option) => (
+              {EDIT_LEVEL_OPTIONS.map((option) => (
                 <label
                   key={`edit-${option.value}`}
                   className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${
@@ -125,7 +130,7 @@ export default function ProjectPermissionsDialog({
           <section className="mt-4 rounded-lg border border-neutral-200 p-4">
             <h3 className="font-semibold">メンバーシップを共有・管理できるユーザー</h3>
             <div className="mt-2 space-y-2">
-              {LEVEL_OPTIONS.map((option) => (
+              {SHARE_LEVEL_OPTIONS.map((option) => (
                 <label
                   key={`share-${option.value}`}
                   className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${

@@ -18,6 +18,7 @@ type TemplateValue = {
 type TemplateTask = {
   name?: string;
   description?: string;
+  description_doc?: unknown;
   assignee_id?: number | null;
   due_offset_days?: number | null;
   start_offset_days?: number | null;
@@ -49,6 +50,9 @@ type V2Payload = {
     status_options?: string[];
     status_field_name?: string;
     status_field_enabled?: boolean;
+    owner_id?: number | null;
+    team_id?: number | null;
+    settings?: unknown;
   };
   sections?: { name?: string; tasks?: TemplateTask[] }[];
   custom_fields?: TemplateField[];
@@ -75,13 +79,31 @@ export const POST = withUser(async (req, { uid, params }) => {
   const projectId = await withTransaction(async (q) => {
     const isV2 = payload?.version === 2;
     const meta = isV2 ? payload.project ?? {} : {};
+    let ownerId: number | null = null;
+    if (typeof meta.owner_id === "number" && Number.isInteger(meta.owner_id)) {
+      const owner = await q.query(
+        "SELECT id FROM users WHERE id = $1::bigint AND deactivated_at IS NULL",
+        [meta.owner_id],
+      );
+      if ((owner.rowCount ?? 0) > 0) ownerId = Number(meta.owner_id);
+    }
+    let teamId: number | null = null;
+    if (typeof meta.team_id === "number" && Number.isInteger(meta.team_id)) {
+      const team = await q.query(
+        "SELECT id FROM teams WHERE id = $1::bigint AND workspace_id = $2::bigint",
+        [meta.team_id, workspaceId],
+      );
+      if ((team.rowCount ?? 0) > 0) teamId = Number(meta.team_id);
+    }
     const inserted = await q.query(
       `INSERT INTO projects (
          workspace_id, name, description, color, icon, status, status_color,
-         status_options, status_field_name, status_field_enabled
+         status_options, status_field_name, status_field_enabled,
+         owner_id, team_id, settings
        ) VALUES (
          $1::bigint, $2, $3, $4, $5, $6, $7,
-         $8::jsonb, $9, $10
+         $8::jsonb, $9, $10,
+         $11::bigint, $12::bigint, $13::jsonb
        ) RETURNING id`,
       [
         workspaceId,
@@ -94,6 +116,9 @@ export const POST = withUser(async (req, { uid, params }) => {
         JSON.stringify(Array.isArray(meta.status_options) ? meta.status_options : ["未着手", "進行中", "Done"]),
         typeof meta.status_field_name === "string" ? meta.status_field_name : "Status",
         meta.status_field_enabled !== false,
+        ownerId,
+        teamId,
+        JSON.stringify(meta.settings ?? {}),
       ],
     );
     const newId = Number(inserted.rows[0].id);
@@ -144,9 +169,10 @@ export const POST = withUser(async (req, { uid, params }) => {
           ? shiftDate(todayISO(), task.start_offset_days)
           : null;
       const created = await q.query(
-        `INSERT INTO tasks (project_id, section_id, parent_task_id, name, description, assignee_id,
-           start_on, due_on, progress, status, position)
-         VALUES ($1::bigint, $2::bigint, $3::bigint, $4, $5, $6::bigint, $7::date, $8::date, $9, $10, $11)
+        `INSERT INTO tasks (project_id, section_id, parent_task_id, name, description, description_doc,
+           assignee_id, start_on, due_on, progress, status, position)
+         VALUES ($1::bigint, $2::bigint, $3::bigint, $4, $5, $6::jsonb,
+           $7::bigint, $8::date, $9::date, $10, $11, $12)
          RETURNING id`,
         [
           newId,
@@ -154,6 +180,9 @@ export const POST = withUser(async (req, { uid, params }) => {
           parentId,
           task.name.trim().slice(0, 255),
           typeof task.description === "string" ? task.description : "",
+          task.description_doc === null || task.description_doc === undefined
+            ? null
+            : JSON.stringify(task.description_doc),
           typeof task.assignee_id === "number" ? task.assignee_id : null,
           start,
           due,

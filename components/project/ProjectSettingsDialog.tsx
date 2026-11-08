@@ -52,6 +52,7 @@ export default function ProjectSettingsDialog({
 }) {
   const [tab, setTab] = useState<TabKey>("details");
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [name, setName] = useState(projectName);
@@ -80,6 +81,7 @@ export default function ProjectSettingsDialog({
         setSettings(normalizeProjectSettings(data.project.settings));
         setTeams(Array.isArray(data.teams) ? data.teams : []);
         setUsers(Array.isArray(directory?.users) ? directory.users : []);
+        setLoaded(true);
       } catch (caught) {
         if (!cancelled) setError(caught instanceof Error ? caught.message : String(caught));
       } finally {
@@ -93,11 +95,19 @@ export default function ProjectSettingsDialog({
 
   const save = async () => {
     if (saving) return;
+    if (!name.trim()) {
+      setError("プロジェクト名は必須です。");
+      return;
+    }
+    if (settings.work_hours.start >= settings.work_hours.end) {
+      setError("勤務開始は勤務終了より前に設定してください。");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
       await api(`/api/projects/${projectId}`, "PATCH", {
-        name: name.trim() || projectName,
+        name: name.trim(),
         description,
         owner_id: ownerId === "" ? null : Number(ownerId),
         team_id: teamId === "" ? null : Number(teamId),
@@ -381,7 +391,7 @@ export default function ProjectSettingsDialog({
             type="button"
             className={PROJECT_DIALOG_PRIMARY}
             onClick={() => void save()}
-            disabled={saving || loading}
+            disabled={saving || loading || !loaded}
           >
             {saving ? "保存中…" : "保存"}
           </button>

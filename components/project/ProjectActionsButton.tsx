@@ -91,8 +91,17 @@ export default function ProjectActionsButton({
         expires_in_days: null,
       });
       const url = `${location.origin}/share/${result.token}`;
-      await navigator.clipboard.writeText(url).catch(() => undefined);
-      toast("公開リンクを作成し、コピーしました");
+      const copied = navigator.clipboard?.writeText
+        ? await navigator.clipboard
+            .writeText(url)
+            .then(() => true)
+            .catch(() => false)
+        : false;
+      toast(
+        copied
+          ? "公開リンクを作成し、コピーしました"
+          : `公開リンクを作成しました: ${url}（クリップボードにコピーできませんでした）`,
+      );
     } catch (caught) {
       toast(caught instanceof Error ? caught.message : "公開リンクを作成できませんでした");
     } finally {

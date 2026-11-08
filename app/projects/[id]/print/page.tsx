@@ -17,6 +17,13 @@ export default async function ProjectPrintPage({ params }: { params: Promise<{ i
   if (!project || project.deleted_at) notFound();
   const [sections, tasks] = await Promise.all([getSections(projectId), getProjectTasks(projectId)]);
   const topLevel = tasks.filter((task) => task.parent_task_id === null);
+  const sectionIds = new Set(sections.map((section) => Number(section.id)));
+  const unclassified = topLevel.filter(
+    (task) => task.section_id === null || !sectionIds.has(Number(task.section_id)),
+  );
+  const printSections = unclassified.length > 0
+    ? [...sections, { id: 0, name: "未分類", position: Number.MAX_SAFE_INTEGER }]
+    : sections;
 
   return (
     <div data-print-view className="mx-auto max-w-5xl bg-white p-8 text-neutral-900 print:p-0">
@@ -39,8 +46,10 @@ export default async function ProjectPrintPage({ params }: { params: Promise<{ i
           </tr>
         </thead>
         <tbody>
-          {sections.map((section) => {
-            const sectionTasks = topLevel.filter((task) => task.section_id === section.id);
+          {printSections.map((section) => {
+            const sectionTasks = section.id === 0
+              ? unclassified
+              : topLevel.filter((task) => task.section_id === section.id);
             return (
               <tr key={section.id} className="align-top">
                 <td colSpan={4} className="pt-4">

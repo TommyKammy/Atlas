@@ -91,7 +91,9 @@ export default function SaveProjectTemplateDialog({
             />
             <span>
               <span className="block font-medium">完了したタスクを含める</span>
-              <span className="block text-xs text-neutral-500">通常、完了済みタスクはテンプレートから除外されます。</span>
+              <span className="block text-xs text-neutral-500">
+                通常、完了済みタスクはテンプレートから除外されます。含める場合、作成時は未完了にリセットされます。
+              </span>
             </span>
           </label>
           <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-2.5">
