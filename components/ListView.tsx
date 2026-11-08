@@ -929,7 +929,7 @@ export default function ListView({
     const total = field ? totals[field.id] : undefined;
     if (!field || !total) return <span key={key} />;
     return (
-      <span key={key} className="flex min-w-0 items-center gap-1 text-[11px] text-neutral-500" title={total.label}>
+      <span key={key} className="flex min-w-0 items-center gap-1 pl-2 text-[11px] text-neutral-500" title={total.label}>
         <span className="shrink-0">{total.label}</span>
         <span className="truncate font-medium text-neutral-700">{total.value}</span>
       </span>
@@ -937,7 +937,7 @@ export default function ListView({
   };
 
   const editInputCls =
-    "w-full min-w-0 rounded border border-blue-500 bg-white px-1 py-0.5 text-[13px] text-neutral-800 outline-none";
+    "w-full min-w-0 rounded border border-blue-500 bg-white py-0.5 pr-1 pl-2 text-[13px] text-neutral-800 outline-none";
 
   const saveView = async () => {
     if (!saveName.trim()) return;

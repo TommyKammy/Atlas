@@ -426,7 +426,7 @@ export default function TaskListRow({
             if (e.key === "Escape") cancelEdit();
           }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white px-1 py-0.5 text-[13px] outline-none"
+          className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white py-0.5 pr-1 pl-2 text-[13px] outline-none"
         >
           <option value="">–</option>
           {users.map((u) => (
@@ -440,7 +440,7 @@ export default function TaskListRow({
           onClick={(e) => openEdit(e, t, "assignee", t.assignee_id === null ? "" : String(t.assignee_id))}
           title={t.assignee_name ? "クリックで編集" : "未割り当て — クリックで編集"}
           style={{ order: visibleCols.indexOf("assignee") }}
-          className="flex min-w-0 cursor-pointer items-center gap-1.5 truncate rounded text-neutral-600 hover:bg-neutral-100"
+          className="flex min-w-0 cursor-pointer items-center gap-1.5 truncate rounded pl-2 text-neutral-600 hover:bg-neutral-100"
         >
           {t.assignee_name ? (
             <>
@@ -453,7 +453,7 @@ export default function TaskListRow({
         </span>
       )}
       {editing?.id === t.id && editing.field === "due" ? (
-        <span style={{ order: visibleCols.indexOf("due") }} className="relative">
+        <span style={{ order: visibleCols.indexOf("due") }} className="relative pl-2">
           <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">編集中…</span>
           <div
             className="absolute top-full left-0 z-40 mt-1 w-60 rounded-lg border bg-white p-3 text-sm shadow-lg"
@@ -503,7 +503,7 @@ export default function TaskListRow({
         </span>
       ) : (
         <span onClick={(e) => openDueEdit(e, t)} style={{ order: visibleCols.indexOf("due") }}
-          title="クリックで編集" className="cursor-pointer rounded px-1 py-0.5 hover:bg-neutral-100">
+          title="クリックで編集" className="cursor-pointer rounded py-0.5 pr-1 pl-2 hover:bg-neutral-100">
           {t.start_on || t.due_on ? (
             (() => {
               const [s1, s2] = dueSegs(t.start_on, t.due_on);
@@ -559,7 +559,7 @@ export default function TaskListRow({
           onClick={(e) => openEdit(e, t, "progress", String(t.progress))}
           title="クリックで編集"
           style={{ order: visibleCols.indexOf("progress") }}
-          className="flex min-h-5 cursor-pointer items-center gap-1.5 rounded hover:bg-neutral-100"
+          className="flex min-h-5 cursor-pointer items-center gap-1.5 rounded pl-2 hover:bg-neutral-100"
         >
           {t.progress > 0 ? (
             <>
@@ -583,7 +583,7 @@ export default function TaskListRow({
               if (e.key === "Escape") cancelEdit();
             }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white px-1 py-0.5 text-[13px] outline-none"
+            className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white py-0.5 pr-1 pl-2 text-[13px] outline-none"
           >
             {!statusOptions.includes(editVal) && <option value={editVal}>{editVal}</option>}
             {statusOptions.map((o) => (
@@ -597,7 +597,7 @@ export default function TaskListRow({
             onClick={(e) => openEdit(e, t, "status", t.status)}
             title="クリックで編集"
             style={{ order: visibleCols.indexOf("status") }}
-            className="min-h-5 cursor-pointer truncate rounded hover:bg-neutral-100"
+            className="min-h-5 cursor-pointer truncate rounded pl-2 hover:bg-neutral-100"
           >
             {t.status && t.status !== "inbox" ? (
               <TaskStatusChip status={t.status} compact />
@@ -612,7 +612,7 @@ export default function TaskListRow({
         if (!active) {
           if (f.field_type === "timer") {
             return (
-              <span key={f.id} style={{ order }} className="min-w-0">
+              <span key={f.id} style={{ order }} className="min-w-0 pl-2">
                 {canEditField(f) ? (
                   <TimerCell
                     taskId={t.id}
@@ -649,7 +649,7 @@ export default function TaskListRow({
                 key={f.id}
                 title={display}
                 style={{ order }}
-                className="truncate rounded text-neutral-600"
+                className="truncate rounded pl-2 text-neutral-600"
               >
                 {display}
               </span>
@@ -661,7 +661,7 @@ export default function TaskListRow({
               onClick={(e) => openEdit(e, t, fieldKey, customRaw(t.id, f))}
               title="クリックで編集"
               style={{ order }}
-              className="cursor-pointer truncate rounded text-neutral-600 hover:bg-neutral-100"
+              className="cursor-pointer truncate rounded pl-2 text-neutral-600 hover:bg-neutral-100"
             >
               {display}
             </span>
@@ -669,7 +669,7 @@ export default function TaskListRow({
         }
         if (f.field_type === "reference") {
           return (
-            <span key={f.id} style={{ order }} className="relative min-w-0">
+            <span key={f.id} style={{ order }} className="relative min-w-0 pl-2">
               <ReferencePicker
                 field={f}
                 initial={customValueToIdArray(customValues[t.id]?.[f.id])}
@@ -681,7 +681,7 @@ export default function TaskListRow({
         }
         if (f.field_type === "people") {
           return (
-            <span key={f.id} style={{ order }} className="relative min-w-0">
+            <span key={f.id} style={{ order }} className="relative min-w-0 pl-2">
               <PeopleEditor
                 users={users}
                 initial={customValueToIdArray(customValues[t.id]?.[f.id])}
@@ -700,7 +700,7 @@ export default function TaskListRow({
             initial = [];
           }
           return (
-            <span key={f.id} style={{ order }} className="relative min-w-0">
+            <span key={f.id} style={{ order }} className="relative min-w-0 pl-2">
               <MultiSelectEditor
                 options={f.options}
                 initial={initial}
@@ -742,7 +742,7 @@ export default function TaskListRow({
                 if (e.key === "Escape") cancelEdit();
               }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white px-1 py-0.5 text-[13px] outline-none"
+              className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white py-0.5 pr-1 pl-2 text-[13px] outline-none"
             >
               <option value="">–</option>
               {f.options.map((o) => (

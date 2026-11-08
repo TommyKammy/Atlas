@@ -98,6 +98,8 @@ export default function ListColumnHeader({
         data-list-header={columnKey}
         draggable={columnKey !== "name"}
         className={`group/hd relative flex w-full min-w-0 cursor-grab items-center gap-0.5 self-stretch select-none active:cursor-grabbing ${
+          columnKey === "name" ? "" : "pl-2"
+        } ${
           colDropOver === columnKey
             ? "bg-[#f3f3f3]"
             : `hover:bg-[#f3f3f3] ${open ? "bg-[#f3f3f3]" : ""}`
