@@ -12,7 +12,9 @@ import { todayISO } from "@/lib/dates";
 import {
   COLUMN_FUNCTION_LABELS,
   columnFunctionOf,
+  customValueToArray,
   customValueToInput,
+  formatCustomValue,
   formatNumberValue,
   type ColumnFunction,
   type CustomField,
@@ -508,9 +510,11 @@ export default function ListView({
                   ? t.due_on >= dayOffset(7) && t.due_on <= dayOffset(13)
                   : t.due_on >= today && t.due_on <= dayOffset(29)))) &&
       shownFields.every((f) => {
-        const v = customFilter[f.id];
-        if (!v) return true;
-        return customValueToInput(f, customValues[t.id]?.[f.id]) === v;
+        const filter = customFilter[f.id];
+        if (!filter) return true;
+        const value = customValues[t.id]?.[f.id];
+        if (f.field_type === "multi_select") return customValueToArray(value).includes(filter);
+        return customValueToInput(f, value) === filter;
       }),
   );
 
@@ -659,7 +663,17 @@ export default function ListView({
       }
     } else if (field.startsWith("cf-")) {
       const fid = Number(field.slice(3));
-      await api("/api/task-values", "POST", { task_id: t.id, field_id: fid, value });
+      const customField = customFields.find((item) => item.id === fid);
+      let nextValue: unknown = value;
+      if (customField?.field_type === "multi_select") {
+        try {
+          const parsed = JSON.parse(value);
+          nextValue = Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+        } catch {
+          nextValue = [];
+        }
+      }
+      await api("/api/task-values", "POST", { task_id: t.id, field_id: fid, value: nextValue });
       setEditing(null);
       refresh();
     }
@@ -1086,8 +1100,8 @@ export default function ListView({
     if (key.startsWith("cf-")) {
       const field = customFields.find((item) => `cf-${item.id}` === key);
       if (!field) return "（未設定）";
-      const value = customValueToInput(field, customValues[t.id]?.[field.id]);
-      return value === "" ? "（未設定）" : value;
+      const value = formatCustomValue(field, customValues[t.id]?.[field.id]);
+      return value === "–" ? "（未設定）" : value;
     }
     return "";
   };

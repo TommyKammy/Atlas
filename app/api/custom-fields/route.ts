@@ -8,7 +8,7 @@ import {
   type CustomFieldType,
 } from "@/lib/custom-fields";
 
-const TYPES = new Set<CustomFieldType>(["number", "text", "select"]);
+const TYPES = new Set<CustomFieldType>(["number", "text", "select", "multi_select", "date"]);
 
 export const GET = withProject("view", async (_req, { projectId }) => {
   const r = await db.query(
@@ -35,7 +35,7 @@ export const POST = withProject("edit", async (_req, { projectId, body }) => {
   };
   if (!name || String(name).trim() === "" || !field_type || !TYPES.has(field_type as CustomFieldType)) {
     return NextResponse.json(
-      { error: "project_id, name and valid field_type (number|text|select) are required" },
+      { error: "project_id, name and valid field_type is required" },
       { status: 400 },
     );
   }
@@ -43,7 +43,7 @@ export const POST = withProject("edit", async (_req, { projectId, body }) => {
   const parsedConfig = parseCustomFieldConfig(type, config);
   if (!parsedConfig.ok) return NextResponse.json({ error: parsedConfig.error }, { status: 400 });
   const opts =
-    type === "select"
+    type === "select" || type === "multi_select"
       ? (Array.isArray(options) ? options : String(options ?? "").split(","))
           .map((o: unknown) => String(o).trim())
           .filter((o: string) => o !== "")

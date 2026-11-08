@@ -13,6 +13,8 @@ export type FieldTypeChoice = {
 
 const TYPES: FieldTypeChoice[] = [
   { type: "select", label: "単一選択", description: "1つの選択肢を選ぶ", icon: "◉" },
+  { type: "multi_select", label: "複数選択", description: "複数の選択肢を選ぶ", icon: "☑" },
+  { type: "date", label: "日付", description: "日付を入力する", icon: "📅" },
   { type: "text", label: "テキスト", description: "自由入力の短いテキスト", icon: "T" },
   { type: "number", label: "数値", description: "金額・数量・集計に使う", icon: "#" },
 ];
@@ -115,7 +117,7 @@ export default function FieldTypeMenu({
         )}
       </div>
       <div className="border-t border-neutral-100 px-3 py-2 text-[10px] text-neutral-400">
-        複数選択・日付・メンバーなどは順次対応予定
+        メンバー・数式・集計などは順次対応予定
       </div>
     </div>,
     document.body,

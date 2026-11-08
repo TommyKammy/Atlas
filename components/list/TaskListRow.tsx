@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import type { CustomField, CustomValue } from "@/lib/custom-fields";
 import { dueSegs } from "@/lib/dates";
 import { formatCustomValue } from "@/lib/custom-fields";
@@ -52,6 +52,54 @@ export type TaskRowContext = {
   gridCols: string;
   openTask: (id: number) => void;
 };
+
+function MultiSelectEditor({
+  options,
+  initial,
+  onSave,
+  onCancel,
+}: {
+  options: string[];
+  initial: string[];
+  onSave: (values: string[]) => void;
+  onCancel: () => void;
+}) {
+  const [selected, setSelected] = useState<string[]>(initial);
+  return (
+    <div
+      className="absolute top-full left-0 z-50 mt-1 w-56 rounded-lg border border-neutral-200 bg-white p-2 shadow-xl"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="max-h-48 space-y-0.5 overflow-y-auto">
+        {options.length === 0 && <div className="px-1 py-2 text-[11px] text-neutral-400">選択肢がありません</div>}
+        {options.map((option) => (
+          <label key={option} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-neutral-50">
+            <input
+              type="checkbox"
+              checked={selected.includes(option)}
+              onChange={(event) =>
+                setSelected((current) =>
+                  event.target.checked
+                    ? [...current, option]
+                    : current.filter((value) => value !== option),
+                )
+              }
+            />
+            <span className="truncate">{option}</span>
+          </label>
+        ))}
+      </div>
+      <div className="mt-2 flex justify-end gap-1.5 border-t border-neutral-100 pt-2">
+        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100">
+          キャンセル
+        </button>
+        <button type="button" onClick={() => onSave(selected)} className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]">
+          保存
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /** One list row (top-level task or subtask) with inline cell editors. */
 export default function TaskListRow({
@@ -435,15 +483,69 @@ export default function TaskListRow({
           </span>
         )
       )}
-      {shownFields.map((f) =>
-        editing?.id === t.id && editing.field === `cf-${f.id}` ? (
-          f.field_type === "select" ? (
-            <select
-            style={{ order: visibleCols.indexOf(`cf-${f.id}`) }}
+      {shownFields.map((f) => {
+        const fieldKey = `cf-${f.id}`;
+        const order = visibleCols.indexOf(fieldKey);
+        const active = editing?.id === t.id && editing.field === fieldKey;
+        if (!active) {
+          return (
+            <span
+              key={f.id}
+              onClick={(e) => openEdit(e, t, fieldKey, customRaw(t.id, f))}
+              title="クリックで編集"
+              style={{ order }}
+              className="cursor-pointer truncate rounded text-neutral-600 hover:bg-neutral-100"
+            >
+              {formatCustomValue(f, customValues[t.id]?.[f.id])}
+            </span>
+          );
+        }
+        if (f.field_type === "multi_select") {
+          let initial: string[] = [];
+          try {
+            const parsed = JSON.parse(editVal);
+            initial = Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+          } catch {
+            initial = [];
+          }
+          return (
+            <span key={f.id} style={{ order }} className="relative min-w-0">
+              <MultiSelectEditor
+                options={f.options}
+                initial={initial}
+                onCancel={cancelEdit}
+                onSave={(values) => void commitEdit(t, fieldKey, JSON.stringify(values))}
+              />
+            </span>
+          );
+        }
+        if (f.field_type === "date") {
+          return (
+            <input
               key={f.id}
               autoFocus
+              type="date"
+              style={{ order }}
               value={editVal}
-              onChange={(e) => commitEdit(t, `cf-${f.id}`, e.target.value)}
+              onChange={(e) => setEditVal(e.target.value)}
+              onBlur={(e) => commitEdit(t, fieldKey, (e.target as HTMLInputElement).value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") cancelEdit();
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className={editInputCls}
+            />
+          );
+        }
+        if (f.field_type === "select") {
+          return (
+            <select
+              key={f.id}
+              style={{ order }}
+              autoFocus
+              value={editVal}
+              onChange={(e) => commitEdit(t, fieldKey, e.target.value)}
               onBlur={cancelEdit}
               onKeyDown={(e) => {
                 if (e.key === "Escape") cancelEdit();
@@ -458,36 +560,27 @@ export default function TaskListRow({
                 </option>
               ))}
             </select>
-          ) : (
-            <input
-            style={{ order: visibleCols.indexOf(`cf-${f.id}`) }}
-              key={f.id}
-              autoFocus
-              type={f.field_type === "number" ? "number" : "text"}
-              value={editVal}
-              onChange={(e) => setEditVal(e.target.value)}
-              onBlur={(e) => commitEdit(t, `cf-${f.id}`, (e.target as HTMLInputElement).value)}
-              onFocus={(e) => (e.target as HTMLInputElement).select()}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") cancelEdit();
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className={editInputCls}
-            />
-          )
-        ) : (
-          <span
+          );
+        }
+        return (
+          <input
             key={f.id}
-            onClick={(e) => openEdit(e, t, `cf-${f.id}`, customRaw(t.id, f))}
-            title="クリックで編集"
-            style={{ order: visibleCols.indexOf(`cf-${f.id}`) }}
-            className="cursor-pointer truncate rounded text-neutral-600 hover:bg-neutral-100"
-          >
-            {formatCustomValue(f, customValues[t.id]?.[f.id])}
-          </span>
-        ),
-      )}
+            autoFocus
+            style={{ order }}
+            type={f.field_type === "number" ? "number" : "text"}
+            value={editVal}
+            onChange={(e) => setEditVal(e.target.value)}
+            onBlur={(e) => commitEdit(t, fieldKey, (e.target as HTMLInputElement).value)}
+            onFocus={(e) => (e.target as HTMLInputElement).select()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") cancelEdit();
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className={editInputCls}
+          />
+        );
+      })}
       <button
         style={{ order: 999 }}
         onClick={() => remove(t)}

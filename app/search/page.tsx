@@ -208,7 +208,7 @@ export default async function SearchPage(props: {
                   <span className="truncate" title={`${customField.project_name} / ${customField.name}`}>
                     {customField.name}
                   </span>
-                  {customField.field_type === "select" ? (
+                  {(customField.field_type === "select" || customField.field_type === "multi_select") ? (
                     <select name={`cf_${customField.id}`} defaultValue={str(sp, `cf_${customField.id}`)} className={field}>
                       <option value="">すべて</option>
                       {customField.options.map((option) => (
@@ -221,7 +221,7 @@ export default async function SearchPage(props: {
                     <input
                       name={`cf_${customField.id}`}
                       defaultValue={str(sp, `cf_${customField.id}`)}
-                      type={customField.field_type === "number" ? "number" : "text"}
+                      type={customField.field_type === "number" ? "number" : customField.field_type === "date" ? "date" : "text"}
                       className={field}
                     />
                   )}

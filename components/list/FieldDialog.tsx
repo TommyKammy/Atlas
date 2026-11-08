@@ -17,8 +17,10 @@ import { toast } from "@/lib/ui-feedback";
 
 const TYPE_LABELS: Record<CustomFieldType, string> = {
   select: "単一選択",
+  multi_select: "複数選択",
   text: "テキスト",
   number: "数値",
+  date: "日付",
 };
 
 /** Asana-style create/edit dialog for a list custom field. */
@@ -66,7 +68,7 @@ export default function FieldDialog({
   );
   const preview = formatNumberValue(1000, config);
   const numberField = type === "number";
-  const selectField = type === "select";
+  const selectField = type === "select" || type === "multi_select";
 
   const updateOption = (index: number, value: string) => {
     setOptions((current) => current.map((item, i) => (i === index ? value : item)));
@@ -171,6 +173,8 @@ export default function FieldDialog({
                 className={fieldClass}
               >
                 <option value="select">単一選択</option>
+                <option value="multi_select">複数選択</option>
+                <option value="date">日付</option>
                 <option value="text">テキスト</option>
                 <option value="number">数値</option>
               </select>

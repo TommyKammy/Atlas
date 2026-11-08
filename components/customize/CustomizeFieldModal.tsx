@@ -58,9 +58,11 @@ export default function CustomizeFieldModal({
             <option value="text">テキスト</option>
             <option value="number">数値</option>
             <option value="select">単一選択</option>
+            <option value="multi_select">複数選択</option>
+            <option value="date">日付</option>
           </select>
         </label>
-        {draft.field_type === "select" && (
+        {(draft.field_type === "select" || draft.field_type === "multi_select") && (
           <label className="mt-4 block text-[12px] font-medium text-neutral-700">
             オプション
             <textarea

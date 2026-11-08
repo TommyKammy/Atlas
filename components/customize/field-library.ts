@@ -4,12 +4,16 @@ export const FIELD_TYPE_LABELS: Record<CustomField["field_type"], string> = {
   text: "テキスト",
   number: "数値",
   select: "単一選択",
+  multi_select: "複数選択",
+  date: "日付",
 };
 
 export const FIELD_TYPE_ICONS: Record<CustomField["field_type"], string> = {
   text: "T",
   number: "123",
   select: "○",
+  multi_select: "☑",
+  date: "📅",
 };
 
 export const FIELD_LIBRARY: Array<{

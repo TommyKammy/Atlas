@@ -243,7 +243,7 @@ export default function ListColumnHeader({
             )}
             {field && (
               <>
-                {field.field_type === "select" && (
+                {(field.field_type === "select" || field.field_type === "multi_select") && (
                   <>
                     <div className={menuLabel}>フィルター</div>
                     <button

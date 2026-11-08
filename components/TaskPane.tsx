@@ -10,7 +10,12 @@ import { useRouter } from "next/navigation";
 import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
 import type { RichTextDoc } from "@/lib/rich-text-types";
 import { todayISO } from "@/lib/dates";
-import { customValueToInput, type CustomField, type CustomValue } from "@/lib/custom-fields";
+import {
+  customValueToArray,
+  customValueToInput,
+  type CustomField,
+  type CustomValue,
+} from "@/lib/custom-fields";
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import TaskPaneHeader from "./task/TaskPaneHeader";
@@ -286,7 +291,7 @@ export default function TaskPane({
     refresh();
   };
 
-  const setCustomValue = async (fieldId: number, value: string | number | null) => {
+  const setCustomValue = async (fieldId: number, value: string | number | string[] | null) => {
     await api("/api/task-values", "POST", { task_id: task.id, field_id: fieldId, value });
     refresh();
   };
@@ -304,6 +309,45 @@ export default function TaskPane({
           }
           className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
         />
+      );
+    }
+    if (field.field_type === "date") {
+      return (
+        <input
+          type="date"
+          defaultValue={value?.value_date ?? ""}
+          key={`cf-${task.id}-${field.id}`}
+          onBlur={(event) => setCustomValue(field.id, event.target.value || null)}
+          className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+        />
+      );
+    }
+    if (field.field_type === "multi_select") {
+      const selected = customValueToArray(value);
+      return (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 py-1" key={`cf-${task.id}-${field.id}`}>
+          {field.options.length === 0 ? (
+            <span className="text-[12px] text-neutral-400">選択肢がありません</span>
+          ) : (
+            field.options.map((option) => (
+              <label key={option} className="flex cursor-pointer items-center gap-1 text-[12px] text-neutral-600">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(option)}
+                  onChange={(event) =>
+                    setCustomValue(
+                      field.id,
+                      event.target.checked
+                        ? [...selected, option]
+                        : selected.filter((value) => value !== option),
+                    )
+                  }
+                />
+                {option}
+              </label>
+            ))
+          )}
+        </div>
       );
     }
     if (field.field_type === "select") {

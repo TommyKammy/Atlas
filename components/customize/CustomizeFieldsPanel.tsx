@@ -120,7 +120,7 @@ export default function CustomizeFieldsPanel({
                   <div className="text-[14px] font-medium text-neutral-900">{field.name}</div>
                   <div className="mt-0.5 text-[12px] text-neutral-500">
                     {FIELD_TYPE_LABELS[field.field_type]}
-                    {field.field_type === "select" && field.options.length > 0
+                    {(field.field_type === "select" || field.field_type === "multi_select") && field.options.length > 0
                       ? ` ・ ${field.options.join(" / ")}`
                       : ""}
                   </div>

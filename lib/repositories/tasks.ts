@@ -175,7 +175,8 @@ export async function getTaskCustomValues(
   projectId: number,
 ): Promise<Record<number, Record<number, CustomValue>>> {
   const r = await db.query(
-    `SELECT v.task_id, v.field_id, v.value_text, v.value_number
+    `SELECT v.task_id, v.field_id, v.value_text, v.value_number,
+       v.value_date::text AS value_date, v.value_json
      FROM task_custom_values v JOIN custom_fields f ON f.id = v.field_id
      WHERE f.project_id = $1`,
     [projectId],
@@ -183,7 +184,12 @@ export async function getTaskCustomValues(
   const out: Record<number, Record<number, CustomValue>> = {};
   for (const row of r.rows) {
     if (!out[row.task_id]) out[row.task_id] = {};
-    out[row.task_id][row.field_id] = { value_text: row.value_text, value_number: row.value_number };
+    out[row.task_id][row.field_id] = {
+      value_text: row.value_text,
+      value_number: row.value_number,
+      value_date: row.value_date,
+      value_json: row.value_json,
+    };
   }
   return out;
 }

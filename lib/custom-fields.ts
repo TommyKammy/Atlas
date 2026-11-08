@@ -1,4 +1,4 @@
-export type CustomFieldType = "number" | "text" | "select";
+export type CustomFieldType = "number" | "text" | "select" | "multi_select" | "date";
 export type NumberFormat = "number" | "percent" | "currency" | "custom" | "none";
 export type ColumnFunction = "none" | "sum" | "average" | "count" | "min" | "max";
 
@@ -20,7 +20,12 @@ export type CustomField = {
   config?: CustomFieldConfig;
 };
 
-export type CustomValue = { value_text: string | null; value_number: number | null };
+export type CustomValue = {
+  value_text: string | null;
+  value_number: number | null;
+  value_date?: string | null;
+  value_json?: unknown;
+};
 
 export const NUMBER_FORMAT_LABELS: Record<NumberFormat, string> = {
   number: "数値",
@@ -154,11 +159,27 @@ export function formatNumberValue(value: number, config: CustomFieldConfig = {})
   return formatted;
 }
 
+export function formatDateValue(value: string | null | undefined): string {
+  if (!value) return "–";
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[1]}/${match[2]}/${match[3]}` : value;
+}
+
+export function customValueToArray(v?: CustomValue): string[] {
+  if (!v || !Array.isArray(v.value_json)) return [];
+  return v.value_json.map((item) => String(item));
+}
+
 export function formatCustomValue(f: CustomField, v?: CustomValue): string {
   if (!v) return "–";
   if (f.field_type === "number") {
     return v.value_number === null ? "–" : formatNumberValue(v.value_number, f.config ?? {});
   }
+  if (f.field_type === "multi_select") {
+    const values = customValueToArray(v);
+    return values.length > 0 ? values.join(", ") : "–";
+  }
+  if (f.field_type === "date") return formatDateValue(v.value_date);
   return v.value_text ?? "–";
 }
 
@@ -166,5 +187,7 @@ export function formatCustomValue(f: CustomField, v?: CustomValue): string {
 export function customValueToInput(f: CustomField, v?: CustomValue): string {
   if (!v) return "";
   if (f.field_type === "number") return v.value_number === null ? "" : String(v.value_number);
+  if (f.field_type === "multi_select") return JSON.stringify(customValueToArray(v));
+  if (f.field_type === "date") return v.value_date ?? "";
   return v.value_text ?? "";
 }

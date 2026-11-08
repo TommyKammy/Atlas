@@ -27,7 +27,7 @@ export const PATCH = withResourceProject("edit", "custom_fields", async (_req, {
     values.push(typeof payload.description === "string" ? payload.description.trim().slice(0, 500) : "");
     sets.push(`description = $${values.length}`);
   }
-  if (Array.isArray(payload.options) && fieldType === "select") {
+  if (Array.isArray(payload.options) && (fieldType === "select" || fieldType === "multi_select")) {
     values.push(JSON.stringify(payload.options.map((o) => String(o).trim()).filter((o) => o !== "")));
     sets.push(`options = $${values.length}::jsonb`);
   }

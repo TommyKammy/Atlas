@@ -298,7 +298,7 @@ export default function ProjectCustomizeButton({
       return;
     }
     const options =
-      fieldDraft.field_type === "select"
+      fieldDraft.field_type === "select" || fieldDraft.field_type === "multi_select"
         ? fieldDraft.options.split(/[,\n]/).map((o) => o.trim()).filter(Boolean)
         : [];
     setBusy(true);
