@@ -112,6 +112,29 @@ function MultiSelectEditor({
   );
 }
 
+function EmptyCellIcon({ kind }: { kind: "assignee" | "due" }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" aria-hidden="true">
+      <circle
+        cx="12"
+        cy="12"
+        r="11"
+        fill="none"
+        stroke="#767676"
+        strokeWidth="2"
+        strokeDasharray="4 2"
+      />
+      <g transform="translate(6 6) scale(0.5)" fill="#767676">
+        {kind === "assignee" ? (
+          <path d="M12,14c-3.859,0-7-3.14-7-7S8.141,0,12,0s7,3.14,7,7-3.141,7-7,7Zm0-12c-2.757,0-5,2.243-5,5s2.243,5,5,5,5-2.243,5-5-2.243-5-5-5Zm10,21v-2c0-2.757-2.243-5-5-5H7c-2.757,0-5,2.243-5,5v2c0,.552,.447,1,1,1s1-.448,1-1v-2c0-1.654,1.346-3,3-3h10c1.654,0,3,1.346,3,3v2c0,.552,.447,1,1,1s1-.448,1-1Z" />
+        ) : (
+          <path d="M19.1,2H18V1c0-0.6-0.4-1-1-1s-1,0.4-1,1v1H8V1c0-0.6-0.4-1-1-1S6,0.4,6,1v1H4.9C2.2,2,0,4.2,0,6.9v12.1C0,21.8,2.2,24,4.9,24h14.1c2.7,0,4.9-2.2,4.9-4.9V6.9C24,4.2,21.8,2,19.1,2z M4.9,4H6v1c0,0.6,0.4,1,1,1s1-0.4,1-1V4h8v1c0,0.6,0.4,1,1,1s1-0.4,1-1V4h1.1C20.7,4,22,5.3,22,6.9V8H2V6.9C2,5.3,3.3,4,4.9,4z M19.1,22H4.9C3.3,22,2,20.7,2,19.1V10h20v9.1C22,20.7,20.7,22,19.1,22z" />
+        )}
+      </g>
+    </svg>
+  );
+}
+
 function PeopleEditor({
   users,
   initial,
@@ -415,12 +438,18 @@ export default function TaskListRow({
       ) : (
         <span
           onClick={(e) => openEdit(e, t, "assignee", t.assignee_id === null ? "" : String(t.assignee_id))}
-          title="クリックで編集"
+          title={t.assignee_name ? "クリックで編集" : "未割り当て — クリックで編集"}
           style={{ order: visibleCols.indexOf("assignee") }}
           className="flex min-w-0 cursor-pointer items-center gap-1.5 truncate rounded text-neutral-600 hover:bg-neutral-100"
         >
-          <TaskAvatar name={t.assignee_name} />
-          <span className="truncate">{t.assignee_name ?? ""}</span>
+          {t.assignee_name ? (
+            <>
+              <TaskAvatar name={t.assignee_name} />
+              <span className="truncate">{t.assignee_name}</span>
+            </>
+          ) : (
+            <EmptyCellIcon kind="assignee" />
+          )}
         </span>
       )}
       {editing?.id === t.id && editing.field === "due" ? (
@@ -493,9 +522,10 @@ export default function TaskListRow({
             <button
               onClick={(e) => openDueEdit(e, t)}
               title="期日を設定"
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-neutral-300 text-[11px] leading-none text-neutral-300 hover:border-neutral-500 hover:text-neutral-500"
+              aria-label="期日を設定"
+              className="flex h-5 w-5 items-center justify-center rounded-full text-[#767676] hover:bg-neutral-100"
             >
-              ＋
+              <EmptyCellIcon kind="due" />
             </button>
           )}
         </span>
