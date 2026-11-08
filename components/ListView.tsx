@@ -212,6 +212,7 @@ export default function ListView({
     event.dataTransfer.setData("text/atlas-section", String(id));
     event.dataTransfer.setDragImage(dragImage, 40, rect.height / 2);
     window.setTimeout(() => dragImage.remove(), 0);
+    setHint(null);
     setSectionDragging(id);
     setSectionDrop(null);
   };
@@ -1400,6 +1401,7 @@ export default function ListView({
     shownFields,
     customFields,
     selected,
+    sectionDragging: sectionDragging !== null,
     canEditField,
     onTimerChange: refresh,
     customRaw,
@@ -1414,10 +1416,19 @@ export default function ListView({
     openTask,
   };
 
+  const sectionDropSide = (targetId: number): "before" | "after" | null => {
+    if (sectionDragging === null || sectionDragging === targetId) return null;
+    const ids = orderedSections.map((section) => section.id);
+    const from = ids.indexOf(sectionDragging);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return null;
+    return from < to ? "after" : "before";
+  };
+
   const groupHeader = (key: string, name: string, count: number, depth = 0, sectionId?: number) => {
     const collapsed = collapsedGroups.has(key);
     const sectionDrag = sectionId !== undefined && groupBy === "section";
-    const drop = sectionId !== undefined && sectionDrop?.id === sectionId ? sectionDrop.side : null;
+    const target = sectionId !== undefined && sectionDrop?.id === sectionId;
     return (
       <div
         data-list-section-header={key}
@@ -1429,47 +1440,16 @@ export default function ListView({
         onDragEnd={sectionDrag ? () => {
           setSectionDragging(null);
           setSectionDrop(null);
-        } : undefined}
-        onDragOver={sectionDrag ? (event) => {
-          if (sectionDragging === null) return;
-          event.preventDefault();
-          event.dataTransfer.dropEffect = "move";
-          if (sectionId === sectionDragging) {
-            setSectionDrop(null);
-            return;
-          }
-          const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-          setSectionDrop({
-            id: sectionId,
-            side: event.clientY < rect.top + rect.height / 2 ? "before" : "after",
-          });
-        } : undefined}
-        onDragLeave={sectionDrag ? (event) => {
-          const related = event.relatedTarget as Node | null;
-          if (related && (event.currentTarget as HTMLElement).contains(related)) return;
-          if (sectionDrop?.id === sectionId) setSectionDrop(null);
-        } : undefined}
-        onDrop={sectionDrag ? (event) => {
-          const source = Number(event.dataTransfer.getData("text/atlas-section"));
-          if (!source) return;
-          event.preventDefault();
-          event.stopPropagation();
-          const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-          const side = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-          void reorderSections(source, sectionId, side);
+          setHint(null);
         } : undefined}
         className={`relative flex h-[37px] items-center gap-2 ${depth > 0 ? "pl-10" : "pl-6"} ${
-          sectionDragging === sectionId ? "bg-[#f3f3f3]/70 [&>*]:invisible" : ""
+          sectionDragging === sectionId
+            ? "bg-[#f3f3f3]/70 [&>*]:invisible"
+            : target
+              ? "bg-[#f3f3f3]"
+              : ""
         }`}
       >
-        {drop && (
-          <span
-            data-section-drop-indicator={drop}
-            className={`pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-[#2f6fd0] ${
-              drop === "before" ? "-top-[1px]" : "-bottom-[1px]"
-            }`}
-          />
-        )}
         <button
           onClick={() => toggleGroup(key)}
           title={collapsed ? "展開する" : "折りたたむ"}
@@ -1925,16 +1905,44 @@ export default function ListView({
             return (
               <div
                 key={s.id}
+                data-list-section-block={s.id}
+                className="relative"
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = "move";
+                  if (sectionDragging !== null) {
+                    const side = sectionDropSide(s.id);
+                    setSectionDrop(side ? { id: s.id, side } : null);
+                  }
+                }}
+                onDragLeave={(e) => {
+                  if (sectionDragging === null) return;
+                  const related = e.relatedTarget as Node | null;
+                  if (related && (e.currentTarget as HTMLElement).contains(related)) return;
+                  if (sectionDrop?.id === s.id) setSectionDrop(null);
                 }}
                 onDrop={(e) => {
+                  if (sectionDragging !== null) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const source = Number(e.dataTransfer.getData("text/atlas-section"));
+                    const side = sectionDropSide(s.id);
+                    if (source && side) void reorderSections(source, s.id, side);
+                    return;
+                  }
                   e.preventDefault();
                   const dragId = Number(e.dataTransfer.getData("text/atlas-task"));
                   if (dragId) appendToSection(dragId, s.id);
                 }}
               >
+                {sectionDrop?.id === s.id && (
+                  <span
+                    data-section-drop-indicator={sectionDrop.side}
+                    className={`pointer-events-none absolute inset-x-0 z-20 h-[2px] bg-[#2f6fd0] ${
+                      sectionDrop.side === "before" ? "top-0" : "bottom-0"
+                    }`}
+                  />
+                )}
                 {groupHeader(key, s.name, items.length, 0, s.id)}
                 {!collapsed && (
                   <>

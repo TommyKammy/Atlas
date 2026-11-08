@@ -49,6 +49,7 @@ export type TaskRowContext = {
   shownFields: CustomField[];
   customFields: CustomField[];
   selected: Set<number>;
+  sectionDragging: boolean;
   canEditField: (field: CustomField) => boolean;
   onTimerChange: () => void;
   customRaw: (taskId: number, field: CustomField) => string;
@@ -204,6 +205,7 @@ export default function TaskListRow({
     shownFields,
     customFields,
     selected,
+    sectionDragging,
     canEditField,
     onTimerChange,
     customRaw,
@@ -252,13 +254,17 @@ export default function TaskListRow({
       onDragEnd={endRowDrag}
       onClick={(e) => rowClick(e, t.id)}
       onDragOver={(e) => {
+        if (sectionDragging) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         setHint({ id: t.id, before: e.clientY < rect.top + rect.height / 2 });
       }}
-      onDragLeave={() => setHint(null)}
+      onDragLeave={() => {
+        if (!sectionDragging) setHint(null);
+      }}
       onDrop={(e) => {
+        if (sectionDragging) return;
         e.preventDefault();
         e.stopPropagation();
         setHint(null);
