@@ -777,7 +777,11 @@ export default function ListView({
     setEditVal(initial);
   };
 
-  const patchFields = async (t: TaskRow, fields: Record<string, unknown>) => {
+  const patchFields = async (
+    t: TaskRow,
+    fields: Record<string, unknown>,
+    options?: { close?: boolean },
+  ) => {
     try {
       await patchTask(t.id, fields, t.updated_at);
     } catch (error) {
@@ -787,7 +791,7 @@ export default function ListView({
         toastMessage(`更新に失敗しました: ${error instanceof ApiError ? error.status : ""}`);
       }
     }
-    setEditing(null);
+    if (options?.close !== false) setEditing(null);
     refresh();
   };
 
@@ -860,18 +864,11 @@ export default function ListView({
     setEditVal(t.due_on ?? "");
   };
 
-  const commitDueEdit = async (t: TaskRow, cleared = false) => {
-    if (!editing || editing.id !== t.id || editing.field !== "due") return;
-    const s = cleared ? "" : editStart;
-    let d = cleared ? "" : editVal;
-    if (s && d && s > d) {
-      d = s;
-      setEditVal(s);
-    }
-    const ns = s === "" ? null : s;
-    const nd = d === "" ? null : d;
-    if (ns !== t.start_on || nd !== t.due_on) await patchFields(t, { start_on: ns, due_on: nd });
-    else setEditing(null);
+  const applyDueRange = async (t: TaskRow, start: string, due: string) => {
+    const ns = start === "" ? null : start;
+    const nd = due === "" ? null : due;
+    if (ns === t.start_on && nd === t.due_on) return;
+    await patchFields(t, { start_on: ns, due_on: nd }, { close: false });
   };
 
   const customRaw = (taskId: number, f: CustomField) =>
@@ -1501,7 +1498,7 @@ export default function ListView({
     commitEdit,
     cancelEdit,
     openDueEdit,
-    commitDueEdit,
+    applyDueRange,
     editInputCls,
     users,
     visibleCols,
