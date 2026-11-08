@@ -450,13 +450,19 @@ export default function ListView({
   const {
     colDragging,
     colDropOver,
-    setColDropOver,
+    colDropSide,
+    colDragPreview,
     visibleCols,
     gridCols,
     compactCells,
     gripMouseDown,
-    headerMouseDown,
-    headerMouseUp,
+    startColumnDrag,
+    updateColumnDrag,
+    dragOverColumn,
+    dragLeaveColumn,
+    dropColumn,
+    clearColumnDrop,
+    endColumnDrag,
     moveCol,
   } = useColumnLayout({
     projectId,
@@ -1094,13 +1100,17 @@ export default function ListView({
       menuCol={menuCol}
       setMenuCol={setMenuCol}
       colDropOver={colDropOver}
+      colDropSide={colDropSide}
       colDragging={colDragging}
-      setColDropOver={setColDropOver}
-      headerMouseDown={headerMouseDown}
-      headerMouseUp={headerMouseUp}
       gripMouseDown={gripMouseDown}
       visibleCols={visibleCols}
       moveCol={moveCol}
+      startColumnDrag={startColumnDrag}
+      updateColumnDrag={updateColumnDrag}
+      dragOverColumn={dragOverColumn}
+      dragLeaveColumn={dragLeaveColumn}
+      dropColumn={dropColumn}
+      endColumnDrag={endColumnDrag}
       cycleSort={cycleSort}
       sortMark={sortMark}
       applySort={applySort}
@@ -1597,6 +1607,22 @@ export default function ListView({
       <div
         className={`grid h-[37px] items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 text-xs font-normal text-neutral-500 ${compactCells}`}
         style={{ gridTemplateColumns: gridCols }}
+        onDragOver={(event) => {
+          if (!colDragging) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          updateColumnDrag(event);
+        }}
+        onDragLeave={(event) => {
+          const related = event.relatedTarget as Node | null;
+          if (related && event.currentTarget.contains(related)) return;
+          clearColumnDrop();
+        }}
+        onDrop={(event) => {
+          if (!colDragging) return;
+          event.preventDefault();
+          endColumnDrag();
+        }}
       >
         <input
           type="checkbox"
@@ -1873,6 +1899,21 @@ export default function ListView({
           onClose={() => setFieldDialog(null)}
           onSaved={refresh}
         />
+      )}
+      {colDragPreview && (
+        <div
+          data-column-drag-preview
+          className="pointer-events-none fixed z-[200] flex items-center overflow-hidden rounded-[3px] border border-neutral-300 bg-white/85 px-2 text-xs font-normal text-neutral-600 opacity-70 shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
+          style={{
+            left: colDragPreview.x,
+            top: colDragPreview.y,
+            width: colDragPreview.width,
+            height: colDragPreview.height,
+            transform: "translate(-50%, -50%)",
+          }}
+        >
+          <span className="truncate">{colDragPreview.label}</span>
+        </div>
       )}
     </div>
   );

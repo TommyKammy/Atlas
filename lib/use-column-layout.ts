@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 const DEFAULT_WIDTH: Record<string, number> = {
   assignee: 119,
@@ -30,8 +30,16 @@ export function useColumnLayout({
   const [loadedStoreKey, setLoadedStoreKey] = useState<string | null>(null);
   const [colDragging, setColDragging] = useState<string | null>(null);
   const [colDropOver, setColDropOver] = useState<string | null>(null);
+  const [colDropSide, setColDropSide] = useState<"before" | "after" | null>(null);
+  const [colDragPreview, setColDragPreview] = useState<{
+    key: string;
+    label: string;
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const [isCompact, setIsCompact] = useState(false);
-  const colDragCand = useRef<{ key: string; x: number } | null>(null);
 
   const colW = (key: string) =>
     colWidths[key] ?? (key.startsWith("cf-") ? 130 : DEFAULT_WIDTH[key] ?? 119);
@@ -61,27 +69,6 @@ export function useColumnLayout({
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
-    const onMove = (event: MouseEvent) => {
-      const candidate = colDragCand.current;
-      if (candidate && Math.abs(event.clientX - candidate.x) > 6) {
-        setColDragging(candidate.key);
-        colDragCand.current = null;
-      }
-    };
-    const onUp = () => {
-      colDragCand.current = null;
-      setColDragging(null);
-      setColDropOver(null);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
   }, []);
 
   const storeKey = `atlas-listcols-${projectId}`;
@@ -160,30 +147,103 @@ export function useColumnLayout({
     startResize(event, key);
   };
 
-  const headerMouseDown = (event: React.MouseEvent, key: string) => {
-    if (key === "name") return;
-    if ((event.target as HTMLElement).closest('[title="ドラッグで列幅を変更"],div.z-40,input,select,textarea')) return;
-    // The right edge belongs to the resize handle. Without this guard a
-    // slightly missed resize grab becomes a column reorder.
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    if (event.clientX >= rect.right - 10) return;
-    colDragCand.current = { key, x: event.clientX };
+  const endColumnDrag = () => {
+    setColDragging(null);
+    setColDropOver(null);
+    setColDropSide(null);
+    setColDragPreview(null);
   };
 
-  const headerMouseUp = (key: string) => {
-    if (colDragging && key !== "name" && key !== colDragging) {
+  const clearColumnDrop = () => {
+    setColDropOver(null);
+    setColDropSide(null);
+  };
+
+  const updateColumnDrag = (event: React.DragEvent) => {
+    if (!colDragging) return;
+    setColDragPreview((previous) =>
+      previous ? { ...previous, x: event.clientX, y: event.clientY } : previous,
+    );
+  };
+
+  const startColumnDrag = (event: React.DragEvent, key: string, label: string) => {
+    if (key === "name") {
+      event.preventDefault();
+      return;
+    }
+    if (
+      (event.target as HTMLElement).closest(
+        'button[title="列メニュー"],input,select,textarea,[title="ドラッグで列幅を変更"],div.z-40',
+      )
+    ) {
+      event.preventDefault();
+      return;
+    }
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", key);
+    // Hide the native drag image; Atlas renders its own semi-transparent
+    // field preview so it looks and measures the same across browsers.
+    const blank = document.createElement("canvas");
+    blank.width = 1;
+    blank.height = 1;
+    event.dataTransfer.setDragImage(blank, 0, 0);
+    setColDragging(key);
+    setColDropOver(null);
+    setColDropSide(null);
+    setColDragPreview({
+      key,
+      label,
+      width: rect.width,
+      height: rect.height,
+      x: event.clientX,
+      y: event.clientY,
+    });
+    onMenuClose();
+  };
+
+  const dragOverColumn = (event: React.DragEvent, key: string) => {
+    if (!colDragging) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    updateColumnDrag(event);
+    if (key === "name" || key === colDragging) {
+      clearColumnDrop();
+      return;
+    }
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    setColDropOver(key);
+    setColDropSide(event.clientX < rect.left + rect.width / 2 ? "before" : "after");
+  };
+
+  const dragLeaveColumn = (event: React.DragEvent, key: string) => {
+    if (colDropOver !== key) return;
+    const related = event.relatedTarget as Node | null;
+    if (related && (event.currentTarget as HTMLElement).contains(related)) return;
+    clearColumnDrop();
+  };
+
+  const dropColumn = (event: React.DragEvent, key: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const source = colDragging;
+    if (source && source !== key && key !== "name") {
       const visible = [...visibleCols];
-      const from = visible.indexOf(colDragging);
+      const from = visible.indexOf(source);
       const to = visible.indexOf(key);
       if (from >= 0 && to >= 0) {
-        visible.splice(to, 0, ...visible.splice(from, 1));
+        const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+        const side = event.clientX < rect.left + rect.width / 2 ? "before" : "after";
+        const [moved] = visible.splice(from, 1);
+        let insert = to;
+        if (from < to) insert -= 1;
+        if (side === "after") insert += 1;
+        visible.splice(insert, 0, moved);
         setColOrder([...visible, ...colOrder.filter((k) => !visible.includes(k))]);
         onMenuClose();
       }
     }
-    colDragCand.current = null;
-    setColDragging(null);
-    setColDropOver(null);
+    endColumnDrag();
   };
 
   const moveCol = (key: string, direction: -1 | 1) => {
@@ -202,13 +262,19 @@ export function useColumnLayout({
     colOrder,
     colDragging,
     colDropOver,
-    setColDropOver,
+    colDropSide,
+    colDragPreview,
     visibleCols,
     gridCols,
     compactCells,
     gripMouseDown,
-    headerMouseDown,
-    headerMouseUp,
+    startColumnDrag,
+    updateColumnDrag,
+    dragOverColumn,
+    dragLeaveColumn,
+    dropColumn,
+    clearColumnDrop,
+    endColumnDrag,
     moveCol,
   };
 }

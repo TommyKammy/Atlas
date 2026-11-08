@@ -18,13 +18,17 @@ export default function ListColumnHeader({
   menuCol,
   setMenuCol,
   colDropOver,
+  colDropSide,
   colDragging,
-  setColDropOver,
-  headerMouseDown,
-  headerMouseUp,
   gripMouseDown,
   visibleCols,
   moveCol,
+  startColumnDrag,
+  updateColumnDrag,
+  dragOverColumn,
+  dragLeaveColumn,
+  dropColumn,
+  endColumnDrag,
   cycleSort,
   sortMark,
   applySort,
@@ -54,13 +58,17 @@ export default function ListColumnHeader({
   menuCol: string | null;
   setMenuCol: (value: string | null) => void;
   colDropOver: string | null;
+  colDropSide: "before" | "after" | null;
   colDragging: string | null;
-  setColDropOver: (value: string | null | ((previous: string | null) => string | null)) => void;
-  headerMouseDown: (event: React.MouseEvent, key: string) => void;
-  headerMouseUp: (key: string) => void;
   gripMouseDown: (event: React.MouseEvent, key: string) => void;
   visibleCols: string[];
   moveCol: (key: string, delta: -1 | 1) => void;
+  startColumnDrag: (event: React.DragEvent, key: string, label: string) => void;
+  updateColumnDrag: (event: React.DragEvent) => void;
+  dragOverColumn: (event: React.DragEvent, key: string) => void;
+  dragLeaveColumn: (event: React.DragEvent, key: string) => void;
+  dropColumn: (event: React.DragEvent, key: string) => void;
+  endColumnDrag: () => void;
   cycleSort: (key: "name" | "due" | "progress") => void;
   sortMark: (key: "name" | "due" | "progress") => string;
   applySort: (key: "name" | "due" | "progress", dir: "asc" | "desc") => void;
@@ -90,18 +98,27 @@ export default function ListColumnHeader({
 
       <span
         data-list-header={columnKey}
+        draggable={columnKey !== "name"}
         className={`group/hd relative flex w-full min-w-0 cursor-grab items-center gap-0.5 self-stretch select-none active:cursor-grabbing ${
           colDropOver === columnKey
-            ? "bg-blue-100 ring-2 ring-blue-400"
+            ? "bg-[#f3f3f3]"
             : `hover:bg-[#f3f3f3] ${open ? "bg-[#f3f3f3]" : ""}`
-        } ${colDragging === columnKey ? "opacity-50" : ""}`}
-        onMouseDown={(e) => headerMouseDown(e, columnKey)}
-        onMouseUp={() => headerMouseUp(columnKey)}
-        onMouseEnter={() => {
-          if (colDragging && columnKey !== colDragging && columnKey !== "name") setColDropOver(columnKey);
-        }}
-        onMouseLeave={() => setColDropOver((v) => (v === columnKey ? null : v))}
+        } ${colDragging === columnKey ? "opacity-40" : ""}`}
+        onDragStart={(event) => startColumnDrag(event, columnKey, label)}
+        onDrag={updateColumnDrag}
+        onDragEnd={endColumnDrag}
+        onDragOver={(event) => dragOverColumn(event, columnKey)}
+        onDragLeave={(event) => dragLeaveColumn(event, columnKey)}
+        onDrop={(event) => dropColumn(event, columnKey)}
       >
+        {colDropOver === columnKey && colDropSide && (
+          <span
+            data-column-drop-indicator={colDropSide}
+            className={`pointer-events-none absolute inset-y-0 z-10 w-[2px] bg-[#2f6fd0] ${
+              colDropSide === "before" ? "-left-[1px]" : "-right-[1px]"
+            }`}
+          />
+        )}
         {sortable ? (
           <button
             onClick={() => cycleSort(columnKey as "name" | "due" | "progress")}
