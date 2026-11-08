@@ -141,6 +141,9 @@ export default function ListView({
   const [sectionOrder, setSectionOrder] = useState<number[]>(() => sections.map((section) => section.id));
   const [sectionDragging, setSectionDragging] = useState<number | null>(null);
   const [sectionDrop, setSectionDrop] = useState<{ id: number; side: "before" | "after" } | null>(null);
+  const [editingSection, setEditingSection] = useState<number | null>(null);
+  const [sectionEditName, setSectionEditName] = useState("");
+  const [sectionMenu, setSectionMenu] = useState<{ id: number; left: number; top: number } | null>(null);
 
   const sectionById = new Map(sections.map((section) => [section.id, section]));
   const orderedSections = [
@@ -236,6 +239,61 @@ export default function ListView({
     } catch {
       setSectionOrder(sections.map((section) => section.id));
       toastMessage("セクションの並び替えに失敗しました");
+      refresh();
+    }
+  };
+
+  const beginSectionEdit = (id: number, name: string) => {
+    setSectionMenu(null);
+    setSectionEditName(name);
+    setEditingSection(id);
+  };
+
+  const saveSectionName = async (id: number) => {
+    const name = sectionEditName.trim();
+    const current = sections.find((section) => section.id === id)?.name ?? "";
+    setEditingSection(null);
+    setSectionEditName("");
+    if (!name || name === current) return;
+    try {
+      await api(`/api/sections/${id}`, "PATCH", { name });
+      refresh();
+    } catch {
+      toastMessage("セクション名の変更に失敗しました");
+      refresh();
+    }
+  };
+
+  const addTaskToSection = (id: number) => {
+    setSectionMenu(null);
+    setAddingTo(id);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const input = document.querySelector<HTMLInputElement>(`input[data-add-task-section="${id}"]`);
+        input?.scrollIntoView({ block: "nearest" });
+        input?.focus();
+      });
+    });
+  };
+
+  const openSectionMenu = (event: React.MouseEvent, id: number) => {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    setSectionMenu({
+      id,
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - 268)),
+      top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 176)),
+    });
+  };
+
+  const deleteSection = async (id: number, name: string) => {
+    setSectionMenu(null);
+    if (!await confirmAction(`セクション「${name}」を削除しますか？`)) return;
+    try {
+      await api(`/api/sections/${id}`, "DELETE");
+      setSectionOrder((prev) => prev.filter((sectionId) => sectionId !== id));
+      refresh();
+    } catch {
+      toastMessage("セクションの削除に失敗しました");
       refresh();
     }
   };
@@ -1429,19 +1487,17 @@ export default function ListView({
     const collapsed = collapsedGroups.has(key);
     const sectionDrag = sectionId !== undefined && groupBy === "section";
     const target = sectionId !== undefined && sectionDrop?.id === sectionId;
+    const controlsVisible =
+      editingSection === sectionId || sectionMenu?.id === sectionId;
+    const controlVisibility = controlsVisible
+      ? "opacity-100"
+      : "opacity-0 group-hover/section-name:opacity-100 group-focus-within/section-name:opacity-100";
     return (
       <div
         data-list-section-header={key}
         data-list-section-depth={depth}
         data-section-id={sectionId}
         data-section-dragging={sectionDragging === sectionId ? "true" : undefined}
-        draggable={sectionDrag}
-        onDragStart={sectionDrag ? (event) => startSectionDrag(event, sectionId, name) : undefined}
-        onDragEnd={sectionDrag ? () => {
-          setSectionDragging(null);
-          setSectionDrop(null);
-          setHint(null);
-        } : undefined}
         className={`relative flex h-[37px] items-center gap-2 ${depth > 0 ? "pl-10" : "pl-6"} ${
           sectionDragging === sectionId
             ? "bg-[#f3f3f3]/70 [&>*]:invisible"
@@ -1463,10 +1519,93 @@ export default function ListView({
             <path d="M2.2 4.2h7.6L6 9.2z" />
           </svg>
         </button>
-        <span className="cursor-pointer text-[14px] leading-6 font-semibold text-neutral-900">{name}</span>
+        {sectionDrag ? (
+          <div className="group/section-name flex min-w-0 shrink-0 items-center">
+            {editingSection === sectionId ? (
+              <input
+                data-section-name-input={sectionId}
+                value={sectionEditName}
+                onChange={(event) => setSectionEditName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    void saveSectionName(sectionId);
+                  } else if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setEditingSection(null);
+                    setSectionEditName("");
+                  }
+                }}
+                onBlur={() => void saveSectionName(sectionId)}
+                aria-label="セクション名"
+                autoFocus
+                className="h-9 w-[200px] rounded border border-[#4573d2] bg-white px-2 text-[14px] font-semibold text-neutral-900 ring-2 ring-[#4573d2]/15 outline-none"
+              />
+            ) : (
+              <button
+                type="button"
+                data-section-name={sectionId}
+                onClick={() => beginSectionEdit(sectionId, name)}
+                title="クリックしてセクション名を変更"
+                className="max-w-[360px] cursor-pointer truncate text-left text-[14px] leading-6 font-semibold text-neutral-900"
+              >
+                {name}
+              </button>
+            )}
+            {canEdit && (
+              <>
+                <button
+                  type="button"
+                  data-section-add-task={sectionId}
+                  onClick={() => addTaskToSection(sectionId)}
+                  title="このセクションにタスクを追加"
+                  aria-label="このセクションにタスクを追加"
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-neutral-500 transition-opacity hover:bg-neutral-200/70 hover:text-neutral-800 ${controlVisibility}`}
+                >
+                  <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  data-section-menu-button={sectionId}
+                  onClick={(event) => openSectionMenu(event, sectionId)}
+                  title="セクションのその他のアクション"
+                  aria-label="セクションのその他のアクション"
+                  aria-haspopup="menu"
+                  aria-expanded={sectionMenu?.id === sectionId}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-neutral-500 transition-opacity hover:bg-neutral-200/70 hover:text-neutral-800 ${controlVisibility}`}
+                >
+                  <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
+                    <circle cx="3" cy="8" r="1.3" />
+                    <circle cx="8" cy="8" r="1.3" />
+                    <circle cx="13" cy="8" r="1.3" />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <span className="text-[14px] leading-6 font-semibold text-neutral-900">{name}</span>
+        )}
         {groupBy !== "section" || group2 !== null ? (
           <span data-list-section-count={count} className="text-[13px] font-normal text-neutral-500">{count}</span>
         ) : null}
+        {sectionDrag && (
+          <div
+            data-section-drag-handle={sectionId}
+            draggable
+            onDragStart={(event) => startSectionDrag(event, sectionId, name)}
+            onDragEnd={() => {
+              setSectionDragging(null);
+              setSectionDrop(null);
+              setHint(null);
+            }}
+            title="ドラッグしてセクションを移動"
+            className="h-full min-w-6 flex-1 cursor-grab select-none"
+          />
+        )}
       </div>
     );
   };
@@ -1966,6 +2105,7 @@ export default function ListView({
                               }}
                               placeholder="タスク名を入力"
                               data-add-task
+                              data-add-task-section={s.id}
                               autoFocus
                               className="w-full max-w-md rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
                             />
@@ -2010,6 +2150,7 @@ export default function ListView({
             <input
               value={sectionName}
               onChange={(e) => setSectionName(e.target.value)}
+              data-add-section-input
               onKeyDown={(e) => e.key === "Enter" && api("/api/sections", "POST", { project_id: projectId, name: sectionName }).then(() => { setSectionName(""); setAddingSection(false); refresh(); })}
               placeholder="セクション名"
               autoFocus
@@ -2033,6 +2174,88 @@ export default function ListView({
       </div>
       </div>
       </div>
+      {sectionMenu && (() => {
+        const section = sections.find((item) => item.id === sectionMenu.id);
+        if (!section) return null;
+        const key = `s:${section.id}`;
+        const itemClass =
+          "flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-neutral-100";
+        return (
+          <>
+            <div className="fixed inset-0 z-[60]" onClick={() => setSectionMenu(null)} />
+            <div
+              role="menu"
+              data-section-menu={section.id}
+              aria-label="セクションのその他のアクション"
+              className="fixed z-[61] w-[268px] rounded-lg border border-[#e1e1e1] bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+              style={{ left: sectionMenu.left, top: sectionMenu.top }}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                data-section-menu-action="rename"
+                onClick={() => beginSectionEdit(section.id, section.name)}
+                className={itemClass}
+              >
+                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <path d="M11.3 2.7a1.6 1.6 0 0 1 2.2 2.2L5.7 12.7 2.7 13.3l.6-3z" strokeLinejoin="round" />
+                </svg>
+                セクション名を変更
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                data-section-menu-action="add"
+                onClick={() => {
+                  setSectionMenu(null);
+                  setAddingSection(true);
+                  requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                      const input = document.querySelector<HTMLInputElement>("input[data-add-section-input]");
+                      input?.scrollIntoView({ block: "nearest" });
+                      input?.focus();
+                    });
+                  });
+                }}
+                className={itemClass}
+              >
+                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+                </svg>
+                セクションを追加
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                data-section-menu-action="collapse"
+                onClick={() => {
+                  setSectionMenu(null);
+                  toggleGroup(key);
+                }}
+                className={itemClass}
+              >
+                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <path d="M3 4h10M4.5 8h7M6 12h4" strokeLinecap="round" />
+                </svg>
+                グループを展開または折り畳む
+              </button>
+              <div className="my-1 border-t border-neutral-200" />
+              <button
+                type="button"
+                role="menuitem"
+                data-section-menu-action="delete"
+                onClick={() => void deleteSection(section.id, section.name)}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-red-600 hover:bg-red-50"
+              >
+                <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <path d="M3 4.5h10M6.5 2.5h3M4.5 4.5l.7 9h5.6l.7-9M6.8 7v4M9.2 7v4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                セクションを削除
+              </button>
+            </div>
+          </>
+        );
+      })()}
       {fieldMenuAnchor && (
         <FieldTypeMenu
           projectId={projectId}
