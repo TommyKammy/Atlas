@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import type { CustomField, CustomValue } from "@/lib/custom-fields";
 import { dueSegs } from "@/lib/dates";
 import {
@@ -171,6 +171,7 @@ export default function TaskListRow({
   ctx: TaskRowContext;
 }) {
   const t = task;
+  const cancelNameEdit = useRef(false);
   const {
     today,
     compactCells,
@@ -296,7 +297,13 @@ export default function TaskListRow({
           ⋮⋮
         </span>
       </span>
-      <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${depth > 0 ? "pl-7" : ""}`}>
+      <div
+        className={`flex min-w-0 flex-wrap items-center gap-1.5 ${depth > 0 ? "pl-7" : ""} ${
+          editing?.id === t.id && editing.field === "name"
+            ? "rounded-[2px] ring-1 ring-[#4573d2]"
+            : ""
+        }`}
+      >
         {(subtaskMap[t.id] ?? []).length > 0 ? (
           <button
             onClick={() => toggleExpand(t.id)}
@@ -314,12 +321,22 @@ export default function TaskListRow({
             autoFocus
             value={editVal}
             onChange={(e) => setEditVal(e.target.value)}
-            onBlur={(e) => commitEdit(t, "name", (e.target as HTMLInputElement).value)}
-            onFocus={(e) => (e.target as HTMLInputElement).select()}
+            onBlur={(e) => {
+              if (cancelNameEdit.current) {
+                cancelNameEdit.current = false;
+                return;
+              }
+              void commitEdit(t, "name", (e.target as HTMLInputElement).value);
+            }}
+            onFocus={(e) => {
+              cancelNameEdit.current = false;
+              e.target.select();
+            }}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
                 e.preventDefault();
                 e.stopPropagation();
+                cancelNameEdit.current = true;
                 const el = e.target as HTMLInputElement;
                 el.blur();
                 setEditing(null);
@@ -327,7 +344,9 @@ export default function TaskListRow({
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full min-w-0 rounded border border-blue-500 bg-white px-1 py-0.5 text-sm outline-none"
+            dir="auto"
+            aria-label="タスク名"
+            className="h-5 min-w-[2ch] max-w-[calc(100%-4rem)] flex-none rounded-[2px] border-0 bg-transparent px-0 py-0 text-sm leading-5 text-neutral-900 outline-none [field-sizing:content]"
           />
         ) : (
           <span
