@@ -31,7 +31,7 @@ export default function ProjectAppearanceDialog({
       backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
       panelClassName="max-h-[90vh] w-[min(480px,90vw)] overflow-y-auto rounded-lg bg-white text-sm shadow-xl"
     >
-      <div className="p-5">
+      <div data-project-appearance-dialog className="p-5">
         <h2 className="text-lg font-semibold">カラーとアイコンを設定</h2>
         <div className="mt-4 text-[13px] font-medium text-neutral-700">カラー</div>
         <div className="mt-2 grid grid-cols-8 gap-2">

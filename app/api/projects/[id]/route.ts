@@ -1,14 +1,24 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { PROJECT_ICONS } from "@/lib/project-appearance";
 import { withProject } from "@/lib/api/route";
+import { mergeProjectSettings } from "@/lib/project-settings";
+import { detachMultiHomedTasks } from "@/lib/project-delete";
 
 export const DELETE = withProject("admin", async (_req, { uid, projectId }) => {
-  const r = await db.query("DELETE FROM projects WHERE id = $1::bigint", [projectId]);
-  if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  await audit(uid, "project.delete", { entity: "project", entityId: projectId });
-  return NextResponse.json({ deleted: projectId });
+  const movedTasks = await withTransaction(async (q) => {
+    const moved = await detachMultiHomedTasks(q, projectId);
+    await audit(uid, "project.delete", {
+      entity: "project",
+      entityId: projectId,
+      projectId,
+      summary: `hard delete; multi-homed tasks moved: ${moved}`,
+    });
+    await q.query("DELETE FROM projects WHERE id = $1::bigint", [projectId]);
+    return moved;
+  });
+  return NextResponse.json({ deleted: projectId, moved_tasks: movedTasks });
 });
 
 export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
@@ -92,9 +102,58 @@ export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
     values.push(body.archived);
     sets.push(`archived_at = CASE WHEN $${values.length}::boolean THEN NOW() ELSE NULL END`);
   }
+  if ("owner_id" in body) {
+    const ownerId = body.owner_id === null || body.owner_id === "" ? null : Number(body.owner_id);
+    if (ownerId !== null && (!Number.isInteger(ownerId) || ownerId <= 0)) {
+      return NextResponse.json({ error: "invalid owner_id" }, { status: 400 });
+    }
+    if (ownerId !== null) {
+      const owner = await db.query("SELECT id FROM users WHERE id = $1::bigint AND deactivated_at IS NULL", [ownerId]);
+      if (owner.rowCount === 0) return NextResponse.json({ error: "owner not found" }, { status: 404 });
+    }
+    values.push(ownerId);
+    sets.push(`owner_id = $${values.length}`);
+  }
+  if ("team_id" in body) {
+    const teamId = body.team_id === null || body.team_id === "" ? null : Number(body.team_id);
+    if (teamId !== null && (!Number.isInteger(teamId) || teamId <= 0)) {
+      return NextResponse.json({ error: "invalid team_id" }, { status: 400 });
+    }
+    if (teamId !== null) {
+      const team = await db.query(
+        `SELECT t.id FROM teams t
+         WHERE t.id = $1::bigint
+           AND t.workspace_id = (SELECT workspace_id FROM projects WHERE id = $2::bigint)`,
+        [teamId, projectId],
+      );
+      if (team.rowCount === 0) return NextResponse.json({ error: "team not found" }, { status: 404 });
+    }
+    values.push(teamId);
+    sets.push(`team_id = $${values.length}`);
+  }
+  if ("due_on" in body) {
+    const due = body.due_on === null || body.due_on === "" ? null : String(body.due_on);
+    if (due !== null && !/^\d{4}-\d{2}-\d{2}$/.test(due)) {
+      return NextResponse.json({ error: "due_on must be YYYY-MM-DD or null" }, { status: 400 });
+    }
+    values.push(due);
+    sets.push(`due_on = $${values.length}::date`);
+  }
+  if ("settings" in body) {
+    if (body.settings !== null && (typeof body.settings !== "object" || Array.isArray(body.settings))) {
+      return NextResponse.json({ error: "settings must be an object" }, { status: 400 });
+    }
+    const current = await db.query("SELECT settings FROM projects WHERE id = $1::bigint", [projectId]);
+    const merged = mergeProjectSettings(current.rows[0]?.settings, body.settings);
+    values.push(JSON.stringify(merged));
+    sets.push(`settings = $${values.length}::jsonb`);
+  }
   if (sets.length === 0) {
     return NextResponse.json(
-      { error: "name, description, status, status_color, status_options, status_field_name, status_field_enabled, color, icon or archived required" },
+      {
+        error:
+          "name, description, status, status_color, status_options, status_field_name, status_field_enabled, color, icon, archived, owner_id, team_id, due_on or settings required",
+      },
       { status: 400 },
     );
   }

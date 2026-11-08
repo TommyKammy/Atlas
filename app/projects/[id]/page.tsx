@@ -39,6 +39,7 @@ import {
 import Shortcuts from "@/components/Shortcuts";
 import StarButton from "@/components/StarButton";
 import ProjectTitle from "@/components/ProjectTitle";
+import ProjectActionsButton from "@/components/project/ProjectActionsButton";
 import ProjectHeaderStatus from "@/components/ProjectHeaderStatus";
 import ProjectMemberFacepile from "@/components/project/ProjectMemberFacepile";
 import ProjectShareButton from "@/components/ProjectShareButton";
@@ -60,7 +61,7 @@ export default async function ProjectPage(props: {
   if (!Number.isInteger(projectId)) notFound();
 
   const project = await getProject(projectId);
-  if (!project) notFound();
+  if (!project || project.deleted_at) notFound();
 
   const explicitView =
     typeof searchParams.view === "string" && VIEWS.has(searchParams.view)
@@ -339,6 +340,17 @@ export default async function ProjectPage(props: {
             className="h-7 w-7 text-sm"
           />
           <ProjectTitle projectId={projectId} name={project.name} canEdit={access.role === "admin"} />
+          <ProjectActionsButton
+            project={{
+              id: project.id,
+              name: project.name,
+              description: project.description ?? "",
+              color: project.color ?? null,
+              icon: project.icon ?? null,
+            }}
+            role={access.role}
+            customFields={customFields}
+          />
           <StarButton projectId={projectId} initial={favorite} />
           <ProjectHeaderStatus
             projectId={projectId}

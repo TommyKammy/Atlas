@@ -23,7 +23,7 @@ export default function ArchiveProjectDialog({
       backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
       panelClassName="w-[min(420px,90vw)] rounded-lg bg-white text-sm shadow-xl"
     >
-      <div className="p-5">
+      <div data-project-archive-dialog className="p-5">
         <h2 className="text-lg font-semibold">プロジェクトをアーカイブ</h2>
         <p className="mt-2 text-neutral-600">
           「{projectName}」をアーカイブしますか？サイドバーから非表示になります。削除済みページから復元できます。

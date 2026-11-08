@@ -198,7 +198,7 @@ export default function ProjectCustomizeButton({
     const onOpen = (event: Event) => {
       const detail = (event as CustomEvent<{ panel?: Panel }>).detail;
       setPanelTop(projectDrawerTop());
-      setPanel(detail?.panel === "status" ? "status" : "home");
+      setPanel(detail?.panel === "status" || detail?.panel === "fields" ? detail.panel : "home");
       setOpen(true);
     };
     window.addEventListener("atlas:open-customize", onOpen);

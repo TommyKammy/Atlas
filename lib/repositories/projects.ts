@@ -14,6 +14,7 @@ import { projectTaskScope } from "./scope";
 
 export type Project = {
   id: number;
+  workspace_id?: number;
   name: string;
   description?: string | null;
   status: string;
@@ -25,6 +26,12 @@ export type Project = {
   icon?: string | null;
   email_address?: string | null;
   email_enabled?: boolean;
+  owner_id?: number | null;
+  team_id?: number | null;
+  due_on?: string | null;
+  settings?: unknown;
+  archived_at?: string | null;
+  deleted_at?: string | null;
 };
 
 export type Section = { id: number; name: string; position: number };
@@ -109,7 +116,12 @@ export async function getProjectAccess(
 
 export async function getProject(projectId: number) {
   const r = await db.query(
-    "SELECT id, name, description, status, status_color, COALESCE(status_options, '[]'::jsonb) AS status_options, status_field_name, status_field_enabled, color, icon, email_address, email_enabled FROM projects WHERE id = $1",
+    `SELECT id, workspace_id, name, description, status, status_color,
+       COALESCE(status_options, '[]'::jsonb) AS status_options, status_field_name,
+       status_field_enabled, color, icon, email_address, email_enabled,
+       owner_id, team_id, due_on::text AS due_on, settings,
+       archived_at::text AS archived_at, deleted_at::text AS deleted_at
+     FROM projects WHERE id = $1`,
     [projectId],
   );
   return r.rows[0] as Project | undefined;
@@ -491,10 +503,30 @@ export async function getProjectMembers(projectId: number): Promise<User[]> {
 export async function getArchivedProjects(workspaceId: number) {
   const r = await db.query(
     `SELECT id, name, archived_at::text AS archived_at FROM projects
-     WHERE workspace_id = $1 AND archived_at IS NOT NULL ORDER BY archived_at DESC`,
+     WHERE workspace_id = $1 AND archived_at IS NOT NULL AND deleted_at IS NULL
+     ORDER BY archived_at DESC`,
     [workspaceId],
   );
   return r.rows as { id: number; name: string; archived_at: string }[];
+}
+
+export async function getDeletedProjects(workspaceId: number) {
+  const r = await db.query(
+    `SELECT p.id, p.name, p.deleted_at::text AS deleted_at,
+       COALESCE(u.name, '') AS deleted_by_name,
+       (SELECT COUNT(*)::int FROM tasks t WHERE t.project_id = p.id AND t.deleted_at IS NULL) AS task_count
+     FROM projects p LEFT JOIN users u ON u.id = p.deleted_by
+     WHERE p.workspace_id = $1 AND p.deleted_at IS NOT NULL
+     ORDER BY p.deleted_at DESC`,
+    [workspaceId],
+  );
+  return r.rows as {
+    id: number;
+    name: string;
+    deleted_at: string;
+    deleted_by_name: string;
+    task_count: number;
+  }[];
 }
 
 export async function touchRecentProject(userId: number | null, projectId: number) {

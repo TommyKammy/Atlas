@@ -6,7 +6,7 @@ export const instant = false;
 async function resolveToken(token: string) {
   const r = await db.query(
     `SELECT p.id, p.name FROM project_share_tokens t JOIN projects p ON p.id = t.project_id
-     WHERE t.token = $1 AND (t.expires_at IS NULL OR t.expires_at > NOW())`,
+     WHERE t.token = $1 AND p.deleted_at IS NULL AND (t.expires_at IS NULL OR t.expires_at > NOW())`,
     [token],
   );
   return r.rows[0] as { id: number; name: string } | undefined;
@@ -25,13 +25,13 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     `SELECT t.id, t.section_id, t.name, t.completed, u.name AS assignee_name,
        t.due_on::text AS due_on, t.progress, t.status
      FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
-     WHERE t.project_id = $1 AND t.parent_task_id IS NULL ORDER BY t.position, t.id`,
+     WHERE t.project_id = $1 AND t.parent_task_id IS NULL AND t.deleted_at IS NULL ORDER BY t.position, t.id`,
     [project.id],
   );
   const totals = await db.query(
     `SELECT COUNT(*) FILTER (WHERE parent_task_id IS NULL)::int AS total,
        COUNT(*) FILTER (WHERE parent_task_id IS NULL AND completed)::int AS done
-     FROM tasks WHERE project_id = $1`,
+     FROM tasks WHERE project_id = $1 AND deleted_at IS NULL`,
     [project.id],
   );
   const pct =

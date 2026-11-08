@@ -3,23 +3,62 @@ import { db } from "@/lib/db";
 import { withProject } from "@/lib/api/route";
 import { badRequest } from "@/lib/api/errors";
 import { csvResponse, toCsv } from "@/lib/csv";
+import { buildXlsx } from "@/lib/xlsx";
+import { shiftDate } from "@/lib/timeline-dnd";
 
+type ExportTask = {
+  id: number;
+  section_id: number | null;
+  parent_task_id: number | null;
+  name: string;
+  description: string;
+  assignee: string | null;
+  completed: boolean;
+  start_on: string | null;
+  due_on: string | null;
+  progress: number;
+  status: string;
+  recurrence: string;
+  comments: string | null;
+  custom_values: string | null;
+};
+
+type ExportField = {
+  id: number;
+  name: string;
+  field_type: string;
+};
+
+function safeFilename(name: string): string {
+  return name.replace(/[^\w\-ぁ-んァ-ン一-龯ー]+/g, "_").slice(0, 80) || "project";
+}
+
+function icalEscape(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+}
+
+function icalDate(iso: string): string {
+  return iso.replace(/-/g, "");
+}
+
+/** Project exports: JSON, CSV, XLSX, time CSV and iCalendar. */
 export const GET = withProject("view", async (req, { projectId }) => {
-  const id = projectId;
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format") ?? "json";
-  if (format !== "json" && format !== "csv") throw badRequest("format must be json or csv");
-  const p = await db.query("SELECT id, name FROM projects WHERE id = $1::bigint", [projectId]);
-  const project = p.rows[0] as { id: number; name: string };
+  if (!["json", "csv", "xlsx", "timecsv", "ical"].includes(format)) {
+    throw badRequest("format must be json, csv, xlsx, timecsv or ical");
+  }
+  const p = await db.query("SELECT id, name, description FROM projects WHERE id = $1::bigint", [projectId]);
+  const project = p.rows[0] as { id: number; name: string; description: string | null };
 
   const sections = await db.query(
     "SELECT id, name FROM sections WHERE project_id = $1::bigint ORDER BY position, id",
-    [id],
+    [projectId],
   );
   const fields = await db.query(
     `SELECT id, name, field_type, options, description, config, position
      FROM custom_fields WHERE project_id = $1::bigint AND deleted_at IS NULL ORDER BY position, id`,
-    [id],
+    [projectId],
   );
   const tasks = await db.query(
     `SELECT t.id, t.section_id, t.parent_task_id, t.name, t.description, u.name AS assignee,
@@ -35,10 +74,13 @@ export const GET = withProject("view", async (req, { projectId }) => {
         WHERE v.task_id = t.id AND f.deleted_at IS NULL) AS custom_values
      FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
      WHERE t.project_id = $1::bigint AND t.deleted_at IS NULL ORDER BY t.position, t.id`,
-    [id],
+    [projectId],
   );
 
-  const safeName = project.name.replace(/[^\w\-ぁ-んァ-ン一-龯ー]+/g, "_").slice(0, 80) || "project";
+  const fieldRows = fields.rows as ExportField[];
+  const taskRows = tasks.rows as ExportTask[];
+  const filename = safeFilename(project.name);
+
   if (format === "json") {
     const body = JSON.stringify(
       {
@@ -46,7 +88,7 @@ export const GET = withProject("view", async (req, { projectId }) => {
         project,
         sections: sections.rows,
         custom_fields: fields.rows,
-        tasks: tasks.rows,
+        tasks: taskRows,
       },
       null,
       2,
@@ -54,54 +96,119 @@ export const GET = withProject("view", async (req, { projectId }) => {
     return new NextResponse(body, {
       headers: {
         "Content-Type": "application/json; charset=utf-8",
-        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${safeName}.json`)}`,
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${filename}.json`)}`,
       },
     });
   }
 
-  const fieldNames = (fields.rows as { id: number; name: string }[]).map((f) => f.name);
-  const header = ["セクション", "種別", "名前", "完了", "担当者", "開始日", "期日", "進捗", "Status", "繰返し", "コメント", ...fieldNames];
+  if (format === "ical") {
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Atlas//Project Export//JA",
+      "CALSCALE:GREGORIAN",
+      `X-WR-CALNAME:${icalEscape(project.name)}`,
+    ];
+    for (const task of taskRows) {
+      const date = task.due_on ?? task.start_on;
+      if (!date) continue;
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:atlas-task-${task.id}@atlas.local`,
+        `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}`,
+        `DTSTART;VALUE=DATE:${icalDate(date)}`,
+        `DTEND;VALUE=DATE:${icalDate(shiftDate(date, 1))}`,
+        `SUMMARY:${icalEscape(task.name)}`,
+        `DESCRIPTION:${icalEscape(task.description ?? "")}`,
+        `STATUS:${task.completed ? "COMPLETED" : "CONFIRMED"}`,
+        "END:VEVENT",
+      );
+    }
+    lines.push("END:VCALENDAR");
+    return new NextResponse(`${lines.join("\r\n")}\r\n`, {
+      headers: {
+        "Content-Type": "text/calendar; charset=utf-8",
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${filename}.ics`)}`,
+      },
+    });
+  }
+
   const sectionName = new Map((sections.rows as { id: number; name: string }[]).map((s) => [s.id, s.name]));
-  const valueByField = new Map(
-    (fields.rows as { id: number }[]).map((f, i) => [f.id, i] as const),
-  );
+  const valueByField = new Map(fieldRows.map((f, i) => [Number(f.id), i] as const));
+
+  if (format === "timecsv") {
+    const timerFields = fieldRows.filter(
+      (field) => field.field_type === "timer" || field.field_type === "time_tracking",
+    );
+    const header = ["セクション", "種別", "名前", "担当者", "期日", "合計（時間）", ...timerFields.map((f) => `${f.name}（秒）`)];
+    const rows: unknown[][] = [header];
+    for (const task of taskRows) {
+      const customs = new Map<number, string>();
+      for (const pair of (task.custom_values ?? "").split(";").filter(Boolean)) {
+        const eq = pair.indexOf("=");
+        if (eq > 0) customs.set(Number(pair.slice(0, eq)), pair.slice(eq + 1));
+      }
+      const seconds = timerFields.reduce((sum, field) => sum + (Number(customs.get(Number(field.id)) ?? 0) || 0), 0);
+      rows.push([
+        task.section_id === null ? "" : (sectionName.get(task.section_id) ?? ""),
+        task.parent_task_id === null ? "タスク" : "サブタスク",
+        task.name,
+        task.assignee ?? "",
+        task.due_on ?? "",
+        (seconds / 3600).toFixed(2),
+        ...timerFields.map((field) => customs.get(Number(field.id)) ?? "0"),
+      ]);
+    }
+    return csvResponse(`${filename}_time.csv`, toCsv(rows));
+  }
+
+  const header = [
+    "セクション",
+    "種別",
+    "名前",
+    "完了",
+    "担当者",
+    "開始日",
+    "期日",
+    "進捗",
+    "Status",
+    "繰返し",
+    "コメント",
+    ...fieldRows.map((f) => f.name),
+  ];
   const rows: unknown[][] = [header];
-  for (const t of tasks.rows as {
-    section_id: number | null;
-    parent_task_id: number | null;
-    name: string;
-    description: string;
-    assignee: string | null;
-    completed: boolean;
-    start_on: string | null;
-    due_on: string | null;
-    progress: number;
-    status: string;
-    recurrence: string;
-    comments: string | null;
-    custom_values: string | null;
-  }[]) {
-    const customs = new Array(fieldNames.length).fill("");
-    for (const pair of (t.custom_values ?? "").split(";").filter(Boolean)) {
+  for (const task of taskRows) {
+    const customs = new Array(fieldRows.length).fill("");
+    for (const pair of (task.custom_values ?? "").split(";").filter(Boolean)) {
       const eq = pair.indexOf("=");
       if (eq === -1) continue;
       const idx = valueByField.get(Number(pair.slice(0, eq)));
       if (idx !== undefined) customs[idx] = pair.slice(eq + 1);
     }
     rows.push([
-        t.section_id === null ? "" : (sectionName.get(t.section_id) ?? ""),
-        t.parent_task_id === null ? "タスク" : "サブタスク",
-        t.name,
-        t.completed ? "完了" : "未完了",
-        t.assignee ?? "",
-        t.start_on ?? "",
-        t.due_on ?? "",
-        t.progress,
-        t.status,
-        t.recurrence === "none" ? "" : t.recurrence,
-        t.comments ?? "",
-        ...customs,
+      task.section_id === null ? "" : (sectionName.get(task.section_id) ?? ""),
+      task.parent_task_id === null ? "タスク" : "サブタスク",
+      task.name,
+      task.completed ? "完了" : "未完了",
+      task.assignee ?? "",
+      task.start_on ?? "",
+      task.due_on ?? "",
+      task.progress,
+      task.status,
+      task.recurrence === "none" ? "" : task.recurrence,
+      task.comments ?? "",
+      ...customs,
     ]);
   }
-  return csvResponse(`${safeName}.csv`, toCsv(rows));
+
+  if (format === "xlsx") {
+    return new NextResponse(new Uint8Array(buildXlsx(rows, project.name)), {
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${filename}.xlsx`)}`,
+      },
+    });
+  }
+
+  return csvResponse(`${filename}.csv`, toCsv(rows));
 });

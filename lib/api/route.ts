@@ -31,6 +31,8 @@ export type ProjectOptions<P extends Params = Params> = {
   body?: boolean;
   /** Custom project resolver (e.g. owner lookup for /resource/[id] routes). */
   resolveProjectId?: (req: NextRequest, params: P, body: unknown) => number | Promise<number>;
+  /** Trash/restore routes need to resolve a soft-deleted project. */
+  allowDeleted?: boolean;
 };
 
 function projectIdFromBody(body: unknown): unknown {
@@ -129,7 +131,12 @@ export function withProject<P extends Params = Params>(
         ? await options.resolveProjectId(req, params, body)
         : (params.id ?? new URL(req.url).searchParams.get("project_id") ?? projectIdFromBody(body));
       const projectId = positiveId(raw, "project_id");
-      const exists = await db.query("SELECT id FROM projects WHERE id = $1::bigint", [projectId]);
+      const exists = await db.query(
+        options?.allowDeleted
+          ? "SELECT id FROM projects WHERE id = $1::bigint"
+          : "SELECT id FROM projects WHERE id = $1::bigint AND deleted_at IS NULL",
+        [projectId],
+      );
       if (exists.rowCount === 0) throw new ApiError(404, "project not found", "not_found");
       const auth = await requireProjectPermission(req, projectId, level);
       if (!auth.ok) throw new ApiError(auth.status, auth.error, "forbidden");
