@@ -28,8 +28,10 @@ export function useListSelection() {
         return true;
       }
     }
+    // First Shift-click starts a selection at the clicked row.
+    setSelected(new Set([id]));
     anchorRef.current = id;
-    return false;
+    return true;
   };
 
   const toggleAll = (ids: number[]) => {

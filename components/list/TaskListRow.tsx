@@ -48,6 +48,7 @@ export type TaskRowContext = {
   statusOptions: string[];
   shownFields: CustomField[];
   customFields: CustomField[];
+  selected: Set<number>;
   canEditField: (field: CustomField) => boolean;
   onTimerChange: () => void;
   customRaw: (taskId: number, field: CustomField) => string;
@@ -202,6 +203,7 @@ export default function TaskListRow({
     statusOptions,
     shownFields,
     customFields,
+    selected,
     canEditField,
     onTimerChange,
     customRaw,
@@ -241,6 +243,7 @@ export default function TaskListRow({
           next?.focus();
         }
       }}
+      data-list-row-selected={selected.has(t.id) ? "true" : undefined}
       onDragStart={(e) => {
         beginRowDrag();
         e.dataTransfer.setData("text/atlas-task", String(t.id));
@@ -265,7 +268,11 @@ export default function TaskListRow({
         if (dragId) moveTask(dragId, t, before);
       }}
       className={`group grid min-h-[37px] cursor-pointer items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${compactCells} ${
-        t.id === activeTaskId ? "bg-[#eff4fd]" : "hover:bg-neutral-50"
+        selected.has(t.id)
+          ? "bg-[#eff4fd]"
+          : t.id === activeTaskId
+            ? "bg-[#eff4fd]"
+            : "hover:bg-neutral-50"
       } ${
         dropHint?.id === t.id
           ? dropHint.before

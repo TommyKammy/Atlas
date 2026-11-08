@@ -134,27 +134,109 @@ export default function ListView({
     { mode: "create"; type: CustomFieldType } | { mode: "edit"; field: CustomField } | null
   >(null);
 
-  const { selected, setSelected, toggleSelect, selectRange, toggleAll, clear: clearSelection } =
+  const { selected, toggleSelect, selectRange, toggleAll, clear: clearSelection } =
     useListSelection();
   const [bulkSection, setBulkSection] = useState("");
   const [bulkAssignee, setBulkAssignee] = useState("");
+  const [sectionOrder, setSectionOrder] = useState<number[]>(() => sections.map((section) => section.id));
+  const [sectionDragging, setSectionDragging] = useState<number | null>(null);
+  const [sectionDrop, setSectionDrop] = useState<{ id: number; side: "before" | "after" } | null>(null);
+
+  const sectionById = new Map(sections.map((section) => [section.id, section]));
+  const orderedSections = [
+    ...sectionOrder.map((id) => sectionById.get(id)).filter((section): section is Section => Boolean(section)),
+    ...sections.filter((section) => !sectionOrder.includes(section.id)),
+  ];
 
   const bulk = async (op: string, extra?: Record<string, unknown>) => {
     if (selected.size === 0) return;
-    const res = await fetch("/api/tasks/bulk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: [...selected], op, ...extra }),
-    });
-    if (!res.ok) throw new Error(`bulk ${op}: ${res.status}`);
-    clearSelection();
-    refresh();
+    try {
+      const res = await fetch("/api/tasks/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selected], op, ...extra }),
+      });
+      if (!res.ok) throw new Error(`bulk ${op}: ${res.status}`);
+      setBulkSection("");
+      setBulkAssignee("");
+      clearSelection();
+      refresh();
+    } catch {
+      toastMessage("一括操作に失敗しました");
+    }
   };
 
   const bulkDelete = async () => {
     if (selected.size === 0) return;
     if (!await confirmAction(`${selected.size}件のタスクを削除しますか？`)) return;
     await bulk("delete");
+  };
+
+  const startSectionDrag = (event: React.DragEvent, id: number, name: string) => {
+    if ((event.target as HTMLElement).closest("button,input,select,textarea,a")) {
+      event.preventDefault();
+      return;
+    }
+    const source = event.currentTarget as HTMLElement;
+    const rect = source.getBoundingClientRect();
+    const computed = window.getComputedStyle(source);
+    const dragImage = document.createElement("div");
+    dragImage.textContent = name;
+    Object.assign(dragImage.style, {
+      position: "fixed",
+      top: `${rect.top}px`,
+      left: `${rect.left}px`,
+      width: `${Math.min(rect.width, 380)}px`,
+      height: `${rect.height}px`,
+      display: "flex",
+      alignItems: "center",
+      padding: "0 12px 0 40px",
+      overflow: "hidden",
+      whiteSpace: "nowrap",
+      textOverflow: "ellipsis",
+      boxSizing: "border-box",
+      background: "rgba(255, 255, 255, 0.9)",
+      border: "1px solid #e1e1e1",
+      borderRadius: "4px",
+      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
+      color: computed.color,
+      fontFamily: computed.fontFamily,
+      fontSize: "14px",
+      fontWeight: "600",
+      opacity: "0.8",
+      pointerEvents: "none",
+      zIndex: "2147483647",
+    });
+    document.body.appendChild(dragImage);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/atlas-section", String(id));
+    event.dataTransfer.setDragImage(dragImage, 40, rect.height / 2);
+    window.setTimeout(() => dragImage.remove(), 0);
+    setSectionDragging(id);
+    setSectionDrop(null);
+  };
+
+  const reorderSections = async (sourceId: number, targetId: number, side: "before" | "after") => {
+    const ids = orderedSections.map((section) => section.id);
+    const from = ids.indexOf(sourceId);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0 || sourceId === targetId) return;
+    const [moved] = ids.splice(from, 1);
+    let insert = to;
+    if (from < to) insert -= 1;
+    if (side === "after") insert += 1;
+    ids.splice(insert, 0, moved);
+    setSectionOrder(ids);
+    setSectionDragging(null);
+    setSectionDrop(null);
+    try {
+      await api("/api/sections/reorder", "POST", { project_id: projectId, ids });
+      refresh();
+    } catch {
+      setSectionOrder(sections.map((section) => section.id));
+      toastMessage("セクションの並び替えに失敗しました");
+      refresh();
+    }
   };
 
   const removeField = async (f: CustomField) => {
@@ -401,7 +483,13 @@ export default function ListView({
   const rowClick = (e: React.MouseEvent, id: number) => {
     if (dragging.current) return;
     if ((e.target as HTMLElement).closest("a,button,input,select,textarea,summary,[contenteditable]")) return;
-    if (e.shiftKey && selectRange(visible.map((t) => t.id), id)) return;
+    if (e.shiftKey) {
+      const visibleSet = new Set(visible.map((t) => t.id));
+      const ids = [...document.querySelectorAll<HTMLElement>("[data-list-row]")]
+        .map((el) => Number(el.getAttribute("data-list-row")))
+        .filter((rowId) => visibleSet.has(rowId));
+      if (selectRange(ids, id)) return;
+    }
     if (e.ctrlKey || e.metaKey) {
       toggleSelect(id);
       return;
@@ -623,6 +711,7 @@ export default function ListView({
   const [editStart, setEditStart] = useState("");
 
   const openEdit = (e: React.MouseEvent, t: TaskRow, field: string, initial: string) => {
+    if (e.shiftKey || e.ctrlKey || e.metaKey) return;
     e.stopPropagation();
     setEditing({ id: t.id, field });
     setEditVal(initial);
@@ -704,6 +793,7 @@ export default function ListView({
   const cancelEdit = () => setEditing(null);
 
   const openDueEdit = (e: React.MouseEvent, t: TaskRow) => {
+    if (e.shiftKey || e.ctrlKey || e.metaKey) return;
     e.stopPropagation();
     setEditing({ id: t.id, field: "due" });
     setEditStart(t.start_on ?? "");
@@ -1309,6 +1399,7 @@ export default function ListView({
     statusOptions,
     shownFields,
     customFields,
+    selected,
     canEditField,
     onTimerChange: refresh,
     customRaw,
@@ -1323,14 +1414,62 @@ export default function ListView({
     openTask,
   };
 
-  const groupHeader = (key: string, name: string, count: number, depth = 0) => {
+  const groupHeader = (key: string, name: string, count: number, depth = 0, sectionId?: number) => {
     const collapsed = collapsedGroups.has(key);
+    const sectionDrag = sectionId !== undefined && groupBy === "section";
+    const drop = sectionId !== undefined && sectionDrop?.id === sectionId ? sectionDrop.side : null;
     return (
       <div
         data-list-section-header={key}
         data-list-section-depth={depth}
-        className={`flex h-[37px] items-center gap-2 ${depth > 0 ? "pl-10" : "pl-6"}`}
+        data-section-id={sectionId}
+        data-section-dragging={sectionDragging === sectionId ? "true" : undefined}
+        draggable={sectionDrag}
+        onDragStart={sectionDrag ? (event) => startSectionDrag(event, sectionId, name) : undefined}
+        onDragEnd={sectionDrag ? () => {
+          setSectionDragging(null);
+          setSectionDrop(null);
+        } : undefined}
+        onDragOver={sectionDrag ? (event) => {
+          if (sectionDragging === null) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          if (sectionId === sectionDragging) {
+            setSectionDrop(null);
+            return;
+          }
+          const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+          setSectionDrop({
+            id: sectionId,
+            side: event.clientY < rect.top + rect.height / 2 ? "before" : "after",
+          });
+        } : undefined}
+        onDragLeave={sectionDrag ? (event) => {
+          const related = event.relatedTarget as Node | null;
+          if (related && (event.currentTarget as HTMLElement).contains(related)) return;
+          if (sectionDrop?.id === sectionId) setSectionDrop(null);
+        } : undefined}
+        onDrop={sectionDrag ? (event) => {
+          const source = Number(event.dataTransfer.getData("text/atlas-section"));
+          if (!source) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+          const side = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+          void reorderSections(source, sectionId, side);
+        } : undefined}
+        className={`relative flex h-[37px] items-center gap-2 ${depth > 0 ? "pl-10" : "pl-6"} ${
+          sectionDragging === sectionId ? "bg-[#f3f3f3]/70 [&>*]:invisible" : ""
+        }`}
       >
+        {drop && (
+          <span
+            data-section-drop-indicator={drop}
+            className={`pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-[#2f6fd0] ${
+              drop === "before" ? "-top-[1px]" : "-bottom-[1px]"
+            }`}
+          />
+        )}
         <button
           onClick={() => toggleGroup(key)}
           title={collapsed ? "展開する" : "折りたたむ"}
@@ -1522,38 +1661,53 @@ export default function ListView({
         </div>
       )}
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border-b bg-blue-50 px-2 py-1.5 text-sm">
-          <span className="font-semibold">{selected.size}件選択中</span>
-          <button onClick={() => bulk("complete")} className="rounded border bg-white px-2 py-0.5 hover:bg-neutral-100">
-            完了にする
+        <div
+          data-bulk-toolbar
+          role="toolbar"
+          aria-label="複数タスクの一括編集"
+          className="fixed bottom-12 left-1/2 z-[75] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-lg bg-[#1e1e1e] px-3 py-2 text-white shadow-[0_0_0_1px_#eaeaea,0_6px_12px_rgba(118,118,118,0.24)]"
+        >
+          <span aria-live="polite" className="mr-1 whitespace-nowrap px-1 text-[13px] font-semibold">
+            {selected.size} 件のタスクを選択中
+          </span>
+          <button
+            onClick={() => void bulk("complete")}
+            className="rounded px-2 py-1 text-[12px] text-neutral-200 hover:bg-white/10"
+          >
+            完了
           </button>
-          <button onClick={() => bulk("reopen")} className="rounded border bg-white px-2 py-0.5 hover:bg-neutral-100">
-            未完了に戻す
+          <button
+            onClick={() => void bulk("reopen")}
+            className="rounded px-2 py-1 text-[12px] text-neutral-200 hover:bg-white/10"
+          >
+            未完了
           </button>
           <select
             value={bulkSection}
-            onChange={(e) => setBulkSection(e.target.value)}
-            className="rounded border px-1 py-0.5"
-            title="移動先セクション"
+            onChange={(e) => {
+              const value = e.target.value;
+              setBulkSection(value);
+              if (value) void bulk("move", { section_id: Number(value) });
+            }}
+            aria-label="セクションを移動"
+            className="h-8 rounded border border-white/15 bg-[#2c2c2c] px-2 text-[12px] text-white outline-none"
           >
             <option value="">セクション移動…</option>
-            {sections.map((sc) => (
+            {orderedSections.map((sc) => (
               <option key={sc.id} value={sc.id}>
                 {sc.name}
               </option>
             ))}
           </select>
-          <button
-            onClick={() => bulkSection && bulk("move", { section_id: Number(bulkSection) })}
-            className="rounded border bg-white px-2 py-0.5 hover:bg-neutral-100"
-          >
-            移動
-          </button>
           <select
             value={bulkAssignee}
-            onChange={(e) => setBulkAssignee(e.target.value)}
-            className="rounded border px-1 py-0.5"
-            title="担当者変更"
+            onChange={(e) => {
+              const value = e.target.value;
+              setBulkAssignee(value);
+              if (value) void bulk("assign", { assignee_id: value === "none" ? null : Number(value) });
+            }}
+            aria-label="担当者を変更"
+            className="h-8 rounded border border-white/15 bg-[#2c2c2c] px-2 text-[12px] text-white outline-none"
           >
             <option value="">担当者…</option>
             <option value="none">未割当</option>
@@ -1564,18 +1718,18 @@ export default function ListView({
             ))}
           </select>
           <button
-            onClick={() =>
-              bulkAssignee && bulk("assign", { assignee_id: bulkAssignee === "none" ? null : Number(bulkAssignee) })
-            }
-            className="rounded border bg-white px-2 py-0.5 hover:bg-neutral-100"
+            onClick={() => void bulkDelete()}
+            className="rounded px-2 py-1 text-[12px] text-red-300 hover:bg-red-500/15"
           >
-            割当
-          </button>
-          <button onClick={bulkDelete} className="rounded border border-red-300 bg-white px-2 py-0.5 text-red-600 hover:bg-red-50">
             削除
           </button>
-          <button onClick={() => setSelected(new Set())} className="text-neutral-500 hover:text-black">
-            解除
+          <button
+            onClick={clearSelection}
+            aria-label="選択を解除"
+            title="選択を解除"
+            className="flex h-8 w-8 items-center justify-center rounded text-[18px] leading-none text-neutral-300 hover:bg-white/10 hover:text-white"
+          >
+            ×
           </button>
         </div>
       )}
@@ -1763,7 +1917,7 @@ export default function ListView({
               </div>
             );
           })
-        : sections.map((s) => {
+        : orderedSections.map((s) => {
             const key = `s:${s.id}`;
             const collapsed = collapsedGroups.has(key);
             const items = bySection.get(s.id) ?? [];
@@ -1781,7 +1935,7 @@ export default function ListView({
                   if (dragId) appendToSection(dragId, s.id);
                 }}
               >
-                {groupHeader(key, s.name, items.length)}
+                {groupHeader(key, s.name, items.length, 0, s.id)}
                 {!collapsed && (
                   <>
                     {renderGroupedItems(shownItems, key)}
