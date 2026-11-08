@@ -144,6 +144,7 @@ export default function ListView({
   const [editingSection, setEditingSection] = useState<number | null>(null);
   const [sectionEditName, setSectionEditName] = useState("");
   const [sectionMenu, setSectionMenu] = useState<{ id: number; left: number; top: number } | null>(null);
+  const [addCommitting, setAddCommitting] = useState<Record<string, boolean>>({});
 
   const sectionById = new Map(sections.map((section) => [section.id, section]));
   const orderedSections = [
@@ -1353,6 +1354,57 @@ export default function ListView({
 
   const [addingTo, setAddingTo] = useState<number | string | null>(null);
 
+  const cancelAddTask = (key: number | string) => {
+    setDrafts((draftsByKey) => ({ ...draftsByKey, [key]: "" }));
+    setAddingTo(null);
+  };
+
+  const commitSectionTask = async (id: number) => {
+    const commitKey = `s:${id}`;
+    if (addCommitting[commitKey]) return;
+    const name = (drafts[id] ?? "").trim();
+    if (!name) {
+      cancelAddTask(id);
+      return;
+    }
+    setAddCommitting((previous) => ({ ...previous, [commitKey]: true }));
+    try {
+      await addTask(id);
+      setAddingTo(null);
+    } catch {
+      toastMessage("タスクの追加に失敗しました");
+    } finally {
+      setAddCommitting((previous) => {
+        const next = { ...previous };
+        delete next[commitKey];
+        return next;
+      });
+    }
+  };
+
+  const commitGroupedTask = async (gkey: string) => {
+    const commitKey = `g:${gkey}`;
+    if (addCommitting[commitKey]) return;
+    const name = (drafts[gkey] ?? "").trim();
+    if (!name) {
+      cancelAddTask(gkey);
+      return;
+    }
+    setAddCommitting((previous) => ({ ...previous, [commitKey]: true }));
+    try {
+      await addTaskGrouped(gkey);
+      setAddingTo(null);
+    } catch {
+      toastMessage("タスクの追加に失敗しました");
+    } finally {
+      setAddCommitting((previous) => {
+        const next = { ...previous };
+        delete next[commitKey];
+        return next;
+      });
+    }
+  };
+
   const appendToSection = async (dragId: number, sectionId: number | null) => {
     const dragged = tasks.find((x) => x.id === dragId);
     if (!dragged) return;
@@ -1657,7 +1709,7 @@ export default function ListView({
       style={{ gridTemplateColumns: gridCols }}
     >
       <span />
-      <div className="flex min-w-0 items-center gap-1 pl-12">{input}</div>
+      <div data-add-task-row className="flex min-w-0 items-center gap-1 pl-12">{input}</div>
       {visibleCols.map((k) => footerCell(k, totals))}
       <span />
     </div>
@@ -1990,14 +2042,16 @@ export default function ListView({
                               value={drafts[gkey] ?? ""}
                               onChange={(e) => setDrafts((d) => ({ ...d, [gkey]: e.target.value }))}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  addTaskGrouped(gkey);
-                                  setAddingTo(null);
+                                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                                  e.preventDefault();
+                                  void commitGroupedTask(gkey);
                                 }
-                                if (e.key === "Escape") setAddingTo(null);
+                                if (e.key === "Escape") cancelAddTask(gkey);
                               }}
-                              onBlur={() => {
-                                if ((drafts[gkey] ?? "").trim() === "") setAddingTo(null);
+                              onBlur={(e) => {
+                                const related = e.relatedTarget as HTMLElement | null;
+                                if (related?.closest("[data-add-task-row]")) return;
+                                void commitGroupedTask(gkey);
                               }}
                               placeholder="タスク名を入力"
                               data-add-task
@@ -2009,6 +2063,18 @@ export default function ListView({
                               onChange={(e) =>
                                 setGroupSections((g) => ({ ...g, [gkey]: e.target.value === "" ? null : Number(e.target.value) }))
                               }
+                              onBlur={(e) => {
+                                const related = e.relatedTarget as HTMLElement | null;
+                                if (related?.closest("[data-add-task-row]")) return;
+                                void commitGroupedTask(gkey);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  void commitGroupedTask(gkey);
+                                }
+                                if (e.key === "Escape") cancelAddTask(gkey);
+                              }}
                               className="rounded border px-1 py-1 text-sm"
                               title="追加先セクション"
                             >
@@ -2018,15 +2084,6 @@ export default function ListView({
                                 </option>
                               ))}
                             </select>
-                            <button
-                              onClick={() => {
-                                addTaskGrouped(gkey);
-                                setAddingTo(null);
-                              }}
-                              className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
-                            >
-                              追加
-                            </button>
                           </>,
                           items,
                         )
@@ -2094,30 +2151,19 @@ export default function ListView({
                               value={drafts[s.id] ?? ""}
                               onChange={(e) => setDrafts((d) => ({ ...d, [s.id]: e.target.value }))}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  addTask(s.id);
-                                  setAddingTo(null);
+                                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                                  e.preventDefault();
+                                  void commitSectionTask(s.id);
                                 }
-                                if (e.key === "Escape") setAddingTo(null);
+                                if (e.key === "Escape") cancelAddTask(s.id);
                               }}
-                              onBlur={() => {
-                                if ((drafts[s.id] ?? "").trim() === "") setAddingTo(null);
-                              }}
+                              onBlur={() => void commitSectionTask(s.id)}
                               placeholder="タスク名を入力"
                               data-add-task
                               data-add-task-section={s.id}
                               autoFocus
                               className="w-full max-w-md rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
                             />
-                            <button
-                              onClick={() => {
-                                addTask(s.id);
-                                setAddingTo(null);
-                              }}
-                              className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
-                            >
-                              追加
-                            </button>
                           </>,
                           items,
                         )
