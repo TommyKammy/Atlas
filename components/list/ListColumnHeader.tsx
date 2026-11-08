@@ -103,7 +103,11 @@ export default function ListColumnHeader({
           colDropOver === columnKey
             ? "bg-[#f3f3f3]"
             : `hover:bg-[#f3f3f3] ${open ? "bg-[#f3f3f3]" : ""}`
-        } ${colDragging === columnKey ? "opacity-40" : ""}`}
+        } ${
+          colDragging === columnKey
+            ? "bg-[#f3f3f3]/70 [&>*]:invisible"
+            : ""
+        }`}
         onDragStart={(event) => startColumnDrag(event, columnKey, label)}
         onDrag={updateColumnDrag}
         onDragEnd={endColumnDrag}
