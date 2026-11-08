@@ -90,8 +90,10 @@ export default function ListColumnHeader({
 
       <span
         data-list-header={columnKey}
-        className={`group/hd relative inline-flex min-w-0 cursor-grab items-center gap-0.5 select-none active:cursor-grabbing ${
-          colDropOver === columnKey ? "rounded bg-blue-100 ring-2 ring-blue-400" : ""
+        className={`group/hd relative flex w-full min-w-0 cursor-grab items-center gap-0.5 self-stretch select-none active:cursor-grabbing ${
+          colDropOver === columnKey
+            ? "bg-blue-100 ring-2 ring-blue-400"
+            : `hover:bg-[#f3f3f3] ${open ? "bg-[#f3f3f3]" : ""}`
         } ${colDragging === columnKey ? "opacity-50" : ""}`}
         onMouseDown={(e) => headerMouseDown(e, columnKey)}
         onMouseUp={() => headerMouseUp(columnKey)}
