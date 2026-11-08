@@ -150,7 +150,7 @@ export function useColumnLayout({
     setColDropSide(null);
   };
 
-  const startColumnDrag = (event: React.DragEvent, key: string) => {
+  const startColumnDrag = (event: React.DragEvent, key: string, label: string) => {
     if (key === "name") {
       event.preventDefault();
       return;
@@ -165,9 +165,46 @@ export function useColumnLayout({
     }
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", key);
-    // Use the browser's native drag image (the same semi-transparent field
-    // snapshot Asana shows). No custom preview is rendered, so the field is
-    // never displayed twice.
+
+    // Build a dedicated drag image from the header label. Hiding the source
+    // header before the browser snapshots it would otherwise produce a blank
+    // (or neighbouring-cell) drag image. This mirrors Asana's
+    // DragLayer-previewContainer: a standalone field-shaped preview.
+    const source = event.currentTarget as HTMLElement;
+    const rect = source.getBoundingClientRect();
+    const computed = window.getComputedStyle(source);
+    const dragImage = document.createElement("div");
+    dragImage.textContent = label;
+    Object.assign(dragImage.style, {
+      position: "fixed",
+      top: `${rect.top}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      display: "flex",
+      alignItems: "center",
+      padding: "0 8px",
+      overflow: "hidden",
+      whiteSpace: "nowrap",
+      textOverflow: "ellipsis",
+      boxSizing: "border-box",
+      background: "rgba(255, 255, 255, 0.9)",
+      border: "1px solid #e1e1e1",
+      borderRadius: "3px",
+      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
+      color: computed.color,
+      fontFamily: computed.fontFamily,
+      fontSize: computed.fontSize,
+      fontWeight: computed.fontWeight,
+      lineHeight: computed.lineHeight,
+      opacity: "0.8",
+      pointerEvents: "none",
+      zIndex: "2147483647",
+    });
+    document.body.appendChild(dragImage);
+    event.dataTransfer.setDragImage(dragImage, rect.width / 2, rect.height / 2);
+    window.setTimeout(() => dragImage.remove(), 0);
+
     setColDragging(key);
     setColDropOver(null);
     setColDropSide(null);

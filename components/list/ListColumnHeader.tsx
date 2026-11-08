@@ -62,7 +62,7 @@ export default function ListColumnHeader({
   gripMouseDown: (event: React.MouseEvent, key: string) => void;
   visibleCols: string[];
   moveCol: (key: string, delta: -1 | 1) => void;
-  startColumnDrag: (event: React.DragEvent, key: string) => void;
+  startColumnDrag: (event: React.DragEvent, key: string, label: string) => void;
   dragOverColumn: (event: React.DragEvent, key: string) => void;
   dragLeaveColumn: (event: React.DragEvent, key: string) => void;
   dropColumn: (event: React.DragEvent, key: string) => void;
@@ -106,7 +106,7 @@ export default function ListColumnHeader({
             ? "bg-[#f3f3f3]/70 [&>*]:invisible"
             : ""
         }`}
-        onDragStart={(event) => startColumnDrag(event, columnKey)}
+        onDragStart={(event) => startColumnDrag(event, columnKey, label)}
         onDragEnd={endColumnDrag}
         onDragOver={(event) => dragOverColumn(event, columnKey)}
         onDragLeave={(event) => dragLeaveColumn(event, columnKey)}
