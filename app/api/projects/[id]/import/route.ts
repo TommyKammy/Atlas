@@ -4,6 +4,7 @@ import { logEvent } from "@/lib/data";
 import { notifyProject } from "@/lib/notify";
 import { withProject } from "@/lib/api/route";
 import { parseCsv } from "@/lib/csv";
+import { isBuiltinFieldType, type CustomFieldType } from "@/lib/custom-fields";
 
 const MAX_ROWS = 1000;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -126,13 +127,53 @@ export const POST = withProject("edit", async (req, { uid, projectId }) => {
         const f = fieldByName.get(customNames[ci]);
         const raw = (cols[base.length + ci] ?? "").trim();
         if (!f || raw === "") continue;
-        if (f.field_type === "number") {
+        const fieldType = f.field_type as CustomFieldType;
+        if (fieldType === "number" || fieldType === "timer") {
           const n = Number(raw);
           if (!Number.isFinite(n)) continue;
           await db.query(
             "INSERT INTO task_custom_values (task_id, field_id, value_number) VALUES ($1, $2, $3) ON CONFLICT (task_id, field_id) DO UPDATE SET value_number = EXCLUDED.value_number",
             [newId, f.id, n],
           );
+        } else if (fieldType === "date") {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) continue;
+          await db.query(
+            "INSERT INTO task_custom_values (task_id, field_id, value_text, value_date) VALUES ($1, $2, $3, $4::date) ON CONFLICT (task_id, field_id) DO UPDATE SET value_text = EXCLUDED.value_text, value_date = EXCLUDED.value_date",
+            [newId, f.id, raw, raw],
+          );
+        } else if (fieldType === "multi_select") {
+          let selected: string[] = [];
+          try {
+            const parsed = JSON.parse(raw);
+            selected = Array.isArray(parsed)
+              ? parsed.map((item) => String(item))
+              : raw.split(",").map((item) => item.trim()).filter((item) => item !== "");
+          } catch {
+            selected = raw.split(",").map((item) => item.trim()).filter((item) => item !== "");
+          }
+          if (selected.length === 0) continue;
+          await db.query(
+            "INSERT INTO task_custom_values (task_id, field_id, value_text, value_json) VALUES ($1, $2, $3, $4::jsonb) ON CONFLICT (task_id, field_id) DO UPDATE SET value_text = EXCLUDED.value_text, value_json = EXCLUDED.value_json",
+            [newId, f.id, selected.join(", "), JSON.stringify(selected)],
+          );
+        } else if (fieldType === "people") {
+          const names = raw.split(",").map((item) => item.trim()).filter((item) => item !== "");
+          const ids = names.map((name) => userByName.get(name)).filter((id): id is number => id !== undefined);
+          if (ids.length > 0) {
+            await db.query(
+              "INSERT INTO task_custom_values (task_id, field_id, value_text, value_json) VALUES ($1, $2, $3, $4::jsonb) ON CONFLICT (task_id, field_id) DO UPDATE SET value_text = EXCLUDED.value_text, value_json = EXCLUDED.value_json",
+              [newId, f.id, names.join(", "), JSON.stringify(ids)],
+            );
+          }
+        } else if (
+          fieldType === "auto_id" ||
+          fieldType === "formula" ||
+          fieldType === "lookup" ||
+          fieldType === "rollup" ||
+          fieldType === "time_tracking" ||
+          isBuiltinFieldType(fieldType)
+        ) {
+          continue;
         } else {
           await db.query(
             "INSERT INTO task_custom_values (task_id, field_id, value_text) VALUES ($1, $2, $3) ON CONFLICT (task_id, field_id) DO UPDATE SET value_text = EXCLUDED.value_text",

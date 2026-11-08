@@ -123,6 +123,8 @@ export async function searchTasksAdvanced(
     const valueParam = params.length;
     if (filter.type === "number") {
       conds.push(`EXISTS (SELECT 1 FROM task_custom_values v WHERE v.task_id = t.id AND v.field_id = $${fieldParam} AND v.value_number = $${valueParam}::double precision)`);
+    } else if (filter.type === "multi_select") {
+      conds.push(`EXISTS (SELECT 1 FROM task_custom_values v WHERE v.task_id = t.id AND v.field_id = $${fieldParam} AND v.value_json @> to_jsonb($${valueParam}::text))`);
     } else {
       conds.push(`EXISTS (SELECT 1 FROM task_custom_values v WHERE v.task_id = t.id AND v.field_id = $${fieldParam} AND v.value_text = $${valueParam})`);
     }

@@ -61,7 +61,13 @@ export default function CustomizeFieldModal({
             <option value="multi_select">複数選択</option>
             <option value="date">日付</option>
             <option value="people">メンバー</option>
+            <option value="formula">数式</option>
+            <option value="reference" disabled={draft.id === null}>リファレンス</option>
+            <option value="lookup" disabled={draft.id === null}>ルックアップ</option>
+            <option value="rollup" disabled={draft.id === null}>集計</option>
             <option value="auto_id">ID</option>
+            <option value="timer">タイマー</option>
+            <option value="time_tracking">タイムトラッキング</option>
             <option value="project">プロジェクト</option>
             <option value="completed_on">完了日</option>
             <option value="modified_at">最終変更日</option>

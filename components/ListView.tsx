@@ -158,7 +158,7 @@ export default function ListView({
   };
 
   const removeField = async (f: CustomField) => {
-    if (!await confirmAction(`項目「${f.name}」を削除しますか？（全タスクの値も消えます）`)) return;
+    if (!await confirmAction(`項目「${f.name}」を削除しますか？（削除済みフィールドから復元できます）`)) return;
     await api(`/api/custom-fields/${f.id}`, "DELETE");
     refresh();
   };
@@ -1060,16 +1060,20 @@ export default function ListView({
   };
 
   const addFieldFromLibrary = async (entry: FieldLibraryEntry) => {
-    await api("/api/custom-fields", "POST", {
-      project_id: projectId,
-      name: entry.name,
-      field_type: entry.field_type,
-      options: entry.options,
-      description: entry.description,
-      config: entry.config ?? {},
-    });
-    setFieldMenuAnchor(null);
-    refresh();
+    try {
+      await api("/api/custom-fields", "POST", {
+        project_id: projectId,
+        name: entry.name,
+        field_type: entry.field_type,
+        options: entry.options,
+        description: entry.description,
+        config: entry.config ?? {},
+      });
+      setFieldMenuAnchor(null);
+      refresh();
+    } catch (error) {
+      toastMessage(error instanceof Error ? error.message : "ライブラリからフィールドを作成できませんでした");
+    }
   };
 
   const openFieldAdd = (rect: DOMRect) => {

@@ -8,6 +8,7 @@ import {
   CURRENCY_CHOICES,
   NUMBER_FORMAT_LABELS,
   formatNumberValue,
+  isLookupTargetFieldType,
   normalizeCustomFieldConfig,
   type ColumnFunction,
   type CustomField,
@@ -130,7 +131,12 @@ export default function FieldDialog({
   const timerField = type === "timer";
   const timeTrackingField = type === "time_tracking";
   const numericFields = availableFields.filter(
-    (item) => item.id !== field?.id && (item.field_type === "number" || item.field_type === "formula"),
+    (item) =>
+      item.id !== field?.id &&
+      (item.field_type === "number" || item.field_type === "rollup"),
+  );
+  const lookupTargetFields = remoteFields.filter(
+    (item) => item.id !== field?.id && isLookupTargetFieldType(item.field_type),
   );
   const referenceFields = availableFields.filter((item) => item.field_type === "reference");
   const lookupSourceRefId = type === "lookup" ? referenceFieldId : rollupReferenceFieldId;
@@ -205,6 +211,10 @@ export default function FieldDialog({
       setError("集計元のフィールドを選択してください");
       return;
     }
+    if (accessLevel === "custom" && editorIds.length === 0) {
+      setError("特定のユーザーを1人以上選択してください");
+      return;
+    }
     setSaving(true);
     setError("");
     let specialConfig: Record<string, unknown> = {};
@@ -220,6 +230,8 @@ export default function FieldDialog({
         rollup_source: rollupSource,
         rollup_field_id: Number(rollupFieldId),
         rollup_function: rollupFunction,
+        column_function: field?.config?.column_function ?? "sum",
+        include_subtasks: field?.config?.include_subtasks ?? false,
         ...(rollupSource === "reference"
           ? { reference_field_id: Number(rollupReferenceFieldId) }
           : {}),
@@ -254,14 +266,18 @@ export default function FieldDialog({
       } else {
         await api("/api/custom-fields", "POST", { project_id: projectId, ...body });
         if (addToLibrary) {
-          await api("/api/field-library", "POST", {
-            project_id: projectId,
-            name: body.name,
-            field_type: body.field_type,
-            options: body.options,
-            description: body.description,
-            config: body.config,
-          });
+          try {
+            await api("/api/field-library", "POST", {
+              project_id: projectId,
+              name: body.name,
+              field_type: body.field_type,
+              options: body.options,
+              description: body.description,
+              config: body.config,
+            });
+          } catch {
+            toast("フィールドは作成しましたが、ライブラリへの追加に失敗しました");
+          }
         }
       }
       onSaved();
@@ -537,13 +553,11 @@ export default function FieldDialog({
                   className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                 >
                   <option value="">選択してください</option>
-                  {remoteFields
-                    .filter((item) => item.id !== field?.id)
-                    .map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
+                  {lookupTargetFields.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
                 </select>
               </label>
               {referenceFields.length === 0 && (

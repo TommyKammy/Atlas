@@ -8,6 +8,11 @@ import { db, withTransaction } from "./db";
  * out the same number.
  */
 export async function ensureAutoIdValues(projectId: number): Promise<void> {
+  const existing = await db.query(
+    "SELECT 1 FROM custom_fields WHERE project_id = $1::bigint AND field_type = 'auto_id' AND deleted_at IS NULL LIMIT 1",
+    [projectId],
+  );
+  if (existing.rowCount === 0) return;
   await withTransaction(async (q) => {
     const fields = await q.query(
       "SELECT id, config FROM custom_fields WHERE project_id = $1::bigint AND field_type = 'auto_id' AND deleted_at IS NULL ORDER BY id",

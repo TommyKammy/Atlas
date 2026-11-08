@@ -255,12 +255,10 @@ export async function getTaskCustomValues(
     const nameById = new Map(names.rows.map((row) => [Number(row.id), String(row.name)]));
     for (const [taskId, ids] of perTask) {
       const namesForTask = ids.map((id) => nameById.get(id)).filter((name): name is string => Boolean(name));
-      if (namesForTask.length > 0) {
-        ensure(taskId)[field.id] = {
-          ...out[taskId][field.id],
-          value_text: namesForTask.join(", "),
-        };
-      }
+      ensure(taskId)[field.id] = {
+        ...out[taskId][field.id],
+        value_text: namesForTask.length > 0 ? namesForTask.join(", ") : null,
+      };
     }
   }
 
@@ -319,6 +317,7 @@ export async function getTaskCustomValues(
     const allSourceIds = new Set<number>();
     for (const ids of mapping.values()) for (const id of ids) allSourceIds.add(id);
     const target = await loadFieldForComputation(sourceFieldId, fieldById);
+    if (!target) continue;
     const sourceValues = await loadValuesForTasks(sourceFieldId, [...allSourceIds]);
     const fn = field.config?.rollup_function ?? "sum";
     for (const [taskId, ids] of mapping) {
@@ -351,7 +350,7 @@ async function loadFieldForComputation(
   const existing = known.get(fieldId);
   if (existing) return existing;
   const r = await db.query(
-    "SELECT id, name, field_type, options, config FROM custom_fields WHERE id = $1::bigint",
+    "SELECT id, name, field_type, options, config FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
     [fieldId],
   );
   if (r.rowCount === 0) return undefined;
@@ -372,8 +371,9 @@ async function loadValuesForTasks(
   const out = new Map<number, CustomValue>();
   if (taskIds.length === 0) return out;
   const r = await db.query(
-    `SELECT task_id, value_text, value_number, value_date::text AS value_date, value_json
-     FROM task_custom_values WHERE field_id = $1::bigint AND task_id = ANY($2::bigint[])`,
+    `SELECT v.task_id, v.value_text, v.value_number, v.value_date::text AS value_date, v.value_json
+     FROM task_custom_values v JOIN tasks t ON t.id = v.task_id AND t.deleted_at IS NULL
+     WHERE v.field_id = $1::bigint AND v.task_id = ANY($2::bigint[])`,
     [fieldId, taskIds],
   );
   for (const row of r.rows) {

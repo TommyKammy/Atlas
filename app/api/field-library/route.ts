@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withUser } from "@/lib/api/route";
 import { getProjectAccess } from "@/lib/repositories/projects";
-import { normalizeCustomFieldConfig } from "@/lib/custom-fields";
+import {
+  isCustomFieldType,
+  normalizeCustomFieldConfig,
+  parseCustomFieldConfig,
+} from "@/lib/custom-fields";
+import { validateCustomFieldReferences } from "@/lib/custom-field-validation";
 
 /** Workspace field library used by the "ライブラリから選択" flow. */
 export const GET = withUser(async (req, { uid }) => {
@@ -41,13 +46,17 @@ export const POST = withUser(async (req, { uid }) => {
     config?: unknown;
   } | null;
   const projectId = Number(body?.project_id);
-  if (!Number.isInteger(projectId) || projectId <= 0 || !body?.name || !body?.field_type) {
-    return NextResponse.json({ error: "project_id, name and field_type are required" }, { status: 400 });
+  if (!Number.isInteger(projectId) || projectId <= 0 || !body?.name || !isCustomFieldType(body?.field_type)) {
+    return NextResponse.json({ error: "project_id, name and valid field_type are required" }, { status: 400 });
   }
   const access = await getProjectAccess(uid, projectId);
   if (access.role !== "admin" && access.role !== "editor") {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
+  const parsedConfig = parseCustomFieldConfig(body.field_type, body.config);
+  if (!parsedConfig.ok) return NextResponse.json({ error: parsedConfig.error }, { status: 400 });
+  const referenceError = await validateCustomFieldReferences(projectId, body.field_type, parsedConfig.config, uid);
+  if (referenceError) return NextResponse.json({ error: referenceError }, { status: 400 });
   const project = await db.query("SELECT workspace_id FROM projects WHERE id = $1::bigint", [projectId]);
   if (project.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const options = Array.isArray(body.options)
@@ -63,7 +72,7 @@ export const POST = withUser(async (req, { uid }) => {
       String(body.field_type),
       JSON.stringify(options),
       typeof body.description === "string" ? body.description.trim().slice(0, 500) : "",
-      JSON.stringify(body.config && typeof body.config === "object" ? body.config : {}),
+      JSON.stringify(parsedConfig.config),
       uid,
     ],
   );

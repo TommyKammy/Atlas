@@ -72,6 +72,7 @@ export default function FieldTypeMenu({
   const [restoring, setRestoring] = useState<number | null>(null);
   const [library, setLibrary] = useState<FieldLibraryEntry[] | null>(null);
   const [libraryLoading, setLibraryLoading] = useState(false);
+  const [removingLibrary, setRemovingLibrary] = useState<number | null>(null);
 
   const loadLibrary = async () => {
     if (library) {
@@ -98,6 +99,18 @@ export default function FieldTypeMenu({
     if (!res.ok) return;
     const rows = await res.json();
     setDeleted(Array.isArray(rows) ? rows : []);
+  };
+
+  const removeLibraryEntry = async (id: number) => {
+    setRemovingLibrary(id);
+    try {
+      const res = await fetch(`/api/field-library/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setLibrary((current) => (current ? current.filter((entry) => entry.id !== id) : current));
+      }
+    } finally {
+      setRemovingLibrary(null);
+    }
   };
 
   const restore = async (id: number) => {
@@ -226,15 +239,25 @@ export default function FieldTypeMenu({
               <div className="px-2 py-2 text-[11px] text-neutral-400">ライブラリは空です</div>
             )}
             {library.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                onClick={() => onPickTemplate(entry)}
-                className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-[11px] hover:bg-white"
-              >
-                <span className="min-w-0 flex-1 truncate text-neutral-700">{entry.name}</span>
-                <span className="shrink-0 text-[9px] text-neutral-400">{entry.field_type}</span>
-              </button>
+              <div key={entry.id} className="flex items-center gap-1 rounded px-1.5 py-1 hover:bg-white">
+                <button
+                  type="button"
+                  onClick={() => onPickTemplate(entry)}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left text-[11px]"
+                >
+                  <span className="min-w-0 flex-1 truncate text-neutral-700">{entry.name}</span>
+                  <span className="shrink-0 text-[9px] text-neutral-400">{entry.field_type}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`${entry.name}をライブラリから削除`}
+                  disabled={removingLibrary === entry.id}
+                  onClick={() => void removeLibraryEntry(entry.id)}
+                  className="shrink-0 rounded px-1 text-[11px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 disabled:opacity-40"
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         )}

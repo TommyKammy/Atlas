@@ -24,6 +24,52 @@ export type CustomFieldType =
   | "multi_select"
   | "date"
   | BuiltinFieldType;
+export const CUSTOM_FIELD_TYPES = [
+  "number",
+  "text",
+  "select",
+  "multi_select",
+  "date",
+  "people",
+  "auto_id",
+  "project",
+  "completed_on",
+  "created_at",
+  "modified_at",
+  "created_by",
+  "collaborators",
+  "attachments",
+  "blocked_by",
+  "blocking",
+  "formula",
+  "reference",
+  "lookup",
+  "rollup",
+  "timer",
+  "time_tracking",
+] as const;
+
+const CUSTOM_FIELD_TYPE_SET = new Set<string>(CUSTOM_FIELD_TYPES);
+
+export function isCustomFieldType(value: unknown): value is CustomFieldType {
+  return typeof value === "string" && CUSTOM_FIELD_TYPE_SET.has(value);
+}
+
+const LOOKUP_TARGET_TYPE_SET = new Set<string>([
+  "text",
+  "number",
+  "select",
+  "multi_select",
+  "date",
+  "people",
+  "auto_id",
+]);
+
+/** Field types whose stored value can be resolved by a lookup field. */
+export function isLookupTargetFieldType(type: CustomFieldType): boolean {
+  return LOOKUP_TARGET_TYPE_SET.has(type);
+}
+
 export type NumberFormat = "number" | "percent" | "currency" | "custom" | "none";
 export type ColumnFunction = "none" | "sum" | "average" | "count" | "min" | "max";
 
@@ -177,13 +223,19 @@ export function parseCustomFieldConfig(
     const fieldId = Number(value.rollup_field_id);
     if (!Number.isInteger(fieldId) || fieldId <= 0) return { ok: false, error: "rollup_field_id is required" };
     const fn = value.rollup_function ?? "sum";
-    if (typeof fn !== "string" || !COLUMN_FUNCTIONS.has(fn as ColumnFunction)) {
+    if (typeof fn !== "string" || fn === "none" || !COLUMN_FUNCTIONS.has(fn as ColumnFunction)) {
       return { ok: false, error: "invalid rollup_function" };
+    }
+    const columnFunction = value.column_function ?? "sum";
+    if (typeof columnFunction !== "string" || !COLUMN_FUNCTIONS.has(columnFunction as ColumnFunction)) {
+      return { ok: false, error: "invalid column_function" };
     }
     const config: CustomFieldConfig = {
       rollup_source: source,
       rollup_field_id: fieldId,
       rollup_function: fn as ColumnFunction,
+      column_function: columnFunction as ColumnFunction,
+      include_subtasks: value.include_subtasks === true,
     };
     if (source === "reference") {
       const refId = Number(value.reference_field_id);
@@ -327,8 +379,12 @@ export function formatDateValue(value: string | null | undefined): string {
 }
 
 export function customValueToArray(v?: CustomValue): string[] {
-  if (!v || !Array.isArray(v.value_json)) return [];
-  return v.value_json.map((item) => String(item));
+  if (!v) return [];
+  if (Array.isArray(v.value_json)) return v.value_json.map((item) => String(item));
+  if (v.value_text) {
+    return v.value_text.split(",").map((item) => item.trim()).filter((item) => item !== "");
+  }
+  return [];
 }
 
 export function formatCustomValue(f: CustomField, v?: CustomValue): string {
@@ -336,11 +392,17 @@ export function formatCustomValue(f: CustomField, v?: CustomValue): string {
   if (f.field_type === "number") {
     return v.value_number === null ? "–" : formatNumberValue(v.value_number, f.config ?? {});
   }
+  if (f.field_type === "auto_id") {
+    if (v.value_number !== null && v.value_number !== undefined) {
+      return `${f.config?.prefix ?? "ID-"}${v.value_number}`;
+    }
+    return v.value_text ?? "–";
+  }
   if (f.field_type === "multi_select") {
     const values = customValueToArray(v);
     return values.length > 0 ? values.join(", ") : "–";
   }
-  if (f.field_type === "date") return formatDateValue(v.value_date);
+  if (f.field_type === "date") return formatDateValue(v.value_date ?? v.value_text);
   return v.value_text ?? "–";
 }
 
@@ -349,7 +411,9 @@ export function customValueToInput(f: CustomField, v?: CustomValue): string {
   if (!v) return "";
   if (f.field_type === "number") return v.value_number === null ? "" : String(v.value_number);
   if (f.field_type === "multi_select") return JSON.stringify(customValueToArray(v));
-  if (f.field_type === "people") return JSON.stringify(customValueToIdArray(v));
+  if (f.field_type === "people" || f.field_type === "reference") {
+    return JSON.stringify(customValueToIdArray(v));
+  }
   if (f.field_type === "date") return v.value_date ?? "";
   return v.value_text ?? "";
 }
@@ -447,7 +511,9 @@ export function customFieldDisplay(
   fields?: CustomField[],
 ): string {
   if (field.field_type === "people") {
-    return formatPeopleValue(customValueToIdArray(value), users);
+    const ids = customValueToIdArray(value);
+    if (ids.length === 0 && value?.value_text) return value.value_text;
+    return formatPeopleValue(ids, users);
   }
   if (field.field_type === "timer") {
     return formatDuration(timerSeconds(value), field.config ?? {});
@@ -476,11 +542,10 @@ export function customFieldDisplay(
     return result === null ? "–" : formatNumberValue(result, field.config ?? {});
   }
   if (field.field_type === "auto_id") {
-    if (value?.value_text) return value.value_text;
     if (value?.value_number !== null && value?.value_number !== undefined) {
       return `${field.config?.prefix ?? "ID-"}${value.value_number}`;
     }
-    return "–";
+    return value?.value_text ?? "–";
   }
   if (isBuiltinFieldType(field.field_type) && task) {
     if (field.field_type === "project") return task.project_name ?? "–";

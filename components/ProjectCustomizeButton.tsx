@@ -327,7 +327,7 @@ export default function ProjectCustomizeButton({
 
   const removeField = async (field: CustomField) => {
     if (!canEdit) return;
-    if (!await confirmAction(`フィールド「${field.name}」を削除しますか？`)) return;
+    if (!await confirmAction(`フィールド「${field.name}」を削除しますか？（削除済みフィールドから復元できます）`)) return;
     try {
       await api(`/api/custom-fields/${field.id}`, "DELETE");
       setFields(await fetchFields(projectId));

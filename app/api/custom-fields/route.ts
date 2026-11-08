@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
 import { ensureAutoIdValues } from "@/lib/auto-id";
+import { validateCustomFieldReferences } from "@/lib/custom-field-validation";
 import { withProject } from "@/lib/api/route";
 import {
   normalizeCustomFieldConfig,
@@ -51,7 +52,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
   );
 });
 
-export const POST = withProject("edit", async (_req, { projectId, body }) => {
+export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
   const { name, field_type, options, description, config, access_level, editor_ids } = (body ?? {}) as {
     name?: string;
     field_type?: string;
@@ -70,6 +71,8 @@ export const POST = withProject("edit", async (_req, { projectId, body }) => {
   const type = field_type as CustomFieldType;
   const parsedConfig = parseCustomFieldConfig(type, config);
   if (!parsedConfig.ok) return NextResponse.json({ error: parsedConfig.error }, { status: 400 });
+  const referenceError = await validateCustomFieldReferences(projectId, type, parsedConfig.config, uid);
+  if (referenceError) return NextResponse.json({ error: referenceError }, { status: 400 });
   const opts =
     type === "select" || type === "multi_select"
       ? (Array.isArray(options) ? options : String(options ?? "").split(","))

@@ -344,7 +344,7 @@ export default function TaskPane({
             onClick={() => setReferenceOpen(field.id)}
             className="min-h-7 w-full rounded border border-transparent px-1 py-1 text-left text-[13px] text-neutral-700 hover:border-neutral-200 hover:bg-white"
           >
-            {customFieldDisplay(field, value, task, users)}
+            {customFieldDisplay(field, value, task, users, customValues, customFields)}
           </button>
           {referenceOpen === field.id && (
             <ReferencePicker

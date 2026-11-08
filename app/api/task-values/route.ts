@@ -61,6 +61,20 @@ export const POST = withTask("edit", async (_req, { uid, taskId: task_id, projec
       const sourceIds = Array.isArray(f.rows[0].config?.source_project_ids)
         ? f.rows[0].config.source_project_ids.map((item: unknown) => Number(item)).filter((item: number) => Number.isInteger(item))
         : [];
+      if (sourceIds.length > 0) {
+        const access = await db.query(
+          `SELECT p.id FROM projects p
+           WHERE p.id = ANY($1::bigint[])
+             AND (
+               EXISTS (SELECT 1 FROM users u WHERE u.id = $2 AND u.is_admin)
+               OR EXISTS (SELECT 1 FROM project_members m WHERE m.project_id = p.id AND m.user_id = $2)
+             )`,
+          [sourceIds, uid],
+        );
+        if (access.rowCount !== sourceIds.length) {
+          return NextResponse.json({ error: "source project access denied" }, { status: 403 });
+        }
+      }
       const tasks = await db.query(
         `SELECT t.id, t.name FROM tasks t
          WHERE t.id = ANY($1::bigint[]) AND t.deleted_at IS NULL

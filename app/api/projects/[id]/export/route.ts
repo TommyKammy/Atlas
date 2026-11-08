@@ -17,7 +17,8 @@ export const GET = withProject("view", async (req, { projectId }) => {
     [id],
   );
   const fields = await db.query(
-    "SELECT id, name FROM custom_fields WHERE project_id = $1::bigint AND deleted_at IS NULL ORDER BY position, id",
+    `SELECT id, name, field_type, options, description, config, position
+     FROM custom_fields WHERE project_id = $1::bigint AND deleted_at IS NULL ORDER BY position, id`,
     [id],
   );
   const tasks = await db.query(
@@ -25,8 +26,13 @@ export const GET = withProject("view", async (req, { projectId }) => {
        t.completed, t.start_on::text AS start_on, t.due_on::text AS due_on,
        t.progress, t.status, t.recurrence,
        (SELECT string_agg(c.body, E'\\n---\\n' ORDER BY c.id) FROM comments c WHERE c.task_id = t.id) AS comments,
-       (SELECT string_agg(v.field_id || '=' || COALESCE(v.value_text, v.value_number::text, ''), ';' ORDER BY v.field_id)
-        FROM task_custom_values v JOIN custom_fields f ON f.id = v.field_id WHERE v.task_id = t.id) AS custom_values
+       (SELECT string_agg(v.field_id || '=' || CASE
+          WHEN f.field_type IN ('number', 'timer')
+            THEN COALESCE(v.value_number::text, v.value_text, '')
+          ELSE COALESCE(v.value_text, v.value_number::text, '')
+        END, ';' ORDER BY v.field_id)
+        FROM task_custom_values v JOIN custom_fields f ON f.id = v.field_id
+        WHERE v.task_id = t.id AND f.deleted_at IS NULL) AS custom_values
      FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
      WHERE t.project_id = $1::bigint AND t.deleted_at IS NULL ORDER BY t.position, t.id`,
     [id],

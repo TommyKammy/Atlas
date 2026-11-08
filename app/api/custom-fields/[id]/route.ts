@@ -7,8 +7,9 @@ import {
   parseCustomFieldConfig,
   type CustomFieldType,
 } from "@/lib/custom-fields";
+import { validateCustomFieldReferences } from "@/lib/custom-field-validation";
 
-export const PATCH = withResourceProject("edit", "custom_fields", async (_req, { params, body }) => {
+export const PATCH = withResourceProject("edit", "custom_fields", async (_req, { uid, params, body }) => {
   const id = params.id;
   const payload = (body ?? {}) as {
     name?: unknown;
@@ -19,11 +20,12 @@ export const PATCH = withResourceProject("edit", "custom_fields", async (_req, {
     editor_ids?: unknown;
   };
   const current = await db.query(
-    "SELECT field_type, config FROM custom_fields WHERE id = $1::bigint",
+    "SELECT field_type, config, project_id FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
     [id],
   );
   if (current.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const fieldType = current.rows[0].field_type as CustomFieldType;
+  const projectId = Number(current.rows[0].project_id);
   const sets: string[] = [];
   const values: unknown[] = [];
   if (typeof payload.name === "string" && payload.name.trim() !== "") {
@@ -41,6 +43,8 @@ export const PATCH = withResourceProject("edit", "custom_fields", async (_req, {
   if (payload.config !== undefined) {
     const parsed = parseCustomFieldConfig(fieldType, payload.config);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const referenceError = await validateCustomFieldReferences(projectId, fieldType, parsed.config, uid);
+    if (referenceError) return NextResponse.json({ error: referenceError }, { status: 400 });
     values.push(JSON.stringify(parsed.config));
     sets.push(`config = $${values.length}::jsonb`);
   }
@@ -63,12 +67,20 @@ export const PATCH = withResourceProject("edit", "custom_fields", async (_req, {
   }
   values.push(id);
   const r = await db.query(
-    `UPDATE custom_fields SET ${sets.join(", ")} WHERE id = $${values.length}::bigint
+    `UPDATE custom_fields SET ${sets.join(", ")}
+     WHERE id = $${values.length}::bigint AND deleted_at IS NULL
      RETURNING id, name, field_type, options, description, config, access_level, editor_ids`,
     values,
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const row = r.rows[0];
+  if (fieldType === "auto_id" && payload.config !== undefined) {
+    const prefix = normalizeCustomFieldConfig(row.config).prefix ?? "ID-";
+    await db.query(
+      "UPDATE task_custom_values SET value_text = $2 || value_number::text WHERE field_id = $1::bigint AND value_number IS NOT NULL",
+      [id, prefix],
+    );
+  }
   return NextResponse.json({
     id: Number(row.id),
     name: row.name,
