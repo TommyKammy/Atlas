@@ -1463,7 +1463,7 @@ export default function ListView({
             <path d="M2.2 4.2h7.6L6 9.2z" />
           </svg>
         </button>
-        <span className="text-[14px] leading-6 font-semibold text-neutral-900">{name}</span>
+        <span className="cursor-pointer text-[14px] leading-6 font-semibold text-neutral-900">{name}</span>
         {groupBy !== "section" || group2 !== null ? (
           <span data-list-section-count={count} className="text-[13px] font-normal text-neutral-500">{count}</span>
         ) : null}
