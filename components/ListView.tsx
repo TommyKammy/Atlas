@@ -1493,7 +1493,6 @@ export default function ListView({
     editVal,
     setEditVal,
     editStart,
-    setEditStart,
     openEdit,
     commitEdit,
     cancelEdit,

@@ -34,6 +34,8 @@ import TaskCommentComposer from "./task/TaskCommentComposer";
 import TaskFeedSection from "./task/TaskFeedSection";
 import ReferencePicker from "./fields/ReferencePicker";
 import TimerCell from "./fields/TimerCell";
+import AssigneePicker from "./fields/AssigneePicker";
+import EmptyCellIcon from "./fields/EmptyCellIcon";
 import TaskAvatar from "./task/TaskAvatar";
 import TaskStatusChip from "./task/TaskStatusChip";
 
@@ -127,6 +129,7 @@ export default function TaskPane({
 
   const QUICK = ["👍", "🎉", "❤️", "😄", "😮"];
   const [addingProject, setAddingProject] = useState(false);
+  const [assigneeEditing, setAssigneeEditing] = useState(false);
   const [allProjects, setAllProjects] = useState<{ id: number; name: string }[]>([]);
   const [newMemberProject, setNewMemberProject] = useState("");
   const [newMemberSections, setNewMemberSections] = useState<{ id: number; name: string }[]>([]);
@@ -602,34 +605,36 @@ export default function TaskPane({
 
           <div className="mt-2 space-y-0.5" data-task-fields>
             <FieldRow label="担当者">
-              <div className="flex h-7 items-center gap-2">
-                {assignee ? (
-                  <TaskAvatar name={assignee.name} url={assignee.avatar_url} className="h-5 w-5" textClassName="text-[9px]" />
-                ) : (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-neutral-300 text-neutral-300">
-                    <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.1">
-                      <circle cx="8" cy="5.5" r="2.3" />
-                      <path d="M3.5 13c.5-2.4 2.2-3.6 4.5-3.6s4 1.2 4.5 3.6" />
-                    </svg>
-                  </span>
-                )}
-                <select
-                  value={task.assignee_id ?? ""}
-                  onChange={(event) =>
-                    patch({ assignee_id: event.target.value === "" ? null : Number(event.target.value) })
-                  }
-                  className="h-7 min-w-0 flex-1 cursor-pointer appearance-none truncate rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
-                  aria-label="担当者"
+              {assigneeEditing ? (
+                <div className="min-w-0">
+                  <AssigneePicker
+                    users={users}
+                    currentId={task.assignee_id}
+                    onPick={(id) => {
+                      setAssigneeEditing(false);
+                      void patch({ assignee_id: id });
+                    }}
+                    onCancel={() => setAssigneeEditing(false)}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAssigneeEditing(true)}
+                  aria-label="担当者を設定"
+                  className="flex h-7 min-w-0 max-w-full items-center gap-2 rounded px-1 text-[13px] text-neutral-800 hover:bg-neutral-100"
                 >
-                  <option value="">担当者なし</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name}
-                      {user.is_guest ? "（ゲスト）" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  {assignee ? (
+                    <TaskAvatar name={assignee.name} url={assignee.avatar_url} className="h-5 w-5" textClassName="text-[9px]" />
+                  ) : (
+                    <EmptyCellIcon kind="assignee" />
+                  )}
+                  <span className="truncate">{assignee?.name ?? "未割り当て"}</span>
+                  <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="1.3">
+                    <path d="m3.5 6 4.5 4 4.5-4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
             </FieldRow>
 
             <FieldRow label="期日">

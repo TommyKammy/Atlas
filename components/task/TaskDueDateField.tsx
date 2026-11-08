@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { dueSegs } from "@/lib/dates";
+import { useState } from "react";
+import { dueSegs, todayISO } from "@/lib/dates";
+import DueDatePicker from "../fields/DueDatePicker";
 
-/** Compact Asana-style due-date control with a small date popover. */
+/** Asana-style due-date field for the task detail pane. */
 export default function TaskDueDateField({
   start,
   due,
@@ -16,24 +17,33 @@ export default function TaskDueDateField({
   onPatch: (fields: Record<string, unknown>) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
   const [a, b] = dueSegs(start, due);
   const label = a ? (b ? `${a} – ${b}` : a) : "期日なし";
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (event: MouseEvent) => {
-      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
+  if (open) {
+    return (
+      <div className="min-w-0">
+        <DueDatePicker
+          start={start ?? ""}
+          due={due ?? ""}
+          today={todayISO()}
+          onApply={(nextStart, nextDue) =>
+            onPatch({
+              start_on: nextStart === "" ? null : nextStart,
+              due_on: nextDue === "" ? null : nextDue,
+            })
+          }
+          onCancel={() => setOpen(false)}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div ref={wrapRef} className="relative inline-flex min-w-0 items-center">
+    <div className="inline-flex min-w-0 items-center">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen(true)}
         className={`flex h-7 min-w-0 items-center gap-1.5 rounded px-1 text-[13px] ${
           overdue ? "font-medium text-red-700" : "text-neutral-800"
         } hover:bg-neutral-100`}
@@ -55,48 +65,6 @@ export default function TaskDueDateField({
         >
           ×
         </button>
-      )}
-      {open && (
-        <div className="absolute left-0 top-full z-[130] mt-1 w-[280px] rounded-lg border border-neutral-200 bg-white p-3 shadow-xl">
-          <div className="text-[11px] font-semibold text-neutral-500">期日</div>
-          <label className="mt-2 block text-[11px] text-neutral-500">
-            開始日
-            <input
-              type="date"
-              value={start ?? ""}
-              onChange={(event) => onPatch({ start_on: event.target.value || null })}
-              className="mt-0.5 h-8 w-full rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
-            />
-          </label>
-          <label className="mt-2 block text-[11px] text-neutral-500">
-            期日
-            <input
-              type="date"
-              value={due ?? ""}
-              onChange={(event) => onPatch({ due_on: event.target.value || null })}
-              className="mt-0.5 h-8 w-full rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
-            />
-          </label>
-          <div className="mt-2 flex justify-between">
-            <button
-              type="button"
-              onClick={() => {
-                onPatch({ start_on: null, due_on: null });
-                setOpen(false);
-              }}
-              className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100"
-            >
-              クリア
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]"
-            >
-              完了
-            </button>
-          </div>
-        </div>
       )}
     </div>
   );

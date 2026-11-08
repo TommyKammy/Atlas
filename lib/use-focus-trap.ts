@@ -35,6 +35,14 @@ export function useFocusTrap(
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && escapeRef.current) {
+        const target = event.target as HTMLElement | null;
+        if (
+          target?.closest(
+            "[data-assignee-picker],[data-assignee-menu],[data-due-picker],[data-due-menu]",
+          )
+        ) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         escapeRef.current();
