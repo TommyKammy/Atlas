@@ -31,14 +31,6 @@ export function useColumnLayout({
   const [colDragging, setColDragging] = useState<string | null>(null);
   const [colDropOver, setColDropOver] = useState<string | null>(null);
   const [colDropSide, setColDropSide] = useState<"before" | "after" | null>(null);
-  const [colDragPreview, setColDragPreview] = useState<{
-    key: string;
-    label: string;
-    width: number;
-    height: number;
-    x: number;
-    y: number;
-  } | null>(null);
   const [isCompact, setIsCompact] = useState(false);
 
   const colW = (key: string) =>
@@ -151,7 +143,6 @@ export function useColumnLayout({
     setColDragging(null);
     setColDropOver(null);
     setColDropSide(null);
-    setColDragPreview(null);
   };
 
   const clearColumnDrop = () => {
@@ -159,14 +150,7 @@ export function useColumnLayout({
     setColDropSide(null);
   };
 
-  const updateColumnDrag = (event: React.DragEvent) => {
-    if (!colDragging) return;
-    setColDragPreview((previous) =>
-      previous ? { ...previous, x: event.clientX, y: event.clientY } : previous,
-    );
-  };
-
-  const startColumnDrag = (event: React.DragEvent, key: string, label: string) => {
+  const startColumnDrag = (event: React.DragEvent, key: string) => {
     if (key === "name") {
       event.preventDefault();
       return;
@@ -179,26 +163,14 @@ export function useColumnLayout({
       event.preventDefault();
       return;
     }
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", key);
-    // Hide the native drag image; Atlas renders its own semi-transparent
-    // field preview so it looks and measures the same across browsers.
-    const blank = document.createElement("canvas");
-    blank.width = 1;
-    blank.height = 1;
-    event.dataTransfer.setDragImage(blank, 0, 0);
+    // Use the browser's native drag image (the same semi-transparent field
+    // snapshot Asana shows). No custom preview is rendered, so the field is
+    // never displayed twice.
     setColDragging(key);
     setColDropOver(null);
     setColDropSide(null);
-    setColDragPreview({
-      key,
-      label,
-      width: rect.width,
-      height: rect.height,
-      x: event.clientX,
-      y: event.clientY,
-    });
     onMenuClose();
   };
 
@@ -206,7 +178,6 @@ export function useColumnLayout({
     if (!colDragging) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-    updateColumnDrag(event);
     if (key === "name" || key === colDragging) {
       clearColumnDrop();
       return;
@@ -263,13 +234,11 @@ export function useColumnLayout({
     colDragging,
     colDropOver,
     colDropSide,
-    colDragPreview,
     visibleCols,
     gridCols,
     compactCells,
     gripMouseDown,
     startColumnDrag,
-    updateColumnDrag,
     dragOverColumn,
     dragLeaveColumn,
     dropColumn,

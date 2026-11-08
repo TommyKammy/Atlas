@@ -451,13 +451,11 @@ export default function ListView({
     colDragging,
     colDropOver,
     colDropSide,
-    colDragPreview,
     visibleCols,
     gridCols,
     compactCells,
     gripMouseDown,
     startColumnDrag,
-    updateColumnDrag,
     dragOverColumn,
     dragLeaveColumn,
     dropColumn,
@@ -1106,7 +1104,6 @@ export default function ListView({
       visibleCols={visibleCols}
       moveCol={moveCol}
       startColumnDrag={startColumnDrag}
-      updateColumnDrag={updateColumnDrag}
       dragOverColumn={dragOverColumn}
       dragLeaveColumn={dragLeaveColumn}
       dropColumn={dropColumn}
@@ -1611,7 +1608,6 @@ export default function ListView({
           if (!colDragging) return;
           event.preventDefault();
           event.dataTransfer.dropEffect = "move";
-          updateColumnDrag(event);
         }}
         onDragLeave={(event) => {
           const related = event.relatedTarget as Node | null;
@@ -1899,21 +1895,6 @@ export default function ListView({
           onClose={() => setFieldDialog(null)}
           onSaved={refresh}
         />
-      )}
-      {colDragPreview && (
-        <div
-          data-column-drag-preview
-          className="pointer-events-none fixed z-[200] flex items-center overflow-hidden rounded-[3px] border border-neutral-300 bg-white/85 px-2 text-xs font-normal text-neutral-600 opacity-70 shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
-          style={{
-            left: colDragPreview.x,
-            top: colDragPreview.y,
-            width: colDragPreview.width,
-            height: colDragPreview.height,
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          <span className="truncate">{colDragPreview.label}</span>
-        </div>
       )}
     </div>
   );
