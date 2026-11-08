@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { CustomField, CustomValue } from "@/lib/custom-fields";
 import { dueSegs } from "@/lib/dates";
 import {
@@ -132,6 +132,150 @@ function EmptyCellIcon({ kind }: { kind: "assignee" | "due" }) {
         )}
       </g>
     </svg>
+  );
+}
+
+function AssigneePicker({
+  users,
+  currentId,
+  onPick,
+  onCancel,
+}: {
+  users: User[];
+  currentId: number | null;
+  onPick: (id: number | null) => void;
+  onCancel: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [position, setPosition] = useState<{
+    left: number;
+    top?: number;
+    bottom?: number;
+    width: number;
+  } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    const rect = input.getBoundingClientRect();
+    const width = Math.max(220, Math.min(320, window.innerWidth - rect.left - 8));
+    const openAbove = window.innerHeight - rect.bottom < 320;
+    setPosition({
+      left: rect.left,
+      width,
+      ...(openAbove
+        ? { bottom: window.innerHeight - rect.top + 4 }
+        : { top: rect.bottom + 4 }),
+    });
+  }, []);
+
+  const normalized = query.trim().toLowerCase();
+  const filtered = users.filter(
+    (user) =>
+      normalized === "" ||
+      user.name.toLowerCase().includes(normalized) ||
+      (user.email ?? "").toLowerCase().includes(normalized),
+  );
+
+  return (
+    <div
+      data-assignee-picker
+      className="relative min-w-0"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <input
+        ref={inputRef}
+        autoFocus
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            onCancel();
+          }
+          if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+            event.preventDefault();
+            const first = filtered[0];
+            if (first) onPick(first.id);
+          }
+        }}
+        onBlur={(event) => {
+          const related = event.relatedTarget as HTMLElement | null;
+          if (related?.closest("[data-assignee-picker]")) return;
+          onCancel();
+        }}
+        placeholder="名前またはメールアドレス"
+        aria-label="担当者を検索"
+        className="h-8 w-full min-w-0 rounded border border-blue-500 bg-white px-2 text-[13px] outline-none"
+      />
+      {position && (
+        <div
+          data-assignee-menu
+          className="fixed z-[80] overflow-hidden rounded-lg border border-[#e1e1e1] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+          style={{
+            left: position.left,
+            width: position.width,
+            ...(position.top !== undefined ? { top: position.top } : { bottom: position.bottom }),
+          }}
+        >
+          <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-neutral-500">
+            おすすめのユーザー
+          </div>
+          <div role="listbox" aria-label="おすすめのユーザー" className="max-h-[260px] overflow-y-auto pb-1">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-3 text-[12px] text-neutral-400">該当するユーザーがいません</div>
+            ) : (
+              filtered.map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  role="option"
+                  aria-selected={user.id === currentId}
+                  data-assignee-option={user.id}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => onPick(user.id)}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100"
+                >
+                  <TaskAvatar
+                    name={user.name}
+                    url={user.avatar_url}
+                    className="h-6 w-6"
+                    textClassName="text-[10px]"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex min-w-0 items-center gap-1">
+                      <span className="truncate text-[13px] font-medium text-neutral-800">{user.name}</span>
+                      {user.is_guest && (
+                        <span className="shrink-0 rounded bg-neutral-100 px-1 text-[10px] text-neutral-500">ゲスト</span>
+                      )}
+                      {user.id === currentId && <span className="shrink-0 text-[11px] text-[#2c60b8]">✓</span>}
+                    </span>
+                    {user.email && (
+                      <span className="block truncate text-[11px] text-neutral-500">{user.email}</span>
+                    )}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+          <div className="border-t border-neutral-200 p-1">
+            <button
+              type="button"
+              data-assignee-unassign
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onPick(null)}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-neutral-600 hover:bg-neutral-100"
+            >
+              <EmptyCellIcon kind="assignee" />
+              <span className="flex-1">未割り当て</span>
+              {currentId === null && <span className="text-[11px] text-[#2c60b8]">✓</span>}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -416,25 +560,14 @@ export default function TaskListRow({
         </span>
       </div>
       {editing?.id === t.id && editing.field === "assignee" ? (
-        <select
-          style={{ order: visibleCols.indexOf("assignee") }}
-          autoFocus
-          value={editVal}
-          onChange={(e) => commitEdit(t, "assignee", e.target.value)}
-          onBlur={cancelEdit}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") cancelEdit();
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white py-0.5 pr-1 pl-2 text-[13px] outline-none"
-        >
-          <option value="">–</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
+        <div style={{ order: visibleCols.indexOf("assignee") }} className="relative min-w-0 pl-2 pr-1">
+          <AssigneePicker
+            users={users}
+            currentId={t.assignee_id}
+            onPick={(id) => void commitEdit(t, "assignee", id === null ? "" : String(id))}
+            onCancel={cancelEdit}
+          />
+        </div>
       ) : (
         <span
           onClick={(e) => openEdit(e, t, "assignee", t.assignee_id === null ? "" : String(t.assignee_id))}
