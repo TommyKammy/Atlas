@@ -270,7 +270,34 @@ export default function ListColumnHeader({
                     ))}
                   </>
                 )}
-                {field.field_type === "number" && (
+                {field.field_type === "people" && (
+                  <>
+                    <div className={menuLabel}>フィルター</div>
+                    <button
+                      className={menuItem}
+                      onClick={() => {
+                        setCustomFilter((m) => ({ ...m, [field.id]: "" }));
+                        setMenuCol(null);
+                      }}
+                    >
+                      すべて（解除）
+                    </button>
+                    {(users ?? []).map((user) => (
+                      <button
+                        key={user.id}
+                        className={menuItem}
+                        onClick={() => {
+                          setCustomFilter((m) => ({ ...m, [field.id]: String(user.id) }));
+                          setMenuCol(null);
+                        }}
+                      >
+                        {user.name}
+                        {customFilter[field.id] === String(user.id) ? " ✓" : ""}
+                      </button>
+                    ))}
+                  </>
+                )}
+                {(field.field_type === "number" || field.field_type === "formula" || field.field_type === "rollup") && (
                   <>
                     <div className={menuLabel}>列の関数</div>
                     {(["none", "sum", "average", "count", "min", "max"] as ColumnFunction[]).map((fn) => (
@@ -298,6 +325,15 @@ export default function ListColumnHeader({
                     </button>
                   </>
                 )}
+                <button
+                  className={menuItem}
+                  onClick={() => {
+                    onEditField(field);
+                    setMenuCol(null);
+                  }}
+                >
+                  フィールドアクセスと権限
+                </button>
                 <button
                   className={menuItem}
                   onClick={() => {

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { notifyField, notifyTask } from "@/lib/notify";
 import { withTask } from "@/lib/api/route";
+import { isReadOnlyFieldType, type CustomFieldType } from "@/lib/custom-fields";
+import { canEditFieldValue } from "@/lib/field-access";
 
 function validDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -11,19 +13,28 @@ function validDate(value: string): boolean {
 
 // Upsert one task's custom-field value. The field type determines which
 // typed column is written; empty values remove the row.
-export const POST = withTask("edit", async (_req, { taskId: task_id, projectId, body }) => {
+export const POST = withTask("edit", async (_req, { uid, taskId: task_id, projectId, body }) => {
   const { field_id, value } = (body ?? {}) as { field_id?: number; value?: unknown };
   if (!field_id) {
     return NextResponse.json({ error: "task_id and field_id are required" }, { status: 400 });
   }
   const f = await db.query(
-    "SELECT field_type, project_id FROM custom_fields WHERE id = $1::bigint",
+    "SELECT field_type, project_id, config, access_level, editor_ids FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
     [field_id],
   );
   if (f.rowCount === 0 || Number(f.rows[0].project_id) !== projectId) {
     return NextResponse.json({ error: "field not found" }, { status: 404 });
   }
-  const fieldType = f.rows[0].field_type as string;
+  if (!(await canEditFieldValue(uid, projectId, f.rows[0]))) {
+    return NextResponse.json({ error: "field access denied" }, { status: 403 });
+  }
+  const fieldType = f.rows[0].field_type as CustomFieldType;
+  if (fieldType === "timer") {
+    return NextResponse.json({ error: "use the timer endpoint" }, { status: 400 });
+  }
+  if (isReadOnlyFieldType(fieldType)) {
+    return NextResponse.json({ error: "this field is read-only" }, { status: 400 });
+  }
 
   let text: string | null = null;
   let num: number | null = null;
@@ -42,6 +53,46 @@ export const POST = withTask("edit", async (_req, { taskId: task_id, projectId, 
       return NextResponse.json({ error: "invalid date" }, { status: 400 });
     }
     text = date;
+  } else if (fieldType === "reference") {
+    const ids = (Array.isArray(value) ? value : [])
+      .map((item) => Number(item))
+      .filter((item, index, all) => Number.isInteger(item) && item > 0 && all.indexOf(item) === index);
+    if (ids.length > 0) {
+      const sourceIds = Array.isArray(f.rows[0].config?.source_project_ids)
+        ? f.rows[0].config.source_project_ids.map((item: unknown) => Number(item)).filter((item: number) => Number.isInteger(item))
+        : [];
+      const tasks = await db.query(
+        `SELECT t.id, t.name FROM tasks t
+         WHERE t.id = ANY($1::bigint[]) AND t.deleted_at IS NULL
+           AND ($2::bigint[] = '{}'::bigint[] OR t.project_id = ANY($2::bigint[]) OR EXISTS (
+             SELECT 1 FROM task_project_memberships m
+             WHERE m.task_id = t.id AND m.project_id = ANY($2::bigint[])
+           ))`,
+        [ids, sourceIds],
+      );
+      if (tasks.rowCount !== ids.length) {
+        return NextResponse.json({ error: "invalid reference" }, { status: 400 });
+      }
+      const byId = new Map(tasks.rows.map((row) => [Number(row.id), String(row.name)]));
+      json = ids;
+      text = ids.map((id) => byId.get(id)).filter(Boolean).join(", ");
+    }
+  } else if (fieldType === "people") {
+    const ids = (Array.isArray(value) ? value : [])
+      .map((item) => Number(item))
+      .filter((item, index, all) => Number.isInteger(item) && item > 0 && all.indexOf(item) === index);
+    if (ids.length > 0) {
+      const users = await db.query(
+        "SELECT id, name FROM users WHERE id = ANY($1::bigint[]) AND deactivated_at IS NULL",
+        [ids],
+      );
+      if (users.rowCount !== ids.length) {
+        return NextResponse.json({ error: "invalid member" }, { status: 400 });
+      }
+      const byId = new Map(users.rows.map((row) => [Number(row.id), String(row.name)]));
+      json = ids;
+      text = ids.map((id) => byId.get(id)).filter(Boolean).join(", ");
+    }
   } else if (fieldType === "multi_select") {
     const selected = Array.isArray(value)
       ? value.map((item) => String(item).trim()).filter((item) => item !== "")

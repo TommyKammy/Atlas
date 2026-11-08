@@ -60,6 +60,17 @@ export default function CustomizeFieldModal({
             <option value="select">単一選択</option>
             <option value="multi_select">複数選択</option>
             <option value="date">日付</option>
+            <option value="people">メンバー</option>
+            <option value="auto_id">ID</option>
+            <option value="project">プロジェクト</option>
+            <option value="completed_on">完了日</option>
+            <option value="modified_at">最終変更日</option>
+            <option value="created_at">作成日</option>
+            <option value="created_by">作成したユーザー</option>
+            <option value="collaborators">コラボレーター</option>
+            <option value="attachments">添付</option>
+            <option value="blocked_by">先行タスク</option>
+            <option value="blocking">後続を待たせている</option>
           </select>
         </label>
         {(draft.field_type === "select" || draft.field_type === "multi_select") && (

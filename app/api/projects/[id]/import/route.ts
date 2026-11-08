@@ -31,7 +31,7 @@ export const POST = withProject("edit", async (req, { uid, projectId }) => {
     }
   }
   const customNames = header.slice(base.length);
-  const fields = await db.query("SELECT id, name, field_type FROM custom_fields WHERE project_id = $1", [projectId]);
+  const fields = await db.query("SELECT id, name, field_type FROM custom_fields WHERE project_id = $1 AND deleted_at IS NULL", [projectId]);
   const fieldByName = new Map(
     (fields.rows as { id: number; name: string; field_type: string }[]).map((f) => [f.name, f]),
   );

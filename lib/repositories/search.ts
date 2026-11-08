@@ -363,7 +363,7 @@ export async function getSearchCustomFields(
   const r = await db.query(
     `SELECT f.id, f.name, f.field_type, f.options, p.name AS project_name
      FROM custom_fields f JOIN projects p ON p.id = f.project_id
-     WHERE p.workspace_id = $1 AND p.archived_at IS NULL${access}
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND f.deleted_at IS NULL${access}
      ORDER BY p.id, f.position, f.id`,
     params,
   );

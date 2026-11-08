@@ -1,8 +1,16 @@
 import { db } from "../db";
 import type { Attachment, TaskRow } from "../data";
-import type { CustomValue } from "../custom-fields";
+import {
+  customValueToIdArray,
+  formatCustomValue,
+  formatNumberValue,
+  normalizeCustomFieldConfig,
+  type CustomField,
+  type CustomValue,
+} from "../custom-fields";
 import { projectTaskScope } from "./scope";
 import { TASK_FROM, TASK_SELECT_COLS, toTaskRow } from "./task-select";
+import { ensureAutoIdValues } from "../auto-id";
 
 export async function getProjectTasks(projectId: number): Promise<TaskRow[]> {
   const r = await db.query(
@@ -174,15 +182,33 @@ export async function logEvent(taskId: number, actorId: number, kind: string, su
 export async function getTaskCustomValues(
   projectId: number,
 ): Promise<Record<number, Record<number, CustomValue>>> {
-  const r = await db.query(
-    `SELECT v.task_id, v.field_id, v.value_text, v.value_number,
-       v.value_date::text AS value_date, v.value_json
-     FROM task_custom_values v JOIN custom_fields f ON f.id = v.field_id
-     WHERE f.project_id = $1`,
-    [projectId],
-  );
+  await ensureAutoIdValues(projectId);
+  const [valueRows, fieldRows, taskRows] = await Promise.all([
+    db.query(
+      `SELECT v.task_id, v.field_id, v.value_text, v.value_number,
+         v.value_date::text AS value_date, v.value_json
+       FROM task_custom_values v JOIN custom_fields f ON f.id = v.field_id
+       WHERE f.project_id = $1::bigint AND f.deleted_at IS NULL`,
+      [projectId],
+    ),
+    db.query(
+      `SELECT id, name, field_type, options, config
+       FROM custom_fields WHERE project_id = $1::bigint AND deleted_at IS NULL ORDER BY position, id`,
+      [projectId],
+    ),
+    db.query(
+      `SELECT t.id, t.parent_task_id FROM tasks t
+       WHERE (t.project_id = $1::bigint OR EXISTS (
+           SELECT 1 FROM task_project_memberships m
+           WHERE m.task_id = t.id AND m.project_id = $1::bigint
+         ))
+         AND t.deleted_at IS NULL`,
+      [projectId],
+    ),
+  ]);
+
   const out: Record<number, Record<number, CustomValue>> = {};
-  for (const row of r.rows) {
+  for (const row of valueRows.rows) {
     if (!out[row.task_id]) out[row.task_id] = {};
     out[row.task_id][row.field_id] = {
       value_text: row.value_text,
@@ -190,6 +216,173 @@ export async function getTaskCustomValues(
       value_date: row.value_date,
       value_json: row.value_json,
     };
+  }
+
+  const fields: CustomField[] = fieldRows.rows.map((row) => ({
+    id: Number(row.id),
+    name: row.name,
+    field_type: row.field_type,
+    options: (row.options ?? []) as string[],
+    config: normalizeCustomFieldConfig(row.config),
+  }));
+  const fieldById = new Map(fields.map((field) => [field.id, field]));
+  const taskIds = taskRows.rows.map((row) => Number(row.id));
+  if (taskIds.length === 0) return out;
+
+  const ensure = (taskId: number) => {
+    if (!out[taskId]) out[taskId] = {};
+    return out[taskId];
+  };
+
+  const referenceFields = fields.filter((field) => field.field_type === "reference");
+  const referenceIdsByTask = new Map<number, Map<number, number[]>>();
+  for (const field of referenceFields) {
+    const perTask = new Map<number, number[]>();
+    const allIds = new Set<number>();
+    for (const taskId of taskIds) {
+      const ids = customValueToIdArray(out[taskId]?.[field.id]);
+      if (ids.length > 0) {
+        perTask.set(taskId, ids);
+        for (const id of ids) allIds.add(id);
+      }
+    }
+    referenceIdsByTask.set(field.id, perTask);
+    if (allIds.size === 0) continue;
+    const names = await db.query(
+      "SELECT id, name FROM tasks WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL",
+      [[...allIds]],
+    );
+    const nameById = new Map(names.rows.map((row) => [Number(row.id), String(row.name)]));
+    for (const [taskId, ids] of perTask) {
+      const namesForTask = ids.map((id) => nameById.get(id)).filter((name): name is string => Boolean(name));
+      if (namesForTask.length > 0) {
+        ensure(taskId)[field.id] = {
+          ...out[taskId][field.id],
+          value_text: namesForTask.join(", "),
+        };
+      }
+    }
+  }
+
+  const lookupFields = fields.filter((field) => field.field_type === "lookup");
+  for (const field of lookupFields) {
+    const refId = field.config?.reference_field_id;
+    const targetId = field.config?.lookup_field_id;
+    if (!refId || !targetId) continue;
+    const perTask = referenceIdsByTask.get(refId);
+    if (!perTask || perTask.size === 0) continue;
+    const target = await loadFieldForComputation(targetId, fieldById);
+    if (!target) continue;
+    const allRefIds = new Set<number>();
+    for (const ids of perTask.values()) for (const id of ids) allRefIds.add(id);
+    const targetValues = await loadValuesForTasks(targetId, [...allRefIds]);
+    for (const [taskId, ids] of perTask) {
+      const formatted = ids
+        .map((id) => {
+          const value = targetValues.get(id);
+          return value ? formatCustomValue(target, value) : null;
+        })
+        .filter((value): value is string => Boolean(value) && value !== "–");
+      if (formatted.length > 0) {
+        ensure(taskId)[field.id] = {
+          value_text: formatted.join(", "),
+          value_number: null,
+          value_json: null,
+        };
+      }
+    }
+  }
+
+  const rollupFields = fields.filter((field) => field.field_type === "rollup");
+  for (const field of rollupFields) {
+    const sourceFieldId = field.config?.rollup_field_id;
+    if (!sourceFieldId) continue;
+    const source = field.config?.rollup_source === "reference" ? "reference" : "subtasks";
+    const mapping = new Map<number, number[]>();
+    if (source === "subtasks") {
+      const children = await db.query(
+        `SELECT id, parent_task_id FROM tasks
+         WHERE parent_task_id = ANY($1::bigint[]) AND deleted_at IS NULL`,
+        [taskIds],
+      );
+      for (const row of children.rows) {
+        const parentId = Number(row.parent_task_id);
+        if (!mapping.has(parentId)) mapping.set(parentId, []);
+        mapping.get(parentId)!.push(Number(row.id));
+      }
+    } else {
+      const refId = field.config?.reference_field_id;
+      if (!refId) continue;
+      for (const [taskId, ids] of referenceIdsByTask.get(refId) ?? []) mapping.set(taskId, ids);
+    }
+    if (mapping.size === 0) continue;
+    const allSourceIds = new Set<number>();
+    for (const ids of mapping.values()) for (const id of ids) allSourceIds.add(id);
+    const target = await loadFieldForComputation(sourceFieldId, fieldById);
+    const sourceValues = await loadValuesForTasks(sourceFieldId, [...allSourceIds]);
+    const fn = field.config?.rollup_function ?? "sum";
+    for (const [taskId, ids] of mapping) {
+      const numbers = ids
+        .map((id) => sourceValues.get(id)?.value_number)
+        .map((value) => (value === null || value === undefined ? null : Number(value)))
+        .filter((value): value is number => value !== null && Number.isFinite(value));
+      if (fn !== "count" && numbers.length === 0) continue;
+      let result = 0;
+      if (fn === "count") result = numbers.length;
+      else if (fn === "sum") result = numbers.reduce((sum, value) => sum + value, 0);
+      else if (fn === "average") result = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+      else if (fn === "min") result = Math.min(...numbers);
+      else result = Math.max(...numbers);
+      ensure(taskId)[field.id] = {
+        value_text: formatNumberValue(result, target?.config ?? {}),
+        value_number: result,
+        value_json: null,
+      };
+    }
+  }
+
+  return out;
+}
+
+async function loadFieldForComputation(
+  fieldId: number,
+  known: Map<number, CustomField>,
+): Promise<CustomField | undefined> {
+  const existing = known.get(fieldId);
+  if (existing) return existing;
+  const r = await db.query(
+    "SELECT id, name, field_type, options, config FROM custom_fields WHERE id = $1::bigint",
+    [fieldId],
+  );
+  if (r.rowCount === 0) return undefined;
+  const row = r.rows[0];
+  return {
+    id: Number(row.id),
+    name: row.name,
+    field_type: row.field_type,
+    options: (row.options ?? []) as string[],
+    config: normalizeCustomFieldConfig(row.config),
+  };
+}
+
+async function loadValuesForTasks(
+  fieldId: number,
+  taskIds: number[],
+): Promise<Map<number, CustomValue>> {
+  const out = new Map<number, CustomValue>();
+  if (taskIds.length === 0) return out;
+  const r = await db.query(
+    `SELECT task_id, value_text, value_number, value_date::text AS value_date, value_json
+     FROM task_custom_values WHERE field_id = $1::bigint AND task_id = ANY($2::bigint[])`,
+    [fieldId, taskIds],
+  );
+  for (const row of r.rows) {
+    out.set(Number(row.task_id), {
+      value_text: row.value_text,
+      value_number: row.value_number,
+      value_date: row.value_date,
+      value_json: row.value_json,
+    });
   }
   return out;
 }

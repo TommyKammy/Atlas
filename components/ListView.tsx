@@ -11,11 +11,15 @@ import type { SavedView, Section, TaskRow, TaskTemplate, User } from "@/lib/data
 import { todayISO } from "@/lib/dates";
 import {
   COLUMN_FUNCTION_LABELS,
+  canEditCustomField,
   columnFunctionOf,
+  customFieldDisplay,
   customValueToArray,
+  customValueToIdArray,
   customValueToInput,
-  formatCustomValue,
+  evaluateFormulaField,
   formatNumberValue,
+  isNumericFieldType,
   type ColumnFunction,
   type CustomField,
   type CustomFieldType,
@@ -28,7 +32,7 @@ import { useApiRefresh } from "@/lib/use-api-refresh";
 import ListToolbar from "./list/ListToolbar";
 import type { ListColumnOption } from "./list/ListOptionsDrawer";
 import ListColumnHeader from "./list/ListColumnHeader";
-import FieldTypeMenu from "./list/FieldTypeMenu";
+import FieldTypeMenu, { type FieldLibraryEntry } from "./list/FieldTypeMenu";
 import FieldDialog from "./list/FieldDialog";
 import TaskListRow from "./list/TaskListRow";
 import { useListSelection } from "@/lib/use-list-selection";
@@ -67,6 +71,7 @@ export default function ListView({
   viewIcon,
   viewTabId,
   canEdit,
+  canAdmin,
 }: {
   projectId: number;
   sections: Section[];
@@ -86,6 +91,7 @@ export default function ListView({
   viewIcon: string | null;
   viewTabId: number | null;
   canEdit: boolean;
+  canAdmin: boolean;
   initial: {
     hide_completed?: boolean;
     completed_only?: boolean;
@@ -514,6 +520,9 @@ export default function ListView({
         if (!filter) return true;
         const value = customValues[t.id]?.[f.id];
         if (f.field_type === "multi_select") return customValueToArray(value).includes(filter);
+        if (f.field_type === "people") {
+          return customValueToIdArray(value).map(String).includes(filter);
+        }
         return customValueToInput(f, value) === filter;
       }),
   );
@@ -672,6 +681,15 @@ export default function ListView({
         } catch {
           nextValue = [];
         }
+      } else if (customField?.field_type === "people" || customField?.field_type === "reference") {
+        try {
+          const parsed = JSON.parse(value);
+          nextValue = Array.isArray(parsed)
+            ? parsed.map((item) => Number(item)).filter((item) => Number.isInteger(item) && item > 0)
+            : [];
+        } catch {
+          nextValue = [];
+        }
       }
       await api("/api/task-values", "POST", { task_id: t.id, field_id: fid, value: nextValue });
       setEditing(null);
@@ -705,16 +723,20 @@ export default function ListView({
   const customRaw = (taskId: number, f: CustomField) =>
     customValueToInput(f, customValues[taskId]?.[f.id]);
 
+  const numericValueFor = (field: CustomField, taskId: number): number | null => {
+    if (field.field_type === "formula") return evaluateFormulaField(field, customValues[taskId] ?? {});
+    const value = customValues[taskId]?.[field.id]?.value_number;
+    return value !== null && value !== undefined && Number.isFinite(Number(value)) ? Number(value) : null;
+  };
+
   const aggregateFor = (field: CustomField, items: TaskRow[]) => {
-    if (field.field_type !== "number") return null;
+    if (!isNumericFieldType(field.field_type)) return null;
     const fn = columnFunctionOf(field);
     if (fn === "none") return null;
     const values: number[] = [];
     const pushTask = (task: TaskRow) => {
-      const value = customValues[task.id]?.[field.id]?.value_number;
-      if (value !== null && value !== undefined && Number.isFinite(Number(value))) {
-        values.push(Number(value));
-      }
+      const value = numericValueFor(field, task.id);
+      if (value !== null) values.push(value);
     };
     const pushWithSubtasks = (task: TaskRow, seen: Set<number>) => {
       pushTask(task);
@@ -1004,6 +1026,9 @@ export default function ListView({
     }
   };
 
+  const canEditField = (field: CustomField) =>
+    canEditCustomField(field, { viewerId, canEdit, canAdmin });
+
   const openEditField = (field: CustomField) => {
     setFieldDialog({ mode: "edit", field });
     setMenuCol(null);
@@ -1032,6 +1057,19 @@ export default function ListView({
     if (key === "status") return headerCell(key, statusFieldName);
     const f = customFields.find((x) => `cf-${x.id}` === key);
     return f ? headerCell(key, f.name, f) : null;
+  };
+
+  const addFieldFromLibrary = async (entry: FieldLibraryEntry) => {
+    await api("/api/custom-fields", "POST", {
+      project_id: projectId,
+      name: entry.name,
+      field_type: entry.field_type,
+      options: entry.options,
+      description: entry.description,
+      config: entry.config ?? {},
+    });
+    setFieldMenuAnchor(null);
+    refresh();
   };
 
   const openFieldAdd = (rect: DOMRect) => {
@@ -1100,7 +1138,14 @@ export default function ListView({
     if (key.startsWith("cf-")) {
       const field = customFields.find((item) => `cf-${item.id}` === key);
       if (!field) return "（未設定）";
-      const value = formatCustomValue(field, customValues[t.id]?.[field.id]);
+      const value = customFieldDisplay(
+        field,
+        customValues[t.id]?.[field.id],
+        t,
+        users,
+        customValues[t.id],
+        customFields,
+      );
       return value === "–" ? "（未設定）" : value;
     }
     return "";
@@ -1252,6 +1297,9 @@ export default function ListView({
     statusHidden,
     statusOptions,
     shownFields,
+    customFields,
+    canEditField,
+    onTimerChange: refresh,
     customRaw,
     customValues,
     subAdding,
@@ -1799,8 +1847,11 @@ export default function ListView({
       </div>
       {fieldMenuAnchor && (
         <FieldTypeMenu
+          projectId={projectId}
           anchor={fieldMenuAnchor}
           onClose={() => setFieldMenuAnchor(null)}
+          onRestored={refresh}
+          onPickTemplate={(entry) => void addFieldFromLibrary(entry)}
           onPick={(type) => {
             setFieldMenuAnchor(null);
             setFieldDialog({ mode: "create", type });
@@ -1813,6 +1864,8 @@ export default function ListView({
           mode={fieldDialog.mode}
           initialType={fieldDialog.mode === "create" ? fieldDialog.type : fieldDialog.field.field_type}
           field={fieldDialog.mode === "edit" ? fieldDialog.field : null}
+          availableFields={customFields}
+          users={users}
           onClose={() => setFieldDialog(null)}
           onSaved={refresh}
         />

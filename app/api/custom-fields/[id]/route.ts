@@ -10,7 +10,14 @@ import {
 
 export const PATCH = withResourceProject("edit", "custom_fields", async (_req, { params, body }) => {
   const id = params.id;
-  const payload = (body ?? {}) as { name?: unknown; options?: unknown; description?: unknown; config?: unknown };
+  const payload = (body ?? {}) as {
+    name?: unknown;
+    options?: unknown;
+    description?: unknown;
+    config?: unknown;
+    access_level?: unknown;
+    editor_ids?: unknown;
+  };
   const current = await db.query(
     "SELECT field_type, config FROM custom_fields WHERE id = $1::bigint",
     [id],
@@ -37,13 +44,27 @@ export const PATCH = withResourceProject("edit", "custom_fields", async (_req, {
     values.push(JSON.stringify(parsed.config));
     sets.push(`config = $${values.length}::jsonb`);
   }
+  if (payload.access_level !== undefined) {
+    const accessLevel = payload.access_level === "admins" || payload.access_level === "custom"
+      ? payload.access_level
+      : "everyone";
+    values.push(accessLevel);
+    sets.push(`access_level = $${values.length}`);
+  }
+  if (payload.editor_ids !== undefined) {
+    const editorIds = Array.isArray(payload.editor_ids)
+      ? [...new Set(payload.editor_ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))]
+      : [];
+    values.push(JSON.stringify(editorIds));
+    sets.push(`editor_ids = $${values.length}::jsonb`);
+  }
   if (sets.length === 0) {
-    return NextResponse.json({ error: "name, description, options or config required" }, { status: 400 });
+    return NextResponse.json({ error: "no changes supplied" }, { status: 400 });
   }
   values.push(id);
   const r = await db.query(
     `UPDATE custom_fields SET ${sets.join(", ")} WHERE id = $${values.length}::bigint
-     RETURNING id, name, field_type, options, description, config`,
+     RETURNING id, name, field_type, options, description, config, access_level, editor_ids`,
     values,
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -55,13 +76,18 @@ export const PATCH = withResourceProject("edit", "custom_fields", async (_req, {
     options: row.options ?? [],
     description: row.description ?? "",
     config: normalizeCustomFieldConfig(row.config),
+    access_level: row.access_level ?? "everyone",
+    editor_ids: Array.isArray(row.editor_ids) ? row.editor_ids.map(Number) : [],
   });
 }, { body: true });
 
 export const DELETE = withResourceProject("edit", "custom_fields", async (_req, { params }) => {
   const id = params.id;
-  const r = await db.query("DELETE FROM custom_fields WHERE id = $1::bigint", [id]);
+  const r = await db.query(
+    "UPDATE custom_fields SET deleted_at = COALESCE(deleted_at, now()) WHERE id = $1::bigint RETURNING id",
+    [id],
+  );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   await notifyField(id);
-  return NextResponse.json({ deleted: Number(id) });
+  return NextResponse.json({ deleted: Number(id), soft: true });
 });

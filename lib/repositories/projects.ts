@@ -55,6 +55,10 @@ export type TaskRow = {
   like_count?: number;
   comment_count: number;
   subtask_count: number;
+  attachment_count?: number;
+  blocked_by_count?: number;
+  blocking_count?: number;
+  collaborators?: { id: number; name: string }[];
   eff_section_id?: number | null;
 };
 
@@ -321,8 +325,8 @@ export async function getProjectMessages(projectId: number): Promise<ProjectMess
 
 export async function getCustomFields(projectId: number): Promise<CustomField[]> {
   const r = await db.query(
-    `SELECT id, name, field_type, options, description, config
-     FROM custom_fields WHERE project_id = $1 ORDER BY position, id`,
+    `SELECT id, name, field_type, options, description, config, access_level, editor_ids
+     FROM custom_fields WHERE project_id = $1 AND deleted_at IS NULL ORDER BY position, id`,
     [projectId],
   );
   return r.rows.map((row) => ({
@@ -330,6 +334,8 @@ export async function getCustomFields(projectId: number): Promise<CustomField[]>
     options: (row.options ?? []) as string[],
     description: row.description ?? "",
     config: normalizeCustomFieldConfig(row.config),
+    access_level: row.access_level ?? "everyone",
+    editor_ids: Array.isArray(row.editor_ids) ? row.editor_ids.map(Number) : [],
   }));
 }
 

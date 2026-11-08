@@ -11,8 +11,12 @@ import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
 import type { RichTextDoc } from "@/lib/rich-text-types";
 import { todayISO } from "@/lib/dates";
 import {
+  canEditCustomField,
+  customFieldDisplay,
   customValueToArray,
+  customValueToIdArray,
   customValueToInput,
+  isReadOnlyFieldType,
   type CustomField,
   type CustomValue,
 } from "@/lib/custom-fields";
@@ -28,6 +32,8 @@ import TaskDependenciesSection from "./task/TaskDependenciesSection";
 import TaskCustomFieldsSection from "./task/TaskCustomFieldsSection";
 import TaskCommentComposer from "./task/TaskCommentComposer";
 import TaskFeedSection from "./task/TaskFeedSection";
+import ReferencePicker from "./fields/ReferencePicker";
+import TimerCell from "./fields/TimerCell";
 import TaskAvatar from "./task/TaskAvatar";
 import TaskStatusChip from "./task/TaskStatusChip";
 
@@ -62,6 +68,8 @@ export default function TaskPane({
   statusFieldEnabled,
   viewerId,
   viewerCanModerate,
+  canEdit,
+  canAdmin,
 }: {
   projectId: number;
   view: string;
@@ -82,8 +90,12 @@ export default function TaskPane({
   statusFieldEnabled: boolean;
   viewerId: number;
   viewerCanModerate: boolean;
+  canEdit: boolean;
+  canAdmin: boolean;
 }) {
   const refresh = useApiRefresh();
+  const canEditField = (field: CustomField) =>
+    canEditCustomField(field, { viewerId, canEdit, canAdmin });
   const [subtaskDraft, setSubtaskDraft] = useState("");
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [depDraft, setDepDraft] = useState("");
@@ -93,6 +105,7 @@ export default function TaskPane({
     stamp: string;
   } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [referenceOpen, setReferenceOpen] = useState<number | null>(null);
   const [maximized, setMaximized] = useState(false);
   const [showTitle, setShowTitle] = useState(false);
   const router = useRouter();
@@ -291,13 +304,90 @@ export default function TaskPane({
     refresh();
   };
 
-  const setCustomValue = async (fieldId: number, value: string | number | string[] | null) => {
+  const setCustomValue = async (
+    fieldId: number,
+    value: string | number | string[] | number[] | null,
+  ) => {
     await api("/api/task-values", "POST", { task_id: task.id, field_id: fieldId, value });
     refresh();
   };
 
   const renderCustomEditor = (field: CustomField) => {
     const value = customValues[field.id];
+    if (isReadOnlyFieldType(field.field_type) || !canEditField(field)) {
+      return (
+        <div
+          key={`cf-${task.id}-${field.id}`}
+          className="min-h-7 py-1 text-[13px] text-neutral-700"
+          data-custom-readonly={field.field_type}
+        >
+          {customFieldDisplay(field, value, task, users, customValues, customFields)}
+        </div>
+      );
+    }
+    if (field.field_type === "timer") {
+      return (
+        <TimerCell
+          key={`cf-${task.id}-${field.id}`}
+          taskId={task.id}
+          field={field}
+          value={value}
+          onChanged={refresh}
+        />
+      );
+    }
+    if (field.field_type === "reference") {
+      return (
+        <div className="relative" key={`cf-${task.id}-${field.id}`}>
+          <button
+            type="button"
+            onClick={() => setReferenceOpen(field.id)}
+            className="min-h-7 w-full rounded border border-transparent px-1 py-1 text-left text-[13px] text-neutral-700 hover:border-neutral-200 hover:bg-white"
+          >
+            {customFieldDisplay(field, value, task, users)}
+          </button>
+          {referenceOpen === field.id && (
+            <ReferencePicker
+              field={field}
+              initial={customValueToIdArray(value)}
+              onCancel={() => setReferenceOpen(null)}
+              onSave={(ids) => {
+                setReferenceOpen(null);
+                void setCustomValue(field.id, ids);
+              }}
+            />
+          )}
+        </div>
+      );
+    }
+    if (field.field_type === "people") {
+      const selected = customValueToIdArray(value);
+      return (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 py-1" key={`cf-${task.id}-${field.id}`}>
+          {users.length === 0 ? (
+            <span className="text-[12px] text-neutral-400">メンバーがいません</span>
+          ) : (
+            users.map((user) => (
+              <label key={user.id} className="flex cursor-pointer items-center gap-1 text-[12px] text-neutral-600">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(user.id)}
+                  onChange={(event) =>
+                    setCustomValue(
+                      field.id,
+                      event.target.checked
+                        ? [...selected, user.id]
+                        : selected.filter((id) => id !== user.id),
+                    )
+                  }
+                />
+                {user.name}
+              </label>
+            ))
+          )}
+        </div>
+      );
+    }
     if (field.field_type === "number") {
       return (
         <input

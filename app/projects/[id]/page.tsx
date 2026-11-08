@@ -430,6 +430,7 @@ export default async function ProjectPage(props: {
             viewIcon={activeListTab?.icon ?? null}
             viewTabId={activeListTab && activeListTab.id > 0 ? activeListTab.id : null}
             canEdit={access.role === "admin" || access.role === "editor"}
+            canAdmin={access.role === "admin"}
             initial={listInitial}
           />
         )}
@@ -599,6 +600,8 @@ export default async function ProjectPage(props: {
           statusFieldEnabled={project.status_field_enabled !== false}
           viewerId={viewerId}
           viewerCanModerate={access.role === "admin"}
+          canEdit={access.role === "admin" || access.role === "editor"}
+          canAdmin={access.role === "admin"}
         />
       )}
     </div>

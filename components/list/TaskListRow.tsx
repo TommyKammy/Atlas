@@ -3,11 +3,17 @@
 import { Fragment, useState } from "react";
 import type { CustomField, CustomValue } from "@/lib/custom-fields";
 import { dueSegs } from "@/lib/dates";
-import { formatCustomValue } from "@/lib/custom-fields";
+import {
+  customFieldDisplay,
+  customValueToIdArray,
+  isReadOnlyFieldType,
+} from "@/lib/custom-fields";
 import type { TaskRow, User } from "@/lib/data";
 import TaskAvatar from "../task/TaskAvatar";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
 import TaskStatusChip from "../task/TaskStatusChip";
+import ReferencePicker from "../fields/ReferencePicker";
+import TimerCell from "../fields/TimerCell";
 
 export type TaskRowContext = {
   today: string;
@@ -41,6 +47,9 @@ export type TaskRowContext = {
   statusHidden: boolean;
   statusOptions: string[];
   shownFields: CustomField[];
+  customFields: CustomField[];
+  canEditField: (field: CustomField) => boolean;
+  onTimerChange: () => void;
   customRaw: (taskId: number, field: CustomField) => string;
   customValues: Record<number, Record<number, CustomValue>>;
   subAdding: number | null;
@@ -101,6 +110,54 @@ function MultiSelectEditor({
   );
 }
 
+function PeopleEditor({
+  users,
+  initial,
+  onSave,
+  onCancel,
+}: {
+  users: User[];
+  initial: number[];
+  onSave: (ids: number[]) => void;
+  onCancel: () => void;
+}) {
+  const [selected, setSelected] = useState<number[]>(initial);
+  return (
+    <div
+      className="absolute top-full left-0 z-50 mt-1 w-60 rounded-lg border border-neutral-200 bg-white p-2 shadow-xl"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="max-h-48 space-y-0.5 overflow-y-auto">
+        {users.length === 0 && <div className="px-1 py-2 text-[11px] text-neutral-400">メンバーがいません</div>}
+        {users.map((user) => (
+          <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-neutral-50">
+            <input
+              type="checkbox"
+              checked={selected.includes(user.id)}
+              onChange={(event) =>
+                setSelected((current) =>
+                  event.target.checked
+                    ? [...current, user.id]
+                    : current.filter((id) => id !== user.id),
+                )
+              }
+            />
+            <span className="truncate">{user.name}</span>
+          </label>
+        ))}
+      </div>
+      <div className="mt-2 flex justify-end gap-1.5 border-t border-neutral-100 pt-2">
+        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100">
+          キャンセル
+        </button>
+        <button type="button" onClick={() => onSave(selected)} className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]">
+          保存
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** One list row (top-level task or subtask) with inline cell editors. */
 export default function TaskListRow({
   task,
@@ -144,6 +201,9 @@ export default function TaskListRow({
     statusHidden,
     statusOptions,
     shownFields,
+    customFields,
+    canEditField,
+    onTimerChange,
     customRaw,
     customValues,
     subAdding,
@@ -488,6 +548,51 @@ export default function TaskListRow({
         const order = visibleCols.indexOf(fieldKey);
         const active = editing?.id === t.id && editing.field === fieldKey;
         if (!active) {
+          if (f.field_type === "timer") {
+            return (
+              <span key={f.id} style={{ order }} className="min-w-0">
+                {canEditField(f) ? (
+                  <TimerCell
+                    taskId={t.id}
+                    field={f}
+                    value={customValues[t.id]?.[f.id]}
+                    onChanged={onTimerChange}
+                  />
+                ) : (
+                  <span className="block truncate text-neutral-600">
+                    {customFieldDisplay(
+                      f,
+                      customValues[t.id]?.[f.id],
+                      t,
+                      users,
+                      customValues[t.id],
+                      customFields,
+                    )}
+                  </span>
+                )}
+              </span>
+            );
+          }
+          const display = customFieldDisplay(
+            f,
+            customValues[t.id]?.[f.id],
+            t,
+            users,
+            customValues[t.id],
+            customFields,
+          );
+          if (isReadOnlyFieldType(f.field_type) || !canEditField(f)) {
+            return (
+              <span
+                key={f.id}
+                title={display}
+                style={{ order }}
+                className="truncate rounded text-neutral-600"
+              >
+                {display}
+              </span>
+            );
+          }
           return (
             <span
               key={f.id}
@@ -496,7 +601,31 @@ export default function TaskListRow({
               style={{ order }}
               className="cursor-pointer truncate rounded text-neutral-600 hover:bg-neutral-100"
             >
-              {formatCustomValue(f, customValues[t.id]?.[f.id])}
+              {display}
+            </span>
+          );
+        }
+        if (f.field_type === "reference") {
+          return (
+            <span key={f.id} style={{ order }} className="relative min-w-0">
+              <ReferencePicker
+                field={f}
+                initial={customValueToIdArray(customValues[t.id]?.[f.id])}
+                onCancel={cancelEdit}
+                onSave={(ids) => void commitEdit(t, fieldKey, JSON.stringify(ids))}
+              />
+            </span>
+          );
+        }
+        if (f.field_type === "people") {
+          return (
+            <span key={f.id} style={{ order }} className="relative min-w-0">
+              <PeopleEditor
+                users={users}
+                initial={customValueToIdArray(customValues[t.id]?.[f.id])}
+                onCancel={cancelEdit}
+                onSave={(ids) => void commitEdit(t, fieldKey, JSON.stringify(ids))}
+              />
             </span>
           );
         }

@@ -17,7 +17,7 @@ export const GET = withProject("view", async (req, { projectId }) => {
     [id],
   );
   const fields = await db.query(
-    "SELECT id, name FROM custom_fields WHERE project_id = $1::bigint ORDER BY position, id",
+    "SELECT id, name FROM custom_fields WHERE project_id = $1::bigint AND deleted_at IS NULL ORDER BY position, id",
     [id],
   );
   const tasks = await db.query(
