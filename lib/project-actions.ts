@@ -109,9 +109,20 @@ export function canUseProjectAction(role: ProjectRole, item: ProjectMenuItem): b
 }
 
 export function projectActionsForRole(role: ProjectRole): ProjectActionKey[] {
-  return PROJECT_MENU_GROUPS.flatMap((group) =>
-    group.items.flatMap((item) =>
-      canUseProjectAction(role, item) ? [item.key, ...(item.submenu?.map((sub) => sub.key) ?? [])] : [],
+  return [
+    ...new Set(
+      PROJECT_MENU_GROUPS.flatMap((group) =>
+        group.items.flatMap((item) =>
+          canUseProjectAction(role, item)
+            ? [
+                item.key,
+                ...(item.submenu
+                  ?.filter((sub) => !sub.roles || sub.roles.includes(role))
+                  .map((sub) => sub.key) ?? []),
+              ]
+            : [],
+        ),
+      ),
     ),
-  );
+  ];
 }
