@@ -15,14 +15,11 @@ import {
   packWeek,
   parseDay,
   shiftDay,
-  taskSpan,
   weekAround,
-  type CalendarSpan,
 } from "@/lib/calendar";
 import TaskCompletionToggle from "./task/TaskCompletionToggle";
 import TaskAvatar from "./task/TaskAvatar";
 import TaskMetaBadges from "./task/TaskMetaBadges";
-import { usePersistedViewState } from "@/lib/view-state-client";
 import { dropTaskOnDate, moveTaskSpan, pixelsToDayDelta, resizeTaskEnd, resizeTaskStart } from "@/lib/task-dates";
 import CalendarToolbar from "./calendar/CalendarToolbar";
 import CalendarDayHeader from "./calendar/CalendarDayHeader";
@@ -31,6 +28,7 @@ import CalendarMultiDayBar from "./calendar/CalendarMultiDayBar";
 import CalendarSingleTask from "./calendar/CalendarSingleTask";
 import CalendarDayCell from "./calendar/CalendarDayCell";
 import CalendarGrid from "./calendar/CalendarGrid";
+import { useCalendarFilters, type CalendarFilter } from "@/lib/use-calendar-filters";
 
 // Asana calendar metrics measured 2026-11-06 (read-only, 1920×839):
 // compact weekend columns 44px, weekday columns share the rest; week header
@@ -47,23 +45,6 @@ const BAR_COLORS = [
   "border-[#f1c9c9] bg-[#fdecec] text-[#6b2727]",
   "border-[#c9e3e7] bg-[#e8f6f8] text-[#1f4e56]",
 ];
-
-type DatedTask = CalendarSpan & { task: TaskRow };
-type CalendarFilter = {
-  completed: "open" | "done" | "";
-  assignee: string;
-  status: string;
-  custom: Record<string, string>;
-  due: string;
-  created: string;
-  updated: string;
-  completedOn: string;
-  creator: string;
-  weekends: boolean;
-  multi: boolean;
-  color: string;
-  weekStart: 0 | 1;
-};
 
 function monthLabel(month: string): string {
   const [y, m] = month.split("-").map(Number);
@@ -118,21 +99,6 @@ export default function CalendarView({
     ...(statusFieldEnabled ? [{ value: "status", label: statusFieldName }] : []),
     ...selectFields.map((f) => ({ value: `cf:${f.id}`, label: f.name })),
   ];
-  const [completedFilter, setCompletedFilter] = useState(initial.completed);
-  const [assigneeFilter, setAssigneeFilter] = useState(initial.assignee);
-  const [statusFilter, setStatusFilter] = useState(initial.status);
-  const [customFilter, setCustomFilter] = useState<Record<string, string>>(initial.custom);
-  const [dueFilter, setDueFilter] = useState(initial.due);
-  const [createdFilter, setCreatedFilter] = useState(initial.created);
-  const [updatedFilter, setUpdatedFilter] = useState(initial.updated);
-  const [completedOnFilter, setCompletedOnFilter] = useState(initial.completedOn);
-  const [creatorFilter, setCreatorFilter] = useState(initial.creator);
-  const [showWeekends, setShowWeekends] = useState(initial.weekends);
-  const [showMulti, setShowMulti] = useState(initial.multi);
-  const [colorBy, setColorBy] = useState(
-    colorOptions.some((o) => o.value === initial.color) ? initial.color : "none",
-  );
-  const [weekStart, setWeekStart] = useState<0 | 1>(initial.weekStart);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [addingDate, setAddingDate] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -158,21 +124,46 @@ export default function CalendarView({
     start: number;
     end: number;
   } | null>(null);
-  usePersistedViewState(projectId, "calendar", {
-    completed: completedFilter,
-    hide: completedFilter === "open",
-    assignee: assigneeFilter,
-    status: statusFilter,
-    custom: JSON.stringify(customFilter),
-    due: dueFilter,
-    created: createdFilter,
-    updated: updatedFilter,
-    completed_on: completedOnFilter,
-    creator: creatorFilter,
-    weekends: showWeekends,
-    multi: showMulti,
-    color: colorBy,
-    start: weekStart,
+
+  const {
+    completedFilter,
+    setCompletedFilter,
+    assigneeFilter,
+    setAssigneeFilter,
+    statusFilter,
+    setStatusFilter,
+    customFilter,
+    setCustomFilter,
+    dueFilter,
+    setDueFilter,
+    createdFilter,
+    setCreatedFilter,
+    updatedFilter,
+    setUpdatedFilter,
+    completedOnFilter,
+    setCompletedOnFilter,
+    creatorFilter,
+    setCreatorFilter,
+    showWeekends,
+    setShowWeekends,
+    showMulti,
+    setShowMulti,
+    colorBy,
+    setColorBy,
+    weekStart,
+    setWeekStart,
+    visibleTasks,
+    multiSpans,
+    singleByDay,
+    undated,
+  } = useCalendarFilters({
+    projectId,
+    tasks,
+    customValues,
+    statusFieldEnabled,
+    initial,
+    colorOptions,
+    search,
   });
 
   useEffect(() => {
@@ -191,69 +182,6 @@ export default function CalendarView({
     : weekStart === 1
       ? "repeat(5, minmax(0, 1fr)) 44px 44px"
       : "44px repeat(5, minmax(0, 1fr)) 44px";
-
-  const needle = search.trim().toLowerCase();
-  const todayDay = parseDay(today);
-  const withinDays = (iso: string | null | undefined, days: number) => {
-    if (!iso) return false;
-    const day = parseDay(iso.slice(0, 10));
-    return day >= todayDay - (days - 1) && day <= todayDay;
-  };
-  const visibleTasks = tasks.filter((t) => {
-    if (completedFilter === "open" && t.completed) return false;
-    if (completedFilter === "done" && !t.completed) return false;
-    if (assigneeFilter === "none" && t.assignee_id !== null) return false;
-    if (assigneeFilter && assigneeFilter !== "none" && String(t.assignee_id ?? "") !== assigneeFilter) return false;
-    if (statusFieldEnabled && statusFilter && t.status !== statusFilter) return false;
-    if (creatorFilter === "none" && t.created_by !== null) return false;
-    if (creatorFilter && creatorFilter !== "none" && String(t.created_by ?? "") !== creatorFilter) return false;
-    for (const [fieldId, value] of Object.entries(customFilter)) {
-      if (customValues[t.id]?.[Number(fieldId)]?.value_text !== value) return false;
-    }
-    if (dueFilter) {
-      const due = t.due_on ? parseDay(t.due_on) : null;
-      if (dueFilter === "none" && due !== null) return false;
-      if (dueFilter === "overdue" && (t.completed || due === null || due >= todayDay)) return false;
-      if (dueFilter === "today" && due !== todayDay) return false;
-      if (dueFilter === "week" && (due === null || due < todayDay || due > todayDay + 6)) return false;
-      if (dueFilter === "nextweek" && (due === null || due < todayDay + 7 || due > todayDay + 13)) return false;
-      if (dueFilter === "month" && (due === null || due < todayDay || due > todayDay + 29)) return false;
-    }
-    if (createdFilter && !withinDays(t.created_at, createdFilter === "today" ? 1 : Number(createdFilter))) {
-      return false;
-    }
-    if (updatedFilter && !withinDays(t.updated_at, updatedFilter === "today" ? 1 : Number(updatedFilter))) {
-      return false;
-    }
-    if (
-      completedOnFilter &&
-      (!t.completed ||
-        !t.completed_at ||
-        !withinDays(t.completed_at, completedOnFilter === "today" ? 1 : Number(completedOnFilter)))
-    ) {
-      return false;
-    }
-    if (needle && !t.name.toLowerCase().includes(needle)) return false;
-    return true;
-  });
-
-  const multiSpans: DatedTask[] = [];
-  const singleByDay = new Map<string, TaskRow[]>();
-  const pushSingle = (task: TaskRow, day: number) => {
-    const key = formatDay(day);
-    if (!singleByDay.has(key)) singleByDay.set(key, []);
-    singleByDay.get(key)!.push(task);
-  };
-  for (const task of visibleTasks) {
-    const span = taskSpan(task.start_on, task.due_on);
-    if (!span) continue;
-    if (showMulti && span.end > span.start) {
-      multiSpans.push({ id: task.id, start: span.start, end: span.end, task });
-    } else {
-      pushSingle(task, span.end);
-    }
-  }
-  const undated = visibleTasks.filter((t) => !t.start_on && !t.due_on);
 
   const colorKeyFor = (task: TaskRow): string => {
     if (colorBy === "default") {
