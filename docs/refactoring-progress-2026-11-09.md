@@ -25,6 +25,8 @@
 | `ea41b20` | Timeline依存関係・下書きフック抽出、プロジェクト取込をサービス化 |
 | `a953fa4` | 自動化タスクスナップショットの一元化、プロジェクトエクスポートをサービス化 |
 | `9ae3ef3` | Timelineホバー状態をフック化（1,006行） |
+| `d3d85cc` | Timelineポインタードラッグをフック化（899行） |
+| `22a8d31` | プロジェクトテンプレート保存をサービス化、CIにE2Eジョブ追加 |
 
 ## 検証結果
 
@@ -51,13 +53,14 @@
 - WebSocket upgradeもDBセッションを検証。
 - `db/migrations`＋`npm run db:migrate`＋コンテナ起動時適用。
 - `db/init.sql`、`seed.sql`、`tests/e2e.sh`、`docs/`、運用スクリプトをアプリGit内へ移動。
-- CIに型・lint・ユニット・ビルド・空DBマイグレーション・Playwrightジョブを追加。
+- CIに型・lint・ユニット・ビルド・空DBマイグレーション・Playwright・E2Eジョブを追加。
 - E2EにCookie偽装拒否・ログアウト失効・失効行削除を追加。
 
 ### Phase 1
 - `useTimelineFilters` / `useTimelineViewport` / `useTimelineLayout` /
-  `useTimelineDependencies` / `useTimelineDraft` / `useTimelineHover` を抽出。
-  - `TimelineView.tsx`: 1,621行 → 1,006行。
+  `useTimelineDependencies` / `useTimelineDraft` / `useTimelineHover` /
+  `useTimelineDrag` を抽出。
+  - `TimelineView.tsx`: 1,621行 → 899行。
 - タスクの複製・フォローアップ・削除・変換・行解除・リンクコピーを
   `lib/task-actions.ts` に集約。
 - タイムライン専用の軽量SELECTを追加し、不要な集計サブクエリを除外。
@@ -67,8 +70,9 @@
 - 破壊的操作（DELETE / restore）は主プロジェクト限定。
 - `tasks/[id]`（更新・削除）を `lib/services/task-update.ts` へ移動（432行 → 7行）。
 - duplicate / follow-up を `lib/services/task-copy.ts` へ移動。
-- プロジェクト複製・CSV取込・エクスポートを `lib/services/project-duplicate.ts` /
-  `lib/services/project-import.ts` / `lib/services/project-export.ts` へ移動。
+- プロジェクト複製・CSV取込・エクスポート・テンプレート保存を
+  `project-duplicate.ts` / `project-import.ts` / `project-export.ts` /
+  `project-template.ts` へ移動。
 - 自動化エンジンのタスクスナップショットを `TASK_RULE_SNAPSHOT_SQL` に一元化。
 - 自動化アクションのID・ラベル・必須パラメータを
   `ACTION_CAPABILITIES` に一元化し、descriptorsとvalidateが参照。
@@ -82,9 +86,9 @@
 
 ## 残課題
 
-- TimelineViewのdragフック分割は未完了（layout/draft/dependency/hoverは完了）。
+- TimelineViewのdragを含む全フック分割は完了。
 - `TaskSummary` / `TaskDetail` の型レベル分離と、一覧系クエリへの適用。
-- `projects/template` など残りの大規模ルートのサービス化。
+- 残りの大規模ルートのサービス化（主要タスク・プロジェクト系は完了）。
 - Calendar / TaskPane / Customize / FieldDialog / Security の追加分割。
 - 1,000タスク規模の実ブラウザ性能計測と、必要に応じた仮想化。
-- CIのE2Eジョブ（現在は型・lint・unit・build・DB・Playwrightまで）。
+- 実ブラウザでの1,000タスク性能計測と仮想化の要否判断。
