@@ -43,3 +43,8 @@ next-env.d.ts
 # Evidence screenshots/logs are local artifacts.
 /docs/evidence/
 /backups/
+
+# Playwright artifacts
+/test-results/
+/playwright-report/
+/blob-report/

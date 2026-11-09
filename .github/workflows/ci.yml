@@ -67,3 +67,66 @@ jobs:
         run: npm run db:migrate
       - name: Re-run migrations (idempotent)
         run: npm run db:migrate
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atlas -d atlas"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: postgres://atlas:atlas@127.0.0.1:5432/atlas
+      REDIS_URL: redis://127.0.0.1:6379
+      APP_PORT: "3000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: npm ci
+      - name: Apply baseline schema
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/init.sql
+      - name: Apply migrations
+        run: npm run db:migrate
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build
+        run: npm run build
+      - name: Start app
+        run: |
+          npm run start > /tmp/atlas-app.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/login > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/atlas-app.log
+          exit 1
+      - name: Browser tests
+        run: npm run test:browser
+      - name: App log on failure
+        if: failure()
+        run: cat /tmp/atlas-app.log
