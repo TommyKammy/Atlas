@@ -3,13 +3,18 @@ import type { NextRequest } from "next/server";
 import { recordSearchHistoryAtBoundary } from "@/lib/search-history";
 
 function securityHeaders(nonce: string): Record<string, string> {
+  // React's development build needs eval() for debugging features. Keep the
+  // relaxed directive scoped to `next dev`; production keeps strict CSP.
+  const dev = process.env.NODE_ENV !== "production";
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    dev
+      ? `script-src 'self' 'unsafe-eval' 'nonce-${nonce}' 'strict-dynamic'`
+      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    dev ? "connect-src 'self' ws: wss:" : "connect-src 'self'",
     "media-src 'self'",
     "worker-src 'self' blob:",
     "object-src 'none'",
