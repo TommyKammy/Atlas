@@ -27,6 +27,7 @@
 | `9ae3ef3` | Timelineホバー状態をフック化（1,006行） |
 | `d3d85cc` | Timelineポインタードラッグをフック化（899行） |
 | `22a8d31` | プロジェクトテンプレート保存をサービス化、CIにE2Eジョブ追加 |
+| `f14af3f` | SecurityPanelをセクション別コンポーネントへ分割（780→94行） |
 
 ## 検証結果
 
@@ -83,12 +84,13 @@
   Arrow/Home/End/Escape・フォーカス復帰を統一。
 - 1,000タスクのレーン計算ベンチマークを追加。
 - Playwrightでポインタリサイズとメニューキーボード操作を自動化。
+- `SecurityPanel` を `components/security/` の4セクションへ分割。
 
 ## 残課題
 
 - TimelineViewのdragを含む全フック分割は完了。
 - `TaskSummary` / `TaskDetail` の型レベル分離と、一覧系クエリへの適用。
 - 残りの大規模ルートのサービス化（主要タスク・プロジェクト系は完了）。
-- Calendar / TaskPane / Customize / FieldDialog / Security の追加分割。
+- Calendar / TaskPane / Customize / FieldDialog の追加分割。
 - 1,000タスク規模の実ブラウザ性能計測と、必要に応じた仮想化。
 - 実ブラウザでの1,000タスク性能計測と仮想化の要否判断。
