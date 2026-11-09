@@ -22,4 +22,11 @@ test("list rows have no divider between the drag handle and task name", async ({
   const nameCell = row.locator("> div").first();
   const borderLeft = await nameCell.evaluate((element) => getComputedStyle(element).borderLeftWidth);
   expect(borderLeft).toBe("0px");
+
+  const header = page.locator("[data-field-add-button]").locator("..");
+  const headerBorder = await header
+    .locator("> *")
+    .nth(1)
+    .evaluate((element) => getComputedStyle(element).borderLeftWidth);
+  expect(headerBorder).toBe("0px");
 });

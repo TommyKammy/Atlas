@@ -26,7 +26,7 @@ export default function ListColumnHeaderRow({
 }) {
   return (
     <div
-      className={`grid h-[37px] items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 text-xs font-normal text-neutral-500 ${compactCells}`}
+      className={`grid h-[37px] items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-[#eaeaea] border-b border-[#eaeaea] px-2 text-xs font-normal text-neutral-500 ${compactCells}`}
       style={{ gridTemplateColumns: gridCols }}
       onDragOver={(event) => {
         if (!columnDragging) return;

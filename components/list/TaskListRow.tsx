@@ -276,7 +276,7 @@ export default function TaskListRow({
         const dragId = Number(e.dataTransfer.getData("text/atlas-task"));
         if (dragId) moveTask(dragId, t, before);
       }}
-      className={`group grid min-h-[37px] cursor-pointer items-center divide-x divide-[#eaeaea] border-b border-[#eaeaea] px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${compactCells} ${
+      className={`group grid min-h-[37px] cursor-pointer items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-[#eaeaea] border-b border-[#eaeaea] px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${compactCells} ${
         selected.has(t.id)
           ? "bg-[#eff4fd]"
           : t.id === activeTaskId
@@ -300,7 +300,6 @@ export default function TaskListRow({
         </span>
       </span>
       <div
-        style={{ borderLeftWidth: 0 }}
         className={`flex min-w-0 flex-wrap items-center gap-1.5 ${depth > 0 ? "pl-7" : ""} ${
           editing?.id === t.id && editing.field === "name"
             ? "rounded-[2px] ring-1 ring-[#4573d2]"
