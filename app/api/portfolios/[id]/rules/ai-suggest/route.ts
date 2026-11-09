@@ -11,7 +11,7 @@ export const POST = withUser(async (req, { uid, params }) => {
   const portfolio = Number.isInteger(id) ? await getPortfolio(id, ws.id, uid) : null;
   if (!portfolio) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (!portfolio.can_edit) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  const projects = await getPortfolioProjects(id);
+  const projects = await getPortfolioProjects(id, uid);
   if (projects.length === 0) {
     return NextResponse.json({ error: "portfolio has no projects" }, { status: 400 });
   }

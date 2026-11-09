@@ -144,7 +144,8 @@ export const POST = withProject(
       // Automation rules are copied as new rules owned by the duplicating user.
       const sourceRules = await q.query(
         `SELECT name, description, definition, enabled
-         FROM project_rules WHERE project_id = $1::bigint ORDER BY id LIMIT 50`,
+         FROM project_rules WHERE project_id = $1::bigint AND portfolio_rule_id IS NULL
+         ORDER BY id LIMIT 50`,
         [projectId],
       );
       for (const rule of sourceRules.rows as {

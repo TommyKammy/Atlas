@@ -9,14 +9,15 @@ type EndpointRow = {
   project_id: number;
   name: string;
   token: string;
-  secret: string;
+  has_secret: boolean;
   enabled: boolean;
   created_at: string;
 };
 
 export const GET = withProject("view", async (_req, { projectId }) => {
   const r = await db.query(
-    `SELECT id, project_id, name, token, secret, enabled, created_at::text AS created_at
+    `SELECT id, project_id, name, token, enabled,
+       (secret <> '') AS has_secret, created_at::text AS created_at
      FROM automation_webhook_endpoints
      WHERE project_id = $1::bigint
      ORDER BY id`,
@@ -39,7 +40,8 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
     `INSERT INTO automation_webhook_endpoints (
        workspace_id, project_id, name, token, secret, created_by
      ) VALUES ($1::bigint, $2::bigint, $3, $4, $5, $6::bigint)
-     RETURNING id, project_id, name, token, secret, enabled, created_at::text AS created_at`,
+     RETURNING id, project_id, name, token, enabled,
+       (secret <> '') AS has_secret, created_at::text AS created_at`,
     [Number(project.rows[0].workspace_id), projectId, name.slice(0, 120), token, secret, uid],
   );
   await audit(uid, "automation.webhook.create", {

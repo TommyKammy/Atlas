@@ -20,7 +20,7 @@ export const GET = withUser(async (_req, { uid, params }) => {
   const portfolio = await getPortfolio(id, ws.id, uid);
   if (!portfolio) return NextResponse.json({ error: "not found" }, { status: 404 });
   const [projects, rules] = await Promise.all([
-    getPortfolioProjects(id),
+    getPortfolioProjects(id, uid),
     getPortfolioRules(id),
   ]);
   return NextResponse.json({ portfolio, projects, rules });

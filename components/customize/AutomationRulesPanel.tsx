@@ -62,7 +62,7 @@ export default function AutomationRulesPanel({
   const [manualBusy, setManualBusy] = useState(false);
   const [manualError, setManualError] = useState("");
   const [endpoints, setEndpoints] = useState<
-    { id: number; name: string; token: string; secret: string }[]
+    { id: number; name: string; token: string; has_secret: boolean }[]
   >([]);
   const [webhookName, setWebhookName] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
@@ -181,7 +181,7 @@ export default function AutomationRulesPanel({
       .then(
         (
           data:
-            | { endpoints?: { id: number; name: string; token: string; secret: string }[] }
+            | { endpoints?: { id: number; name: string; token: string; has_secret: boolean }[] }
             | null,
         ) => {
           if (!cancelled && data?.endpoints) setEndpoints(data.endpoints);
@@ -198,7 +198,7 @@ export default function AutomationRulesPanel({
     setWebhookBusy(true);
     try {
       const result = await api<{
-        endpoint: { id: number; name: string; token: string; secret: string };
+        endpoint: { id: number; name: string; token: string; has_secret: boolean };
       }>(`/api/projects/${projectId}/webhook-endpoints`, "POST", {
         name: webhookName.trim(),
         secret: webhookSecret.trim(),

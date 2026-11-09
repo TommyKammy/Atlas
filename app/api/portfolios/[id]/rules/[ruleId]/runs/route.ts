@@ -17,6 +17,7 @@ export const GET = withUser(async (req, { uid, params }) => {
   return NextResponse.json({
     runs: await getPortfolioRuleRuns(
       portfolioId,
+      uid,
       Number.isInteger(ruleId) && ruleId > 0 ? ruleId : undefined,
       Number.isFinite(limit) ? limit : 50,
     ),

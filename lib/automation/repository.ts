@@ -29,7 +29,10 @@ function toRule(row: Record<string, unknown>): ProjectRule {
   };
 }
 
-export async function getProjectRules(projectId: number): Promise<ProjectRule[]> {
+export async function getProjectRules(
+  projectId: number,
+  includePortfolioReplicas = false,
+): Promise<ProjectRule[]> {
   const r = await db.query(
     `SELECT r.id, r.workspace_id, r.project_id, r.name, r.description, r.definition,
        r.owner_id, u.name AS owner_name, r.enabled, r.version,
@@ -42,8 +45,9 @@ export async function getProjectRules(projectId: number): Promise<ProjectRule[]>
        WHERE rule_id = r.id ORDER BY id DESC LIMIT 1
      ) lr ON TRUE
      WHERE r.project_id = $1::bigint
+       AND ($2::boolean OR r.portfolio_rule_id IS NULL)
      ORDER BY r.id`,
-    [projectId],
+    [projectId, includePortfolioReplicas],
   );
   return r.rows.map(toRule);
 }
@@ -58,7 +62,8 @@ export async function getProjectRule(
        r.created_at::text AS created_at, r.updated_at::text AS updated_at,
        NULL::text AS last_run_at, NULL::text AS last_run_status
      FROM project_rules r LEFT JOIN users u ON u.id = r.owner_id
-     WHERE r.id = $1::bigint AND r.project_id = $2::bigint`,
+     WHERE r.id = $1::bigint AND r.project_id = $2::bigint
+       AND r.portfolio_rule_id IS NULL`,
     [ruleId, projectId],
   );
   return r.rowCount === 0 ? null : toRule(r.rows[0]);
@@ -129,14 +134,15 @@ export async function updateProjectRule(
   values.push(ruleId, projectId);
   await db.query(
     `UPDATE project_rules SET ${sets.join(", ")}, updated_at = now()
-     WHERE id = $${values.length - 1}::bigint AND project_id = $${values.length}::bigint`,
+     WHERE id = $${values.length - 1}::bigint AND project_id = $${values.length}::bigint
+       AND portfolio_rule_id IS NULL`,
     values,
   );
 }
 
 export async function deleteProjectRule(ruleId: number, projectId: number): Promise<void> {
   await db.query(
-    "DELETE FROM project_rules WHERE id = $1::bigint AND project_id = $2::bigint",
+    "DELETE FROM project_rules WHERE id = $1::bigint AND project_id = $2::bigint AND portfolio_rule_id IS NULL",
     [ruleId, projectId],
   );
 }
@@ -147,6 +153,7 @@ export async function recordRuleRun(input: {
   source: string;
   status: "success" | "failed" | "skipped";
   details: RuleRunActionDetail[];
+  plannedActions?: number;
   error?: string | null;
 }): Promise<number> {
   const succeeded = input.details.filter((detail) => detail.status === "success").length;
@@ -166,7 +173,7 @@ export async function recordRuleRun(input: {
       input.rule.owner_id,
       input.source,
       input.status,
-      input.details.length,
+      input.plannedActions ?? input.details.length,
       succeeded,
       failed,
       input.error ?? null,

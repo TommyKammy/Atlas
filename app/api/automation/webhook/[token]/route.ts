@@ -38,10 +38,11 @@ export async function POST(
       return NextResponse.json({ error: "invalid json" }, { status: 400 });
     }
   }
-  const data =
+  const data: Record<string, unknown> =
     payload && typeof payload === "object" && !Array.isArray(payload)
       ? { ...(payload as Record<string, unknown>), payload }
       : { payload };
+  delete data.target_rule_id;
   await emitDomainEvent({
     workspaceId: Number(endpoint.rows[0].workspace_id),
     projectId: Number(endpoint.rows[0].project_id),
@@ -49,7 +50,7 @@ export async function POST(
     type: "webhook.received",
     subjectType: "webhook",
     subjectId: Number(endpoint.rows[0].id),
-    data: { endpoint_id: Number(endpoint.rows[0].id), ...data },
+    data: { ...data, endpoint_id: Number(endpoint.rows[0].id) },
     correlationId: `webhook:${endpoint.rows[0].id}:${Date.now()}`,
   });
   return NextResponse.json({ received: true }, { status: 202 });

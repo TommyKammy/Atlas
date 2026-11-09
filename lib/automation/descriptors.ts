@@ -282,8 +282,10 @@ export async function getPortfolioRuleDescriptors(
     `SELECT p.id, p.status_options
      FROM portfolio_items i JOIN projects p ON p.id = i.project_id
      WHERE i.portfolio_id = $1::bigint AND p.deleted_at IS NULL
+       AND (EXISTS (SELECT 1 FROM users u WHERE u.id = $2 AND u.is_admin)
+         OR EXISTS (SELECT 1 FROM project_members m WHERE m.project_id = p.id AND m.user_id = $2))
      ORDER BY i.added_at, p.id`,
-    [portfolioId],
+    [portfolioId, viewerId],
   );
   if (projects.rowCount === 0) return null;
   const base = await getRuleDescriptors(Number(projects.rows[0].id), viewerId);

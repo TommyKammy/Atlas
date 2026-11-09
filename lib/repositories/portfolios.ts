@@ -125,13 +125,19 @@ export async function deletePortfolio(portfolioId: number): Promise<void> {
   await db.query("DELETE FROM portfolios WHERE id = $1::bigint", [portfolioId]);
 }
 
-export async function getPortfolioProjects(portfolioId: number): Promise<PortfolioProject[]> {
+export async function getPortfolioProjects(
+  portfolioId: number,
+  viewerId?: number,
+): Promise<PortfolioProject[]> {
   const r = await db.query(
     `SELECT p.id, p.name, p.color, p.icon
      FROM portfolio_items i JOIN projects p ON p.id = i.project_id
      WHERE i.portfolio_id = $1::bigint AND p.deleted_at IS NULL
+       AND ($2::bigint IS NULL
+         OR EXISTS (SELECT 1 FROM users u WHERE u.id = $2 AND u.is_admin)
+         OR EXISTS (SELECT 1 FROM project_members m WHERE m.project_id = p.id AND m.user_id = $2))
      ORDER BY i.added_at, p.id`,
-    [portfolioId],
+    [portfolioId, viewerId ?? null],
   );
   return r.rows.map((row) => ({
     id: Number(row.id),
@@ -355,6 +361,7 @@ export async function deletePortfolioRule(
 
 export async function getPortfolioRuleRuns(
   portfolioId: number,
+  viewerId: number,
   ruleId?: number,
   limit = 50,
 ): Promise<Record<string, unknown>[]> {
@@ -371,9 +378,11 @@ export async function getPortfolioRuleRuns(
      LEFT JOIN users u ON u.id = rr.owner_id
      WHERE pr.portfolio_id = $1::bigint
        AND ($2::bigint IS NULL OR rp.portfolio_rule_id = $2::bigint)
+       AND (EXISTS (SELECT 1 FROM users v WHERE v.id = $4 AND v.is_admin)
+         OR EXISTS (SELECT 1 FROM project_members m WHERE m.project_id = p.id AND m.user_id = $4))
      ORDER BY rr.id DESC
      LIMIT $3`,
-    [portfolioId, ruleId ?? null, Math.min(200, Math.max(1, limit))],
+    [portfolioId, ruleId ?? null, Math.min(200, Math.max(1, limit)), viewerId],
   );
   return r.rows.map((row) => ({
     ...row,

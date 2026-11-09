@@ -337,10 +337,10 @@ async function runRule(
     if (event.subject_type === "task") params.task_id = event.subject_id;
     if (event.subject_type === "project") params.project_id = event.subject_id;
     let attempts = 0;
-    const maxAttempts = Math.max(
-      1,
-      Math.min(5, Number(process.env.AUTOMATION_ACTION_MAX_ATTEMPTS ?? 3)),
-    );
+    const configuredAttempts = Number(process.env.AUTOMATION_ACTION_MAX_ATTEMPTS ?? 3);
+    const maxAttempts = Number.isFinite(configuredAttempts)
+      ? Math.max(1, Math.min(5, Math.trunc(configuredAttempts)))
+      : 3;
     while (attempts < maxAttempts) {
       attempts += 1;
       try {
@@ -381,6 +381,7 @@ async function runRule(
     source: "automation",
     status: failure ? "failed" : "success",
     details,
+    plannedActions: rendered.length,
     error: failure,
   });
   return true;
@@ -401,7 +402,7 @@ async function processEvent(event: DomainEventRow): Promise<void> {
     );
     return;
   }
-  const rules = await getProjectRules(event.project_id);
+  const rules = await getProjectRules(event.project_id, true);
   const snapshot = await loadSnapshot(event);
   for (const rule of rules) {
     if (!rule.enabled) continue;
@@ -456,7 +457,9 @@ export async function processScheduledTriggers(): Promise<number> {
       const dueCondition =
         trigger.event === "task.due_soon"
           ? "t.due_on = CURRENT_DATE + $2::int"
-          : "t.due_on < CURRENT_DATE - $2::int";
+          : days === 0
+            ? "t.due_on < CURRENT_DATE"
+            : "t.due_on <= CURRENT_DATE - $2::int";
       const tasks = await db.query(
         `SELECT t.id, t.due_on::text AS due_on, t.name FROM tasks t
          WHERE t.project_id = $1::bigint AND t.deleted_at IS NULL
