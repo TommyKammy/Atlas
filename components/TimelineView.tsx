@@ -21,6 +21,8 @@ import { dayOrNull } from "@/lib/task-dates";
 import { isSingleDayTimelineTask, usesTimelineExternalLabel } from "@/lib/timeline-marker";
 import { timelineBarDragStyle } from "@/lib/timeline-drag-style";
 import { useTimelineFilters } from "@/lib/use-timeline-filters";
+import { useTimelineDependencies } from "@/lib/use-timeline-dependencies";
+import { useTimelineDraft } from "@/lib/use-timeline-draft";
 import { useTimelineLayout } from "@/lib/use-timeline-layout";
 import { useTimelineViewport, ZOOM_PRESETS } from "@/lib/use-timeline-viewport";
 import {
@@ -32,7 +34,6 @@ import {
 
 const toDay = dayOrNull;
 
-type Draft = { sectionId: number | null; day: number; key: number } | null;
 
 
 export default function TimelineView({
@@ -72,12 +73,20 @@ export default function TimelineView({
   const refresh = () => router.refresh();
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const draftInputRef = useRef<HTMLInputElement>(null);
-  const draftRef = useRef<Draft>(null);
-  const draftSeq = useRef(0);
   const suppressCanvasClick = useRef(false);
   const revealBarId = useRef<number | null>(null);
   const moved = useRef(false);
+  const {
+    depLink,
+    depTargetId,
+    hoveredDep,
+    beginDependency,
+    moveDependency,
+    endDependency,
+    removeDependency,
+    showDepHover,
+    scheduleDepHoverClear,
+  } = useTimelineDependencies({ contentRef, scrollRef, refresh });
 
   const stored = initialState ?? {};
   const {
@@ -132,7 +141,6 @@ export default function TimelineView({
   const [undatedOpen, setUndatedOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [collapsedHydrated, setCollapsedHydrated] = useState(false);
-  const [draft, setDraft] = useState<Draft>(null);
   const [zoomMenu, setZoomMenu] = useState(false);
   const [showWeekends, setShowWeekends] = useState(stored.weekends !== false);
   const [showDependencies, setShowDependencies] = useState(stored.dependencies !== false);
@@ -148,20 +156,9 @@ export default function TimelineView({
   const [barHoverId, setBarHoverId] = useState<number | null>(null);
   const [barOverflowId, setBarOverflowId] = useState<number | null>(null);
   const [canvasWidth, setCanvasWidth] = useState(0);
-  const [depLink, setDepLink] = useState<{
-    fromId: number;
-    edge: "start" | "end";
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-  } | null>(null);
-  const [depTargetId, setDepTargetId] = useState<number | null>(null);
-  const [hoveredDep, setHoveredDep] = useState<string | null>(null);
   const barHoverTimer = useRef<number | null>(null);
   const barHoverIdRef = useRef<number | null>(null);
   const longPressTimer = useRef<number | null>(null);
-  const depHoverTimer = useRef<number | null>(null);
   const [drag, setDrag] = useState<{
     id: number;
     mode: "move" | "start" | "end";
@@ -173,11 +170,33 @@ export default function TimelineView({
     rowDrop: { sectionId: number; row: number; top: number } | null;
   } | null>(null);
 
-  useEffect(() => {
-    if (!draft) return;
-    const raf = requestAnimationFrame(() => draftInputRef.current?.focus());
-    return () => cancelAnimationFrame(raf);
-  }, [draft?.key, draft]);
+  const {
+    draft,
+    draftInputRef,
+    draftRef,
+    openDraft: openDraftBase,
+    finishDraft,
+  } = useTimelineDraft({
+    projectId,
+    refresh,
+    expandSection: (sectionId) => {
+      if (sectionId === null) return;
+      setCollapsed((prev) => {
+        if (!prev.has(sectionId)) return prev;
+        const next = new Set(prev);
+        next.delete(sectionId);
+        return next;
+      });
+    },
+    onCreated: (taskId) => {
+      revealBarId.current = taskId;
+    },
+  });
+
+  const openDraft = (sectionId: number | null, day: number) => {
+    openDraftBase(sectionId, day);
+    setHover(null);
+  };
 
   useEffect(() => {
     const id = revealBarId.current;
@@ -247,21 +266,6 @@ export default function TimelineView({
     max,
     showCritical,
   });
-  const showDepHover = (key: string) => {
-    if (depHoverTimer.current) {
-      window.clearTimeout(depHoverTimer.current);
-      depHoverTimer.current = null;
-    }
-    setHoveredDep(key);
-  };
-  const scheduleDepHoverClear = () => {
-    if (depHoverTimer.current) window.clearTimeout(depHoverTimer.current);
-    depHoverTimer.current = window.setTimeout(() => {
-      setHoveredDep(null);
-      depHoverTimer.current = null;
-    }, 180);
-  };
-
   const commitChange = async (
     t: TaskRow,
     delta: number,
@@ -444,79 +448,6 @@ export default function TimelineView({
 
   const dragDelta = (id: number) => (drag && drag.id === id ? drag.dx : 0);
 
-  const beginDependency = (e: React.PointerEvent, t: TaskRow, edge: "start" | "end") => {
-    e.preventDefault();
-    e.stopPropagation();
-    const content = contentRef.current;
-    const bar = document.querySelector<HTMLElement>(`[data-timeline-bar="${t.id}"]`);
-    if (!content || !bar) return;
-    const contentRect = content.getBoundingClientRect();
-    const barRect = bar.getBoundingClientRect();
-    const x = (edge === "start" ? barRect.left : barRect.right) - contentRect.left;
-    const y = barRect.top + barRect.height / 2 - contentRect.top;
-    setDepTargetId(null);
-    setDepLink({ fromId: t.id, edge, x1: x, y1: y, x2: x, y2: y });
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-
-  const moveDependency = (e: React.PointerEvent) => {
-    const content = contentRef.current;
-    if (!content || !depLink) return;
-    const scroller = scrollRef.current;
-    if (scroller) {
-      const sr = scroller.getBoundingClientRect();
-      if (e.clientX > sr.right - 36) scroller.scrollLeft += 14;
-      else if (e.clientX < sr.left + 36) scroller.scrollLeft = Math.max(0, scroller.scrollLeft - 14);
-    }
-    const rect = content.getBoundingClientRect();
-    const target = document
-      .elementFromPoint(e.clientX, e.clientY)
-      ?.closest<HTMLElement>("[data-timeline-bar]");
-    const targetId = Number(target?.getAttribute("data-timeline-bar"));
-    setDepTargetId(
-      target && Number.isInteger(targetId) && targetId !== depLink.fromId ? targetId : null,
-    );
-    setDepLink((link) =>
-      link ? { ...link, x2: e.clientX - rect.left, y2: e.clientY - rect.top } : link,
-    );
-  };
-
-  const endDependency = async (e: React.PointerEvent) => {
-    if (!depLink) return;
-    const target = document
-      .elementFromPoint(e.clientX, e.clientY)
-      ?.closest<HTMLElement>("[data-timeline-bar]");
-    const targetId = Number(target?.getAttribute("data-timeline-bar"));
-    const { fromId, edge } = depLink;
-    setDepLink(null);
-    setDepTargetId(null);
-    if (!targetId || Number.isNaN(targetId) || targetId === fromId) return;
-    const payload =
-      edge === "start"
-        ? { task_id: fromId, depends_on_id: targetId }
-        : { task_id: targetId, depends_on_id: fromId };
-    const res = await fetch("/api/dependencies", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      if (res.status === 409) toastMessage("循環依存は作成できません");
-      return;
-    }
-    refresh();
-  };
-
-  const removeDependency = async (dep: { task_id: number; depends_on_id: number }) => {
-    const res = await fetch(
-      `/api/dependencies?task_id=${dep.task_id}&depends_on_id=${dep.depends_on_id}`,
-      { method: "DELETE" },
-    );
-    if (!res.ok) return;
-    setHoveredDep(null);
-    refresh();
-  };
-
   const showBarHover = (id: number) => {
     if (barHoverTimer.current) {
       window.clearTimeout(barHoverTimer.current);
@@ -557,51 +488,6 @@ export default function TimelineView({
     const q = new URLSearchParams(window.location.search);
     q.set("task", String(id));
     router.push(`/projects/${projectId}?${q.toString()}`);
-  };
-
-  const openDraft = (sectionId: number | null, day: number) => {
-    if (sectionId !== null) {
-      setCollapsed((prev) => {
-        if (!prev.has(sectionId)) return prev;
-        const next = new Set(prev);
-        next.delete(sectionId);
-        return next;
-      });
-    }
-    draftSeq.current += 1;
-    const next: Draft = { sectionId, day, key: draftSeq.current };
-    draftRef.current = next;
-    setDraft(next);
-    setHover(null);
-  };
-
-  const finishDraft = (value: string) => {
-    const current = draftRef.current;
-    if (!current) return;
-    draftRef.current = null;
-    setDraft(null);
-    const name = value.trim();
-    if (!name) return;
-    void (async () => {
-      const res = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project_id: projectId,
-          section_id: current.sectionId,
-          name,
-          start_on: linkDay(current.day),
-          due_on: linkDay(current.day),
-        }),
-      });
-      if (!res.ok) {
-        toastMessage(`作成に失敗しました: ${res.status}`);
-        return;
-      }
-      const created = await res.json();
-      revealBarId.current = created.id ?? null;
-      refresh();
-    })();
   };
 
   const addToday = () => {
