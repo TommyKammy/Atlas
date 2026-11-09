@@ -4,7 +4,6 @@ import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { api } from "@/lib/api-client";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
-import Link from "next/link";
 import { Fragment, useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Section, TaskRow, User } from "@/lib/data";
@@ -12,16 +11,11 @@ import { todayISO } from "@/lib/dates";
 import { groupBoardTasks, type BoardGroup } from "@/lib/board-group";
 import { useLive } from "@/lib/use-live";
 import { useApiRefresh } from "@/lib/use-api-refresh";
-import { dueSegs } from "@/lib/dates";
 import EmptyState from "./EmptyState";
 import { usePersistedViewState } from "@/lib/view-state-client";
 import BoardToolbar, { type BoardCardFields } from "./board/BoardToolbar";
+import BoardCard from "./board/BoardCard";
 import { taskMatchesListFilters, parseListDateFilter, parseListGroupBy, parseListSortKey, type ListDateFilter, type ListFilters, type ListGroupBy, type ListSortKey } from "@/lib/list-view";
-import TaskCompletionToggle from "./task/TaskCompletionToggle";
-import TaskMilestoneIcon from "./task/TaskMilestoneIcon";
-import TaskAvatar from "./task/TaskAvatar";
-import TaskStatusChip from "./task/TaskStatusChip";
-import TaskMetaBadges from "./task/TaskMetaBadges";
 
 
 
@@ -656,21 +650,21 @@ export default function BoardView({
                         {hintAt === index && (
                           <div data-board-drop-line className="h-0.5 -my-0.5 rounded-full bg-[#2c60b8]" />
                         )}
-                        <div
-                          data-board-card={t.id}
-                          data-board-assignee={t.assignee_name ?? ""}
-                          data-board-due={t.due_on ?? ""}
-                          data-board-status={t.status}
-                          data-board-subtask-count={t.subtask_count ?? 0}
-                          data-board-comment-count={t.comment_count ?? 0}
-                          draggable={canDragCards}
-                          onDragStart={(e) => {
-                            if (!canDragCards) return;
+                        <BoardCard
+                          task={t}
+                          projectId={projectId}
+                          canDragCards={canDragCards}
+                          effectiveGroupBy={effectiveGroupBy}
+                          sectionName={sectionName}
+                          cardFields={cardFields}
+                          statusFieldEnabled={statusFieldEnabled}
+                          today={today}
+                          onDragStart={(event, taskId) => {
                             dragging.current = true;
                             suppressClick.current = true;
-                            setDraggedId(t.id);
+                            setDraggedId(taskId);
                             setIsDragging(true);
-                            e.dataTransfer.setData("text/atlas-task", String(t.id));
+                            event.dataTransfer.setData("text/atlas-task", String(taskId));
                           }}
                           onDragEnd={() => {
                             setTimeout(() => {
@@ -682,80 +676,12 @@ export default function BoardView({
                               setDropHint(null);
                             }, 0);
                           }}
-                          onClick={(e) => cardClick(e, t.id)}
-                          className="cursor-pointer rounded-lg border border-[#eaeaea] bg-white p-2 text-sm shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-md active:cursor-grabbing"
-                        >
-                  <div className="flex items-start gap-2">
-                    <TaskCompletionToggle
-                      completed={t.completed}
-                      onToggle={() => void patchTaskFields(t.id, { completed: !t.completed })}
-                      className="mt-0.5"
-                    />
-                    <Link
-                      href={`/projects/${projectId}?view=board&task=${t.id}`}
-                      title={t.name}
-                      dir="auto"
-                      className={`line-clamp-2 break-words ${t.completed ? "text-neutral-500 line-through" : ""}`}
-                    >
-                      {t.is_milestone && <TaskMilestoneIcon className="mr-1 inline-flex align-[-1px]" />}
-                      {t.name}
-                    </Link>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-                    {effectiveGroupBy !== "section" && (t.eff_section_id ?? t.section_id) !== null && (
-                      <span className="rounded bg-neutral-200 px-1.5 py-0.5">
-                        {sectionName.get((t.eff_section_id ?? t.section_id) as number) ?? ""}
-                      </span>
-                    )}
-                    {cardFields.assignee && t.assignee_name && (
-                      <span className="flex items-center gap-1">
-                        <TaskAvatar name={t.assignee_name} />
-                        {t.assignee_name}
-                      </span>
-                    )}
-                    {cardFields.due && (t.start_on || t.due_on) && (
-                      (() => {
-                        const [s1, s2] = dueSegs(t.start_on, t.due_on);
-                        return (
-                          <span
-                            className={`rounded-full px-1.5 py-0.5 ${
-                              !t.completed && t.due_on !== null && t.due_on < today
-                                ? "bg-red-100 font-semibold text-red-700"
-                                : "bg-neutral-100 text-neutral-700"
-                            }`}
-                          >
-                            <span className="whitespace-nowrap">{s1}</span>
-                            {s2 && <span className="whitespace-nowrap"> – {s2}</span>}
-                          </span>
-                        );
-                      })()
-                    )}
-                    {cardFields.status && statusFieldEnabled && t.status !== "inbox" && (
-                      <TaskStatusChip status={t.status} compact />
-                    )}
-                    {cardFields.meta && (
-                      <TaskMetaBadges
-                        subtaskCount={t.subtask_count}
-                        commentCount={t.comment_count}
-                        dataScope="board"
-                      />
-                    )}
-                  </div>
-                  <div className="mt-1 flex gap-1 md:hidden">
-                    <button
-                      onClick={() => moveCard(t, -1)}
-                      className="rounded border px-2 py-0.5 text-xs"
-                    >
-                      ←
-                    </button>
-                    <button
-                      onClick={() => moveCard(t, 1)}
-                      className="rounded border px-2 py-0.5 text-xs"
-                    >
-                      →
-                    </button>
-                  </div>
-                        </div>
+                          onClick={(event, taskId) => cardClick(event, taskId)}
+                          onToggleComplete={() =>
+                            void patchTaskFields(t.id, { completed: !t.completed })
+                          }
+                          onMove={(delta) => moveCard(t, delta)}
+                        />
                       </Fragment>
                     ))}
                     {hintAt === g.items.length && (
