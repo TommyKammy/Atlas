@@ -1,0 +1,678 @@
+== auth ==
+ok   unauth page redirects (307)
+ok   unauth api 401
+ok   wrong password 401
+ok   login 200
+ok   GET /login
+ok   home summary
+== pages ==
+ok   GET /
+ok   GET /my-tasks
+ok   GET /inbox
+ok   GET /portfolio
+ok   GET /search?q=%E3%83%AA%E3%82%B9%E3%83%88
+ok   GET /projects/1?view=overview
+ok   GET /projects/1?view=dashboard
+ok   GET /projects/1?view=list
+ok   GET /projects/1?view=board
+ok   GET /projects/1?view=timeline
+ok   GET /projects/1?view=calendar
+ok   GET /projects/1?view=messages
+ok   GET /projects/1?view=knowledge
+ok   GET /projects/1?view=files
+ok   GET /projects/1?view=forms
+ok   GET /projects/1?view=list&task=2
+ok   security headers
+ok   CSP nonce SSR
+ok   customize launcher
+ok   list accessible names
+ok   responsive mobile classes
+ok   list keyboard rows
+ok   task pane focus trap markup
+ok   list density columns
+== project header ==
+ok   project header markup
+ok   project member facepile
+ok   project rename api
+ok   project rename rendered
+ok   project status api
+ok   project status rendered
+ok   project status overview color
+ok   project status color validation
+ok   project header restored
+== board card parity ==
+ok   board card metadata
+ok   board card counts
+ok   board drag guard markup
+== list column parity ==
+ok   list column order
+ok   field header hover style
+ok   field header draggable markup
+ok   list column widths (640/119)
+ok   section header count hidden
+ok   section drag handle markup
+ok   section drop blocks markup
+ok   section header controls markup
+ok   GET /projects/1?view=list
+ok   empty assignee/due icons
+ok   empty icon fixture cleaned
+ok   group header counts
+ok   list toolbar parity
+ok   list options drawer markup
+ok   drawer slide animation
+ok   list extended filters
+ok   list extended sort/group
+ok   list subgroup/custom sort
+ok   saved view toolbar filters
+ok   empty task name rejected
+ok   contrast tokens
+ok   global focus-visible styles
+== sidebar rail ==
+ok   sidebar collapsed flyout markup
+== project tabs ==
+ok   project tabs seeded
+ok   custom tab create (13293)
+ok   GET /projects/1?view=board&tab=custom%3Ab8f16afe-cf9a-4096-a810-ea3d70156136
+ok   custom tab visible
+ok   tab reorder
+ok   tab order persisted
+ok   tab order restored
+ok   custom tab delete
+ok   custom tab cleaned
+ok   project tab bar markup
+ok   built-in tab rename api
+ok   built-in tab rename persisted
+ok   forms tab create
+ok   view icon update api
+ok   view icon rendered
+ok   task like toggle on
+ok   task like state
+ok   task like toggle off
+ok   default tab redirect
+ok   default tab redirect target
+ok   GET /projects/1?view=board&hide=1&sort=name&assignee=none
+ok   board toolbar
+== tasks CRUD ==
+ok   task create (40803)
+ok   task creator recorded
+ok   task patch
+ok   completed_at recorded
+ok   task visible
+ok   task delete
+== sections ==
+ok   section create (8494)
+ok   section rename
+ok   section rename validation
+ok   section delete
+ok   section reorder
+ok   section reorder validation
+ok   section order restored
+== subtasks/comments/dependencies ==
+ok   subtask create
+ok   comment create (1024)
+ok   comment mention stored
+ok   comment mention/edit markup
+ok   task pane description/composer
+ok   task pane sections
+ok   task pane empty description
+ok   rich description stored
+ok   rich description rejects unknown node
+ok   rich description strips unsafe link
+ok   rich comment stored
+ok   rich mention label normalized
+ok   rich comment mention stored
+ok   rich comment edit
+ok   rich text SSR
+ok   comment edit
+ok   comment edit persisted
+ok   comment mentions replaced
+ok   comment edit author-only
+ok   comment delete
+ok   comment delete cascade
+ok   dependency add
+ok   dependency cycle guard
+ok   dependency reverse direction
+ok   dependency reverse db
+subtask/dependency/comment cleaned
+== list subtask expand ==
+ok   expand chevron (seed task 2)
+ok   seed subtask rows (2)
+== list header sort/due filter ==
+ok   header due filter overdue
+ok   header due filter today
+ok   header sort asc order
+ok   header sort desc order
+== status options ==
+ok   status options update
+ok   status options validation
+ok   status options stored
+ok   status set to new option
+ok   status options restored
+ok   status field rename
+ok   status option rename migrates tasks
+ok   status field metadata restored
+== custom fields ==
+ok   field create
+ok   value set
+ok   calendar custom-field filter
+ok   free-text select value (v1: no option validation)
+ok   field delete (cascade)
+ok   number field config stored
+ok   number formatting and section totals
+ok   column function none hides totals
+ok   number config validation
+ok   number field cleanup
+ok   multi-select value stored
+ok   date value stored
+ok   multi-select/date rendered
+ok   multi-select search filter
+ok   date value validation
+ok   multi/date field cleanup
+ok   people value stored
+ok   invalid member rejected
+ok   auto ID backfilled
+ok   auto ID numbers unique
+ok   auto ID read-only
+ok   virtual field read-only
+ok   rollup column function stored
+ok   invalid lookup target rejected
+ok   auto ID prefix updates values
+ok   field admin-only blocks editor
+ok   field custom access allows editor
+ok   deleted field patch rejected
+ok   timer start
+ok   timer stop
+ok   timer direct write rejected
+ok   people rendered
+ok   auto ID rendered
+ok   formula rendered
+ok   lookup/rollup fields rendered
+ok   timer/time tracking rendered
+ok   advanced field cleanup
+ok   field soft delete
+ok   soft-deleted field hidden
+ok   deleted field listed
+ok   field restore
+ok   restored field keeps values
+ok   field access policy stored
+ok   field access policy exposed
+ok   field library create
+ok   field library listed
+ok   field library delete
+== multi-homing ==
+ok   membership add
+ok   member visible
+ok   primary guard
+ok   project delete
+== messages/attachments ==
+ok   message post
+ok   attachment upload (1167)
+ok   attachment bytes
+message/attachment cleaned
+== knowledge ==
+ok   knowledge create (457)
+ok   knowledge visible
+ok   knowledge update
+ok   knowledge update visible
+ok   knowledge delete
+ok   knowledge cleaned
+== project email ==
+ok   project email address
+ok   project email disable
+ok   project email disabled rejects
+ok   project email enable
+ok   project email intake task (40808)
+ok   project email task fields
+ok   project email message stored
+ok   project email cleaned
+== project apps ==
+ok   project apps empty
+ok   project app install (670)
+ok   project app duplicate guard
+ok   project app stored
+ok   project app disable
+ok   project app disabled state
+ok   project app remove
+ok   project app cleaned
+== bundles ==
+ok   bundles empty
+ok   bundle create (334)
+ok   bundle stored
+ok   bundle apply fields (2)
+ok   bundle fields created
+ok   bundle applied state
+ok   bundle apply idempotent
+ok   bundle update
+ok   bundle delete
+ok   bundle cleaned
+== automations ==
+ok   automations empty
+ok   automation status rule
+ok   automation comment rule
+ok   automations stored
+ok   automation set status on create
+ok   automation run recorded
+ok   automation comment on complete
+ok   automation completion run
+ok   automation update
+ok   automation disabled state
+ok   automation status rule delete
+ok   automation comment rule delete
+ok   automations cleaned
+== forms ==
+ok   form create (338)
+ok   form visible
+ok   form publish
+ok   form submit task (40810)
+ok   form task fields
+ok   form response stored
+ok   form response counted
+ok   form required validation
+ok   form delete
+ok   form cleaned
+== saved views ==
+ok   saved view create
+ok   saved view applied
+ok   saved view delete
+== inbox/events/multi-user ==
+ok   event in inbox
+ok   event read
+ok   event cascade (hard delete)
+== advanced search ==
+ok   assignee filter
+ok   due range filter
+ok   completed filter
+== advanced search filters ==
+ok   status/custom/date filter
+ok   status mismatch excludes
+ok   saved search create (152)
+ok   saved search visible
+ok   saved search delete
+== global search scope/ranking ==
+ok   search ranking exact/prefix/contains/description
+ok   search scope projects
+ok   search scope messages
+ok   search scope knowledge
+ok   search scope files
+ok   search scope comments
+== global search shell ==
+ok   search history recorded
+ok   search suggest tasks
+ok   search suggest history
+ok   search history page
+ok   global search shell markup
+ok   search history clear
+== search permissions ==
+ok   search blocks private results
+ok   search blocks private project filter
+ok   guest assignee directory scoped
+ok   viewer search sees granted project
+ok   viewer search sees granted custom field
+ok   search permission fixtures cleaned
+== logout ==
+ok   logout clears (307)
+== assignment notice ==
+ok   assignee notified
+== my-tasks buckets ==
+ok   buckets show
+== my-tasks order ==
+ok   my-tasks reorder api
+ok   my-tasks order persisted
+ok   my-tasks order db
+ok   my-tasks cross bucket due change
+ok   my-tasks due cleared
+ok   my-tasks fixtures cleaned
+== timeline move ==
+ok   timeline controls
+ok   timeline dependency handles
+ok   timeline bar tooltip name marker
+== timeline zoom presets ==
+ok   timeline default week
+ok   timeline week plain labels
+ok   timeline day preset
+ok   timeline quarter preset
+ok   timeline year preset
+ok   timeline half plain labels
+ok   timeline parity chrome
+ok   timeline section header row
+ok   dates shifted (2026-11-17/2026-11-19)
+== timeline resize ==
+ok   resize end (2026-11-10/2026-11-18)
+== bulk ops ==
+ok   bulk complete
+ok   bulk move
+ok   bulk validation
+ok   bulk delete
+== recurrence ==
+ok   weekly spawn (2026-11-17/false/weekly)
+== task templates ==
+ok   template create (543)
+ok   template patch
+ok   instantiate task+2subs
+== project templates ==
+ok   snapshot (519)
+ok   instantiate (4/7)
+== audit log ==
+ok   audit row
+== export ==
+ok   json export
+ok   csv export
+ok   export validation
+== csv import ==
+ok   roundtrip ({"created":9,"skipped":0,"errors":[]})
+ok   orphan skipped
+== dashboard export ==
+ok   dashboard json
+ok   dashboard csv
+== dashboard status field lifecycle ==
+ok   dashboard status baseline
+ok   dashboard hides status history
+ok   dashboard status disabled state
+ok   status values retained in db
+ok   dashboard status restored
+ok   dashboard status widget restored
+== share links ==
+ok   public share
+ok   revoke
+ok   expiry enforced
+ok   expired purged
+== weekly report ==
+ok   report posted
+ok   report idempotent
+== row reorder ==
+order flipped ok
+ok   reorder
+== markdown ==
+ok   md render+escape
+== attachment preview ==
+ok   png inline
+ok   svg forced attachment
+== calendar week ==
+ok   week view
+ok   calendar range bar
+ok   calendar toolbar
+ok   month grid + bars
+ok   calendar hide completed
+ok   calendar hide weekends
+ok   calendar multi-day off
+ok   calendar monday start
+ok   calendar resize handles
+ok   touch interaction classes
+ok   calendar quick completed
+ok   calendar status filter
+== calendar color legend ==
+ok   calendar status legend
+ok   calendar status tone
+ok   calendar section colors
+ok   calendar custom field legend
+ok   calendar unset neutral color
+== calendar overflow ==
+ok   calendar +N overflow
+ok   calendar shows 3 of 5
+ok   calendar +N label
+ok   calendar due filter
+ok   calendar completion date
+ok   calendar creator filter
+ok   calendar created date
+ok   sidebar add project
+ok   sidebar footer controls
+ok   sidebar collapsed SSR
+ok   collapsed rail footer
+ok   week fallback
+== reactions ==
+ok   react on
+ok   reaction stored
+ok   reaction markup
+ok   react off
+ok   react validation
+== favorites ==
+ok   star on
+ok   sidebar fav
+ok   star off
+== recents ==
+ok   recents shown
+== dashboard prefs ==
+ok   prefs save+normalize
+prefs applied ok
+ok   prefs applied
+== dashboard widgets ==
+ok   dashboard widget create
+ok   dashboard widget update
+ok   dashboard widget rendered
+ok   dashboard widget delete
+ok   dashboard text widget create
+ok   dashboard text rendered
+ok   dashboard widgets cleaned
+== view state persistence ==
+ok   view state list applied
+ok   view state board independent
+ok   view state list retained after board
+ok   view state timeline applied
+ok   view state reset
+== help and out-of-office ==
+ok   help page
+ok   out-of-office save
+ok   out-of-office rendered
+ok   out-of-office db
+ok   out-of-office range validation
+ok   out-of-office cleared
+== overview parity ==
+ok   overview hero/description/activity
+ok   overview activity feed
+ok   overview description rendered
+ok   overview status quick update
+== timezone boundary ==
+ok   JST before boundary
+ok   JST after boundary
+ok   JST app/db agree
+ok   timezone validation
+== unicode long names ==
+ok   unicode dir/title across views
+ok   long name wrap/tooltip
+ok   unicode fixtures cleaned
+== profile ==
+ok   rename
+ok   wrong current 401
+ok   password change
+ok   login with new
+ok   profile page
+== admin ==
+ok   non-admin forbidden
+ok   user create (1362)
+ok   login as new
+ok   self-demote guard
+ok   user delete
+== admin console: workspace / teams / roles / SAML ==
+ok   org rename
+ok   org rename restore
+ok   team create
+ok   team update
+ok   team delete
+ok   role create
+ok   role update
+ok   role delete
+ok   saml metadata
+== project members & roles ==
+ok   creator is project admin
+ok   role test user create
+ok   non-member project denied
+ok   member add viewer
+ok   member can view project
+ok   viewer cannot create task
+ok   viewer cannot add member
+ok   viewer cannot create custom field
+ok   viewer cannot create template
+ok   viewer can read custom fields
+ok   viewer cannot patch custom field
+ok   viewer cannot delete custom field
+ok   viewer cannot patch template
+ok   viewer cannot delete template
+ok   viewer cannot create knowledge
+ok   viewer can read knowledge
+ok   viewer cannot create tab
+ok   viewer can read tabs
+ok   viewer cannot create form
+ok   viewer can submit form
+ok   viewer can read project email
+ok   viewer cannot update project email
+ok   viewer cannot intake email
+ok   viewer can read apps
+ok   viewer cannot install app
+ok   viewer cannot update app
+ok   viewer cannot remove app
+ok   viewer cannot create bundle
+ok   viewer cannot apply bundle
+ok   viewer can read automations
+ok   viewer cannot create automation
+ok   viewer cannot update automation
+ok   viewer cannot delete automation
+ok   viewer cannot comment
+ok   member role commenter
+ok   commenter can comment
+ok   commenter cannot create task
+ok   member role editor
+ok   editor can create task
+ok   editor cannot change project
+ok   last admin guard
+ok   member remove
+ok   removed member denied
+ok   profile fields
+ok   login with new email
+ok   duplicate email guard
+ok   admin role guest
+ok   invalid role guard
+ok   role test cleanup
+== invitations & deactivation ==
+ok   invitation create
+ok   invite page public
+ok   invitation lookup
+ok   invitation accept
+ok   invited user role
+ok   invited user login
+ok   invitation single-use
+ok   user deactivate
+ok   deactivated login blocked
+ok   deactivated session blocked
+ok   self-deactivate guard
+ok   user reactivate
+ok   reactivated login
+ok   invite/deactivate cleanup
+== usage stats ==
+ok   usage series
+ok   usage forbidden
+== audit export ==
+ok   audit json
+ok   audit csv
+== trash retention ==
+ok   old trash purged
+== optimistic locking ==
+ok   stale conflict 409
+ok   fresh stamp 200
+ok   409 carries snapshot
+ok   overwrite with snapshot stamp
+== websocket live ==
+invalidate pushed: {"type":"invalidate"}
+ok   ws invalidate
+unauth ws denied
+ok   ws auth gate
+== trash/restore ==
+ok   soft-deleted hidden
+ok   trash lists
+ok   restored visible
+ok   purged
+== large project rendering ==
+ok   large project pagination
+ok   large project cleaned
+== empty/loading/error states ==
+ok   navigation pending + error/not-found files
+ok   not-found page
+ok   empty project state
+ok   all project views render
+ok   empty states across views
+ok   project error boundary + view code splitting
+ok   empty project cleaned
+== project actions ==
+ok   project actions button markup
+ok   project settings defaults
+ok   project settings patch
+ok   project settings persisted
+ok   project due date validation
+ok   project duplicate api
+ok   project duplicate copies structure
+ok   project duplicate copies field values
+ok   project template save
+ok   project template instantiate
+ok   project template copies tasks, unsectioned tasks and fields
+ok   project export csv
+ok   project export xlsx
+ok   project export json
+ok   project export timecsv
+ok   project export ical
+ok   project export xlsx zip magic
+ok   project export ical body
+ok   project export csv body
+ok   GET /projects/2398/print
+ok   project print view
+ok   project table create
+ok   project table snapshot
+ok   GET /tables/13
+ok   project table page
+ok   project table export csv
+ok   project table export xlsx
+ok   project trash
+ok   trashed project api hidden
+ok   trash lists projects
+ok   project restore
+ok   GET /projects/2398?view=list
+ok   restored project page
+== project delete multi-home safety ==
+ok   multi-homed duplicate keeps subtask tree
+ok   multi-homed template keeps subtask tree
+ok   project trash moves multi-homed tasks
+ok   GET /projects/2402?view=list
+ok   multi-homed task kept in other project
+ok   multi-homed task reparented
+ok   multi-homed subtask follows parent
+== theme ==
+ok   dark theme SSR
+ok   light theme SSR
+ok   theme toggle control
+ok   dark task pane
+ok   dark forms render
+== project context menu APIs ==
+ok   ctx project create
+ok   ctx rename
+ok   ctx color+icon
+ok   ctx invalid color 400
+ok   ctx archive
+ok   archived project still opens
+ok   ctx favorite on
+ok   ctx favorite listed
+ok   ctx favorite off
+ok   ctx portfolio add
+ok   ctx portfolio listed
+ok   ctx portfolio remove
+ok   ctx share create
+ok   ctx share page
+ok   ctx share revoked
+ok   ctx project cleaned
+== api authorization matrix ==
+ok   viewer read matrix
+ok   viewer write matrix denied
+ok   non-member read matrix denied
+ok   editor write matrix allowed
+ok   admin-only share and template delete
+ok   restore requires edit role
+ok   auth matrix cleaned
+== seed invariants ==
+ok   seed intact (1/7/2/4 core)
+ok   no e2e fixtures
+ok   trash empty
+ok   audit cleaned
+ok   orphan events cleaned
+== log retention ==
+ok   old purged
+== backup/restore ==
+ok   restore drops mutation
+ok   post-restore serving
+---- PASS=587 FAIL=0 ----
