@@ -300,6 +300,7 @@ export default function TaskListRow({
         </span>
       </span>
       <div
+        style={{ borderLeftWidth: 0 }}
         className={`flex min-w-0 flex-wrap items-center gap-1.5 ${depth > 0 ? "pl-7" : ""} ${
           editing?.id === t.id && editing.field === "name"
             ? "rounded-[2px] ring-1 ring-[#4573d2]"
