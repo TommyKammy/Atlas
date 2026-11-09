@@ -7,6 +7,7 @@ import TaskCompletionToggle from "../task/TaskCompletionToggle";
 
 export type TimelineBarProps = {
   task: TaskRow;
+  lane: number;
   x1: string;
   x2: string;
   skinny: boolean;
@@ -69,6 +70,7 @@ function MilestoneDiamond({
 
 function TimelineBar({
   task,
+  lane,
   x1,
   x2,
   skinny,
@@ -128,9 +130,10 @@ function TimelineBar({
     }`;
 
   return (
-    <div className="relative h-10" data-timeline-row={task.id}>
+    <div className="relative h-10" data-timeline-row={task.id} data-timeline-lane={lane}>
       <div
         data-timeline-bar={task.id}
+        data-timeline-lane={lane}
         data-timeline-dependency-target={dependencyTarget ? "true" : undefined}
         aria-label={barInfo}
         onPointerDown={onBarPointerDown}

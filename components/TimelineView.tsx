@@ -27,6 +27,7 @@ import TimelineToolbar from "./timeline/TimelineToolbar";
 import { usePersistedViewState } from "@/lib/view-state-client";
 import { dayOrNull } from "@/lib/task-dates";
 import { isSingleDayTimelineTask } from "@/lib/timeline-marker";
+import { assignTimelineLanes, timelineInterval } from "@/lib/timeline-lanes";
 
 const DAY_MS = 86_400_000;
 
@@ -405,18 +406,37 @@ export default function TimelineView({
       hasDraft: boolean;
       top: number;
       height: number;
+      laneById: Map<number, number>;
+      laneCount: number;
     }[] = [];
     for (const section of sections) {
       const all = bySection.get(section.id) ?? [];
       const isCollapsed = collapsed.has(section.id);
       const hasDraft = !isCollapsed && draft?.sectionId === section.id;
       const shown = isCollapsed ? [] : all;
-      // Asana shares the section header row with the first task row. The header
-      // itself is one 40px row, and subsequent tasks add one row each.
+      const laneIntervals = shown
+        .map((task) => {
+          const interval = timelineInterval(task);
+          return interval ? { id: task.id, ...interval } : null;
+        })
+        .filter((interval): interval is { id: number; start: number; end: number } => interval !== null);
+      const { laneById, laneCount } = assignTimelineLanes(laneIntervals);
+      const lanes = Math.max(1, laneCount);
+      // The section header shares the first lane; each additional lane adds a row.
       const height = isCollapsed
         ? ROW_PITCH
-        : Math.max(all.length, 1) * ROW_PITCH + (hasDraft ? ROW_PITCH : 0);
-      out.push({ section, tasks: shown, all, collapsed: isCollapsed, hasDraft, top: cursorY, height });
+        : lanes * ROW_PITCH + (hasDraft ? ROW_PITCH : 0);
+      out.push({
+        section,
+        tasks: shown,
+        all,
+        collapsed: isCollapsed,
+        hasDraft,
+        top: cursorY,
+        height,
+        laneById,
+        laneCount: lanes,
+      });
       cursorY += height;
     }
     return out;
@@ -427,12 +447,14 @@ export default function TimelineView({
     const rowY = new Map<number, number>();
     const pos = new Map<number, { x1: string; x2: string }>();
     for (const group of groups) {
-      for (let i = 0; i < group.tasks.length; i++) {
-        const t = group.tasks[i];
+      for (const t of group.tasks) {
         const milestoneDay = t.is_milestone ? (toDay(t.due_on) ?? toDay(t.start_on)) : null;
         const st = milestoneDay ?? toDay(t.start_on) ?? toDay(t.due_on)!;
         const en = milestoneDay ?? toDay(t.due_on) ?? toDay(t.start_on)!;
-        rowY.set(t.id, group.top + i * ROW_PITCH + ROW_PITCH / 2);
+        rowY.set(
+          t.id,
+          group.top + (group.laneById.get(t.id) ?? 0) * ROW_PITCH + ROW_PITCH / 2,
+        );
         pos.set(t.id, { x1: pct(Math.max(st, min)), x2: pct(Math.min(en, max) + 1) });
       }
     }
@@ -700,7 +722,7 @@ export default function TimelineView({
     refresh();
   };
 
-  const computeDrop = (id: number, clientY: number) => {
+  const computeDrop = (id: number, clientX: number, clientY: number) => {
     if (!canReorder) return null;
     const rect = contentRef.current?.getBoundingClientRect();
     if (!rect) return null;
@@ -710,19 +732,48 @@ export default function TimelineView({
     const list = group.tasks;
     const sourceIndex = list.findIndex((x) => x.id === id);
     const local = y - group.top;
-    const row = Math.floor(local / ROW_PITCH);
+    const row = Math.max(0, Math.min(group.laneCount - 1, Math.floor(local / ROW_PITCH)));
     const within = local - row * ROW_PITCH;
-    let raw = row + (within > ROW_PITCH / 2 ? 1 : 0);
+    const laneTasks = list.filter((t) => (group.laneById.get(t.id) ?? 0) === row);
+    let raw = Math.min(list.length, row);
+    if (laneTasks.length > 0) {
+      const width = rect.width > 0 ? rect.width : Math.max(1, canvasWidth);
+      const xPct = width > 0 ? ((clientX - rect.left) / width) * 100 : 0;
+      let anchor = laneTasks[0];
+      let best = Number.POSITIVE_INFINITY;
+      for (const t of laneTasks) {
+        const p = pos.get(t.id);
+        if (!p) continue;
+        const x1 = parseFloat(p.x1);
+        const x2 = parseFloat(p.x2);
+        const contains = xPct >= x1 && xPct <= x2;
+        const distance = contains ? -1 : Math.min(Math.abs(xPct - x1), Math.abs(xPct - x2));
+        if (distance < best) {
+          best = distance;
+          anchor = t;
+        }
+        if (contains) break;
+      }
+      const anchorIndex = list.findIndex((t) => t.id === anchor.id);
+      const anchorPos = pos.get(anchor.id);
+      const mid = anchorPos
+        ? (parseFloat(anchorPos.x1) + parseFloat(anchorPos.x2)) / 2
+        : 0;
+      raw = anchorIndex + (xPct > mid ? 1 : 0);
+    }
     raw = Math.max(0, Math.min(list.length, raw));
     const maxIndex = list.length - (sourceIndex >= 0 ? 1 : 0);
     let index = raw > sourceIndex && sourceIndex >= 0 ? raw - 1 : raw;
     index = Math.max(0, Math.min(maxIndex, index));
-    // Keep the insertion line in the real (source row still present) layout.
-    const boundary = sourceIndex >= 0 && index > sourceIndex ? index + 1 : index;
+    // The drop indicator follows the hovered lane boundary in the packed layout.
+    const lineRow = Math.max(
+      0,
+      Math.min(group.laneCount, row + (within > ROW_PITCH / 2 ? 1 : 0)),
+    );
     return {
       sectionId: group.section.id,
       index,
-      top: group.top + boundary * ROW_PITCH,
+      top: group.top + lineRow * ROW_PITCH,
     };
   };
 
@@ -775,7 +826,9 @@ export default function TimelineView({
     const dy = e.clientY - drag.startY;
     if (Math.abs(dx) > 2 || Math.abs(dy) > 4) moved.current = true;
     const drop =
-      drag.mode === "move" && Math.abs(dy) >= 8 ? computeDrop(drag.id, e.clientY) : null;
+      drag.mode === "move" && Math.abs(dy) >= 8
+        ? computeDrop(drag.id, e.clientX, e.clientY)
+        : null;
     setDrag({ ...drag, dx, dy, drop });
   };
   const onBarUp = async () => {
@@ -1109,7 +1162,7 @@ export default function TimelineView({
     };
   };
 
-  const renderBar = (t: TaskRow) => {
+  const renderBar = (t: TaskRow, lane: number) => {
     const dx = dragDelta(t.id);
     const active = drag?.id === t.id;
     const barPx = barPxFor(t);
@@ -1125,6 +1178,7 @@ export default function TimelineView({
       <TimelineBar
         key={t.id}
         task={t}
+        lane={lane}
         x1={p.x1}
         x2={p.x2}
         skinny={skinny}
@@ -1307,9 +1361,13 @@ export default function TimelineView({
                 <span className="truncate">{group.section.name}</span>
               </button>
               {!group.collapsed &&
-                group.all
-                  .slice(1)
-                  .map((t) => <div key={t.id} className="h-10" data-timeline-spacer={t.id} />)}
+                Array.from({ length: Math.max(0, group.laneCount - 1) }).map((_, index) => (
+                  <div
+                    key={`lane-${index}`}
+                    className="h-10"
+                    data-timeline-lane-spacer={`${group.section.id}-${index}`}
+                  />
+                ))}
               {group.hasDraft && <div className="h-10" />}
               <span data-timeline-group-line className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[#e1e1e1]" />
             </div>
@@ -1371,11 +1429,31 @@ export default function TimelineView({
             ))}
 
             {groups.map((group) => (
-              <div key={group.section.id} className="relative" data-timeline-group={group.section.id}>
-                {(group.collapsed || group.tasks.length === 0) && <div className="h-10" />}
-                {!group.collapsed && group.tasks.map((t) => renderBar(t))}
+              <div
+                key={group.section.id}
+                className="relative"
+                style={{ height: group.height }}
+                data-timeline-group={group.section.id}
+              >
+                {!group.collapsed &&
+                  group.tasks.map((t) => {
+                    const lane = group.laneById.get(t.id) ?? 0;
+                    return (
+                      <div
+                        key={t.id}
+                        className="absolute inset-x-0"
+                        style={{ top: lane * ROW_PITCH, height: ROW_PITCH }}
+                      >
+                        {renderBar(t, lane)}
+                      </div>
+                    );
+                  })}
                 {group.hasDraft && draft && (
-                  <div className="relative h-10" data-timeline-draft>
+                  <div
+                    className="absolute inset-x-0 h-10"
+                    style={{ top: group.laneCount * ROW_PITCH }}
+                    data-timeline-draft
+                  >
                     <div
                       className="tl-bar absolute top-[3px] z-10 flex items-center rounded-[4px] bg-white px-2 text-[13px] text-[#050505] ring-2 ring-[#2c60b8]"
                       style={{
