@@ -11,6 +11,12 @@ const ICONS: Record<HomeWidgetType, string> = {
   projects: "▦",
   assigned_tasks: "↗",
   members: "👥",
+  portfolio: "▤",
+  status_updates: "◉",
+  forms: "📝",
+  mentions: "@",
+  comment_drafts: "✎",
+  notepad: "🔒",
 };
 
 export default function AddWidgetPanel({

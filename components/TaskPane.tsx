@@ -870,7 +870,12 @@ export default function TaskPane({
         </div>
       </div>
 
-      <TaskCommentComposer mentionUsers={mentionUsers} onSubmit={addComment} />
+      <TaskCommentComposer
+        key={`composer-${task.id}`}
+        taskId={task.id}
+        mentionUsers={mentionUsers}
+        onSubmit={addComment}
+      />
     </aside>
   );
 }

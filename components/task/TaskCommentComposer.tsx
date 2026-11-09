@@ -1,17 +1,20 @@
 "use client";
 
 import type { Editor } from "@tiptap/core";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
+import { markdownToDoc } from "@/lib/rich-text-markdown";
 import { emptyRichTextDoc, type MentionUser, type RichTextDoc } from "@/lib/rich-text-types";
 import { toast } from "@/lib/ui-feedback";
 import RichTextEditor from "../rich-text/RichTextEditor";
 
 /** Asana-style pinned comment composer with @mentions and quick actions. */
 export default function TaskCommentComposer({
+  taskId,
   mentionUsers,
   onSubmit,
 }: {
+  taskId: number;
   mentionUsers: MentionUser[];
   onSubmit: (doc: RichTextDoc, text: string) => void | Promise<void>;
 }) {
@@ -22,6 +25,72 @@ export default function TaskCommentComposer({
   const [focused, setFocused] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const [initialDraft, setInitialDraft] = useState<RichTextDoc | null>(null);
+  const [draftState, setDraftState] = useState<"idle" | "saving" | "saved">("idle");
+  const skipSaveRef = useRef(true);
+  const mentionUsersRef = useRef(mentionUsers);
+
+  useEffect(() => {
+    mentionUsersRef.current = mentionUsers;
+  }, [mentionUsers]);
+
+  useEffect(() => {
+    let cancelled = false;
+    skipSaveRef.current = true;
+    fetch(`/api/comment-drafts?task_id=${taskId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { draft?: { body: string; body_doc: RichTextDoc | null } } | null) => {
+        if (cancelled) return;
+        const draft = data?.draft;
+        const nextDoc = draft
+          ? (draft.body_doc ?? markdownToDoc(draft.body ?? "", mentionUsersRef.current))
+          : emptyRichTextDoc();
+        setInitialDraft(draft ? nextDoc : null);
+        setDoc(nextDoc);
+        setText(draft?.body ?? "");
+        setEditorKey((value) => value + 1);
+        skipSaveRef.current = true;
+        setDraftReady(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setInitialDraft(null);
+        setDraftReady(true);
+        skipSaveRef.current = true;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      return;
+    }
+    const handle = setTimeout(async () => {
+      setDraftState("saving");
+      try {
+        if (text.trim() === "") {
+          await fetch(`/api/comment-drafts?task_id=${taskId}`, { method: "DELETE" });
+          setDraftState("idle");
+        } else {
+          const res = await fetch("/api/comment-drafts", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ task_id: taskId, body: text, body_doc: doc }),
+          });
+          if (!res.ok) throw new Error(`下書きの保存に失敗しました (${res.status})`);
+          setDraftState("saved");
+        }
+      } catch {
+        setDraftState("idle");
+      }
+    }, 800);
+    return () => clearTimeout(handle);
+  }, [taskId, draftReady, doc, text]);
 
   const insert = (content: string) => {
     editor?.chain().focus().insertContent(content).run();
@@ -33,9 +102,13 @@ export default function TaskCommentComposer({
     setSending(true);
     try {
       await onSubmit(doc, text);
+      await fetch(`/api/comment-drafts?task_id=${taskId}`, { method: "DELETE" }).catch(() => null);
+      skipSaveRef.current = true;
+      setInitialDraft(null);
       setEditorKey((value) => value + 1);
       setDoc(emptyRichTextDoc());
       setText("");
+      setDraftState("idle");
       setFocused(false);
       setEmojiOpen(false);
     } catch (error) {
@@ -60,24 +133,28 @@ export default function TaskCommentComposer({
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
         }}
       >
-        <RichTextEditor
-          key={editorKey}
-          initialDoc={emptyRichTextDoc()}
-          mentionUsers={mentionUsers}
-          placeholder="コメントを追加するか、チームメイトを @メンションします"
-          ariaLabel="コメント"
-          dataAttributes={{ "data-comment-input": "true" }}
-          minHeightClass="min-h-[34px]"
-          compact
-          toolbar
-          borderless
-          onChange={(nextDoc, nextText) => {
-            setDoc(nextDoc);
-            setText(nextText);
-          }}
-          onSubmit={submit}
-          onReady={setEditor}
-        />
+        {draftReady ? (
+          <RichTextEditor
+            key={editorKey}
+            initialDoc={initialDraft ?? emptyRichTextDoc()}
+            mentionUsers={mentionUsers}
+            placeholder="コメントを追加するか、チームメイトを @メンションします"
+            ariaLabel="コメント"
+            dataAttributes={{ "data-comment-input": "true" }}
+            minHeightClass="min-h-[34px]"
+            compact
+            toolbar
+            borderless
+            onChange={(nextDoc, nextText) => {
+              setDoc(nextDoc);
+              setText(nextText);
+            }}
+            onSubmit={submit}
+            onReady={setEditor}
+          />
+        ) : (
+          <div className="min-h-[34px] animate-pulse rounded bg-neutral-50" aria-hidden />
+        )}
 
         {emojiOpen && (
           <div className="flex gap-1 px-2 pb-1">
@@ -143,7 +220,13 @@ export default function TaskCommentComposer({
           </button>
 
           <span className="ml-auto text-[10px] text-neutral-400">
-            {focused && text.trim() ? "⌘+Enter で投稿" : ""}
+            {draftState === "saving"
+              ? "下書きを保存中…"
+              : draftState === "saved"
+                ? "下書きを保存済み"
+                : focused && text.trim()
+                  ? "⌘+Enter で投稿"
+                  : ""}
           </span>
           <button
             type="button"

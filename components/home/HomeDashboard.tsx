@@ -4,16 +4,35 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/api-client";
-import type { HomeMember, HomeProject, HomeTask, HomeWidget } from "@/lib/home-widgets";
+import {
+  HOME_WIDGET_META,
+  type HomeCommentDraft,
+  type HomeForm,
+  type HomeMember,
+  type HomeMention,
+  type HomeNotepad,
+  type HomePortfolioProject,
+  type HomeProject,
+  type HomeStatusProject,
+  type HomeStatusUpdate,
+  type HomeTask,
+  type HomeWidget,
+} from "@/lib/home-widgets";
 import { patchTask } from "@/lib/task-client";
 import { confirmAction, toast } from "@/lib/ui-feedback";
 import AddWidgetPanel from "./AddWidgetPanel";
 import HomeTaskComposer from "./HomeTaskComposer";
 import HomeWidgetCard, { type HomeWidgetMenuItem } from "./HomeWidgetCard";
 import AssignedTasksWidget from "./widgets/AssignedTasksWidget";
+import CommentDraftsWidget from "./widgets/CommentDraftsWidget";
+import FormsWidget from "./widgets/FormsWidget";
 import MembersWidget from "./widgets/MembersWidget";
+import MentionsWidget from "./widgets/MentionsWidget";
 import MyTasksWidget from "./widgets/MyTasksWidget";
+import NotepadWidget from "./widgets/NotepadWidget";
+import PortfolioWidget from "./widgets/PortfolioWidget";
 import ProjectsWidget from "./widgets/ProjectsWidget";
+import StatusUpdatesWidget from "./widgets/StatusUpdatesWidget";
 
 export default function HomeDashboard({
   workspaceId,
@@ -28,6 +47,13 @@ export default function HomeDashboard({
   assignedTasks,
   projects,
   members,
+  portfolio,
+  statusUpdates,
+  statusProjects,
+  forms,
+  mentions,
+  commentDrafts,
+  notepad,
   users,
 }: {
   workspaceId: number;
@@ -42,6 +68,13 @@ export default function HomeDashboard({
   assignedTasks: HomeTask[];
   projects: HomeProject[];
   members: HomeMember[];
+  portfolio: HomePortfolioProject[];
+  statusUpdates: HomeStatusUpdate[];
+  statusProjects: HomeStatusProject[];
+  forms: HomeForm[];
+  mentions: HomeMention[];
+  commentDrafts: HomeCommentDraft[];
+  notepad: HomeNotepad;
   users: { id: number; name: string; avatar_url?: string | null }[];
 }) {
   const router = useRouter();
@@ -131,6 +164,24 @@ export default function HomeDashboard({
         ...commonMenu(widget),
       ];
     }
+    if (widget.widget_type === "portfolio") {
+      return [
+        { label: "ポートフォリオをすべて表示", onClick: () => router.push("/portfolio") },
+        ...commonMenu(widget),
+      ];
+    }
+    if (widget.widget_type === "mentions") {
+      return [
+        { label: "受信トレイを開く", onClick: () => router.push("/inbox") },
+        ...commonMenu(widget),
+      ];
+    }
+    if (widget.widget_type === "forms") {
+      return [
+        { label: "プロジェクトをすべて表示", onClick: () => router.push("/portfolio") },
+        ...commonMenu(widget),
+      ];
+    }
     return commonMenu(widget);
   };
 
@@ -211,16 +262,8 @@ export default function HomeDashboard({
             widgetId={widget.id}
             widgetType={widget.widget_type}
             size={widget.size}
-            title={
-              widget.widget_type === "my_tasks"
-                ? "マイタスク"
-                : widget.widget_type === "projects"
-                  ? "プロジェクト"
-                  : widget.widget_type === "assigned_tasks"
-                    ? "自分が割り当てたタスク"
-                    : "メンバー"
-            }
-            locked={widget.widget_type === "my_tasks"}
+            title={HOME_WIDGET_META[widget.widget_type].label}
+            locked={widget.widget_type === "my_tasks" || widget.widget_type === "notepad" || widget.widget_type === "comment_drafts"}
             menuItems={menuFor(widget)}
             onDragStart={() => setDraggingId(widget.id)}
             onDragEnd={() => setDraggingId(null)}
@@ -259,6 +302,16 @@ export default function HomeDashboard({
               />
             )}
             {widget.widget_type === "members" && <MembersWidget members={visibleMembers} />}
+            {widget.widget_type === "portfolio" && <PortfolioWidget projects={portfolio} />}
+            {widget.widget_type === "status_updates" && (
+              <StatusUpdatesWidget updates={statusUpdates} projects={statusProjects} />
+            )}
+            {widget.widget_type === "forms" && <FormsWidget forms={forms} />}
+            {widget.widget_type === "mentions" && <MentionsWidget mentions={mentions} />}
+            {widget.widget_type === "comment_drafts" && (
+              <CommentDraftsWidget drafts={commentDrafts} />
+            )}
+            {widget.widget_type === "notepad" && <NotepadWidget initial={notepad} />}
           </HomeWidgetCard>
         ))}
       </div>

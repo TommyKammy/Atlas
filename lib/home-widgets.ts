@@ -1,6 +1,17 @@
 import type { TaskRow } from "./data";
 
-export const HOME_WIDGET_TYPES = ["my_tasks", "projects", "assigned_tasks", "members"] as const;
+export const HOME_WIDGET_TYPES = [
+  "my_tasks",
+  "projects",
+  "assigned_tasks",
+  "members",
+  "portfolio",
+  "status_updates",
+  "forms",
+  "mentions",
+  "comment_drafts",
+  "notepad",
+] as const;
 export type HomeWidgetType = (typeof HOME_WIDGET_TYPES)[number];
 export type HomeWidgetSize = "half" | "full";
 
@@ -36,6 +47,36 @@ export const HOME_WIDGET_META: Record<
   members: {
     label: "メンバー",
     description: "よく一緒に作業するメンバーと担当タスク",
+    defaultSize: "half",
+  },
+  portfolio: {
+    label: "ポートフォリオ",
+    description: "プロジェクトの進捗・期限超過・メンバー数をまとめて確認",
+    defaultSize: "half",
+  },
+  status_updates: {
+    label: "ステータス更新",
+    description: "プロジェクトの最新ステータスを投稿・確認",
+    defaultSize: "half",
+  },
+  forms: {
+    label: "フォーム",
+    description: "公開中のフォームと回答数をプロジェクト横断で確認",
+    defaultSize: "half",
+  },
+  mentions: {
+    label: "メンション",
+    description: "自分宛ての @メンションを新しい順に確認",
+    defaultSize: "half",
+  },
+  comment_drafts: {
+    label: "コメント下書き",
+    description: "書きかけのコメントをタスクごとに再開",
+    defaultSize: "half",
+  },
+  notepad: {
+    label: "非公開メモ帳",
+    description: "自分だけが見られるメモをホームに保存",
     defaultSize: "half",
   },
 };
@@ -74,4 +115,83 @@ export type HomeMember = {
   open_tasks: number;
   week_tasks: number;
   month_tasks: number;
+};
+
+export type HomePortfolioProject = {
+  id: number;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  total: number;
+  done: number;
+  overdue: number;
+  members: number;
+  min_due: string | null;
+  max_due: string | null;
+  saved: boolean;
+};
+
+export type HomeStatusUpdate = {
+  id: number;
+  project_id: number;
+  project_name: string;
+  project_color: string | null;
+  project_icon: string | null;
+  author_id: number | null;
+  author_name: string | null;
+  author_avatar_url: string | null;
+  body: string;
+  status: string | null;
+  status_color: string;
+  created_at: string;
+};
+
+export type HomeStatusProject = {
+  id: number;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  status: string | null;
+  status_color: string | null;
+};
+
+export type HomeForm = {
+  id: number;
+  project_id: number;
+  project_name: string;
+  project_color: string | null;
+  project_icon: string | null;
+  name: string;
+  description: string;
+  published: boolean;
+  response_count: number;
+  updated_at: string;
+};
+
+export type HomeMention = {
+  comment_id: number;
+  body: string;
+  created_at: string;
+  author_id: number | null;
+  author_name: string | null;
+  author_avatar_url: string | null;
+  task_id: number;
+  task_name: string;
+  project_id: number;
+  project_name: string;
+  is_read: boolean;
+};
+
+export type HomeCommentDraft = {
+  task_id: number;
+  task_name: string;
+  project_id: number;
+  project_name: string;
+  body: string;
+  updated_at: string;
+};
+
+export type HomeNotepad = {
+  body: string;
+  updated_at: string | null;
 };

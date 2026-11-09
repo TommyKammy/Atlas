@@ -12,10 +12,17 @@ import {
 } from "@/lib/data";
 import {
   getHomeAssignedTasks,
+  getHomeCommentDrafts,
+  getHomeForms,
   getHomeMembers,
+  getHomeMentions,
   getHomeMyTasks,
+  getHomePortfolio,
   getHomeProjects,
+  getHomeStatusProjects,
+  getHomeStatusUpdates,
   getHomeWidgets,
+  getUserNotepad,
 } from "@/lib/repositories/home";
 
 export const instant = false;
@@ -35,18 +42,41 @@ export default async function Home() {
   const uid = await getCurrentUserId();
   if (!uid) redirect("/login");
 
-  const [users, widgets, myTasks, assignedTasks, projects, members, unread, templates, projectList] =
-    await Promise.all([
-      getUsers(),
-      getHomeWidgets(ws.id, uid),
-      getHomeMyTasks(uid),
-      getHomeAssignedTasks(uid),
-      getHomeProjects(ws.id, uid),
-      getHomeMembers(ws.id, uid),
-      getUnreadCount(uid, ws.id),
-      getProjectTemplateList(ws.id),
-      getProjectsForUser(ws.id, uid),
-    ]);
+  const [
+    users,
+    widgets,
+    myTasks,
+    assignedTasks,
+    projects,
+    members,
+    portfolio,
+    statusUpdates,
+    statusProjects,
+    forms,
+    mentions,
+    commentDrafts,
+    notepad,
+    unread,
+    templates,
+    projectList,
+  ] = await Promise.all([
+    getUsers(),
+    getHomeWidgets(ws.id, uid),
+    getHomeMyTasks(uid),
+    getHomeAssignedTasks(uid),
+    getHomeProjects(ws.id, uid),
+    getHomeMembers(ws.id, uid),
+    getHomePortfolio(ws.id, uid),
+    getHomeStatusUpdates(ws.id, uid),
+    getHomeStatusProjects(ws.id, uid),
+    getHomeForms(ws.id, uid),
+    getHomeMentions(ws.id, uid),
+    getHomeCommentDrafts(uid),
+    getUserNotepad(uid),
+    getUnreadCount(uid, ws.id),
+    getProjectTemplateList(ws.id),
+    getProjectsForUser(ws.id, uid),
+  ]);
 
   const me = users.find((user) => user.id === uid) ?? null;
   const today = todayISO();
@@ -71,6 +101,13 @@ export default async function Home() {
         assignedTasks={assignedTasks}
         projects={projects}
         members={members}
+        portfolio={portfolio}
+        statusUpdates={statusUpdates}
+        statusProjects={statusProjects}
+        forms={forms}
+        mentions={mentions}
+        commentDrafts={commentDrafts}
+        notepad={notepad}
         users={users.map((user) => ({ id: user.id, name: user.name, avatar_url: user.avatar_url }))}
       />
       <div className="px-6">
