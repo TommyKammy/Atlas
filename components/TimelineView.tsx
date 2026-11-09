@@ -1175,11 +1175,19 @@ export default function TimelineView({
       await api(`/api/tasks/${t.id}/timeline-row`, "PUT", {
         project_id: projectId,
         row_index: rowIndex,
+        ...(t.timeline_row_updated_at
+          ? { expected_updated_at: t.timeline_row_updated_at }
+          : {}),
       });
       toastMessage("行を移動しました");
       refresh();
     } catch (error) {
-      toastMessage(error instanceof Error ? error.message : "行の移動に失敗しました");
+      if (error instanceof ApiError && error.status === 409) {
+        toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+        refresh();
+      } else {
+        toastMessage(error instanceof Error ? error.message : "行の移動に失敗しました");
+      }
     }
   };
 

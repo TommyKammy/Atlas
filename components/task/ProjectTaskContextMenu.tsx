@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api-client";
+import { ApiError, api } from "@/lib/api-client";
 import type { TaskRow } from "@/lib/data";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { confirmAction, toast } from "@/lib/ui-feedback";
@@ -287,6 +287,9 @@ export default function ProjectTaskContextMenu({
       if (caught instanceof TaskConflictError) {
         toast("他のユーザーが先に更新しました。最新を表示します。");
         refresh();
+      } else if (caught instanceof ApiError && caught.status === 409) {
+        toast("他のユーザーが先に更新しました。最新を表示します。");
+        refresh();
       } else {
         toast(caught instanceof Error ? caught.message : "操作に失敗しました");
       }
@@ -347,6 +350,9 @@ export default function ProjectTaskContextMenu({
       await api(`/api/tasks/${task.id}/timeline-row`, "PUT", {
         project_id: projectId,
         row_index: null,
+        ...(task.timeline_row_updated_at
+          ? { expected_updated_at: task.timeline_row_updated_at }
+          : {}),
       });
     }, "行の固定を解除しました");
   };

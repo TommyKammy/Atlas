@@ -55,6 +55,7 @@ export function toTaskRow(row: TaskRow): TaskRow {
       row.timeline_row === null || row.timeline_row === undefined
         ? null
         : Number(row.timeline_row),
+    timeline_row_updated_at: row.timeline_row_updated_at ?? null,
     position: Number(row.position),
     like_count: Number(row.like_count ?? 0),
     comment_count: Number(row.comment_count ?? 0),
