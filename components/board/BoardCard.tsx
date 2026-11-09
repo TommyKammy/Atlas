@@ -6,7 +6,6 @@ import type { TaskRow } from "@/lib/data";
 import { dueSegs } from "@/lib/dates";
 import type { BoardCardFields } from "./BoardToolbar";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
-import TaskMilestoneIcon from "../task/TaskMilestoneIcon";
 import TaskAvatar from "../task/TaskAvatar";
 import TaskStatusChip from "../task/TaskStatusChip";
 import TaskMetaBadges from "../task/TaskMetaBadges";
@@ -64,6 +63,7 @@ export default function BoardCard({
       <div className="flex items-start gap-2">
         <TaskCompletionToggle
           completed={task.completed}
+          milestone={task.is_milestone}
           onToggle={onToggleComplete}
           className="mt-0.5"
         />
@@ -73,7 +73,6 @@ export default function BoardCard({
           dir="auto"
           className={`line-clamp-2 break-words ${task.completed ? "text-neutral-500 line-through" : ""}`}
         >
-          {task.is_milestone && <TaskMilestoneIcon className="mr-1 inline-flex align-[-1px]" />}
           {task.name}
         </Link>
       </div>

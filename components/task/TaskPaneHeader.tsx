@@ -76,19 +76,22 @@ export default function TaskPaneHeader({
             : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
         }`}
       >
-        <span
-          className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] ${
-            task.completed ? "border-white" : "border-neutral-400"
-          }`}
-        >
-          {task.completed ? "✓" : ""}
-        </span>
+        {task.is_milestone ? (
+          <TaskMilestoneIcon completed={task.completed} sizeClassName="h-3.5 w-3.5" />
+        ) : (
+          <span
+            className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] ${
+              task.completed ? "border-white" : "border-neutral-400"
+            }`}
+          >
+            {task.completed ? "✓" : ""}
+          </span>
+        )}
         {task.completed ? "完了" : "完了にする"}
       </button>
 
       {showTitle ? (
         <span className="ml-1 hidden min-w-0 flex-1 truncate text-[12px] text-neutral-600 md:block" title={task.name}>
-          {task.is_milestone && <TaskMilestoneIcon className="mr-1 align-[-1px]" />}
           {task.name}
         </span>
       ) : (

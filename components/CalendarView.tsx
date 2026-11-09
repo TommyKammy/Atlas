@@ -661,7 +661,7 @@ export default function CalendarView({
   const title = monthLabel(`${anchorY}-${String(anchorM).padStart(2, "0")}`);
 
   const completion = (task: TaskRow, size = "h-4 w-4") => (
-    <TaskCompletionToggle completed={task.completed} onToggle={() => toggleComplete(task)} size={size} />
+    <TaskCompletionToggle completed={task.completed} milestone={task.is_milestone} onToggle={() => toggleComplete(task)} size={size} />
   );
 
   const taskFace = (task: TaskRow, bar: boolean) => {

@@ -31,7 +31,7 @@ test("list rows have no divider between the drag handle and task name", async ({
   expect(headerBorder).toBe("0px");
 });
 
-test("milestone icons use the Asana green diamond in every view", async ({ page }) => {
+test("milestone icons replace the completion check and use Asana green", async ({ page }) => {
   const today = new Date().toLocaleDateString("en-CA");
   const created = await page.request.post("/api/tasks", {
     data: {
@@ -48,13 +48,45 @@ test("milestone icons use the Asana green diamond in every view", async ({ page 
   try {
     for (const view of ["list", "board", "calendar"]) {
       await page.goto(`/projects/1?view=${view}`);
-      const icon = page.locator("[data-task-milestone]").first();
+      const container =
+        view === "list"
+          ? `[data-list-row="${id}"]`
+          : view === "board"
+            ? `[data-board-card="${id}"]`
+            : `[data-calendar-single="${id}"]`;
+      const icon = page.locator(`${container} [data-task-milestone]`);
       await expect(icon).toBeVisible();
-      const stroke = await icon
-        .locator("svg")
-        .evaluate((element) => getComputedStyle(element).stroke);
-      expect(stroke).toBe("rgb(70, 167, 90)");
+      const info = await icon.evaluate((element) => {
+        const button = element.closest("button");
+        const svg = element.querySelector("svg");
+        return {
+          label: button?.getAttribute("aria-label") ?? "",
+          width: button ? getComputedStyle(button).width : "",
+          height: button ? getComputedStyle(button).height : "",
+          stroke: svg ? getComputedStyle(svg).stroke : "",
+        };
+      });
+      expect(info.label).toContain("マイルストーン");
+      expect(info.width).toBe("16px");
+      expect(info.height).toBe("16px");
+      expect(info.stroke).toBe("rgb(70, 167, 90)");
     }
+
+    await page.request.patch(`/api/tasks/${id}`, { data: { completed: true } });
+    await page.goto("/projects/1?view=list");
+    const completed = page.locator(`[data-list-row="${id}"] [data-task-milestone]`);
+    const completedInfo = await completed.evaluate((element) => {
+      const svg = element.querySelector("svg");
+      const paths = svg ? svg.querySelectorAll("path") : [];
+      return {
+        label: element.closest("button")?.getAttribute("aria-label") ?? "",
+        fill: paths[0] ? getComputedStyle(paths[0]).fill : "",
+        checkStroke: paths[1] ? getComputedStyle(paths[1]).stroke : "",
+      };
+    });
+    expect(completedInfo.label).toContain("未完了");
+    expect(completedInfo.fill).toBe("rgb(70, 167, 90)");
+    expect(completedInfo.checkStroke).toBe("rgb(255, 255, 255)");
   } finally {
     await page.request.delete(`/api/tasks/${id}?force=1`);
   }

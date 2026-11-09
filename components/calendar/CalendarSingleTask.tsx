@@ -2,7 +2,6 @@
 
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { TaskRow } from "@/lib/data";
-import TaskMilestoneIcon from "../task/TaskMilestoneIcon";
 
 export default function CalendarSingleTask({
   task,
@@ -56,7 +55,6 @@ export default function CalendarSingleTask({
     >
       {completion}
       {avatars}
-      {task.is_milestone && <TaskMilestoneIcon />}
       <span title={task.name} dir="auto" className={`min-w-0 flex-1 truncate ${task.completed ? "line-through" : ""}`}>
         {task.name}
       </span>

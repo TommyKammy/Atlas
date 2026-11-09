@@ -80,7 +80,7 @@ export default function TaskSubtasksSection({
             data-subtask-row={subtask.id}
             className="group/sub flex min-h-8 items-center gap-2 border-b border-neutral-100 py-1 text-[13px]"
           >
-            <TaskCompletionToggle completed={subtask.completed} onToggle={() => onToggle(subtask)} />
+            <TaskCompletionToggle completed={subtask.completed} milestone={subtask.is_milestone} onToggle={() => onToggle(subtask)} />
             <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}`}
               className={`min-w-0 flex-1 truncate hover:text-blue-700 hover:underline ${
