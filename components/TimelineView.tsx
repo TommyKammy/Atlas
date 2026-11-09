@@ -23,6 +23,7 @@ import { timelineBarDragStyle } from "@/lib/timeline-drag-style";
 import { useTimelineFilters } from "@/lib/use-timeline-filters";
 import { useTimelineDependencies } from "@/lib/use-timeline-dependencies";
 import { useTimelineDraft } from "@/lib/use-timeline-draft";
+import { useTimelineHover } from "@/lib/use-timeline-hover";
 import { useTimelineLayout } from "@/lib/use-timeline-layout";
 import { useTimelineViewport, ZOOM_PRESETS } from "@/lib/use-timeline-viewport";
 import {
@@ -87,6 +88,15 @@ export default function TimelineView({
     showDepHover,
     scheduleDepHoverClear,
   } = useTimelineDependencies({ contentRef, scrollRef, refresh });
+  const {
+    hover,
+    setHover,
+    barHoverId,
+    barOverflowId,
+    showBarHover,
+    scheduleBarHoverClear,
+    clearBarHover,
+  } = useTimelineHover();
 
   const stored = initialState ?? {};
   const {
@@ -152,12 +162,7 @@ export default function TimelineView({
     dependencies: showDependencies,
     critical: showCritical,
   });
-  const [hover, setHover] = useState<{ sectionId: number; top: number; height: number; day: number } | null>(null);
-  const [barHoverId, setBarHoverId] = useState<number | null>(null);
-  const [barOverflowId, setBarOverflowId] = useState<number | null>(null);
   const [canvasWidth, setCanvasWidth] = useState(0);
-  const barHoverTimer = useRef<number | null>(null);
-  const barHoverIdRef = useRef<number | null>(null);
   const longPressTimer = useRef<number | null>(null);
   const [drag, setDrag] = useState<{
     id: number;
@@ -215,13 +220,6 @@ export default function TimelineView({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-
-  useEffect(
-    () => () => {
-      if (barHoverTimer.current) window.clearTimeout(barHoverTimer.current);
-    },
-    [],
-  );
 
   useEffect(() => {
     try {
@@ -333,11 +331,7 @@ export default function TimelineView({
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     moved.current = false;
     setHover(null);
-    setBarHoverId(null);
-    if (barHoverTimer.current) {
-      window.clearTimeout(barHoverTimer.current);
-      barHoverTimer.current = null;
-    }
+    clearBarHover();
     if (longPressTimer.current) {
       window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
@@ -447,40 +441,6 @@ export default function TimelineView({
   };
 
   const dragDelta = (id: number) => (drag && drag.id === id ? drag.dx : 0);
-
-  const showBarHover = (id: number) => {
-    if (barHoverTimer.current) {
-      window.clearTimeout(barHoverTimer.current);
-      barHoverTimer.current = null;
-    }
-    barHoverIdRef.current = id;
-    setBarHoverId(id);
-    // Asana only shows the bar tooltip when the task name is clipped by the
-    // bar. Measure after the hover inset is painted.
-    window.requestAnimationFrame(() => {
-      if (barHoverIdRef.current !== id) return;
-      const nameEl = document.querySelector<HTMLElement>(
-        `[data-timeline-bar="${id}"] [data-timeline-bar-name]`,
-      );
-      if (!nameEl) {
-        setBarOverflowId(null);
-        return;
-      }
-      const clipped =
-        nameEl.scrollHeight > nameEl.clientHeight + 1 ||
-        nameEl.scrollWidth > nameEl.clientWidth + 1;
-      setBarOverflowId(clipped ? id : null);
-    });
-  };
-  const scheduleBarHoverClear = () => {
-    if (barHoverTimer.current) window.clearTimeout(barHoverTimer.current);
-    barHoverTimer.current = window.setTimeout(() => {
-      barHoverIdRef.current = null;
-      setBarHoverId(null);
-      setBarOverflowId(null);
-      barHoverTimer.current = null;
-    }, 160);
-  };
 
   const linkDay = (d: number) => formatDay(d);
 
