@@ -30,3 +30,32 @@ test("list rows have no divider between the drag handle and task name", async ({
     .evaluate((element) => getComputedStyle(element).borderLeftWidth);
   expect(headerBorder).toBe("0px");
 });
+
+test("milestone icons use the Asana green diamond in every view", async ({ page }) => {
+  const today = new Date().toLocaleDateString("en-CA");
+  const created = await page.request.post("/api/tasks", {
+    data: {
+      project_id: 1,
+      section_id: 2,
+      name: `E2E milestone color ${Date.now()}`,
+      is_milestone: true,
+      start_on: today,
+      due_on: today,
+    },
+  });
+  expect(created.ok()).toBeTruthy();
+  const { id } = (await created.json()) as { id: number };
+  try {
+    for (const view of ["list", "board", "calendar"]) {
+      await page.goto(`/projects/1?view=${view}`);
+      const icon = page.locator("[data-task-milestone]").first();
+      await expect(icon).toBeVisible();
+      const stroke = await icon
+        .locator("svg")
+        .evaluate((element) => getComputedStyle(element).stroke);
+      expect(stroke).toBe("rgb(70, 167, 90)");
+    }
+  } finally {
+    await page.request.delete(`/api/tasks/${id}?force=1`);
+  }
+});

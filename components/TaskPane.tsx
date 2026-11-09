@@ -426,7 +426,7 @@ export default function TaskPane({
           />
 
           {task.is_milestone && (
-            <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-[#9a6a12]">
+            <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-[#2f7d43]">
               <TaskMilestoneIcon />
               マイルストーン
             </div>

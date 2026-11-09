@@ -4,6 +4,7 @@ import { memo, type CSSProperties, type PointerEvent as ReactPointerEvent } from
 import type { TaskRow } from "@/lib/data";
 import TaskAvatar from "../task/TaskAvatar";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
+import TaskMilestoneIcon from "../task/TaskMilestoneIcon";
 
 export type TimelineBarProps = {
   task: TaskRow;
@@ -47,30 +48,6 @@ export type TimelineBarProps = {
   onDependencyLeave: () => void;
   onToggleComplete: () => void;
 };
-
-function MilestoneDiamond({
-  completed,
-  className = "",
-}: {
-  completed: boolean;
-  className?: string;
-}) {
-  return (
-    <svg
-      viewBox="0 0 32 32"
-      className={className}
-      fill="none"
-      stroke="#46a75a"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <path d="M20.1 2.8c-2.3-2.3-5.9-2.3-8.2 0L2.7 12c-2.3 2.3-2.3 5.9 0 8.2l9.2 9.2c2.3 2.3 5.9 2.3 8.2 0l9.2-9.2c2.3-2.3 2.3-5.9 0-8.2L20.1 2.8z" />
-      {completed && (
-        <path d="M13.4 22.2c-0.3 0-0.5-0.1-0.7-0.3L8.8 18c-0.4-0.4-0.4-1 0-1.4s1-0.4 1.4 0l3.1 3.1 8.1-8.1c0.4-0.4 1-0.4 1.4 0s0.4 1 0 1.4l-8.9 8.9c-0.3 0.2-0.5 0.3-0.8 0.3z" />
-      )}
-    </svg>
-  );
-}
 
 function TimelineBar({
   task,
@@ -188,9 +165,10 @@ function TimelineBar({
         )}
         {milestone ? (
           <>
-            <MilestoneDiamond
+            <TaskMilestoneIcon
               completed={task.completed}
-              className="h-4 w-4 shrink-0"
+              sizeClassName="h-4 w-4"
+              className="shrink-0"
             />
             {outsideLabel}
           </>
