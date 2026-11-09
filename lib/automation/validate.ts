@@ -1,5 +1,5 @@
 import { DOMAIN_EVENT_TYPES, type DomainEventType } from "../domain/events";
-import { ACTION_DESCRIPTORS } from "./descriptors";
+import { ACTION_IDS, requiredActionParams } from "./descriptors";
 import {
   isConditionOperator,
   RULE_LIMITS,
@@ -10,23 +10,10 @@ import {
   type RuleTrigger,
 } from "./types";
 
-const ACTION_IDS = new Set(ACTION_DESCRIPTORS.map((action) => action.id));
 const EVENT_IDS = new Set<string>(DOMAIN_EVENT_TYPES);
-const REQUIRED_PARAMS: Record<string, string[]> = {
-  "task.assign": ["user_id"],
-  "task.set_status": ["status"],
-  "task.move_section": ["section_id"],
-  "task.add_comment": ["body"],
-  "task.create_subtask": ["name"],
-  "task.create": ["name"],
-  "task.set_custom_field": ["field_id", "value"],
-  "project.set_status": ["status"],
-  "task.add_to_project": ["project_id"],
-  "webhook.post": ["url"],
-};
 
 function hasRequiredParams(capability: string, params: Record<string, unknown>): boolean {
-  const required = REQUIRED_PARAMS[capability] ?? [];
+  const required = requiredActionParams(capability);
   return required.every((name) => {
     const value = params[name];
     return value !== undefined && value !== null && String(value).trim() !== "";
@@ -72,9 +59,8 @@ function normalizeAction(raw: unknown): RuleAction | null {
   if (!item || typeof item.capability !== "string" || !ACTION_IDS.has(item.capability)) {
     return null;
   }
-  const descriptor = ACTION_DESCRIPTORS.find((action) => action.id === item.capability);
   const params = asRecord(item.params) ?? {};
-  if (descriptor && !hasRequiredParams(item.capability, params)) return null;
+  if (!hasRequiredParams(item.capability, params)) return null;
   return { capability: item.capability, params };
 }
 

@@ -82,20 +82,42 @@ export const TRIGGER_DESCRIPTORS: TriggerDescriptor[] = [
   },
 ];
 
-export const ACTION_DESCRIPTORS: Omit<ActionDescriptor, "params">[] = [
-  { id: "task.assign", label: "担当者を変更", description: "タスクの担当者を設定・変更します。" },
-  { id: "task.set_status", label: "Statusを変更", description: "タスクのStatusを変更します。" },
-  { id: "task.set_due_date", label: "期日を変更", description: "期日を指定日付、または今日からの日数で設定します。" },
-  { id: "task.move_section", label: "セクションを移動", description: "タスクを指定セクションに移動します。" },
-  { id: "task.complete", label: "タスクを完了", description: "タスクを完了状態にします。" },
-  { id: "task.create", label: "タスクを作成", description: "プロジェクトに新しいタスクを作成します。" },
-  { id: "task.add_comment", label: "コメントを追加", description: "タスクにコメントを投稿します。変数が使えます。" },
-  { id: "task.create_subtask", label: "サブタスクを作成", description: "対象タスクの下にサブタスクを作成します。" },
-  { id: "task.set_custom_field", label: "カスタムフィールドを設定", description: "指定フィールドに値を設定します。" },
-  { id: "project.set_status", label: "プロジェクトステータスを更新", description: "プロジェクトの現在ステータスを更新します。" },
-  { id: "task.add_to_project", label: "別プロジェクトに追加", description: "タスクを別プロジェクトにマルチホームします。" },
-  { id: "webhook.post", label: "Webhookを送信", description: "外部URLへJSONをPOSTします。" },
+export type ActionCapability = {
+  id: string;
+  label: string;
+  description: string;
+  /** Params that must be non-empty before the action can run. */
+  requiredParams: string[];
+};
+
+/**
+ * Single source of truth for action ids, labels and required params.
+ * The rule builder's dynamic params and API validation both derive from this.
+ */
+export const ACTION_CAPABILITIES: ActionCapability[] = [
+  { id: "task.assign", label: "担当者を変更", description: "タスクの担当者を設定・変更します。", requiredParams: ["user_id"] },
+  { id: "task.set_status", label: "Statusを変更", description: "タスクのStatusを変更します。", requiredParams: ["status"] },
+  { id: "task.set_due_date", label: "期日を変更", description: "期日を指定日付、または今日からの日数で設定します。", requiredParams: [] },
+  { id: "task.move_section", label: "セクションを移動", description: "タスクを指定セクションに移動します。", requiredParams: ["section_id"] },
+  { id: "task.complete", label: "タスクを完了", description: "タスクを完了状態にします。", requiredParams: [] },
+  { id: "task.create", label: "タスクを作成", description: "プロジェクトに新しいタスクを作成します。", requiredParams: ["name"] },
+  { id: "task.add_comment", label: "コメントを追加", description: "タスクにコメントを投稿します。変数が使えます。", requiredParams: ["body"] },
+  { id: "task.create_subtask", label: "サブタスクを作成", description: "対象タスクの下にサブタスクを作成します。", requiredParams: ["name"] },
+  { id: "task.set_custom_field", label: "カスタムフィールドを設定", description: "指定フィールドに値を設定します。", requiredParams: ["field_id", "value"] },
+  { id: "project.set_status", label: "プロジェクトステータスを更新", description: "プロジェクトの現在ステータスを更新します。", requiredParams: ["status"] },
+  { id: "task.add_to_project", label: "別プロジェクトに追加", description: "タスクを別プロジェクトにマルチホームします。", requiredParams: ["project_id"] },
+  { id: "webhook.post", label: "Webhookを送信", description: "外部URLへJSONをPOSTします。", requiredParams: ["url"] },
 ];
+
+export const ACTION_IDS = new Set(ACTION_CAPABILITIES.map((action) => action.id));
+
+export function requiredActionParams(capability: string): string[] {
+  return ACTION_CAPABILITIES.find((action) => action.id === capability)?.requiredParams ?? [];
+}
+
+export const ACTION_DESCRIPTORS: Omit<ActionDescriptor, "params">[] = ACTION_CAPABILITIES.map(
+  ({ id, label, description }) => ({ id, label, description }),
+);
 
 const userOptions = async (): Promise<DescriptorOption[]> => {
   const r = await db.query(
