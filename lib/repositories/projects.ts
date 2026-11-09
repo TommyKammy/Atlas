@@ -1,7 +1,6 @@
 import { cache } from "react";
 import { db } from "../db";
 import { normalizeProjectRole, type ProjectRole } from "../project-roles";
-import { DEFAULT_WIDGETS, normalizeWidgets } from "../dashboard-widgets";
 import { normalizeCustomFieldConfig } from "../custom-fields";
 import type { FormField, ProjectForm } from "../forms";
 import type { ProjectApp } from "../integrations";
@@ -68,14 +67,6 @@ export type TaskRow = {
   collaborators?: { id: number; name: string }[];
   eff_section_id?: number | null;
 };
-
-export async function getProjects(workspaceId: number): Promise<Project[]> {
-  const r = await db.query(
-    "SELECT id, name, status, status_options, color, icon FROM projects WHERE workspace_id = $1 AND archived_at IS NULL ORDER BY id",
-    [workspaceId],
-  );
-  return r.rows;
-}
 
 export const getProjectsForUser = cache(async (workspaceId: number, userId: number): Promise<Project[]> => {
   const r = await db.query(
@@ -407,48 +398,6 @@ export async function getSavedView(id: number): Promise<(SavedView & { project_i
   return { ...row, filters: (row.filters ?? {}) as SavedView["filters"] };
 }
 
-export type DashboardExtras = {
-  statusFieldEnabled: boolean;
-  byStatus: { status: string; n: number }[];
-  overdue: { id: number; name: string; due_on: string | null; assignee_name: string | null }[];
-  trend: { day: string; n: number }[];
-};
-
-export async function getDashboardExtras(projectId: number, days = 14): Promise<DashboardExtras> {
-  const window = [7, 14, 30].includes(days) ? days : 14;
-  const [project, byStatus, overdue, trend] = await Promise.all([
-    db.query("SELECT status_field_enabled FROM projects WHERE id = $1", [projectId]),
-    db.query(
-      `SELECT t.status, COUNT(*)::int AS n FROM tasks t
-       WHERE ${projectTaskScope("t")} AND t.parent_task_id IS NULL AND t.deleted_at IS NULL
-       GROUP BY t.status ORDER BY n DESC, t.status`,
-      [projectId],
-    ),
-    db.query(
-      `SELECT t.id, t.name, t.due_on::text AS due_on, u.name AS assignee_name
-       FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
-       WHERE ${projectTaskScope("t")} AND t.parent_task_id IS NULL AND t.deleted_at IS NULL AND NOT t.completed AND t.due_on < CURRENT_DATE
-       ORDER BY t.due_on LIMIT 20`,
-      [projectId],
-    ),
-    db.query(
-      `SELECT to_char(d, 'YYYY-MM-DD') AS day, COUNT(e.id)::int AS n
-       FROM generate_series(CURRENT_DATE - ($2::int - 1), CURRENT_DATE, interval '1 day') AS d
-       LEFT JOIN task_events e ON e.kind = 'completed' AND e.created_at::date = d::date
-         AND EXISTS (SELECT 1 FROM tasks t WHERE t.id = e.task_id AND ${projectTaskScope("t")} AND t.deleted_at IS NULL)
-       GROUP BY d ORDER BY d`,
-      [projectId, window],
-    ),
-  ]);
-  const statusFieldEnabled = project.rows[0]?.status_field_enabled !== false;
-  return {
-    statusFieldEnabled,
-    byStatus: statusFieldEnabled ? byStatus.rows : [],
-    overdue: overdue.rows,
-    trend: trend.rows,
-  };
-}
-
 export type TaskTemplate = {
   id: number;
   name: string;
@@ -461,25 +410,6 @@ export type TaskTemplate = {
   section_name: string | null;
   subtasks: { name: string }[];
 };
-
-export async function getTaskTemplates(projectId: number): Promise<TaskTemplate[]> {
-  const r = await db.query(
-    `SELECT t.id, t.name, t.title_template, t.description, t.assignee_id,
-       u.name AS assignee_name, t.due_offset_days, t.section_id, s.name AS section_name,
-       t.subtasks
-     FROM task_templates t
-     LEFT JOIN users u ON u.id = t.assignee_id
-     LEFT JOIN sections s ON s.id = t.section_id
-     WHERE t.project_id = $1 ORDER BY t.id`,
-    [projectId],
-  );
-  return r.rows.map((row) => ({
-    ...row,
-    subtasks: (Array.isArray(row.subtasks) ? row.subtasks : [])
-      .filter((x: unknown) => typeof x === "object" && x !== null && typeof (x as { name?: unknown }).name === "string")
-      .map((x: { name: string }) => ({ name: x.name.slice(0, 255) })),
-  }));
-}
 
 export async function getProjectTemplateList(workspaceId: number) {
   const r = await db.query(
@@ -547,16 +477,6 @@ export async function getRecentProjects(userId: number | null) {
     [userId],
   );
   return r.rows as { id: number; name: string; color: string | null; icon: string | null }[];
-}
-
-export async function getDashboardPrefs(userId: number | null, projectId: number) {
-  if (userId === null) return DEFAULT_WIDGETS;
-  const r = await db.query("SELECT widgets FROM dashboard_prefs WHERE user_id = $1 AND project_id = $2", [
-    userId,
-    projectId,
-  ]);
-  if (r.rowCount === 0) return DEFAULT_WIDGETS;
-  return normalizeWidgets(r.rows[0].widgets);
 }
 
 export async function getProjectStats(projectId: number): Promise<ProjectStats> {

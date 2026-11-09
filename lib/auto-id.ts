@@ -49,13 +49,3 @@ export async function ensureAutoIdValues(projectId: number): Promise<void> {
     }
   });
 }
-
-/** Ensure a freshly created auto-ID field is populated immediately. */
-export async function backfillAutoIdField(fieldId: number, projectId: number): Promise<void> {
-  const field = await db.query(
-    "SELECT config FROM custom_fields WHERE id = $1::bigint AND field_type = 'auto_id'",
-    [fieldId],
-  );
-  if (field.rowCount === 0) return;
-  await ensureAutoIdValues(projectId);
-}

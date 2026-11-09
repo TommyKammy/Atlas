@@ -34,12 +34,3 @@ export async function patchTask(
     throw error;
   }
 }
-
-export function toggleTaskCompletion(
-  taskId: number,
-  completed: boolean,
-  expectedUpdatedAt?: string | null,
-  extra?: Record<string, unknown>,
-) {
-  return patchTask(taskId, { completed, ...extra }, expectedUpdatedAt);
-}

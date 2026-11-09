@@ -6,10 +6,10 @@ import { audit } from "@/lib/audit";
 import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
 import { withTask } from "@/lib/api/route";
 import { runAutomations } from "@/lib/automation-runner";
-import { nextOccurrence } from "@/lib/recurrence";
 import { validateRichTextDoc } from "@/lib/rich-text-validation";
 import { normalizeMentionLabels } from "@/lib/mentions";
 import { docToMarkdown } from "@/lib/rich-text-markdown";
+import { insertNextOccurrence, validateTaskPatch } from "@/lib/services/task-write";
 
 const PATCHABLE = new Set([
   "name",
@@ -134,6 +134,22 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
     body.description_doc = null;
   }
 
+  const currentRow = await db.query(
+    "SELECT start_on::text AS start_on, due_on::text AS due_on FROM tasks WHERE id = $1::bigint",
+    [taskId],
+  );
+  if (currentRow.rowCount === 0) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  const validated = validateTaskPatch(body, {
+    start_on: (currentRow.rows[0].start_on as string | null) ?? null,
+    due_on: (currentRow.rows[0].due_on as string | null) ?? null,
+  });
+  if (!validated.ok) {
+    return NextResponse.json({ error: validated.error }, { status: 400 });
+  }
+  Object.assign(body, validated.values);
+
   const sets: string[] = [];
   const values: unknown[] = [];
   for (const [k, v] of Object.entries(body)) {
@@ -228,24 +244,7 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
     if (typeof b.completed === "boolean" && b.completed !== prev.completed) {
       await log(b.completed ? "completed" : "reopened", b.completed ? "タスクを完了しました" : "タスクを未完了に戻しました");
       if (b.completed && full && full.parent_task_id === null && full.recurrence !== "none") {
-        const rec = full.recurrence;
-        await db.query(
-          `INSERT INTO tasks (project_id, section_id, parent_task_id, name, description, assignee_id,
-             start_on, due_on, progress, status, recurrence, position)
-           VALUES ($1, $2, NULL, $3, $4, $5, $6::date, $7::date, 0, $8, $9,
-             COALESCE((SELECT MAX(position) FROM tasks WHERE COALESCE(project_id,-1) = COALESCE($1::bigint,-1) AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1) AND parent_task_id IS NULL), 0) + 1000)`,
-          [
-            full.project_id,
-            full.section_id,
-            full.name,
-            full.description,
-            full.assignee_id,
-            nextOccurrence(full.start_on, rec),
-            nextOccurrence(full.due_on, rec),
-            full.status,
-            rec,
-          ],
-        );
+        await insertNextOccurrence(db, full);
         await logEvent(taskId, uid, "recurrence_spawned", "次回のタスクを生成しました").catch(() => undefined);
       }
     }

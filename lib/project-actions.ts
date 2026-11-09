@@ -107,22 +107,3 @@ export const PROJECT_MENU_GROUPS: { label: string; items: ProjectMenuItem[] }[] 
 export function canUseProjectAction(role: ProjectRole, item: ProjectMenuItem): boolean {
   return item.roles.includes(role);
 }
-
-export function projectActionsForRole(role: ProjectRole): ProjectActionKey[] {
-  return [
-    ...new Set(
-      PROJECT_MENU_GROUPS.flatMap((group) =>
-        group.items.flatMap((item) =>
-          canUseProjectAction(role, item)
-            ? [
-                item.key,
-                ...(item.submenu
-                  ?.filter((sub) => !sub.roles || sub.roles.includes(role))
-                  .map((sub) => sub.key) ?? []),
-              ]
-            : [],
-        ),
-      ),
-    ),
-  ];
-}

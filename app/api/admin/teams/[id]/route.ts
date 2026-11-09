@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { withAdminPermission } from "@/lib/api/route";
 import { getAdminTeams } from "@/lib/admin-data";
@@ -62,44 +62,39 @@ export const PATCH = withAdminPermission("teams.manage", async (req, { uid, para
     return NextResponse.json({ error: "nothing to update" }, { status: 400 });
   }
 
-  const client = await db.connect();
+  let updated: { name: string; workspaceId: number } | null = null;
   try {
-    await client.query("BEGIN");
-    const team = await client.query("SELECT id, workspace_id, name FROM teams WHERE id = $1 FOR UPDATE", [id]);
-    if (team.rowCount === 0) {
-      await client.query("ROLLBACK");
-      return NextResponse.json({ error: "not found" }, { status: 404 });
-    }
-    if (sets.length > 0) {
-      values.push(id);
-      await client.query(
-        `UPDATE teams SET ${sets.join(", ")} WHERE id = $${values.length}`,
-        values,
-      );
-    }
-    if (members !== undefined && members !== null) {
-      await client.query("DELETE FROM team_members WHERE team_id = $1", [id]);
-      for (const member of members) {
-        await client.query(
-          "INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-          [id, member.user_id, member.role],
-        );
+    updated = await withTransaction(async (q) => {
+      const team = await q.query("SELECT id, workspace_id, name FROM teams WHERE id = $1 FOR UPDATE", [id]);
+      if (team.rowCount === 0) return null;
+      if (sets.length > 0) {
+        values.push(id);
+        await q.query(`UPDATE teams SET ${sets.join(", ")} WHERE id = $${values.length}`, values);
       }
-    }
-    await client.query("COMMIT");
-    await audit(uid, "team.update", { entity: "team", entityId: id, summary: team.rows[0].name });
-    const workspaceId = Number(team.rows[0].workspace_id);
-    const teams = await getAdminTeams(workspaceId);
-    return NextResponse.json({ teams, team: teams.find((t) => t.id === id) ?? null });
+      if (members !== undefined && members !== null) {
+        await q.query("DELETE FROM team_members WHERE team_id = $1", [id]);
+        for (const member of members) {
+          await q.query(
+            "INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+            [id, member.user_id, member.role],
+          );
+        }
+      }
+      return {
+        name: String(team.rows[0].name),
+        workspaceId: Number(team.rows[0].workspace_id),
+      };
+    });
   } catch (e) {
-    await client.query("ROLLBACK").catch(() => undefined);
     if ((e as { code?: string }).code === "23505") {
       return NextResponse.json({ error: "team name already used" }, { status: 409 });
     }
     throw e;
-  } finally {
-    client.release();
   }
+  if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+  await audit(uid, "team.update", { entity: "team", entityId: id, summary: updated.name });
+  const teams = await getAdminTeams(updated.workspaceId);
+  return NextResponse.json({ teams, team: teams.find((t) => t.id === id) ?? null });
 });
 
 export const DELETE = withAdminPermission("teams.manage", async (_req, { uid, params }) => {

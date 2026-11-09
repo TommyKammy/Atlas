@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { withUser } from "@/lib/api/route";
 
 type Item = { task_id: number; position: number; due_on: string | null };
@@ -40,29 +40,21 @@ export const PUT = withUser(async (req, { uid }) => {
     return NextResponse.json({ error: "task is not assigned to the current user" }, { status: 400 });
   }
 
-  const client = await db.connect();
-  try {
-    await client.query("BEGIN");
+  await withTransaction(async (q) => {
     for (const item of items) {
-      await client.query(
+      await q.query(
         `INSERT INTO my_task_orders (user_id, task_id, position, updated_at)
          VALUES ($1, $2, $3, now())
          ON CONFLICT (user_id, task_id)
          DO UPDATE SET position = EXCLUDED.position, updated_at = now()`,
         [uid, item.task_id, item.position],
       );
-      await client.query(
+      await q.query(
         `UPDATE tasks SET due_on = $2::date, updated_at = now()
          WHERE id = $1 AND assignee_id = $3 AND deleted_at IS NULL`,
         [item.task_id, item.due_on, uid],
       );
     }
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
   return NextResponse.json({ ok: true, count: items.length });
 });

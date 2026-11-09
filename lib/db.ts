@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { Pool, types, type PoolClient } from "pg";
+import { Pool, types, type PoolClient, type QueryResult } from "pg";
 
 // node-pg returns BIGINT as strings by default, which silently breaks
 // every `id === number` comparison. Parse them as integers app-wide.
@@ -10,7 +10,7 @@ const pool = new Pool({
   max: 10,
 });
 
-export type Queryable = Pick<PoolClient, "query">;
+export type Queryable = { query: (text: string, params?: unknown[]) => Promise<QueryResult> };
 
 /** Run a multi-write flow atomically. Callers pass the transaction client to services. */
 export async function withTransaction<T>(fn: (q: PoolClient) => Promise<T>): Promise<T> {

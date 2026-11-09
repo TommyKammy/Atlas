@@ -68,7 +68,3 @@ export const PROJECT_TAB_VIEW_OPTIONS: readonly ProjectTabViewOption[] = [
     group: "other",
   },
 ] as const;
-
-export function projectTabViewLabel(value: string): string {
-  return PROJECT_TAB_VIEW_OPTIONS.find((option) => option.value === value)?.label ?? value;
-}

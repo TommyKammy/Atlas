@@ -13,11 +13,6 @@ const port = Number(process.env.APP_PORT || 3000);
 const app = next({ dev: false, dir: "./" });
 const handle = app.getRequestHandler();
 
-function isLoopback(req) {
-  const addr = String(req.socket?.remoteAddress || "");
-  return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
-}
-
 app.prepare().then(async () => {
   const bus = await import("./lib/bus.mjs");
 

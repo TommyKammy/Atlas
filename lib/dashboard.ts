@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, withTransaction } from "./db";
 import { normaliseWidgetFilters, normaliseWidgetOptions } from "./dashboard-compute";
 import {
   defaultDashboardWidgets,
@@ -48,17 +48,15 @@ async function ensureDefaultWidgets(projectId: number): Promise<void> {
   );
   if (project.rows[0]?.dashboard_initialized === true) return;
   const defaults = defaultDashboardWidgets();
-  const client = await db.connect();
-  try {
-    await client.query("BEGIN");
-    await client.query("SELECT pg_advisory_xact_lock($1)", [projectId]);
-    const again = await client.query(
+  await withTransaction(async (q) => {
+    await q.query("SELECT pg_advisory_xact_lock($1)", [projectId]);
+    const again = await q.query(
       "SELECT dashboard_initialized FROM projects WHERE id = $1 FOR UPDATE",
       [projectId],
     );
     if (again.rows[0]?.dashboard_initialized !== true) {
       for (const [index, widget] of defaults.entries()) {
-        await client.query(
+        await q.query(
           `INSERT INTO project_dashboard_widgets
              (project_id, title, widget_type, chart_type, group_by, metric, filters, options, body, position)
            VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10)`,
@@ -76,15 +74,9 @@ async function ensureDefaultWidgets(projectId: number): Promise<void> {
           ],
         );
       }
-      await client.query("UPDATE projects SET dashboard_initialized = TRUE WHERE id = $1", [projectId]);
+      await q.query("UPDATE projects SET dashboard_initialized = TRUE WHERE id = $1", [projectId]);
     }
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 export async function getDashboardWidgets(projectId: number): Promise<DashboardWidget[]> {
@@ -140,10 +132,8 @@ export async function getDashboardPageData(projectId: number) {
 export async function reorderDashboardWidgets(projectId: number, order: number[]): Promise<DashboardWidget[]> {
   const ids = [...new Set(order.filter((id) => Number.isInteger(id) && id > 0))];
   if (ids.length === 0) return getDashboardWidgets(projectId);
-  const client = await db.connect();
-  try {
-    await client.query("BEGIN");
-    const owned = await client.query(
+  await withTransaction(async (q) => {
+    const owned = await q.query(
       "SELECT id FROM project_dashboard_widgets WHERE project_id = $1",
       [projectId],
     );
@@ -151,18 +141,12 @@ export async function reorderDashboardWidgets(projectId: number, order: number[]
     let position = 1000;
     for (const id of ids) {
       if (!ownedIds.has(id)) continue;
-      await client.query(
+      await q.query(
         "UPDATE project_dashboard_widgets SET position = $1, updated_at = now() WHERE id = $2 AND project_id = $3",
         [position, id, projectId],
       );
       position += 1000;
     }
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
   return getDashboardWidgets(projectId);
 }

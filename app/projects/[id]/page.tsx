@@ -45,11 +45,16 @@ import ProjectMemberFacepile from "@/components/project/ProjectMemberFacepile";
 import ProjectShareButton from "@/components/ProjectShareButton";
 import ProjectCustomizeButton from "@/components/ProjectCustomizeButton";
 import { getCurrentUserId } from "@/lib/current-user";
-import { parseListDateFilter, parseListGroupBy, parseListSortKey } from "@/lib/list-view";
+import {
+  buildBoardInitial,
+  buildBoardInitialGroup,
+  buildCalendarInitial,
+  buildListInitial,
+  parseProjectViewSearch,
+  searchParamString,
+} from "@/lib/project-view-params";
 
 export const instant = false;
-
-const VIEWS = new Set(["overview", "dashboard", "list", "board", "timeline", "calendar", "messages", "knowledge", "files", "forms"]);
 
 export default async function ProjectPage(props: {
   params: Promise<{ id: string }>;
@@ -63,40 +68,10 @@ export default async function ProjectPage(props: {
   const project = await getProject(projectId);
   if (!project || project.deleted_at) notFound();
 
-  const explicitView =
-    typeof searchParams.view === "string" && VIEWS.has(searchParams.view)
-      ? searchParams.view
-      : null;
-  const view = explicitView ?? "list";
-  const taskId =
-    typeof searchParams.task === "string" && /^\d+$/.test(searchParams.task)
-      ? Number(searchParams.task)
-      : null;
-  const month =
-    typeof searchParams.month === "string" && /^\d{4}-\d{2}$/.test(searchParams.month)
-      ? searchParams.month
-      : new Date().toISOString().slice(0, 7);
-  const zoomRaw = typeof searchParams.zoom === "string" ? searchParams.zoom : "";
-  const weekRaw = typeof searchParams.week === "string" ? searchParams.week : "";
-  const week =
-    zoomRaw === "week" && /^\d{4}-\d{2}-\d{2}$/.test(weekRaw) && !Number.isNaN(Date.parse(weekRaw))
-      ? weekRaw
-      : null;
-  const savedId =
-    typeof searchParams.saved === "string" && /^\d+$/.test(searchParams.saved)
-      ? Number(searchParams.saved)
-      : null;
-  const qstr = (k: string) => (typeof searchParams[k] === "string" ? (searchParams[k] as string) : "");
-  const sortRaw = qstr("sort");
-  const sortDirParam = qstr("sortdir") === "desc" ? "desc" : "asc";
-  const dueParam = ["overdue", "today", "week", "nextweek", "month"].includes(qstr("due"))
-    ? qstr("due")
-    : "";
-  const fromRaw = qstr("from");
-  const fromDay = /^\d{4}-\d{2}-\d{2}$/.test(fromRaw) && !Number.isNaN(Date.parse(fromRaw))
-    ? Math.floor(Date.parse(fromRaw) / 86400000)
-    : null;
-  const groupRaw = qstr("group");
+  const parsedSearch = parseProjectViewSearch(searchParams);
+  const { explicitView, view, taskId, month, week, savedId, fromDay } = parsedSearch;
+  const qstr = (k: string) => searchParamString(searchParams, k);
+
   const viewerId = await getCurrentUserId();
   if (!viewerId) notFound();
   const access = await getProjectAccess(viewerId, projectId);
@@ -141,66 +116,6 @@ export default async function ProjectPage(props: {
   const formsData = view === "forms" ? await getFormsViewData(projectId) : null;
   const filesData = view === "files" ? await getFilesViewData(projectId) : null;
 
-  const calendarStored: Record<string, string | number | boolean | null> = viewStates.calendar ?? {};
-  const calendarExplicit =
-    ["completed", "hide", "assignee", "status", "due", "created", "updated", "completed_on", "creator", "weekends", "multi", "color", "start"].some(
-      (key) => qstr(key) !== "",
-    ) || Object.keys(searchParams).some((key) => key.startsWith("cf_"));
-  const calPick = (key: string) => {
-    const urlValue = qstr(key);
-    if (urlValue !== "") return urlValue;
-    if (calendarExplicit) return "";
-    const stored = calendarStored[key];
-    return typeof stored === "string" ? stored : "";
-  };
-  const calendarAssignee = /^\d+$/.test(calPick("assignee"))
-    ? calPick("assignee")
-    : calPick("assignee") === "none"
-      ? "none"
-      : "";
-  const calendarCompleted =
-    qstr("completed") === "open" || qstr("completed") === "done"
-      ? qstr("completed")
-      : qstr("hide") === "1"
-        ? "open"
-        : !calendarExplicit && (calendarStored.completed === "open" || calendarStored.completed === "done")
-          ? calendarStored.completed
-          : "";
-  const calendarCustom: Record<string, string> = {};
-  for (const [key, value] of Object.entries(searchParams)) {
-    if (key.startsWith("cf_") && typeof value === "string" && value) {
-      calendarCustom[key.slice(3)] = value;
-    }
-  }
-  if (Object.keys(calendarCustom).length === 0 && !calendarExplicit && typeof calendarStored.custom === "string") {
-    try {
-      const parsed = JSON.parse(calendarStored.custom) as unknown;
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        for (const [key, value] of Object.entries(parsed)) {
-          if (typeof value === "string" && value !== "") calendarCustom[key] = value;
-        }
-      }
-    } catch {
-      /* ignore malformed stored filter */
-    }
-  }
-  const calendarBool = (key: string, fallback: boolean) => {
-    const urlValue = qstr(key);
-    if (urlValue !== "") return urlValue !== "0";
-    if (calendarExplicit) return fallback;
-    return typeof calendarStored[key] === "boolean" ? (calendarStored[key] as boolean) : fallback;
-  };
-
-  const storedString = (viewKey: string, key: string, allowed?: readonly string[]) => {
-    const v = viewStates[viewKey]?.[key];
-    return typeof v === "string" && (allowed === undefined || allowed.includes(v)) ? v : "";
-  };
-  const storedBool = (viewKey: string, key: string) => viewStates[viewKey]?.[key] === true;
-  const storedBoolDefault = (viewKey: string, key: string, fallback: boolean) => {
-    const value = viewStates[viewKey]?.[key];
-    return typeof value === "boolean" ? value : fallback;
-  };
-
   const savedView = view === "list" && savedId ? await getSavedView(savedId) : undefined;
   const activeSaved =
     savedView && savedView.project_id === projectId && savedView.view_type === "list" ? savedView : undefined;
@@ -219,114 +134,19 @@ export default async function ProjectPage(props: {
   const activeBoardTab = activeTabFor("board");
   const activeTimelineTab = activeTabFor("timeline");
   const activeCalendarTab = activeTabFor("calendar");
-  const listSort = parseListSortKey(
-    activeSaved
-      ? activeSaved.sort_key
-      : sortRaw !== ""
-        ? sortRaw
-        : storedString("list", "sort"),
-  );
-  const listSortDir =
-    qstr("sortdir") !== ""
-      ? sortDirParam
-      : ((storedString("list", "sortdir", ["asc", "desc"]) || "asc") as "asc" | "desc");
-  const listGroup = parseListGroupBy(
-    activeSaved
-      ? activeSaved.group_by
-      : groupRaw !== ""
-        ? groupRaw
-        : storedString("list", "group"),
-    project.status_field_enabled !== false,
-  );
-  const rawGroup2 =
-    activeSaved
-      ? (activeSaved.filters.group2 ?? "")
-      : qstr("group2") !== ""
-        ? qstr("group2")
-        : storedString("list", "group2");
-  const parsedGroup2 = rawGroup2 ? parseListGroupBy(rawGroup2, project.status_field_enabled !== false) : null;
-  const listGroup2 =
-    parsedGroup2 && (parsedGroup2 !== "section" || rawGroup2 === "section") ? parsedGroup2 : null;
-  const listGroupDir =
-    activeSaved
-      ? activeSaved.filters.groupdir === "desc"
-        ? "desc"
-        : "asc"
-      : qstr("groupdir") !== ""
-        ? qstr("groupdir") === "desc"
-          ? "desc"
-          : "asc"
-        : ((storedString("list", "groupdir", ["asc", "desc"]) || "asc") as "asc" | "desc");
-  const listSubtasksCollapsed = activeSaved
-    ? activeSaved.filters.subtasks_collapsed === true
-    : qstr("subtasks") !== ""
-      ? qstr("subtasks") === "collapsed"
-      : storedBool("list", "subtasks_collapsed");
-  const listInitial = {
-    hide_completed: activeSaved
-      ? activeSaved.filters.hide_completed === true
-      : searchParams.hide !== undefined
-        ? qstr("hide") === "1"
-        : qstr("completed") === "open"
-          ? true
-          : storedBool("list", "hide_completed"),
-    completed_only: activeSaved
-      ? activeSaved.filters.completed_only === true
-      : qstr("completed") === "done"
-        ? true
-        : storedBool("list", "completed_only"),
-    mine_only: activeSaved
-      ? activeSaved.filters.mine_only === true
-      : qstr("mine") !== ""
-        ? qstr("mine") === "1"
-        : storedBool("list", "mine_only"),
-    assignee: activeSaved
-      ? (activeSaved.filters.assignee ?? "")
-      : qstr("assignee") !== ""
-        ? qstr("assignee")
-        : storedString("list", "assignee"),
-    status: activeSaved
-      ? (activeSaved.filters.status ?? "")
-      : qstr("status") !== ""
-        ? qstr("status")
-        : storedString("list", "status"),
-    due: activeSaved
-      ? (activeSaved.filters.due ?? "")
-      : dueParam !== ""
-        ? dueParam
-        : storedString("list", "due", ["overdue", "today", "week", "nextweek", "month"]),
-    start: activeSaved
-      ? parseListDateFilter(activeSaved.filters.start)
-      : qstr("start") !== ""
-        ? parseListDateFilter(qstr("start"))
-        : parseListDateFilter(storedString("list", "start")),
-    creator: activeSaved
-      ? (activeSaved.filters.creator ?? "")
-      : qstr("creator") !== ""
-        ? qstr("creator")
-        : storedString("list", "creator"),
-    created: activeSaved
-      ? parseListDateFilter(activeSaved.filters.created)
-      : qstr("created") !== ""
-        ? parseListDateFilter(qstr("created"))
-        : parseListDateFilter(storedString("list", "created")),
-    updated: activeSaved
-      ? parseListDateFilter(activeSaved.filters.updated)
-      : qstr("updated") !== ""
-        ? parseListDateFilter(qstr("updated"))
-        : parseListDateFilter(storedString("list", "updated")),
-    completed_on: activeSaved
-      ? parseListDateFilter(activeSaved.filters.completed_on)
-      : qstr("completed_on") !== ""
-        ? parseListDateFilter(qstr("completed_on"))
-        : parseListDateFilter(storedString("list", "completed_on")),
-    sort: listSort,
-    sortdir: listSortDir,
-    group: listGroup,
-    group2: listGroup2 ?? undefined,
-    groupdir: listGroupDir,
-    subtasks_collapsed: listSubtasksCollapsed,
-  };
+  const listInitial = buildListInitial({
+    searchParams,
+    stored: viewStates.list,
+    saved: activeSaved,
+    statusFieldEnabled: project.status_field_enabled !== false,
+  });
+  const boardInitial = buildBoardInitial({ searchParams, stored: viewStates.board });
+  const boardInitialGroup = buildBoardInitialGroup({
+    searchParams,
+    stored: viewStates.board,
+    statusFieldEnabled: project.status_field_enabled !== false,
+  });
+  const calendarInitial = buildCalendarInitial({ searchParams, stored: viewStates.calendar });
 
   return (
     <div className="flex min-h-full flex-col md:flex-row">
@@ -458,61 +278,11 @@ export default async function ProjectPage(props: {
             viewIcon={activeBoardTab?.icon ?? null}
             viewTabId={activeBoardTab && activeBoardTab.id > 0 ? activeBoardTab.id : null}
             canEdit={access.role === "admin" || access.role === "editor"}
-            initialGroup={parseListGroupBy(
-              groupRaw !== "" ? groupRaw : storedString("board", "group"),
-              project.status_field_enabled !== false,
-            )}
+            initialGroup={boardInitialGroup}
             statusFieldName={project.status_field_name ?? "Status"}
             statusFieldEnabled={project.status_field_enabled !== false}
             statusOptions={project.status_options ?? []}
-            initial={{
-              hide_completed:
-                searchParams.hide !== undefined
-                  ? qstr("hide") === "1"
-                  : storedBoolDefault("board", "hide_completed", false),
-              completed_only:
-                qstr("completed") === "done" || storedBoolDefault("board", "completed_only", false),
-              mine_only:
-                qstr("mine") !== ""
-                  ? qstr("mine") === "1"
-                  : storedBoolDefault("board", "mine_only", false),
-              assignee: qstr("assignee") !== "" ? qstr("assignee") : storedString("board", "assignee"),
-              status: qstr("status") !== "" ? qstr("status") : storedString("board", "status"),
-              due:
-                qstr("due") !== ""
-                  ? qstr("due")
-                  : storedString("board", "due", ["overdue", "today", "week", "nextweek", "month"]),
-              start:
-                qstr("start") !== ""
-                  ? qstr("start")
-                  : storedString("board", "start"),
-              creator: qstr("creator") !== "" ? qstr("creator") : storedString("board", "creator"),
-              created:
-                qstr("created") !== ""
-                  ? qstr("created")
-                  : storedString("board", "created"),
-              updated:
-                qstr("updated") !== ""
-                  ? qstr("updated")
-                  : storedString("board", "updated"),
-              completed_on:
-                qstr("completed_on") !== ""
-                  ? qstr("completed_on")
-                  : storedString("board", "completed_on"),
-              sort: parseListSortKey(
-                sortRaw !== "" ? sortRaw : storedString("board", "sort"),
-              ),
-              sortdir:
-                qstr("sortdir") !== ""
-                  ? sortDirParam
-                  : ((storedString("board", "sortdir", ["asc", "desc"]) || "asc") as "asc" | "desc"),
-              show_empty_groups: storedBoolDefault("board", "show_empty_groups", true),
-              auto_refresh: storedBoolDefault("board", "auto_refresh", true),
-              show_assignee: storedBoolDefault("board", "show_assignee", true),
-              show_due: storedBoolDefault("board", "show_due", true),
-              show_status: storedBoolDefault("board", "show_status", true),
-              show_meta: storedBoolDefault("board", "show_meta", true),
-            }}
+            initial={boardInitial}
           />
         )}
         {view === "timeline" && timelineData && (
@@ -566,25 +336,7 @@ export default async function ProjectPage(props: {
             viewIcon={activeCalendarTab?.icon ?? null}
             viewTabId={activeCalendarTab && activeCalendarTab.id > 0 ? activeCalendarTab.id : null}
             canEdit={access.role === "admin" || access.role === "editor"}
-            initial={{
-              completed: calendarCompleted as "" | "open" | "done",
-              assignee: calendarAssignee,
-              status: calPick("status"),
-              custom: calendarCustom,
-              due: calPick("due") || dueParam,
-              created: ["today", "7", "30"].includes(calPick("created")) ? calPick("created") : "",
-              updated: ["today", "7", "30"].includes(calPick("updated")) ? calPick("updated") : "",
-              completedOn: ["today", "7", "30"].includes(calPick("completed_on")) ? calPick("completed_on") : "",
-              creator: /^\d+$/.test(calPick("creator"))
-                ? calPick("creator")
-                : calPick("creator") === "none"
-                  ? "none"
-                  : "",
-              weekends: calendarBool("weekends", true),
-              multi: calendarBool("multi", true),
-              color: calPick("color") || "none",
-              weekStart: calPick("start") === "1" ? 1 : 0,
-            }}
+            initial={calendarInitial}
           />
         )}
         </div>

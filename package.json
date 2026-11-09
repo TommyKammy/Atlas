@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "tsx --test lib/*.test.ts lib/services/*.test.ts",
     "backfill:rich-text": "tsx scripts/backfill-rich-text.ts"
   },
   "dependencies": {

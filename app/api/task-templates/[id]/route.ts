@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { logEvent } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { shiftDate } from "@/lib/timeline-dnd";
@@ -84,27 +84,30 @@ export const POST = withResourceProject("edit", "task_templates", async (_req, {
     tpl.due_offset_days === null
       ? null
       : shiftDate(todayISO(), tpl.due_offset_days);
-  const created = await db.query(
-    `INSERT INTO tasks (project_id, section_id, parent_task_id, name, description, assignee_id,
-       due_on, progress, status, position)
-     VALUES ($1, $2, NULL, $3, $4, $5, $6::date, 0, 'inbox',
-       COALESCE((SELECT MAX(position) FROM tasks
-                 WHERE COALESCE(project_id,-1) = COALESCE($1::bigint,-1)
-                   AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1)
-                   AND parent_task_id IS NULL), 0) + 1000)
-     RETURNING id`,
-    [projectId, overrideSection, tpl.title_template, tpl.description, tpl.assignee_id, due],
-  );
-  const taskId = created.rows[0].id as number;
-  const subs = Array.isArray(tpl.subtasks) ? tpl.subtasks : [];
-  for (const [i, st] of subs.entries()) {
-    if (typeof st?.name !== "string" || st.name.trim() === "") continue;
-    await db.query(
-      `INSERT INTO tasks (project_id, section_id, parent_task_id, name, position)
-       VALUES ($1, $2, $3, $4, ${(i + 1) * 1000})`,
-      [projectId, overrideSection, taskId, st.name.trim().slice(0, 255)],
+  const taskId = await withTransaction(async (q) => {
+    const created = await q.query(
+      `INSERT INTO tasks (project_id, section_id, parent_task_id, name, description, assignee_id,
+         due_on, progress, status, position)
+       VALUES ($1, $2, NULL, $3, $4, $5, $6::date, 0, 'inbox',
+         COALESCE((SELECT MAX(position) FROM tasks
+                   WHERE COALESCE(project_id,-1) = COALESCE($1::bigint,-1)
+                     AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1)
+                     AND parent_task_id IS NULL), 0) + 1000)
+       RETURNING id`,
+      [projectId, overrideSection, tpl.title_template, tpl.description, tpl.assignee_id, due],
     );
-  }
+    const id = Number(created.rows[0].id);
+    const subs = Array.isArray(tpl.subtasks) ? tpl.subtasks : [];
+    for (const [i, st] of subs.entries()) {
+      if (typeof st?.name !== "string" || st.name.trim() === "") continue;
+      await q.query(
+        `INSERT INTO tasks (project_id, section_id, parent_task_id, name, position)
+         VALUES ($1, $2, $3, $4, ${(i + 1) * 1000})`,
+        [projectId, overrideSection, id, st.name.trim().slice(0, 255)],
+      );
+    }
+    return id;
+  });
   await logEvent(taskId, uid, "created", "タスクをテンプレートから作成しました").catch(() => undefined);
   await notifyProject(projectId);
   return NextResponse.json({ id: taskId }, { status: 201 });

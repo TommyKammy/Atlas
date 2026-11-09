@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { logEvent } from "@/lib/data";
+import { db, withTransaction } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
 import { getTaskProjectIds, requireProjectPermission, requireWorkspaceAdmin } from "@/lib/api-project-auth";
-import { nextOccurrence } from "@/lib/recurrence";
 import { withUser } from "@/lib/api/route";
 import { audit } from "@/lib/audit";
 import { runAutomations } from "@/lib/automation-runner";
+import { insertNextOccurrence, type RecurringTask } from "@/lib/services/task-write";
 
 // Bulk task operations (last-writer-wins; per-item conflict UI is out of scope).
 // Body: { ids: number[], op: "complete"|"reopen"|"move"|"assign"|"delete",
@@ -52,57 +51,45 @@ export const POST = withUser(async (req, { uid }) => {
   let updated = 0;
   if (op === "complete" || op === "reopen") {
     const done = op === "complete";
-    const r = await db.query(
-      `UPDATE tasks SET completed = $1, completed_at = ${done ? "now()" : "NULL"}, updated_at = now()
-       WHERE id = ANY($2::bigint[]) RETURNING id`,
-      [done, ids],
-    );
-    updated = r.rowCount ?? 0;
-    for (const row of r.rows) {
-      await logEvent(row.id, uid, done ? "completed" : "reopened", done ? "タスクを完了しました" : "タスクを未完了に戻しました").catch(
-        () => undefined,
+    const updatedIds = await withTransaction(async (q) => {
+      const r = await q.query(
+        `UPDATE tasks SET completed = $1, completed_at = ${done ? "now()" : "NULL"}, updated_at = now()
+         WHERE id = ANY($2::bigint[]) RETURNING id`,
+        [done, ids],
       );
-    }
-    if (done) {
-      for (const id of ids) {
-        const projectId = projects.get(id) ?? null;
-        if (projectId !== null) await runAutomations(projectId, id, "task_completed").catch(() => undefined);
-      }
-      const rec = await db.query(
-        `SELECT id, project_id, section_id, name, description, assignee_id,
-           start_on::text AS start_on, due_on::text AS due_on, status, recurrence
-         FROM tasks WHERE id = ANY($1::bigint[]) AND recurrence <> 'none' AND parent_task_id IS NULL`,
-        [ids],
-      );
-      for (const t of rec.rows as {
-        id: number;
-        project_id: number | null;
-        section_id: number | null;
-        name: string;
-        description: string;
-        assignee_id: number | null;
-        start_on: string | null;
-        due_on: string | null;
-        status: string;
-        recurrence: string;
-      }[]) {
-        await db.query(
-          `INSERT INTO tasks (project_id, section_id, parent_task_id, name, description, assignee_id,
-             start_on, due_on, progress, status, recurrence, position)
-           VALUES ($1, $2, NULL, $3, $4, $5, $6::date, $7::date, 0, $8, $9,
-             COALESCE((SELECT MAX(position) FROM tasks WHERE COALESCE(project_id,-1) = COALESCE($1::bigint,-1) AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1) AND parent_task_id IS NULL), 0) + 1000)`,
+      const changed = r.rows.map((row) => Number(row.id));
+      if (changed.length > 0) {
+        await q.query(
+          `INSERT INTO task_events (task_id, actor_id, kind, summary)
+           SELECT id, $2::bigint, $3, $4 FROM tasks WHERE id = ANY($1::bigint[])`,
           [
-            t.project_id,
-            t.section_id,
-            t.name,
-            t.description,
-            t.assignee_id,
-            nextOccurrence(t.start_on, t.recurrence),
-            nextOccurrence(t.due_on, t.recurrence),
-            t.status,
-            t.recurrence,
+            changed,
+            uid,
+            done ? "completed" : "reopened",
+            done ? "タスクを完了しました" : "タスクを未完了に戻しました",
           ],
         );
+      }
+      if (done && changed.length > 0) {
+        const rec = await q.query(
+          `SELECT id, project_id, section_id, name, description, assignee_id,
+             start_on::text AS start_on, due_on::text AS due_on, status, recurrence
+           FROM tasks WHERE id = ANY($1::bigint[]) AND recurrence <> 'none' AND parent_task_id IS NULL`,
+          [changed],
+        );
+        for (const task of rec.rows as RecurringTask[]) {
+          await insertNextOccurrence(q, task);
+        }
+      }
+      return changed;
+    });
+    updated = updatedIds.length;
+    if (done) {
+      for (const id of updatedIds) {
+        const projectId = projects.get(id) ?? null;
+        if (projectId !== null) {
+          await runAutomations(projectId, id, "task_completed").catch(() => undefined);
+        }
       }
     }
   } else if (op === "move") {
@@ -139,11 +126,7 @@ export const POST = withUser(async (req, { uid }) => {
   } else {
     return NextResponse.json({ error: "unknown op" }, { status: 400 });
   }
-  const pr = await db.query(
-    `SELECT DISTINCT project_id FROM tasks WHERE id = ANY($1::bigint[])`,
-    [ids],
-  ).catch(() => ({ rows: [] as { project_id: number }[] }));
-  for (const row of pr.rows) await notifyProject(row.project_id);
+  for (const projectId of projectIds) await notifyProject(projectId);
   await audit(uid, "task.bulk", { entity: "task", summary: `${String(op)}:${updated}` });
   // Deleted tasks have no rows left; notify their sections' projects best-effort is skipped.
   return NextResponse.json({ updated });

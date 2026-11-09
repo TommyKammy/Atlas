@@ -26,14 +26,6 @@ export async function getProjectTasks(projectId: number): Promise<TaskRow[]> {
   return r.rows.map(toTaskRow);
 }
 
-export async function getTask(taskId: number) {
-  const r = await db.query(
-    `SELECT ${TASK_SELECT_COLS} ${TASK_FROM} WHERE t.id = $1 AND t.deleted_at IS NULL`,
-    [taskId],
-  );
-  return r.rows[0] ? toTaskRow(r.rows[0] as TaskRow) : undefined;
-}
-
 /** Task scoped to a project the caller can already see (primary, multi-home, or subtask). */
 export async function getTaskForProject(taskId: number, projectId: number) {
   const r = await db.query(
