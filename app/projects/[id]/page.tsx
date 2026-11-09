@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import type { TaskRow } from "@/lib/data";
 import {
   getProject,
   getProjectAccess,
@@ -119,7 +120,7 @@ export default async function ProjectPage(props: {
 
   const contextTasks = (() => {
     if (listData) {
-      const map = new Map<number, (typeof listData.tasks)[number]>();
+      const map = new Map<number, TaskRow>();
       for (const item of listData.tasks) map.set(item.id, item);
       for (const items of Object.values(listData.subtaskMap)) {
         for (const item of items) map.set(item.id, item);
