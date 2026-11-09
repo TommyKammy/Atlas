@@ -13,3 +13,17 @@ export function isSingleDayTimelineTask(
   const end = task.due_on ?? task.start_on;
   return start !== null && end !== null && start === end;
 }
+
+/**
+ * Asana keeps labels inside multi-day bars at coarse zoom and only moves
+ * single-day/milestone labels outside. At day/week zoom Atlas keeps the
+ * external label for very short multi-day bars so the name stays readable.
+ */
+export function usesTimelineExternalLabel(
+  task: Pick<TaskRow, "start_on" | "due_on" | "is_milestone">,
+  barPx: number,
+  dayWidth: number,
+): boolean {
+  if (task.is_milestone || isSingleDayTimelineTask(task)) return true;
+  return dayWidth >= 24 && barPx < 52;
+}

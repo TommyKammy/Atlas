@@ -64,6 +64,7 @@ export type TaskRow = {
   created_at: string;
   updated_at: string;
   recurrence: string;
+  timeline_row?: number | null;
   project_name?: string | null;
   like_count?: number;
   comment_count: number;

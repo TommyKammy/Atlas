@@ -230,6 +230,22 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
         is_milestone: boolean;
       }
     | undefined;
+  if (prev) {
+    const nextSection =
+      "section_id" in b
+        ? b.section_id === null || b.section_id === ""
+          ? null
+          : Number(b.section_id)
+        : prev.section_id;
+    if (
+      ("section_id" in b && nextSection !== prev.section_id) ||
+      targetProjectId !== currentProjectId
+    ) {
+      await db
+        .query("DELETE FROM task_timeline_rows WHERE task_id = $1::bigint", [taskId])
+        .catch(() => undefined);
+    }
+  }
   const full = (
     await db.query(
       `SELECT project_id, section_id, parent_task_id, name, description, assignee_id,

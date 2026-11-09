@@ -8,6 +8,10 @@ import TaskCompletionToggle from "../task/TaskCompletionToggle";
 export type TimelineBarProps = {
   task: TaskRow;
   lane: number;
+  rowLocked: boolean;
+  overlapping: boolean;
+  externalLabel: boolean;
+  onMoveRow: (delta: number) => void;
   x1: string;
   x2: string;
   skinny: boolean;
@@ -71,6 +75,10 @@ function MilestoneDiamond({
 function TimelineBar({
   task,
   lane,
+  rowLocked,
+  overlapping,
+  externalLabel,
+  onMoveRow,
   x1,
   x2,
   skinny,
@@ -134,19 +142,31 @@ function TimelineBar({
       <div
         data-timeline-bar={task.id}
         data-timeline-lane={lane}
+        data-timeline-row-locked={rowLocked ? "true" : undefined}
+        data-timeline-overlap={overlapping ? "true" : undefined}
         data-timeline-dependency-target={dependencyTarget ? "true" : undefined}
         aria-label={barInfo}
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (!event.altKey) return;
+          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+          event.preventDefault();
+          event.stopPropagation();
+          onMoveRow(event.key === "ArrowUp" ? -1 : 1);
+        }}
         onPointerDown={onBarPointerDown}
         onPointerMove={onBarPointerMove}
         onPointerUp={onBarPointerUp}
         onPointerEnter={onBarEnter}
         onPointerLeave={onBarLeave}
         onClick={onBarClick}
-        className={`tl-bar absolute top-[3px] flex min-w-2 cursor-grab select-none touch-none items-center gap-1.5 overflow-visible rounded-[4px] px-2 text-[12px] transition-[width,box-shadow] duration-150 active:cursor-grabbing hover:z-30 hover:shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${
+        className={`tl-bar group absolute top-[3px] flex min-w-2 cursor-grab select-none touch-none items-center gap-1.5 overflow-visible rounded-[4px] px-2 text-[12px] transition-[width,box-shadow] duration-150 active:cursor-grabbing hover:z-30 hover:shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${
           collapsedMarker && milestone ? "bg-transparent shadow-none" : barFaceClass
         } ${
           active ? "z-30 shadow-lg" : "z-10"
         } ${dependencyTarget ? "ring-2 ring-[#2c60b8] ring-offset-1" : ""} ${
+          overlapping ? "outline outline-2 outline-offset-1 outline-amber-400" : ""
+        } ${
           dx !== 0 ? "opacity-80" : ""
         }`}
         style={{
@@ -156,6 +176,13 @@ function TimelineBar({
           ...(hovered && !markerStyle ? { paddingLeft: 26 } : {}),
         }}
       >
+        {rowLocked && (
+          <span
+            title="行を固定中"
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#2c60b8] opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+          />
+        )}
         {!skinny && showAvatar && !milestone && task.assignee_name && (
           <TaskAvatar name={task.assignee_name} className="h-6 w-6" />
         )}
@@ -167,7 +194,7 @@ function TimelineBar({
             />
             {outsideLabel}
           </>
-        ) : skinny || sameDay ? (
+        ) : externalLabel ? (
           <>
             {sameDay && hovered && (
               <span

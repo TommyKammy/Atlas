@@ -120,6 +120,11 @@ export const POST = withUser(async (req, { uid }) => {
       [body.section_id ?? null, ids],
     );
     updated = r.rowCount ?? 0;
+    if (projectIds.size > 0) {
+      await db
+        .query("DELETE FROM task_timeline_rows WHERE task_id = ANY($1::bigint[])", [ids])
+        .catch(() => undefined);
+    }
     for (const id of ids) {
       const projectId = projects.get(id) ?? null;
       if (projectId !== null) {

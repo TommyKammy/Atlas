@@ -51,6 +51,10 @@ export function toTaskRow(row: TaskRow): TaskRow {
     created_by: row.created_by === null ? null : Number(row.created_by),
     progress: Number(row.progress),
     is_milestone: row.is_milestone === true,
+    timeline_row:
+      row.timeline_row === null || row.timeline_row === undefined
+        ? null
+        : Number(row.timeline_row),
     position: Number(row.position),
     like_count: Number(row.like_count ?? 0),
     comment_count: Number(row.comment_count ?? 0),

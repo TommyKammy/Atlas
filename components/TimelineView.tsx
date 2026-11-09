@@ -15,7 +15,6 @@ import {
 } from "@/lib/list-view";
 import { dayDeltaFromPixels, shiftDate } from "@/lib/timeline-dnd";
 import { criticalPath } from "@/lib/critical-path";
-import { positionBetween } from "@/lib/order";
 import { todayISO } from "@/lib/dates";
 import EmptyState from "./EmptyState";
 import TaskAvatar from "./task/TaskAvatar";
@@ -26,8 +25,8 @@ import TimelineDependencyLayer from "./timeline/TimelineDependencyLayer";
 import TimelineToolbar from "./timeline/TimelineToolbar";
 import { usePersistedViewState } from "@/lib/view-state-client";
 import { dayOrNull } from "@/lib/task-dates";
-import { isSingleDayTimelineTask } from "@/lib/timeline-marker";
-import { assignTimelineLanes, timelineInterval } from "@/lib/timeline-lanes";
+import { isSingleDayTimelineTask, usesTimelineExternalLabel } from "@/lib/timeline-marker";
+import { assignTimelineLanes, estimateTimelineLabelDays, timelineInterval } from "@/lib/timeline-lanes";
 
 const DAY_MS = 86_400_000;
 
@@ -191,15 +190,17 @@ export default function TimelineView({
   const [hoveredDep, setHoveredDep] = useState<string | null>(null);
   const barHoverTimer = useRef<number | null>(null);
   const barHoverIdRef = useRef<number | null>(null);
+  const longPressTimer = useRef<number | null>(null);
   const depHoverTimer = useRef<number | null>(null);
   const [drag, setDrag] = useState<{
     id: number;
     mode: "move" | "start" | "end";
+    axis: "x" | "row" | null;
     dx: number;
     dy: number;
     startX: number;
     startY: number;
-    drop: { sectionId: number; index: number; top: number } | null;
+    rowDrop: { sectionId: number; row: number; top: number } | null;
   } | null>(null);
   const zoomPreset = ZOOM_PRESETS[zoom];
   const dayWidth = zoomPreset.dayWidth;
@@ -408,6 +409,7 @@ export default function TimelineView({
       height: number;
       laneById: Map<number, number>;
       laneCount: number;
+      overlappingIds: Set<number>;
     }[] = [];
     for (const section of sections) {
       const all = bySection.get(section.id) ?? [];
@@ -417,10 +419,30 @@ export default function TimelineView({
       const laneIntervals = shown
         .map((task) => {
           const interval = timelineInterval(task);
-          return interval ? { id: task.id, ...interval } : null;
+          if (!interval) return null;
+          const barDays = interval.end - interval.start + 1;
+          const barPx = barDays * dayWidth;
+          const externalLabel = usesTimelineExternalLabel(task, barPx, dayWidth);
+          const visualEnd = externalLabel
+            ? interval.end + estimateTimelineLabelDays(task.name, dayWidth)
+            : undefined;
+          return {
+            id: task.id,
+            ...interval,
+            visualEnd,
+            pinnedRow: task.timeline_row ?? null,
+          };
         })
-        .filter((interval): interval is { id: number; start: number; end: number } => interval !== null);
-      const { laneById, laneCount } = assignTimelineLanes(laneIntervals);
+        .filter(
+          (interval): interval is {
+            id: number;
+            start: number;
+            end: number;
+            visualEnd: number | undefined;
+            pinnedRow: number | null;
+          } => interval !== null,
+        );
+      const { laneById, laneCount, overlappingIds } = assignTimelineLanes(laneIntervals);
       const lanes = Math.max(1, laneCount);
       // The section header shares the first lane; each additional lane adds a row.
       const height = isCollapsed
@@ -436,11 +458,12 @@ export default function TimelineView({
         height,
         laneById,
         laneCount: lanes,
+        overlappingIds,
       });
       cursorY += height;
     }
     return out;
-  }, [dated, sections, sortBy, collapsed, draft]);
+  }, [dated, sections, sortBy, collapsed, draft, dayWidth]);
 
   // Absolute y centers for dependency edges (axis + headers + task rows).
   const { rowY, pos } = useMemo(() => {
@@ -722,61 +745,6 @@ export default function TimelineView({
     refresh();
   };
 
-  const computeDrop = (id: number, clientX: number, clientY: number) => {
-    if (!canReorder) return null;
-    const rect = contentRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    const y = clientY - rect.top;
-    const group = groups.find((g) => !g.collapsed && y >= g.top && y < g.top + g.height);
-    if (!group) return null;
-    const list = group.tasks;
-    const sourceIndex = list.findIndex((x) => x.id === id);
-    const local = y - group.top;
-    const row = Math.max(0, Math.min(group.laneCount - 1, Math.floor(local / ROW_PITCH)));
-    const within = local - row * ROW_PITCH;
-    const laneTasks = list.filter((t) => (group.laneById.get(t.id) ?? 0) === row);
-    let raw = Math.min(list.length, row);
-    if (laneTasks.length > 0) {
-      const width = rect.width > 0 ? rect.width : Math.max(1, canvasWidth);
-      const xPct = width > 0 ? ((clientX - rect.left) / width) * 100 : 0;
-      let anchor = laneTasks[0];
-      let best = Number.POSITIVE_INFINITY;
-      for (const t of laneTasks) {
-        const p = pos.get(t.id);
-        if (!p) continue;
-        const x1 = parseFloat(p.x1);
-        const x2 = parseFloat(p.x2);
-        const contains = xPct >= x1 && xPct <= x2;
-        const distance = contains ? -1 : Math.min(Math.abs(xPct - x1), Math.abs(xPct - x2));
-        if (distance < best) {
-          best = distance;
-          anchor = t;
-        }
-        if (contains) break;
-      }
-      const anchorIndex = list.findIndex((t) => t.id === anchor.id);
-      const anchorPos = pos.get(anchor.id);
-      const mid = anchorPos
-        ? (parseFloat(anchorPos.x1) + parseFloat(anchorPos.x2)) / 2
-        : 0;
-      raw = anchorIndex + (xPct > mid ? 1 : 0);
-    }
-    raw = Math.max(0, Math.min(list.length, raw));
-    const maxIndex = list.length - (sourceIndex >= 0 ? 1 : 0);
-    let index = raw > sourceIndex && sourceIndex >= 0 ? raw - 1 : raw;
-    index = Math.max(0, Math.min(maxIndex, index));
-    // The drop indicator follows the hovered lane boundary in the packed layout.
-    const lineRow = Math.max(
-      0,
-      Math.min(group.laneCount, row + (within > ROW_PITCH / 2 ? 1 : 0)),
-    );
-    return {
-      sectionId: group.section.id,
-      index,
-      top: group.top + lineRow * ROW_PITCH,
-    };
-  };
-
   const beginDrag = (e: React.PointerEvent, t: TaskRow, mode: "move" | "start" | "end") => {
     if (e.button !== 0) return;
     e.stopPropagation();
@@ -788,14 +756,25 @@ export default function TimelineView({
       window.clearTimeout(barHoverTimer.current);
       barHoverTimer.current = null;
     }
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    if (e.pointerType === "touch" && mode === "move") {
+      longPressTimer.current = window.setTimeout(() => {
+        setDrag((prev) => (prev && prev.axis === null ? { ...prev, axis: "row" } : prev));
+        longPressTimer.current = null;
+      }, 300);
+    }
     setDrag({
       id: t.id,
       mode,
+      axis: null,
       dx: 0,
       dy: 0,
       startX: e.clientX,
       startY: e.clientY,
-      drop: null,
+      rowDrop: null,
     });
   };
 
@@ -825,16 +804,55 @@ export default function TimelineView({
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
     if (Math.abs(dx) > 2 || Math.abs(dy) > 4) moved.current = true;
-    const drop =
-      drag.mode === "move" && Math.abs(dy) >= 8
-        ? computeDrop(drag.id, e.clientX, e.clientY)
-        : null;
-    setDrag({ ...drag, dx, dy, drop });
+    let axis = drag.axis;
+    if (axis === null && Math.max(Math.abs(dx), Math.abs(dy)) > 6) {
+      axis =
+        drag.mode === "move" && canEdit && Math.abs(dy) > Math.abs(dx)
+          ? "row"
+          : "x";
+    }
+    if (axis !== null && longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    if (axis === "row") {
+      const group = groups.find((entry) => entry.tasks.some((task) => task.id === drag.id));
+      const rect = contentRef.current?.getBoundingClientRect();
+      if (!group || !rect) {
+        setDrag({ ...drag, axis, dx: 0, dy, rowDrop: null });
+        return;
+      }
+      const y = e.clientY - rect.top;
+      const row = Math.max(
+        0,
+        Math.min(group.laneCount, Math.floor((y - group.top) / ROW_PITCH)),
+      );
+      setDrag({
+        ...drag,
+        axis,
+        dx: 0,
+        dy,
+        rowDrop: { sectionId: group.section.id, row, top: group.top + row * ROW_PITCH },
+      });
+      return;
+    }
+    setDrag({ ...drag, axis, dx, dy, rowDrop: null });
   };
   const onBarUp = async () => {
     if (!drag) return;
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
     const d = drag;
     setDrag(null);
+    if (d.axis === "row") {
+      if (!d.rowDrop) return;
+      const target = tasks.find((x) => x.id === d.id);
+      if (target) await setTimelineRow(target, d.rowDrop.row);
+      return;
+    }
+    if (d.axis !== "x") return;
     const el = contentRef.current;
     if (!el) {
       refresh();
@@ -843,24 +861,7 @@ export default function TimelineView({
     const t = tasks.find((x) => x.id === d.id);
     if (!t) return;
     const delta = dayDeltaFromPixels(d.dx, el.getBoundingClientRect().width, span);
-    const extra: Record<string, unknown> = {};
-    if (d.mode === "move" && d.drop) {
-      const target = groups.find((g) => g.section.id === d.drop!.sectionId);
-      if (target) {
-        const sourceSection = t.eff_section_id ?? t.section_id;
-        const filtered = target.all.filter((x) => x.id !== t.id);
-        const index = Math.min(d.drop.index, filtered.length);
-        const sourceIndex = target.all.findIndex((x) => x.id === t.id);
-        if (!(sourceSection === target.section.id && index === sourceIndex)) {
-          extra.position = positionBetween(
-            index > 0 ? filtered[index - 1].position : null,
-            index < filtered.length ? filtered[index].position : null,
-          );
-          if (sourceSection !== target.section.id) extra.section_id = target.section.id;
-        }
-      }
-    }
-    await commitChange(t, delta, d.mode, extra);
+    await commitChange(t, delta, d.mode);
   };
 
   const dragDelta = (id: number) => (drag && drag.id === id ? drag.dx : 0);
@@ -1132,7 +1133,11 @@ export default function TimelineView({
       width: `calc(${p.x2} - ${p.x1})`,
     };
     if (!d) return style;
-    if (d.mode === "move") {
+    if (d.axis === "row") {
+      style.transform = `translateY(${d.dy}px)`;
+    } else if (d.axis === "x") {
+      style.transform = `translateX(${d.dx}px)`;
+    } else if (d.mode === "move") {
       style.transform = canReorder
         ? `translate(${d.dx}px, ${d.dy}px)`
         : `translateX(${d.dx}px)`;
@@ -1162,7 +1167,31 @@ export default function TimelineView({
     };
   };
 
-  const renderBar = (t: TaskRow, lane: number) => {
+  const setTimelineRow = async (t: TaskRow, rowIndex: number) => {
+    if (!canEdit) return;
+    const current = t.timeline_row ?? null;
+    if (current === rowIndex) return;
+    try {
+      await api(`/api/tasks/${t.id}/timeline-row`, "PUT", {
+        project_id: projectId,
+        row_index: rowIndex,
+      });
+      toastMessage("行を移動しました");
+      refresh();
+    } catch (error) {
+      toastMessage(error instanceof Error ? error.message : "行の移動に失敗しました");
+    }
+  };
+
+  const moveTimelineRow = (t: TaskRow, delta: number) => {
+    if (!canEdit) return;
+    const group = groups.find((entry) => entry.tasks.some((task) => task.id === t.id));
+    const current = t.timeline_row ?? group?.laneById.get(t.id) ?? 0;
+    const next = Math.max(0, Math.min(200, current + delta));
+    void setTimelineRow(t, next);
+  };
+
+  const renderBar = (t: TaskRow, lane: number, overlapping: boolean) => {
     const dx = dragDelta(t.id);
     const active = drag?.id === t.id;
     const barPx = barPxFor(t);
@@ -1172,13 +1201,18 @@ export default function TimelineView({
     const leftPct = parseFloat(p.x1);
     const sameDay = isSingleDayTimelineTask(t);
     const skinny = barPx < 52;
+    const externalLabel = usesTimelineExternalLabel(t, barPx, dayWidth);
     const labelOnLeft = leftPct > 72;
-    const barInfo = `${t.name}（${t.start_on ?? "?"} 〜 ${t.due_on ?? "?"}・進捗${t.progress}%${t.assignee_name ? `・担当${t.assignee_name}` : ""}）${!t.completed && showCritical && critical.has(t.id) ? "【クリティカルパス】" : ""} — ドラッグで移動、上下で並び替え、左右端で期間変更`;
+    const barInfo = `${t.name}（${t.start_on ?? "?"} 〜 ${t.due_on ?? "?"}・進捗${t.progress}%${t.assignee_name ? `・担当${t.assignee_name}` : ""}${t.timeline_row !== null && t.timeline_row !== undefined ? "・行固定" : ""}）${!t.completed && showCritical && critical.has(t.id) ? "【クリティカルパス】" : ""} — 左右で日付移動、上下で行移動、左右端で期間変更、Alt+上下で行移動`;
     return (
       <TimelineBar
         key={t.id}
         task={t}
         lane={lane}
+        rowLocked={t.timeline_row !== null && t.timeline_row !== undefined}
+        overlapping={overlapping}
+        externalLabel={externalLabel}
+        onMoveRow={(delta) => moveTimelineRow(t, delta)}
         x1={p.x1}
         x2={p.x2}
         skinny={skinny}
@@ -1310,6 +1344,7 @@ export default function TimelineView({
         statusFieldName={statusFieldName}
         statusFieldEnabled={statusFieldEnabled}
         statusOptions={statusOptions}
+        sections={sections}
         viewName={viewName}
         viewIcon={viewIcon}
         viewTabId={viewTabId}
@@ -1444,7 +1479,7 @@ export default function TimelineView({
                         className="absolute inset-x-0"
                         style={{ top: lane * ROW_PITCH, height: ROW_PITCH }}
                       >
-                        {renderBar(t, lane)}
+                        {renderBar(t, lane, group.overlappingIds.has(t.id))}
                       </div>
                     );
                   })}
@@ -1495,13 +1530,17 @@ export default function TimelineView({
               </div>
             ))}
 
-            {drag?.drop && (
+            {drag?.rowDrop && (
               <div
-                data-timeline-drop
+                data-timeline-row-drop
+                data-timeline-row-drop-index={drag.rowDrop.row}
                 className="pointer-events-none absolute inset-x-0 z-[5] h-[2px] bg-[#2c60b8]"
-                style={{ top: drag.drop.top - 1 }}
+                style={{ top: drag.rowDrop.top - 1 }}
               >
                 <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[#2c60b8]" />
+                <span className="absolute left-2 -top-2 rounded bg-[#2c60b8] px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm">
+                  行 {drag.rowDrop.row + 1}
+                </span>
               </div>
             )}
 

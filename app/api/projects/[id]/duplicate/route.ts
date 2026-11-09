@@ -173,6 +173,16 @@ export const POST = withProject(
       // Tasks visible in the source project, including secondary multi-homes.
       const taskMap = new Map<number, number>();
       if (includeTasks) {
+        const sourceRows = await q.query(
+          "SELECT task_id, row_index FROM task_timeline_rows WHERE project_id = $1::bigint",
+          [projectId],
+        );
+        const timelineRows = new Map(
+          (sourceRows.rows as { task_id: number; row_index: number }[]).map((row) => [
+            Number(row.task_id),
+            Number(row.row_index),
+          ]),
+        );
         const sourceTasks = await getProjectTaskForest(q, projectId);
         if (sourceTasks.length > 5000) throw badRequest("project has too many tasks to duplicate (max 5000)");
         for (const task of sourceTasks) {
@@ -213,6 +223,15 @@ export const POST = withProject(
           );
           const newTaskId = Number(inserted.rows[0].id);
           taskMap.set(Number(task.id), newTaskId);
+          const timelineRow = timelineRows.get(Number(task.id));
+          if (timelineRow !== undefined) {
+            await q.query(
+              `INSERT INTO task_timeline_rows (task_id, project_id, row_index, updated_by)
+               VALUES ($1::bigint, $2::bigint, $3, $4::bigint)
+               ON CONFLICT (task_id, project_id) DO NOTHING`,
+              [newTaskId, newId, timelineRow, uid],
+            );
+          }
 
           if (fieldMap.size > 0) {
             const values = await q.query(

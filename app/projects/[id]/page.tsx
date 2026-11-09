@@ -359,6 +359,7 @@ export default async function ProjectPage(props: {
       </div>
       <Shortcuts projectId={projectId} />
       <ProjectTaskContextMenu
+        projectId={projectId}
         tasks={contextTasks}
         canEdit={access.role === "admin" || access.role === "editor"}
       />

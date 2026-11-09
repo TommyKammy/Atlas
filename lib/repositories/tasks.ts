@@ -15,9 +15,11 @@ import { ensureAutoIdValues } from "../auto-id";
 export async function getProjectTasks(projectId: number): Promise<TaskRow[]> {
   const r = await db.query(
     `SELECT ${TASK_SELECT_COLS},
-       COALESCE(m.section_id, t.section_id) AS eff_section_id
+       COALESCE(m.section_id, t.section_id) AS eff_section_id,
+       tr.row_index AS timeline_row
      ${TASK_FROM}
      LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1
+     LEFT JOIN task_timeline_rows tr ON tr.task_id = t.id AND tr.project_id = $1
      WHERE t.parent_task_id IS NULL AND t.deleted_at IS NULL
        AND (t.project_id = $1 OR m.task_id IS NOT NULL)
      ORDER BY t.position, t.id`,
@@ -29,8 +31,9 @@ export async function getProjectTasks(projectId: number): Promise<TaskRow[]> {
 /** Task scoped to a project the caller can already see (primary, multi-home, or subtask). */
 export async function getTaskForProject(taskId: number, projectId: number) {
   const r = await db.query(
-    `SELECT ${TASK_SELECT_COLS}
+    `SELECT ${TASK_SELECT_COLS}, tr.row_index AS timeline_row
      ${TASK_FROM}
+     LEFT JOIN task_timeline_rows tr ON tr.task_id = t.id AND tr.project_id = $2
      WHERE t.id = $1 AND t.deleted_at IS NULL
        AND (
          t.project_id = $2

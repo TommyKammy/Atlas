@@ -69,6 +69,12 @@ function MenuIcon({ name }: { name: string }) {
         <path d="M8 2 14 8 8 14 2 8z" />
       </svg>
     );
+  if (name === "pin")
+    return (
+      <svg {...common}>
+        <path d="M10 2v3l3 3v2H3V8l3-3V2m-4 8h12M8 12v3" />
+      </svg>
+    );
   if (name === "details")
     return (
       <svg {...common}>
@@ -148,9 +154,11 @@ function MenuItem({
 
 /** One global task context menu for every project view. */
 export default function ProjectTaskContextMenu({
+  projectId,
   tasks,
   canEdit,
 }: {
+  projectId: number;
   tasks: TaskRow[];
   canEdit: boolean;
 }) {
@@ -333,6 +341,16 @@ export default function ProjectTaskContextMenu({
     }, "マイルストーンに変換しました");
   };
 
+  const resetTimelineRow = () => {
+    if (!task) return;
+    void run(async () => {
+      await api(`/api/tasks/${task.id}/timeline-row`, "PUT", {
+        project_id: projectId,
+        row_index: null,
+      });
+    }, "行の固定を解除しました");
+  };
+
   const createSubtask = async () => {
     if (!subtaskFor || subtaskName.trim() === "" || busy) return;
     setBusy(true);
@@ -498,6 +516,15 @@ export default function ProjectTaskContextMenu({
                     </div>
                   )}
                 </div>
+                {request.view === "timeline" &&
+                  request.task.timeline_row !== null &&
+                  request.task.timeline_row !== undefined && (
+                    <MenuItem
+                      icon="pin"
+                      label="行の固定を解除"
+                      onClick={resetTimelineRow}
+                    />
+                  )}
                 <div className="my-1 border-t border-neutral-100" />
               </>
             )}

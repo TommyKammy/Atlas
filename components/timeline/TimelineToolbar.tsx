@@ -3,8 +3,8 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
-import { toast } from "@/lib/ui-feedback";
-import type { User } from "@/lib/data";
+import { toast, confirmAction } from "@/lib/ui-feedback";
+import type { User, Section } from "@/lib/data";
 import type { ListFilters } from "@/lib/list-view";
 import ListFilterMenu from "../list/ListFilterMenu";
 import ListSortMenu from "../list/ListSortMenu";
@@ -46,6 +46,7 @@ export default function TimelineToolbar({
   statusFieldName,
   statusFieldEnabled,
   statusOptions,
+  sections,
   viewName,
   viewIcon,
   viewTabId,
@@ -80,6 +81,7 @@ export default function TimelineToolbar({
   statusFieldName: string;
   statusFieldEnabled: boolean;
   statusOptions: string[];
+  sections: Section[];
   viewName: string;
   viewIcon: string | null;
   viewTabId: number | null;
@@ -95,6 +97,7 @@ export default function TimelineToolbar({
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [resetSectionId, setResetSectionId] = useState("");
   const closeMenus = () => {
     setFilterOpen(false);
     setSortOpen(false);
@@ -136,6 +139,39 @@ export default function TimelineToolbar({
 
   const sortKey = sortBy === "default" ? "position" : (sortBy as "start" | "due" | "assignee");
   const sortLabel = sortBy === "default" ? "" : sortBy === "start" ? "開始日" : sortBy === "due" ? "期日" : "担当者";
+
+  const resetTimelineRows = async () => {
+    if (!canEdit) return;
+    if (!(await confirmAction("このプロジェクトの行固定をすべて解除しますか？"))) return;
+    try {
+      const result = await api<{ deleted: number }>(
+        `/api/projects/${projectId}/timeline-rows`,
+        "DELETE",
+      );
+      toast(`行固定を解除しました（${result.deleted ?? 0}件）`);
+      setOptionsOpen(false);
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "行固定を解除できませんでした");
+    }
+  };
+
+  const resetSectionRows = async () => {
+    if (!canEdit || resetSectionId === "") return;
+    if (!(await confirmAction("このセクションの行固定を解除しますか？"))) return;
+    try {
+      const result = await api<{ deleted: number }>(
+        `/api/projects/${projectId}/timeline-rows`,
+        "DELETE",
+        { section_id: Number(resetSectionId) },
+      );
+      toast(`行固定を解除しました（${result.deleted ?? 0}件）`);
+      setOptionsOpen(false);
+      router.refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "行固定を解除できませんでした");
+    }
+  };
 
   return (
     <>
@@ -417,6 +453,38 @@ export default function TimelineToolbar({
             <input type="checkbox" checked={showCritical} onChange={(event) => setShowCritical(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
             クリティカルパスを表示
           </label>
+          <button
+            type="button"
+            data-timeline-auto-rows
+            disabled={!canEdit}
+            onClick={() => void resetTimelineRows()}
+            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50 disabled:text-neutral-300"
+          >
+            行を自動整列（固定を解除）
+          </button>
+          <div className="mt-2 px-2 text-[11px] text-neutral-500">セクション単位</div>
+          <select
+            value={resetSectionId}
+            onChange={(event) => setResetSectionId(event.target.value)}
+            aria-label="行固定を解除するセクション"
+            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+          >
+            <option value="">セクションを選択…</option>
+            {sections.map((section) => (
+              <option key={section.id} value={section.id}>
+                {section.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            data-timeline-auto-rows-section
+            disabled={!canEdit || resetSectionId === ""}
+            onClick={() => void resetSectionRows()}
+            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50 disabled:text-neutral-300"
+          >
+            選択セクションを自動整列
+          </button>
         </div>
         <div className="mt-2 border-t border-neutral-100 pt-3">
           <div className="px-2 text-[11px] font-medium text-neutral-500">依存関係設定</div>

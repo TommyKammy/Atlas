@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { dayOrNull } from "./task-dates";
-import { assignTimelineLanes, timelineInterval } from "./timeline-lanes";
+import { assignTimelineLanes, estimateTimelineLabelDays, timelineInterval } from "./timeline-lanes";
 
 test("timelineInterval treats milestones as their due date", () => {
   assert.deepEqual(
@@ -69,4 +69,53 @@ test("assignTimelineLanes handles empty input", () => {
   const result = assignTimelineLanes([]);
   assert.equal(result.laneCount, 0);
   assert.equal(result.laneById.size, 0);
+});
+
+test("assignTimelineLanes respects pinned rows and keeps empty rows", () => {
+  const result = assignTimelineLanes([
+    { id: 1, start: 10, end: 10, pinnedRow: 2 },
+    { id: 2, start: 10, end: 12 },
+  ]);
+  assert.equal(result.laneById.get(1), 2);
+  assert.equal(result.laneById.get(2), 0);
+  assert.equal(result.laneCount, 3);
+});
+
+test("assignTimelineLanes packs auto tasks around pinned intervals", () => {
+  const result = assignTimelineLanes([
+    { id: 1, start: 10, end: 20, pinnedRow: 0 },
+    { id: 2, start: 12, end: 15, pinnedRow: 0 },
+    { id: 3, start: 12, end: 15 },
+  ]);
+  assert.equal(result.laneById.get(1), 0);
+  assert.equal(result.laneById.get(2), 0);
+  assert.equal(result.laneById.get(3), 1);
+  assert.deepEqual([...result.overlappingIds].sort(), [1, 2]);
+});
+
+test("assignTimelineLanes uses visual footprints for label overlap", () => {
+  const result = assignTimelineLanes([
+    { id: 1, start: 10, end: 10, visualEnd: 14 },
+    { id: 2, start: 12, end: 12 },
+  ]);
+  assert.equal(result.laneById.get(1), 0);
+  assert.equal(result.laneById.get(2), 1);
+  assert.equal(result.laneCount, 2);
+});
+
+test("assignTimelineLanes allows pinned tasks to share a row when disjoint", () => {
+  const result = assignTimelineLanes([
+    { id: 1, start: 1, end: 2, pinnedRow: 0 },
+    { id: 2, start: 4, end: 5, pinnedRow: 0 },
+  ]);
+  assert.equal(result.laneById.get(1), 0);
+  assert.equal(result.laneById.get(2), 0);
+  assert.equal(result.overlappingIds.size, 0);
+});
+
+test("estimateTimelineLabelDays grows with text and shrinks with zoom", () => {
+  const short = estimateTimelineLabelDays("A", 12);
+  const long = estimateTimelineLabelDays("RFP社内レビュー・4社承認 Wava1", 12);
+  assert.ok(long > short);
+  assert.ok(estimateTimelineLabelDays("RFP", 40) < estimateTimelineLabelDays("RFP", 12));
 });
