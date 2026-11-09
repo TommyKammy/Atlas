@@ -20,7 +20,7 @@ export default async function AppShell({
   const collapsed = (await cookies()).get("atlas_sidebar")?.value === "collapsed";
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white text-neutral-900">
-      <header className="relative z-20 flex h-12 shrink-0 items-center gap-3 bg-[#262626] px-3 text-neutral-200">
+      <header className="relative z-40 flex h-12 shrink-0 items-center gap-3 bg-[#262626] px-3 text-neutral-200">
         <SidebarToggle initialCollapsed={collapsed} />
         <Suspense fallback={<span className="text-sm font-semibold text-white">Atlas</span>}>
           <HeaderAuth />
