@@ -34,6 +34,7 @@
 | `daf1426` | TaskPaneの状態・更新処理を`useTaskPane`へ抽出（889→707行） |
 | `c6273e0` | FieldDialogの状態と型別エディタを分割（860→255行） |
 | `3b21099` | 1,000タスク計測に基づく仮想化・ページング判断を記録 |
+| `d3c9b8a` | ProjectCustomizeButtonの状態・保存処理を`useProjectCustomize`へ抽出（884→455行） |
 
 ## 検証結果
 
@@ -97,6 +98,8 @@
   `useTaskPane` へ抽出（889行 → 707行）。
 - `FieldDialog` の状態・保存処理を `useFieldDialog` へ、型別UIを
   `components/list/FieldTypeEditors.tsx` へ分割（860行 → 255行）。
+- `ProjectCustomizeButton` の状態・読み込み・全保存処理を
+  `useProjectCustomize` へ抽出（884行 → 455行）。
 - `useMenuKeyboard` でタスク・プロジェクト・タブメニューの
   Arrow/Home/End/Escape・フォーカス復帰を統一。
 - 1,000タスクのレーン計算ベンチマークを追加。
