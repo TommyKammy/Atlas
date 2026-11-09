@@ -161,7 +161,7 @@ curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list&group=assignee" -o "$TMPD/gr
 grep -q 'data-list-section-count=' "$TMPD/group-count.html" && ok "group header counts" || bad "group header counts"
 grep -q 'data-list-filter-open' "$TMPD/p-list.html" && grep -q 'フィルター' "$TMPD/p-list.html" && grep -q 'data-list-sort-open' "$TMPD/p-list.html" && grep -q 'data-list-group-open' "$TMPD/p-list.html" && grep -q 'data-list-options-open' "$TMPD/p-list.html" && ok "list toolbar parity" || bad "list toolbar parity"
 grep -q 'data-list-options-drawer' "$TMPD/p-list.html" && grep -q 'aria-label="ビューの名前"' "$TMPD/p-list.html" && grep -q 'data-list-columns-open' "$TMPD/p-list.html" && grep -q 'data-list-options-subtasks' "$TMPD/p-list.html" && grep -q 'aria-label="ビューのアイコン"' "$TMPD/p-list.html" && grep -q 'aria-label="現在のビューを保存"' "$TMPD/p-list.html" && ok "list options drawer markup" || bad "list options drawer markup"
-grep -q 'project-drawer-enter' "$TMPD/p-list.html" && grep -q 'project-drawer-in' app/app/globals.css && grep -q 'animation-duration: 250ms' app/app/globals.css && grep -q 'animation-duration: 300ms' app/app/globals.css && grep -q 'project-drawer-enter-customize' app/components/ProjectCustomizeButton.tsx && ok "drawer slide animation" || bad "drawer slide animation"
+grep -q 'project-drawer-enter' "$TMPD/p-list.html" && grep -q 'project-drawer-in' app/globals.css && grep -q 'animation-duration: 250ms' app/globals.css && grep -q 'animation-duration: 300ms' app/globals.css && grep -q 'project-drawer-enter-customize' components/ProjectCustomizeButton.tsx && ok "drawer slide animation" || bad "drawer slide animation"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list&completed=done&mine=1&creator=1&created=7&updated=30&completed_on=today&start=7" -o "$TMPD/list-filters.html"
 grep -q 'data-list-completed-only="true"' "$TMPD/list-filters.html" && grep -q 'data-list-mine-only="true"' "$TMPD/list-filters.html" && grep -q 'data-list-creator="1"' "$TMPD/list-filters.html" && grep -q 'data-list-created="7"' "$TMPD/list-filters.html" && grep -q 'data-list-updated="30"' "$TMPD/list-filters.html" && grep -q 'data-list-completed-on="today"' "$TMPD/list-filters.html" && grep -q 'data-list-start="7"' "$TMPD/list-filters.html" && ok "list extended filters" || bad "list extended filters"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list&sort=assignee&sortdir=desc&group=creator" -o "$TMPD/list-sort-group.html"
@@ -176,7 +176,7 @@ api DELETE "/api/saved-views/$SVID2" >/dev/null
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":2,"name":"   "}')
 [[ "$C" == "400" ]] && ok "empty task name rejected" || bad "empty task name rejected ($C)"
 grep -q 'bg-\[#c94848\]' "$TMPD/p-list.html" && ok "contrast tokens" || bad "contrast tokens"
-grep -q 'focus-visible' app/app/globals.css && grep -q 'box-shadow: 0 0 0 4px #2c60b8' app/app/globals.css && ok "global focus-visible styles" || bad "global focus-visible styles"
+grep -q 'focus-visible' app/globals.css && grep -q 'box-shadow: 0 0 0 4px #2c60b8' app/globals.css && ok "global focus-visible styles" || bad "global focus-visible styles"
 
 echo "== sidebar rail =="
 curl -s -m 15 -b "$JAR" -b 'atlas_sidebar=collapsed' "$BASE/projects/1?view=list" -o "$TMPD/rail.html"
@@ -1421,8 +1421,16 @@ curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&completed_on=7" -o "$TMP
 grep -q 'data-calendar-multiday="5"' "$TMPD/ccom.html" && ! grep -q 'data-calendar-multiday="2"' "$TMPD/ccom.html" && ok "calendar completion date" || bad "calendar completion date"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&creator=none" -o "$TMPD/ccr.html"
 grep -q 'data-calendar-multiday="2"' "$TMPD/ccr.html" && ok "calendar creator filter" || bad "calendar creator filter"
+D10=$(python3 -c "import datetime; print((datetime.date.today()+datetime.timedelta(days=10)).isoformat())")
+CT1R=$(api POST /api/tasks "{\"project_id\":1,\"section_id\":2,\"name\":\"E2E作成日今日\",\"start_on\":\"$D10\",\"due_on\":\"$D10\"}")
+CT1=$(jget "$CT1R" id)
+CT2R=$(api POST /api/tasks "{\"project_id\":1,\"section_id\":2,\"name\":\"E2E作成日過去\",\"start_on\":\"$D10\",\"due_on\":\"$D10\"}")
+CT2=$(jget "$CT2R" id)
+docker exec atlas-db psql -U atlas -d atlas -q -c "UPDATE tasks SET created_at = now() - interval '10 days' WHERE id=$CT2;"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&created=today" -o "$TMPD/ccreate.html"
-! grep -q 'data-calendar-multiday=' "$TMPD/ccreate.html" && ! grep -q 'data-calendar-single=' "$TMPD/ccreate.html" && ok "calendar created date" || bad "calendar created date"
+grep -Eq "data-calendar-(multiday|single)=\"$CT1\"" "$TMPD/ccreate.html" && ! grep -Eq "data-calendar-(multiday|single)=\"$CT2\"" "$TMPD/ccreate.html" && ok "calendar created date" || bad "calendar created date"
+api DELETE "/api/tasks/$CT1?force=1" >/dev/null
+api DELETE "/api/tasks/$CT2?force=1" >/dev/null
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/sadd.html"
 grep -q 'data-sidebar-add-project' "$TMPD/sadd.html" && ok "sidebar add project" || bad "sidebar add project"
 grep -q 'data-sidebar-user-menu' "$TMPD/sadd.html" && grep -q 'data-sidebar-help' "$TMPD/sadd.html" && grep -q 'data-sidebar-invite' "$TMPD/sadd.html" && ok "sidebar footer controls" || bad "sidebar footer controls"
@@ -1900,7 +1908,7 @@ R=$(api DELETE /api/projects/$LPID)
 [[ "$(jget "$R" deleted)" == "$LPID" ]] && ok "large project cleaned" || bad "large project cleaned" "$R"
 
 echo "== empty/loading/error states =="
-[[ ! -f app/app/loading.tsx ]] && grep -q 'useLinkStatus' app/components/NavPending.tsx && grep -q 'data-nav-pending' app/components/NavPending.tsx && grep -q 'data-error-retry' app/components/ErrorState.tsx && grep -q 'data-not-found' app/app/not-found.tsx && ok "navigation pending + error/not-found files" || bad "navigation pending + error/not-found files"
+[[ ! -f app/loading.tsx ]] && grep -q 'useLinkStatus' components/NavPending.tsx && grep -q 'data-nav-pending' components/NavPending.tsx && grep -q 'data-error-retry' components/ErrorState.tsx && grep -q 'data-not-found' app/not-found.tsx && ok "navigation pending + error/not-found files" || bad "navigation pending + error/not-found files"
 curl -s -m 15 -b "$JAR" "$BASE/projects/999999" -o "$TMPD/nf.html"
 grep -q 'data-not-found' "$TMPD/nf.html" && ok "not-found page" || bad "not-found page"
 EP=$(api POST /api/projects '{"workspace_id":1,"name":"E2E空状態"}')
@@ -1920,7 +1928,7 @@ for v in dashboard list board timeline messages knowledge files forms; do
 done
 grep -q 'data-calendar-day=' "$TMPD/v04-calendar.html" || EMPTYVIEWS=0
 [[ "$EMPTYVIEWS" == "1" ]] && ok "empty states across views" || bad "empty states across views"
-[[ ! -f 'app/app/projects/[id]/loading.tsx' ]] && grep -q 'ErrorState' 'app/app/projects/[id]/error.tsx' && grep -q 'import ListView from "@/components/ListView"' 'app/app/projects/[id]/page.tsx' && grep -q 'dynamic(() => import("../BoardView"))' app/components/project/LazyViews.tsx && grep -q 'dynamic(() => import("../TimelineView"))' app/components/project/LazyViews.tsx && ok "project error boundary + view code splitting" || bad "project error boundary + view code splitting"
+[[ ! -f 'app/projects/[id]/loading.tsx' ]] && grep -q 'ErrorState' 'app/projects/[id]/error.tsx' && grep -q 'import ListView from "@/components/ListView"' 'app/projects/[id]/page.tsx' && grep -q 'dynamic(() => import("../BoardView"))' components/project/LazyViews.tsx && grep -q 'dynamic(() => import("../TimelineView"))' components/project/LazyViews.tsx && ok "project error boundary + view code splitting" || bad "project error boundary + view code splitting"
 R=$(api DELETE /api/projects/$EPID)
 [[ "$(jget "$R" deleted)" == "$EPID" ]] && ok "empty project cleaned" || bad "empty project cleaned" "$R"
 

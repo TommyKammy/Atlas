@@ -21,7 +21,8 @@ ws.onmessage = (event) => {
   if (!message.id || !pending.has(message.id)) return;
   const entry = pending.get(message.id);
   pending.delete(message.id);
-  message.error ? entry.reject(new Error(JSON.stringify(message.error))) : entry.resolve(message.result);
+  if (message.error) entry.reject(new Error(JSON.stringify(message.error)));
+  else entry.resolve(message.result);
 };
 await new Promise((resolve, reject) => {
   ws.onopen = resolve;
