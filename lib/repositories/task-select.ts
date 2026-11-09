@@ -39,6 +39,19 @@ export const TASK_FROM = `
   LEFT JOIN projects p ON p.id = t.project_id
 `;
 
+/**
+ * Timeline needs dates, lane/marker metadata and subtask counts only.
+ * Avoids the five other correlated counts and the collaborator aggregate.
+ */
+export const TASK_TIMELINE_COLS = `
+  t.id, t.project_id, t.section_id, t.parent_task_id, t.name, t.description, t.description_doc,
+  t.assignee_id, u.name AS assignee_name, t.created_by, cu.name AS creator_name, t.completed,
+  t.completed_at::text AS completed_at,
+  t.start_on::text, t.due_on::text, t.progress, t.status, t.is_milestone, t.position,
+  t.created_at::text AS created_at, t.updated_at::text AS updated_at, t.recurrence,
+  (SELECT COUNT(*)::int FROM tasks s WHERE s.parent_task_id = t.id AND s.deleted_at IS NULL) AS subtask_count
+`;
+
 /** Normalize a DB task row into the public `TaskRow` shape. */
 export function toTaskRow(row: TaskRow): TaskRow {
   return {

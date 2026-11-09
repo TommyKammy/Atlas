@@ -16,6 +16,7 @@ import {
   getProjectTabs,
   getProjectTaskOptions,
   getProjectTasks,
+  getTimelineTasks,
   getSavedViews,
   getSections,
   getSubtasks,
@@ -77,7 +78,7 @@ export async function getBoardViewData(projectId: number) {
 }
 
 export async function getTimelineViewData(projectId: number) {
-  const [tasks, deps] = await Promise.all([getProjectTasks(projectId), getTaskDependencies(projectId)]);
+  const [tasks, deps] = await Promise.all([getTimelineTasks(projectId), getTaskDependencies(projectId)]);
   return { tasks, deps };
 }
 

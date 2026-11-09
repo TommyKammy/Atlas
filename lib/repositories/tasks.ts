@@ -9,12 +9,30 @@ import {
   type CustomValue,
 } from "../custom-fields";
 import { projectTaskScope } from "./scope";
-import { TASK_FROM, TASK_SELECT_COLS, toTaskRow } from "./task-select";
+import { TASK_FROM, TASK_SELECT_COLS, TASK_TIMELINE_COLS, toTaskRow } from "./task-select";
 import { ensureAutoIdValues } from "../auto-id";
 
 export async function getProjectTasks(projectId: number): Promise<TaskRow[]> {
   const r = await db.query(
     `SELECT ${TASK_SELECT_COLS},
+       COALESCE(m.section_id, t.section_id) AS eff_section_id,
+       tr.row_index AS timeline_row,
+       tr.updated_at::text AS timeline_row_updated_at
+     ${TASK_FROM}
+     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1
+     LEFT JOIN task_timeline_rows tr ON tr.task_id = t.id AND tr.project_id = $1
+     WHERE t.parent_task_id IS NULL AND t.deleted_at IS NULL
+       AND (t.project_id = $1 OR m.task_id IS NOT NULL)
+     ORDER BY t.position, t.id`,
+    [projectId],
+  );
+  return r.rows.map(toTaskRow);
+}
+
+/** Lighter projection for the timeline view. */
+export async function getTimelineTasks(projectId: number): Promise<TaskRow[]> {
+  const r = await db.query(
+    `SELECT ${TASK_TIMELINE_COLS},
        COALESCE(m.section_id, t.section_id) AS eff_section_id,
        tr.row_index AS timeline_row,
        tr.updated_at::text AS timeline_row_updated_at
