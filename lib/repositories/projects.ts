@@ -10,6 +10,10 @@ import type { CustomField } from "../custom-fields";
 import type { Attachment, User } from "../data";
 import type { RichTextDoc } from "../rich-text-types";
 import type { ProjectTemplateSummary } from "../project-templates";
+import {
+  DEFAULT_PROJECT_TEMPLATES,
+  defaultProjectTemplatePayload,
+} from "../default-project-templates";
 import { projectTaskScope } from "./scope";
 
 export type Project = {
@@ -412,13 +416,41 @@ export type TaskTemplate = {
   subtasks: { name: string }[];
 };
 
+/** Seed or refresh the standard Atlas templates for one workspace. */
+async function ensureBuiltinProjectTemplates(workspaceId: number) {
+  const rows = DEFAULT_PROJECT_TEMPLATES.map((template) => ({
+    name: template.name,
+    payload: defaultProjectTemplatePayload(template),
+    builtin_key: template.key,
+    category: template.category,
+  }));
+  await db.query(
+    `INSERT INTO project_templates (workspace_id, name, payload, is_builtin, builtin_key, category)
+     SELECT $1::bigint, x.name, x.payload, TRUE, x.builtin_key, x.category
+     FROM jsonb_to_recordset($2::jsonb) AS x(
+       name text,
+       payload jsonb,
+       builtin_key text,
+       category text
+     )
+     ON CONFLICT (workspace_id, builtin_key)
+     DO UPDATE SET
+       name = EXCLUDED.name,
+       payload = EXCLUDED.payload,
+       category = EXCLUDED.category`,
+    [workspaceId, JSON.stringify(rows)],
+  );
+}
+
 /** Template gallery data: project metadata plus bounded section/task previews. */
 export async function getProjectTemplateSummaries(
   workspaceId: number,
 ): Promise<ProjectTemplateSummary[]> {
+  await ensureBuiltinProjectTemplates(workspaceId);
   const r = await db.query(
     `WITH base AS (
        SELECT t.id, t.name, t.payload, t.created_by, t.created_at,
+         t.is_builtin, t.builtin_key, t.category,
          CASE
            WHEN jsonb_typeof(t.payload->'sections') = 'array' THEN t.payload->'sections'
            ELSE '[]'::jsonb
@@ -431,6 +463,7 @@ export async function getProjectTemplateSummaries(
        b.payload->'project'->>'color' AS color,
        b.payload->'project'->>'icon' AS icon,
        b.created_by, u.name AS creator_name, b.created_at::text AS created_at,
+       b.is_builtin, b.builtin_key, b.category,
        jsonb_array_length(b.sections)::int AS section_count,
        COALESCE((
          SELECT SUM(jsonb_array_length(
@@ -467,7 +500,9 @@ export async function getProjectTemplateSummaries(
        ), '[]'::jsonb) AS sample_tasks
      FROM base b
      LEFT JOIN users u ON u.id = b.created_by
-     ORDER BY b.created_at DESC, b.id DESC`,
+     ORDER BY b.is_builtin DESC,
+       CASE WHEN b.is_builtin THEN b.id END ASC NULLS LAST,
+       b.created_at DESC, b.id DESC`,
     [workspaceId],
   );
   return r.rows as ProjectTemplateSummary[];

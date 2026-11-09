@@ -6,63 +6,29 @@ import { audit } from "@/lib/audit";
 import { notifyProject } from "@/lib/notify";
 import { withAdmin, withUser } from "@/lib/api/route";
 import { ensureDefaultProjectTabs } from "@/lib/repositories/projects";
-
-type TemplateValue = {
-  field_index: number;
-  value_text?: string | null;
-  value_number?: number | null;
-  value_date?: string | null;
-  value_json?: unknown;
-};
-
-type TemplateTask = {
-  name?: string;
-  description?: string;
-  description_doc?: unknown;
-  assignee_id?: number | null;
-  due_offset_days?: number | null;
-  start_offset_days?: number | null;
-  status?: string;
-  progress?: number;
-  subtasks?: TemplateTask[];
-  values?: TemplateValue[];
-};
-
-type TemplateField = {
-  name?: string;
-  field_type?: string;
-  options?: unknown;
-  description?: string;
-  config?: unknown;
-  position?: number;
-  access_level?: string;
-  editor_ids?: unknown;
-};
-
-type V2Payload = {
-  version?: number;
-  project?: {
-    description?: string;
-    color?: string | null;
-    icon?: string | null;
-    status?: string;
-    status_color?: string;
-    status_options?: string[];
-    status_field_name?: string;
-    status_field_enabled?: boolean;
-    owner_id?: number | null;
-    team_id?: number | null;
-    settings?: unknown;
-  };
-  sections?: { name?: string; tasks?: TemplateTask[] }[];
-  custom_fields?: TemplateField[];
-};
+import type {
+  ProjectTemplatePayload,
+  TemplateTask,
+} from "@/lib/project-template-payload";
 
 export const DELETE = withAdmin(async (_req, { params }) => {
-  const id = params.id;
-  const r = await db.query("DELETE FROM project_templates WHERE id = $1::bigint", [id]);
-  if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  return NextResponse.json({ deleted: Number(id) });
+  const id = Number(params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return NextResponse.json({ error: "invalid template id" }, { status: 400 });
+  }
+  const existing = await db.query(
+    "SELECT is_builtin FROM project_templates WHERE id = $1::bigint",
+    [id],
+  );
+  if (existing.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (existing.rows[0].is_builtin === true) {
+    return NextResponse.json(
+      { error: "built-in templates cannot be deleted" },
+      { status: 403 },
+    );
+  }
+  await db.query("DELETE FROM project_templates WHERE id = $1::bigint", [id]);
+  return NextResponse.json({ deleted: id });
 });
 
 // Instantiate a template into a new project. Body: { name: string }.
@@ -74,7 +40,7 @@ export const POST = withUser(async (req, { uid, params }) => {
   const t = await db.query("SELECT workspace_id, payload FROM project_templates WHERE id = $1::bigint", [id]);
   if (t.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const workspaceId = Number(t.rows[0].workspace_id);
-  const payload = t.rows[0].payload as V2Payload;
+  const payload = t.rows[0].payload as ProjectTemplatePayload;
 
   const projectId = await withTransaction(async (q) => {
     const isV2 = payload?.version === 2;

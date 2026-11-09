@@ -13,6 +13,9 @@ export type ProjectTemplateSummary = {
   created_by: number | null;
   creator_name: string | null;
   created_at: string;
+  is_builtin: boolean;
+  builtin_key: string | null;
+  category: string;
   section_count: number;
   task_count: number;
   sections: ProjectTemplateSectionSummary[];

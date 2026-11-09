@@ -31,6 +31,7 @@ export default function ProjectCreateScreen({
   const [templates, setTemplates] = useState(initialTemplates);
   const [selected, setSelected] = useState<ProjectTemplateSummary | null>(null);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -44,8 +45,18 @@ export default function ProjectCreateScreen({
         .includes(needle),
     );
   }, [query, templates]);
-  const mine = filtered.filter((template) => template.created_by === viewerId);
-  const others = filtered.filter((template) => template.created_by !== viewerId);
+  const builtins = filtered.filter((template) => template.is_builtin);
+  const workspaceTemplates = filtered.filter((template) => !template.is_builtin);
+  const mine = workspaceTemplates.filter((template) => template.created_by === viewerId);
+  const others = workspaceTemplates.filter((template) => template.created_by !== viewerId);
+  const visibleBuiltins =
+    category === "all" ? builtins : builtins.filter((template) => template.category === category);
+  const categories = useMemo(
+    () =>
+      [...new Set(templates.filter((template) => template.is_builtin).map((template) => template.category))]
+        .filter((value) => value !== ""),
+    [templates],
+  );
 
   const openGallery = (nextScope: Scope = scope) => {
     setView("gallery");
@@ -131,7 +142,7 @@ export default function ProjectCreateScreen({
           className="mt-0.5 h-9 w-9 text-[13px]"
         />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-medium text-neutral-900">
+          <span className="line-clamp-2 block break-words text-[14px] font-medium leading-5 text-neutral-900">
             {template.name}
           </span>
           <span className="mt-1 line-clamp-2 block text-[11px] leading-4 text-neutral-500">
@@ -141,11 +152,17 @@ export default function ProjectCreateScreen({
           <span className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-neutral-400">
             <span>{template.section_count}セクション</span>
             <span>{template.task_count}タスク</span>
-            {template.creator_name && <span>作成: {template.creator_name}</span>}
+            {template.is_builtin ? (
+              <span className="rounded bg-[#eff4fd] px-1 text-[#2c60b8]">
+                Atlas標準・{template.category}
+              </span>
+            ) : (
+              template.creator_name && <span>作成: {template.creator_name}</span>
+            )}
           </span>
         </span>
       </button>
-      {isWorkspaceAdmin && (
+      {isWorkspaceAdmin && !template.is_builtin && (
         <button
           type="button"
           data-project-template-delete={template.id}
@@ -275,6 +292,44 @@ export default function ProjectCreateScreen({
                 </button>
               </div>
 
+              {scope === "all" && categories.length > 0 && (
+                <div
+                  data-project-template-categories
+                  className="mt-3 flex flex-wrap items-center gap-1.5"
+                >
+                  <span className="mr-0.5 text-[11px] text-neutral-400">カテゴリ</span>
+                  <button
+                    type="button"
+                    data-project-template-category="all"
+                    aria-pressed={category === "all"}
+                    onClick={() => setCategory("all")}
+                    className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                      category === "all"
+                        ? "border-[#2c60b8] bg-[#eff4fd] font-medium text-[#2c60b8]"
+                        : "border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50"
+                    }`}
+                  >
+                    すべて
+                  </button>
+                  {categories.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      data-project-template-category={item}
+                      aria-pressed={category === item}
+                      onClick={() => setCategory(item)}
+                      className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                        category === item
+                          ? "border-[#2c60b8] bg-[#eff4fd] font-medium text-[#2c60b8]"
+                          : "border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <button
                 type="button"
                 data-project-create-blank
@@ -296,6 +351,22 @@ export default function ProjectCreateScreen({
                   →
                 </span>
               </button>
+
+              {scope === "all" && visibleBuiltins.length > 0 && (
+                <section className="mt-6">
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-[14px] font-semibold text-neutral-900">
+                      Atlas おすすめテンプレート
+                    </h3>
+                    <span className="text-[11px] text-neutral-400">
+                      {visibleBuiltins.length}件
+                    </span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {visibleBuiltins.map(templateCard)}
+                  </div>
+                </section>
+              )}
 
               {query.trim() !== "" && filtered.length === 0 && (
                 <div className="mt-6 rounded-xl border border-dashed border-neutral-300 bg-white px-6 py-10 text-center">
@@ -448,8 +519,14 @@ export default function ProjectCreateScreen({
                       `${selected.section_count}個のセクションと${selected.task_count}個のタスクを含むテンプレートです。`}
                   </p>
                   <div className="mt-1 text-[10px] text-neutral-400">
-                    {selected.creator_name ? `作成: ${selected.creator_name}` : "ワークスペースのテンプレート"}
-                    {selected.created_at ? ` ・ ${formatDateTime(selected.created_at)}` : ""}
+                    {selected.is_builtin
+                      ? `Atlas標準テンプレート ・ ${selected.category}`
+                      : selected.creator_name
+                        ? `作成: ${selected.creator_name}`
+                        : "ワークスペースのテンプレート"}
+                    {!selected.is_builtin && selected.created_at
+                      ? ` ・ ${formatDateTime(selected.created_at)}`
+                      : ""}
                   </div>
                 </div>
               </div>
