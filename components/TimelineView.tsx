@@ -4,18 +4,12 @@ import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { ApiError, api } from "@/lib/api-client";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Section, TaskRow, User } from "@/lib/data";
-import {
-  parseListDateFilter,
-  taskMatchesListFilters,
-  type ListDateFilter,
-  type ListFilters,
-} from "@/lib/list-view";
 import { dayDeltaFromPixels, shiftDate } from "@/lib/timeline-dnd";
 import { criticalPath } from "@/lib/critical-path";
-import { todayISO } from "@/lib/dates";
+import { formatDay } from "@/lib/calendar";
 import EmptyState from "./EmptyState";
 import TaskAvatar from "./task/TaskAvatar";
 import TimelineBar from "./timeline/TimelineBar";
@@ -28,8 +22,8 @@ import { dayOrNull } from "@/lib/task-dates";
 import { isSingleDayTimelineTask, usesTimelineExternalLabel } from "@/lib/timeline-marker";
 import { assignTimelineLanes, estimateTimelineLabelDays, timelineInterval } from "@/lib/timeline-lanes";
 import { timelineBarDragStyle } from "@/lib/timeline-drag-style";
-
-const DAY_MS = 86_400_000;
+import { useTimelineFilters } from "@/lib/use-timeline-filters";
+import { useTimelineViewport, ZOOM_PRESETS } from "@/lib/use-timeline-viewport";
 
 const toDay = dayOrNull;
 
@@ -41,38 +35,7 @@ const ROW_PITCH = 40;
 const BAR_H = 34;
 const AXIS_H = 49;
 const EDGE_HIT = 10;
-const ZOOM_PRESETS = [
-  { key: "hour", label: "時間", dayWidth: 5064 },
-  { key: "day", label: "日", dayWidth: 40 },
-  { key: "week", label: "週", dayWidth: 24 },
-  { key: "month", label: "月", dayWidth: 12 },
-  { key: "quarter", label: "四半期", dayWidth: 4 },
-  { key: "half", label: "半年", dayWidth: 2 },
-  { key: "year", label: "年", dayWidth: 1 },
-] as const;
-
-type SortKey = "default" | "due" | "start" | "assignee";
 type Draft = { sectionId: number | null; day: number; key: number } | null;
-
-function isoWeek(day: number): number {
-  const d = new Date(day * DAY_MS);
-  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const dayNum = t.getUTCDay() || 7;
-  t.setUTCDate(t.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
-  return Math.ceil((((t.getTime() - yearStart.getTime()) / DAY_MS) + 1) / 7);
-}
-
-function weekLabel(start: number): string {
-  const a = new Date(start * DAY_MS);
-  const b = new Date((start + 6) * DAY_MS);
-  const range =
-    a.getUTCMonth() === b.getUTCMonth()
-      ? `${a.getUTCDate()} - ${b.getUTCDate()}`
-      : `${a.getUTCMonth() + 1}月${a.getUTCDate()}日 - ${b.getUTCDate()}`;
-  // Weeks start on Sunday in the Asana timeline; ISO week numbers are Monday-based.
-  return `W${isoWeek(start + 1)} ${range}`;
-}
 
 
 export default function TimelineView({
@@ -120,57 +83,66 @@ export default function TimelineView({
   const moved = useRef(false);
 
   const stored = initialState ?? {};
-  const storedZoom =
-    typeof stored.zoom === "number" && stored.zoom >= 0 && stored.zoom < ZOOM_PRESETS.length
-      ? stored.zoom
-      : 2;
-  const storedSort =
-    stored.sort === "due" || stored.sort === "start" || stored.sort === "assignee"
-      ? (stored.sort as SortKey)
-      : "default";
-  const [zoom, setZoom] = useState(storedZoom);
+  const {
+    filters,
+    visibleTasks,
+    dated,
+    undated,
+    canReorder,
+    activeFilterCount,
+    setTimelineFilter,
+    clearTimelineFilters,
+    persistedState,
+    hideCompleted,
+    completedOnly,
+    mineOnly,
+    assigneeFilter,
+    statusFilter,
+    dueFilter,
+    startFilter,
+    creatorFilter,
+    createdFilter,
+    updatedFilter,
+    completedDateFilter,
+    sortBy,
+    setSortBy,
+  } = useTimelineFilters({ tasks, initialState, viewerId, statusFieldEnabled });
+
+  const {
+    zoom,
+    zoomPreset,
+    dayWidth,
+    min,
+    max,
+    span,
+    dayPct,
+    pct,
+    changeZoom,
+    todayDay,
+    showToday,
+    weekendDays,
+    axisTop,
+    axisBottom,
+    gridLines,
+  } = useTimelineViewport({
+    dated,
+    startOverride,
+    initialZoom: typeof stored.zoom === "number" ? stored.zoom : 2,
+    scrollRef,
+    contentRef,
+  });
+
   const [undatedOpen, setUndatedOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [collapsedHydrated, setCollapsedHydrated] = useState(false);
   const [draft, setDraft] = useState<Draft>(null);
-  const [hideCompleted, setHideCompleted] = useState(stored.hide_completed === true);
-  const [completedOnly, setCompletedOnly] = useState(stored.completed_only === true);
-  const [mineOnly, setMineOnly] = useState(stored.mine_only === true);
-  const [assigneeFilter, setAssigneeFilter] = useState(
-    typeof stored.assignee === "string" && stored.assignee !== "all" ? stored.assignee : "",
-  );
-  const [statusFilter, setStatusFilter] = useState(
-    typeof stored.status === "string" ? stored.status : "",
-  );
-  const [dueFilter, setDueFilter] = useState(typeof stored.due === "string" ? stored.due : "");
-  const [startFilter, setStartFilter] = useState<ListDateFilter>(() => parseListDateFilter(stored.start));
-  const [creatorFilter, setCreatorFilter] = useState(
-    typeof stored.creator === "string" ? stored.creator : "",
-  );
-  const [createdFilter, setCreatedFilter] = useState<ListDateFilter>(() => parseListDateFilter(stored.created));
-  const [updatedFilter, setUpdatedFilter] = useState<ListDateFilter>(() => parseListDateFilter(stored.updated));
-  const [completedDateFilter, setCompletedDateFilter] = useState<ListDateFilter>(() =>
-    parseListDateFilter(stored.completed_on),
-  );
-  const [sortBy, setSortBy] = useState<SortKey>(storedSort);
   const [zoomMenu, setZoomMenu] = useState(false);
   const [showWeekends, setShowWeekends] = useState(stored.weekends !== false);
   const [showDependencies, setShowDependencies] = useState(stored.dependencies !== false);
   const [showCritical, setShowCritical] = useState(stored.critical !== false);
   usePersistedViewState(projectId, "timeline", {
     zoom,
-    hide_completed: hideCompleted,
-    completed_only: completedOnly,
-    mine_only: mineOnly,
-    assignee: assigneeFilter,
-    status: statusFilter,
-    due: dueFilter,
-    start: startFilter,
-    creator: creatorFilter,
-    created: createdFilter,
-    updated: updatedFilter,
-    completed_on: completedDateFilter,
-    sort: sortBy,
+    ...persistedState,
     weekends: showWeekends,
     dependencies: showDependencies,
     critical: showCritical,
@@ -203,10 +175,6 @@ export default function TimelineView({
     startY: number;
     rowDrop: { sectionId: number; row: number; top: number } | null;
   } | null>(null);
-  const zoomPreset = ZOOM_PRESETS[zoom];
-  const dayWidth = zoomPreset.dayWidth;
-  const pendingAnchor = useRef<{ day: number } | null>(null);
-  const initialScrollDone = useRef(false);
 
   useEffect(() => {
     if (!draft) return;
@@ -266,117 +234,6 @@ export default function TimelineView({
       // localStorage may be unavailable in private modes
     }
   }, [collapsed, collapsedHydrated, projectId]);
-
-  const timelineToday = todayISO();
-  const shiftTimelineDay = (days: number) => {
-    const date = new Date(`${timelineToday}T00:00:00Z`);
-    date.setUTCDate(date.getUTCDate() + days);
-    return date.toISOString().slice(0, 10);
-  };
-  const filters: ListFilters = {
-    hide_completed: hideCompleted,
-    completed_only: completedOnly,
-    mine_only: mineOnly,
-    assignee: assigneeFilter,
-    status: statusFilter,
-    due: dueFilter,
-    start: startFilter,
-    creator: creatorFilter,
-    created: createdFilter,
-    updated: updatedFilter,
-    completed_on: completedDateFilter,
-  };
-  const visibleTasks = useMemo(
-    () =>
-      tasks.filter((task) =>
-        taskMatchesListFilters(task, filters, {
-          today: timelineToday,
-          viewerId,
-          statusFieldEnabled,
-          dayOffset: shiftTimelineDay,
-        }),
-      ),
-    // filter fields are primitives; recreating the predicate each render is cheap
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tasks, hideCompleted, completedOnly, mineOnly, assigneeFilter, statusFilter, dueFilter, startFilter, creatorFilter, createdFilter, updatedFilter, completedDateFilter, viewerId, statusFieldEnabled, timelineToday],
-  );
-  const dated = useMemo(
-    () => visibleTasks.filter((t) => toDay(t.start_on) !== null || toDay(t.due_on) !== null),
-    [visibleTasks],
-  );
-  const undated = useMemo(
-    () => visibleTasks.filter((t) => toDay(t.start_on) === null && toDay(t.due_on) === null),
-    [visibleTasks],
-  );
-  // Vertical reorder maps directly to task.position. Disable it while a
-  // non-default sort or a filter hides rows, so the visual order stays truthful.
-  const canReorder = sortBy === "default" && !hideCompleted && assigneeFilter === "";
-
-  const { min, max, span, dayPct } = useMemo(() => {
-    let min = Number.MAX_SAFE_INTEGER;
-    let max = Number.MIN_SAFE_INTEGER;
-    for (const t of dated) {
-      const s = toDay(t.start_on) ?? toDay(t.due_on)!;
-      const e = toDay(t.due_on) ?? toDay(t.start_on)!;
-      min = Math.min(min, s);
-      max = Math.max(max, e);
-    }
-    if (dated.length === 0) {
-      const today = toDay(todayISO())!;
-      min = today - 7;
-      max = today + 35;
-    } else {
-      min -= 3;
-      max += 10;
-      // Align the canvas to whole weeks so the first/last axis labels are not
-      // squeezed into a partial cell.
-      min -= new Date(min * DAY_MS).getUTCDay();
-      max += 6 - new Date(max * DAY_MS).getUTCDay();
-    }
-    if (startOverride !== null) {
-      min = startOverride;
-      if (max < min) max = min + 30;
-    }
-    let span = Math.max(1, max - min + 1);
-    // Keep enough content around the tasks so coarse zoom levels do not stretch
-    // a short project across the viewport (Asana extends its timeline range).
-    const desiredSpan = Math.max(1, Math.ceil(1680 / dayWidth));
-    if (span < desiredSpan) {
-      const extra = desiredSpan - span;
-      const before = Math.floor(extra / 2);
-      min -= before;
-      max += extra - before;
-      span = Math.max(1, max - min + 1);
-    }
-    return { min, max, span, dayPct: 100 / span };
-  }, [dated, startOverride, dayWidth]);
-  const pct = useCallback(
-    (d: number) => `${((d - min) / span) * 100}%`,
-    [min, span],
-  );
-
-  const changeZoom = (next: number) => {
-    const clamped = Math.max(0, Math.min(ZOOM_PRESETS.length - 1, next));
-    if (clamped === zoom) return;
-    const scroller = scrollRef.current;
-    if (scroller) {
-      const width = contentRef.current?.offsetWidth ?? Math.max(700, span * dayWidth);
-      const centerX = scroller.scrollLeft + scroller.clientWidth / 2;
-      pendingAnchor.current = { day: min + (centerX / Math.max(1, width)) * span };
-    }
-    setZoom(clamped);
-  };
-
-  useEffect(() => {
-    const pending = pendingAnchor.current;
-    if (!pending) return;
-    const scroller = scrollRef.current;
-    if (!scroller) return;
-    const width = contentRef.current?.offsetWidth ?? Math.max(700, span * dayWidth);
-    const x = ((pending.day - min) / span) * width;
-    scroller.scrollLeft = Math.max(0, x - scroller.clientWidth / 2);
-    pendingAnchor.current = null;
-  }, [zoom, min, span, dayWidth]);
 
   const groups = useMemo(() => {
     const bySection = new Map<number | null, TaskRow[]>();
@@ -552,138 +409,6 @@ export default function TimelineView({
         : new Set<number>(),
     [showCritical, dated, deps],
   );
-
-  const todayDay = toDay(todayISO())!;
-  const showToday = todayDay >= min && todayDay <= max;
-
-  useEffect(() => {
-    if (initialScrollDone.current) return;
-    const scroller = scrollRef.current;
-    const canvas = contentRef.current;
-    if (!scroller || !canvas || canvas.offsetWidth === 0) return;
-    const x = ((todayDay - min) / span) * canvas.offsetWidth;
-    scroller.scrollLeft = Math.max(0, x - scroller.clientWidth / 2);
-    initialScrollDone.current = true;
-  }, [min, span, todayDay]);
-  const firstWeek = min - new Date(min * DAY_MS).getUTCDay();
-  const lastWeek = max + (6 - new Date(max * DAY_MS).getUTCDay());
-  const { weeks, weekLines } = useMemo(() => {
-    const weeks: { start: number; left: number; right: number; label: string }[] = [];
-    for (let d = firstWeek; d <= lastWeek; d += 7) {
-      if (d + 6 < min || d > max) continue;
-      weeks.push({
-        start: d,
-        left: Math.max(d, min),
-        right: Math.min(d + 6, max),
-        label: weekLabel(d),
-      });
-    }
-    const weekLines: number[] = [];
-    for (let d = firstWeek; d <= lastWeek; d += 7) {
-      if (d >= min && d <= max) weekLines.push(d);
-    }
-    return { weeks, weekLines };
-  }, [firstWeek, lastWeek, min, max]);
-
-  const months: { start: number; end: number; label: string }[] = [];
-  for (let d = min; d <= max; ) {
-    const dt = new Date(d * DAY_MS);
-    const yNum = dt.getUTCFullYear();
-    const mNum = dt.getUTCMonth();
-    const next = Date.UTC(yNum, mNum + 1, 1) / DAY_MS;
-    months.push({ start: d, end: Math.min(next - 1, max), label: `${mNum + 1}月` });
-    d = next;
-  }
-
-  const days: number[] = [];
-  const weekendDays: number[] = [];
-  for (let d = min; d <= max; d++) {
-    days.push(d);
-    const wd = new Date(d * DAY_MS).getUTCDay();
-    if (wd === 0 || wd === 6) weekendDays.push(d);
-  }
-
-  type AxisInterval = { key: string; start: number; end: number; label: string; daysWide: number };
-  const buildIntervals = (keyOf: (d: number) => { key: string; label: string }): AxisInterval[] => {
-    const out: Array<Omit<AxisInterval, "daysWide">> = [];
-    let current: Omit<AxisInterval, "daysWide"> | null = null;
-    for (let d = min; d <= max; d++) {
-      const { key, label } = keyOf(d);
-      if (!current || current.key !== key) {
-        if (current) current.end = d - 1;
-        current = { key, start: d, end: d, label };
-        out.push(current);
-      } else {
-        current.end = d;
-      }
-    }
-    return out.map((interval) => ({ ...interval, daysWide: interval.end - interval.start + 1 }));
-  };
-  const monthIntervals = buildIntervals((d) => {
-    const dt = new Date(d * DAY_MS);
-    return { key: `${dt.getUTCFullYear()}-${dt.getUTCMonth()}`, label: `${dt.getUTCMonth() + 1}月` };
-  });
-  const yearIntervals = buildIntervals((d) => {
-    const y = new Date(d * DAY_MS).getUTCFullYear();
-    return { key: `${y}`, label: `${y}年` };
-  });
-  const quarterIntervals = buildIntervals((d) => {
-    const dt = new Date(d * DAY_MS);
-    const q = Math.floor(dt.getUTCMonth() / 3) + 1;
-    return { key: `${dt.getUTCFullYear()}-Q${q}`, label: `Q${q}` };
-  });
-  const dayIntervals = buildIntervals((d) => {
-    const dt = new Date(d * DAY_MS);
-    return { key: `${d}`, label: `${dt.getUTCDate()}` };
-  });
-  const hourDayIntervals = buildIntervals((d) => {
-    const dt = new Date(d * DAY_MS);
-    return { key: `${d}`, label: `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}` };
-  });
-  const hourIntervals: AxisInterval[] = [];
-  for (let d = min; d <= max; d++) {
-    for (let h = 0; h < 24; h++) {
-      hourIntervals.push({
-        key: `${d}-${h}`,
-        start: d + h / 24,
-        end: d + (h + 1) / 24,
-        label: `${h}:00`,
-        daysWide: 1 / 24,
-      });
-    }
-  }
-  const axisTop =
-    zoomPreset.key === "hour"
-      ? hourDayIntervals
-      : zoomPreset.key === "day" || zoomPreset.key === "week"
-        ? monthIntervals
-        : yearIntervals;
-  const axisBottom =
-    zoomPreset.key === "hour"
-      ? hourIntervals
-      : zoomPreset.key === "day"
-        ? dayIntervals
-        : zoomPreset.key === "week"
-          ? weeks.map((w) => ({
-              key: `w-${w.start}`,
-              start: w.left,
-              end: w.right,
-              label: w.label,
-              daysWide: w.right - w.left + 1,
-            }))
-          : zoomPreset.key === "month" || zoomPreset.key === "quarter"
-            ? monthIntervals
-            : quarterIntervals;
-  const gridLines =
-    zoomPreset.key === "hour"
-      ? hourIntervals.filter((h) => !h.label.startsWith("0:00")).map((h) => h.start)
-      : zoomPreset.key === "day" || zoomPreset.key === "week"
-        ? days
-        : zoomPreset.key === "month"
-          ? weekLines
-          : zoomPreset.key === "quarter"
-            ? monthIntervals.map((m) => m.start)
-            : quarterIntervals.map((q) => q.start);
 
   const commitChange = async (
     t: TaskRow,
@@ -974,7 +699,7 @@ export default function TimelineView({
     }, 160);
   };
 
-  const linkDay = (d: number) => new Date(d * DAY_MS).toISOString().slice(0, 10);
+  const linkDay = (d: number) => formatDay(d);
 
   const openTask = (id: number) => {
     const q = new URLSearchParams(window.location.search);
@@ -1262,45 +987,6 @@ export default function TimelineView({
         onToggleComplete={() => toggleComplete(t)}
       />
     );
-  };
-
-  const activeFilterCount =
-    (hideCompleted ? 1 : 0) +
-    (completedOnly ? 1 : 0) +
-    (mineOnly ? 1 : 0) +
-    (assigneeFilter !== "" ? 1 : 0) +
-    (statusFieldEnabled && statusFilter !== "" ? 1 : 0) +
-    (dueFilter !== "" ? 1 : 0) +
-    (startFilter !== "" ? 1 : 0) +
-    (creatorFilter !== "" ? 1 : 0) +
-    (createdFilter !== "" ? 1 : 0) +
-    (updatedFilter !== "" ? 1 : 0) +
-    (completedDateFilter !== "" ? 1 : 0);
-  const setTimelineFilter = (key: keyof ListFilters, value: string | boolean) => {
-    if (key === "hide_completed") setHideCompleted(value === true);
-    else if (key === "completed_only") setCompletedOnly(value === true);
-    else if (key === "mine_only") setMineOnly(value === true);
-    else if (key === "assignee") setAssigneeFilter(String(value));
-    else if (key === "status") setStatusFilter(String(value));
-    else if (key === "due") setDueFilter(String(value));
-    else if (key === "start") setStartFilter(parseListDateFilter(value));
-    else if (key === "creator") setCreatorFilter(String(value));
-    else if (key === "created") setCreatedFilter(parseListDateFilter(value));
-    else if (key === "updated") setUpdatedFilter(parseListDateFilter(value));
-    else if (key === "completed_on") setCompletedDateFilter(parseListDateFilter(value));
-  };
-  const clearTimelineFilters = () => {
-    setHideCompleted(false);
-    setCompletedOnly(false);
-    setMineOnly(false);
-    setAssigneeFilter("");
-    setStatusFilter("");
-    setDueFilter("");
-    setStartFilter("");
-    setCreatorFilter("");
-    setCreatedFilter("");
-    setUpdatedFilter("");
-    setCompletedDateFilter("");
   };
 
   return (
