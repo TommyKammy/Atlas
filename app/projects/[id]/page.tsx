@@ -44,6 +44,7 @@ import ProjectHeaderStatus from "@/components/ProjectHeaderStatus";
 import ProjectMemberFacepile from "@/components/project/ProjectMemberFacepile";
 import ProjectShareButton from "@/components/ProjectShareButton";
 import ProjectCustomizeButton from "@/components/ProjectCustomizeButton";
+import ProjectTaskContextMenu from "@/components/task/ProjectTaskContextMenu";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
   buildBoardInitial,
@@ -115,6 +116,21 @@ export default async function ProjectPage(props: {
   const knowledgeData = view === "knowledge" ? await getKnowledgeViewData(projectId) : null;
   const formsData = view === "forms" ? await getFormsViewData(projectId) : null;
   const filesData = view === "files" ? await getFilesViewData(projectId) : null;
+
+  const contextTasks = (() => {
+    if (listData) {
+      const map = new Map<number, (typeof listData.tasks)[number]>();
+      for (const item of listData.tasks) map.set(item.id, item);
+      for (const items of Object.values(listData.subtaskMap)) {
+        for (const item of items) map.set(item.id, item);
+      }
+      return [...map.values()];
+    }
+    if (boardData) return boardData.tasks;
+    if (timelineData) return timelineData.tasks;
+    if (calendarData) return calendarData.tasks;
+    return [];
+  })();
 
   const savedView = view === "list" && savedId ? await getSavedView(savedId) : undefined;
   const activeSaved =
@@ -342,6 +358,10 @@ export default async function ProjectPage(props: {
         </div>
       </div>
       <Shortcuts projectId={projectId} />
+      <ProjectTaskContextMenu
+        tasks={contextTasks}
+        canEdit={access.role === "admin" || access.role === "editor"}
+      />
       {task && paneData && (
         <LazyTaskPane
           key={`task-${task.id}`}
