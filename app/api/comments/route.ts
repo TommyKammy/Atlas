@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { withTask } from "@/lib/api/route";
 import { replaceCommentMentions } from "@/lib/mentions";
 import { parseCommentPayload } from "@/lib/comment-payload";
+import { emitTaskEvent } from "@/lib/domain/events";
 
 export const POST = withTask("comment", async (_req, { taskId: task_id, uid, projectId: taskProjectId, body }) => {
   const parsed = await parseCommentPayload(taskProjectId, body);
@@ -22,5 +23,14 @@ export const POST = withTask("comment", async (_req, { taskId: task_id, uid, pro
     entityId: r.rows[0].id,
     summary: parsed.text.slice(0, 120),
   });
+  if (taskProjectId !== null) {
+    await emitTaskEvent({
+      projectId: taskProjectId,
+      taskId: task_id,
+      actorId: uid,
+      type: "comment.created",
+      data: { comment_id: Number(r.rows[0].id), body: parsed.text.slice(0, 500) },
+    }).catch(() => undefined);
+  }
   return NextResponse.json({ id: r.rows[0].id }, { status: 201 });
 }, { body: true });

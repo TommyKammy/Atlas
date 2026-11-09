@@ -88,6 +88,22 @@ app.prepare().then(async () => {
         "WITH del AS (DELETE FROM task_events WHERE created_at < NOW() - make_interval(days => $1) RETURNING 1) SELECT COUNT(*) AS n FROM del",
         [eventDays],
       );
+      const de = await pool.query(
+        `WITH del AS (
+           DELETE FROM domain_events
+           WHERE processed_at IS NOT NULL AND occurred_at < NOW() - make_interval(days => $1)
+           RETURNING 1
+         ) SELECT COUNT(*) AS n FROM del`,
+        [eventDays],
+      );
+      const rr = await pool.query(
+        `WITH del AS (
+           DELETE FROM rule_runs
+           WHERE started_at < NOW() - make_interval(days => $1)
+           RETURNING 1
+         ) SELECT COUNT(*) AS n FROM del`,
+        [eventDays],
+      );
       await pool.query(
         "WITH del AS (DELETE FROM project_share_tokens WHERE expires_at IS NOT NULL AND expires_at <= NOW() RETURNING 1) SELECT COUNT(*) AS n FROM del",
       ).then((r) => {
@@ -99,8 +115,10 @@ app.prepare().then(async () => {
       );
       if (Number(t.rows[0].n) > 0) console.log(`janitor: purged trash=${t.rows[0].n}`);
       await pool.end();
-      if (Number(a.rows[0].n) + Number(e.rows[0].n) > 0) {
-        console.log(`janitor: purged audit=${a.rows[0].n} events=${e.rows[0].n}`);
+      if (Number(a.rows[0].n) + Number(e.rows[0].n) + Number(de.rows[0].n) + Number(rr.rows[0].n) > 0) {
+        console.log(
+          `janitor: purged audit=${a.rows[0].n} events=${e.rows[0].n} domain_events=${de.rows[0].n} rule_runs=${rr.rows[0].n}`,
+        );
       }
     } catch (err) {
       console.error("janitor failed:", err?.message || err);

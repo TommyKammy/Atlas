@@ -4,6 +4,7 @@ import { withResourceProject } from "@/lib/api/route";
 import type { FormField } from "@/lib/forms";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
+import { emitTaskEvent } from "@/lib/domain/events";
 
 function dateValue(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) ? value : null;
@@ -104,5 +105,19 @@ export const POST = withResourceProject("view", "project_forms", async (_req, { 
     projectId: Number(form.project_id),
     summary: `task ${taskId}`,
   });
+  await emitTaskEvent({
+    projectId: Number(form.project_id),
+    taskId,
+    actorId: uid,
+    type: "task.created",
+    data: { form_id: Number(id), form_name: form.name, answers: cleaned },
+  }).catch(() => undefined);
+  await emitTaskEvent({
+    projectId: Number(form.project_id),
+    taskId,
+    actorId: uid,
+    type: "form.submitted",
+    data: { form_id: Number(id), form_name: form.name, answers: cleaned },
+  }).catch(() => undefined);
   return NextResponse.json({ ok: true, task_id: taskId, project_id: Number(form.project_id) }, { status: 201 });
 }, { body: true });

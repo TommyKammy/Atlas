@@ -3,10 +3,11 @@ import { db } from "@/lib/db";
 import { notifyProject, notifyTask } from "@/lib/notify";
 import { requireTaskPermission } from "@/lib/api-project-auth";
 import { withProject } from "@/lib/api/route";
+import { emitTaskEvent } from "@/lib/domain/events";
 
 // Extra project memberships (multi-homing). The primary project stored on
 // tasks.project_id cannot be removed through this endpoint.
-export const POST = withProject("edit", async (req, { projectId, body }) => {
+export const POST = withProject("edit", async (req, { uid, projectId, body }) => {
   const { task_id, section_id } = (body ?? {}) as { task_id?: number; section_id?: number | null };
   if (!task_id) {
     return NextResponse.json({ error: "task_id and project_id are required" }, { status: 400 });
@@ -26,6 +27,13 @@ export const POST = withProject("edit", async (req, { projectId, body }) => {
   );
   await notifyProject(projectId);
   await notifyTask(task_id);
+  await emitTaskEvent({
+    projectId,
+    taskId: Number(task_id),
+    actorId: uid,
+    type: "task.added_to_project",
+    data: { project_id: projectId, section_id: section_id ?? null },
+  }).catch(() => undefined);
   return NextResponse.json({ ok: true }, { status: 201 });
 }, { body: true });
 

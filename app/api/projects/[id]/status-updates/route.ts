@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { withProject } from "@/lib/api/route";
 import { audit } from "@/lib/audit";
 import { isProjectStatusColor } from "@/lib/project-status";
+import { db } from "@/lib/db";
+import { emitDomainEvent } from "@/lib/domain/events";
 import {
   createProjectStatusUpdate,
   getProjectStatusUpdates,
@@ -34,6 +36,20 @@ export const POST = withProject(
       projectId,
       summary: text.slice(0, 120),
     });
+    const workspace = await db.query("SELECT workspace_id FROM projects WHERE id = $1::bigint", [
+      projectId,
+    ]);
+    if (workspace.rows[0]?.workspace_id) {
+      await emitDomainEvent({
+        workspaceId: Number(workspace.rows[0].workspace_id),
+        projectId,
+        actorId: uid,
+        type: "project.status_changed",
+        subjectType: "project",
+        subjectId: projectId,
+        data: { status, status_color: color, update_id: id },
+      }).catch(() => undefined);
+    }
     return NextResponse.json(
       { id, updates: await getProjectStatusUpdates(projectId) },
       { status: 201 },

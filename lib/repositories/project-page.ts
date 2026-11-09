@@ -1,12 +1,12 @@
 import { cache } from "react";
 import { getDashboardTasks, getDashboardWidgets } from "../dashboard";
+import { getProjectRules } from "../automation/repository";
 import {
   getBundlesForProject,
   getCustomFields,
   getDependencies,
   getProjectActivity,
   getProjectApps,
-  getProjectAutomations,
   getProjectKnowledge,
   getProjectMembers,
   getProjectMessages,
@@ -36,7 +36,7 @@ import {
  * regardless of the active view. Cached per request.
  */
 export const getProjectShellData = cache(async (projectId: number, viewerId: number) => {
-  const [sections, users, members, projectTabs, customFields, projectApps, projectBundles, projectAutomations, favorite] =
+  const [sections, users, members, projectTabs, customFields, projectApps, projectBundles, projectRules, favorite] =
     await Promise.all([
       getSections(projectId),
       getUsers(),
@@ -45,7 +45,7 @@ export const getProjectShellData = cache(async (projectId: number, viewerId: num
       getCustomFields(projectId),
       getProjectApps(projectId),
       getBundlesForProject(projectId),
-      getProjectAutomations(projectId),
+      getProjectRules(projectId),
       isFavorite(viewerId, projectId),
     ]);
   return {
@@ -56,7 +56,7 @@ export const getProjectShellData = cache(async (projectId: number, viewerId: num
     customFields,
     projectApps,
     projectBundles,
-    projectAutomations,
+    projectRules,
     favorite,
   };
 });

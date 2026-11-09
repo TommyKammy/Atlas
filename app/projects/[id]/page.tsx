@@ -85,7 +85,7 @@ export default async function ProjectPage(props: {
     customFields,
     projectApps,
     projectBundles,
-    projectAutomations,
+    projectRules,
     favorite,
   } = shell;
 
@@ -199,7 +199,7 @@ export default async function ProjectPage(props: {
             initialEmailEnabled={project.email_enabled !== false}
             initialApps={projectApps}
             initialBundles={projectBundles}
-            initialAutomations={projectAutomations}
+            initialRules={projectRules}
             sections={sections}
             users={users}
             role={access.role}

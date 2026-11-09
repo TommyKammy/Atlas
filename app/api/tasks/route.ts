@@ -5,6 +5,7 @@ import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
 import { runAutomations } from "@/lib/automation-runner";
+import { emitTaskEvent } from "@/lib/domain/events";
 import { withUser } from "@/lib/api/route";
 
 export const POST = withUser(async (req, { uid }) => {
@@ -69,5 +70,12 @@ export const POST = withUser(async (req, { uid }) => {
   await audit(uid, "task.create", { entity: "task", entityId: id, projectId, summary: name });
   await logEvent(id, uid, "created", "タスクを作成しました").catch(() => undefined);
   await runAutomations(projectId, Number(id), "task_created").catch(() => undefined);
+  await emitTaskEvent({
+    projectId,
+    taskId: Number(id),
+    actorId: uid,
+    type: "task.created",
+    data: { name: name.trim(), section_id: sectionId, assignee_id: assigneeId, parent_task_id: parentId },
+  }).catch(() => undefined);
   return NextResponse.json({ id }, { status: 201 });
 });

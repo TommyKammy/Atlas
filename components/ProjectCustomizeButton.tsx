@@ -10,7 +10,7 @@ import type { Section, TaskTemplate, User } from "@/lib/data";
 import type { CustomField } from "@/lib/custom-fields";
 import { APP_CATALOG, type ProjectApp } from "@/lib/integrations";
 import type { Bundle, BundleField } from "@/lib/bundles";
-import type { AutomationAction, AutomationTrigger, ProjectAutomation } from "@/lib/automations";
+import type { ProjectRule } from "@/lib/automation/types";
 import { canEditProject, canManageProject, type ProjectRole } from "@/lib/project-roles";
 import CustomizeHomePanel from "./customize/CustomizeHomePanel";
 import CustomizeAppearancePanel from "./customize/CustomizeAppearancePanel";
@@ -18,12 +18,11 @@ import CustomizeStatusPanel from "./customize/CustomizeStatusPanel";
 import CustomizeEmailPanel from "./customize/CustomizeEmailPanel";
 import CustomizeAppsPanel from "./customize/CustomizeAppsPanel";
 import CustomizeBundlesPanel from "./customize/CustomizeBundlesPanel";
-import CustomizeAutomationsPanel from "./customize/CustomizeAutomationsPanel";
+import AutomationRulesPanel from "./customize/AutomationRulesPanel";
 import CustomizeFieldsPanel from "./customize/CustomizeFieldsPanel";
 import CustomizeTemplatesPanel from "./customize/CustomizeTemplatesPanel";
 import CustomizeFieldModal, { type FieldDraft } from "./customize/CustomizeFieldModal";
 import CustomizeTemplateModal, { type TemplateDraft } from "./customize/CustomizeTemplateModal";
-import CustomizeAutomationModal from "./customize/CustomizeAutomationModal";
 import CustomizeBundleModal from "./customize/CustomizeBundleModal";
 import CustomizeAppModal from "./customize/CustomizeAppModal";
 import { FIELD_LIBRARY } from "./customize/field-library";
@@ -63,7 +62,7 @@ export default function ProjectCustomizeButton({
   initialEmailEnabled,
   initialApps,
   initialBundles,
-  initialAutomations,
+  initialRules,
   sections,
   users,
   role,
@@ -80,7 +79,7 @@ export default function ProjectCustomizeButton({
   initialEmailEnabled: boolean;
   initialApps: ProjectApp[];
   initialBundles: Bundle[];
-  initialAutomations: ProjectAutomation[];
+  initialRules: ProjectRule[];
   sections: Section[];
   users: User[];
   role: ProjectRole;
@@ -110,13 +109,6 @@ export default function ProjectCustomizeButton({
     description: string;
     fields: BundleField[];
   } | null>(null);
-  const [automationDraft, setAutomationDraft] = useState<{
-    name: string;
-    trigger: AutomationTrigger;
-    action_type: AutomationAction;
-    action_value: string;
-  } | null>(null);
-  const [aiPrompt, setAiPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -422,80 +414,6 @@ export default function ProjectCustomizeButton({
     }
   };
 
-  const saveAutomation = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!automationDraft || !canEdit) return;
-    if (!automationDraft.name.trim() || !automationDraft.action_value.trim()) {
-      notify("ルール名とアクションの値を入力してください");
-      return;
-    }
-    setBusy(true);
-    try {
-      await api(`/api/projects/${projectId}/automations`, "POST", automationDraft);
-      setAutomationDraft(null);
-      router.refresh();
-      notify("自動化ルールを作成しました");
-    } catch {
-      notify("自動化ルールの作成に失敗しました");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const toggleAutomation = async (rule: ProjectAutomation) => {
-    if (!canEdit) return;
-    try {
-      await api(`/api/projects/${projectId}/automations/${rule.id}`, "PATCH", {
-        enabled: !rule.enabled,
-      });
-      router.refresh();
-    } catch {
-      notify("自動化ルールの更新に失敗しました");
-    }
-  };
-
-  const removeAutomation = async (rule: ProjectAutomation) => {
-    if (!canEdit || !await confirmAction(`「${rule.name}」を削除しますか？`)) return;
-    try {
-      await api(`/api/projects/${projectId}/automations/${rule.id}`, "DELETE");
-      router.refresh();
-      notify("自動化ルールを削除しました");
-    } catch {
-      notify("自動化ルールの削除に失敗しました");
-    }
-  };
-
-  const aiSuggest = () => {
-    const prompt = aiPrompt.trim();
-    if (prompt === "") {
-      notify("作りたい自動化を入力してください");
-      return;
-    }
-    if (prompt.includes("完了") && prompt.includes("コメント")) {
-      setAutomationDraft({
-        name: "完了時にコメント",
-        trigger: "task_completed",
-        action_type: "add_comment",
-        action_value: "完了おめでとうございます！",
-      });
-    } else if (prompt.includes("担当")) {
-      setAutomationDraft({
-        name: "新規タスクに担当者を設定",
-        trigger: "task_created",
-        action_type: "set_assignee",
-        action_value: String(users[0]?.id ?? ""),
-      });
-    } else {
-      setAutomationDraft({
-        name: prompt.includes("進行中") ? "新規タスクを進行中にする" : "新規タスクのStatusを設定",
-        trigger: "task_created",
-        action_type: "set_status",
-        action_value: statusValues.find((value) => prompt.includes(value)) ?? statusValues[0] ?? "未着手",
-      });
-    }
-    notify("AIアシストがルール案を作成しました");
-  };
-
   const applyBundle = async (bundle: Bundle) => {
     if (!canEdit) return;
     setBusy(true);
@@ -720,7 +638,7 @@ export default function ProjectCustomizeButton({
                 templateCount={templates.length}
                 appCount={initialApps.length}
                 bundleCount={initialBundles.filter((bundle) => bundle.applied).length}
-                automationCount={initialAutomations.filter((rule) => rule.enabled).length}
+                automationCount={initialRules.filter((rule) => rule.enabled).length}
                 onOpen={(next) => setPanel(next)}
               />
             )}
@@ -820,23 +738,10 @@ export default function ProjectCustomizeButton({
             )}
 
             {panel === "automations" && (
-              <CustomizeAutomationsPanel
-                rules={initialAutomations}
+              <AutomationRulesPanel
+                projectId={projectId}
+                initialRules={initialRules}
                 canEdit={canEdit}
-                aiPrompt={aiPrompt}
-                onAiPrompt={setAiPrompt}
-                onAiSuggest={aiSuggest}
-                onAdd={() =>
-                  setAutomationDraft({
-                    name: "",
-                    trigger: "task_created",
-                    action_type: "set_status",
-                    action_value: statusValues[0] ?? "未着手",
-                  })
-                }
-                onToggle={(rule) => void toggleAutomation(rule)}
-                onRemove={(rule) => void removeAutomation(rule)}
-                secondaryButton={secondaryButton}
               />
             )}
 
@@ -930,21 +835,6 @@ export default function ProjectCustomizeButton({
           onSubmit={saveTemplate}
           users={users}
           sections={sections}
-          busy={busy}
-          fieldTypeClass={fieldTypeClass}
-          primaryButton={primaryButton}
-          secondaryButton={secondaryButton}
-        />
-      )}
-
-      {automationDraft && (
-        <CustomizeAutomationModal
-          draft={automationDraft}
-          onDraft={setAutomationDraft}
-          onClose={() => setAutomationDraft(null)}
-          onSubmit={saveAutomation}
-          users={users}
-          statusValues={statusValues}
           busy={busy}
           fieldTypeClass={fieldTypeClass}
           primaryButton={primaryButton}

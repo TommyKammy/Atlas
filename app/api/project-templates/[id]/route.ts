@@ -117,6 +117,26 @@ export const POST = withUser(async (req, { uid, params }) => {
         );
         fieldMap.set(index, Number(created.rows[0].id));
       }
+
+      const rules = Array.isArray(payload.rules) ? payload.rules.slice(0, 50) : [];
+      for (const rule of rules) {
+        if (!rule || typeof rule.name !== "string" || rule.name.trim() === "") continue;
+        if (!rule.definition || typeof rule.definition !== "object") continue;
+        await q.query(
+          `INSERT INTO project_rules (
+             workspace_id, project_id, name, description, definition, owner_id, enabled
+           ) VALUES ($1::bigint, $2::bigint, $3, $4, $5::jsonb, $6::bigint, $7)`,
+          [
+            workspaceId,
+            newId,
+            rule.name.trim().slice(0, 120),
+            typeof rule.description === "string" ? rule.description.slice(0, 1000) : "",
+            JSON.stringify(rule.definition),
+            uid,
+            rule.enabled !== false,
+          ],
+        );
+      }
     }
 
     const createTask = async (

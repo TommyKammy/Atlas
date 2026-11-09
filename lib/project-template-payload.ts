@@ -31,6 +31,13 @@ export type TemplateField = {
   editor_ids?: unknown;
 };
 
+export type TemplateRule = {
+  name?: string;
+  description?: string;
+  definition?: unknown;
+  enabled?: boolean;
+};
+
 export type ProjectTemplatePayload = {
   version?: number;
   project?: {
@@ -48,4 +55,5 @@ export type ProjectTemplatePayload = {
   };
   sections?: { name?: string; tasks?: TemplateTask[] }[];
   custom_fields?: TemplateField[];
+  rules?: TemplateRule[];
 };

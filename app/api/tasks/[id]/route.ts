@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import { getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
 import { withTask } from "@/lib/api/route";
 import { runAutomations } from "@/lib/automation-runner";
+import { emitTaskEvent } from "@/lib/domain/events";
 import { validateRichTextDoc } from "@/lib/rich-text-validation";
 import { normalizeMentionLabels } from "@/lib/mentions";
 import { docToMarkdown } from "@/lib/rich-text-markdown";
@@ -187,7 +188,7 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
     if (cur.rows[0].u !== expected) return conflictResponse();
   }
   const before = await db.query(
-    "SELECT name, completed, assignee_id, status, start_on::text AS start_on, due_on::text AS due_on FROM tasks WHERE id = $1::bigint",
+    "SELECT name, completed, assignee_id, status, section_id, start_on::text AS start_on, due_on::text AS due_on FROM tasks WHERE id = $1::bigint",
     [taskId],
   );
   values.push(taskId);
@@ -214,6 +215,7 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
         completed: boolean;
         assignee_id: number | null;
         status: string;
+        section_id: number | null;
         start_on: string | null;
         due_on: string | null;
       }
@@ -244,8 +246,17 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
     if (typeof b.completed === "boolean" && b.completed !== prev.completed) {
       await log(b.completed ? "completed" : "reopened", b.completed ? "タスクを完了しました" : "タスクを未完了に戻しました");
       if (b.completed && full && full.parent_task_id === null && full.recurrence !== "none") {
-        await insertNextOccurrence(db, full);
+        const nextTaskId = await insertNextOccurrence(db, full);
         await logEvent(taskId, uid, "recurrence_spawned", "次回のタスクを生成しました").catch(() => undefined);
+        if (nextTaskId !== null) {
+          await emitTaskEvent({
+            projectId: targetProjectId,
+            taskId: nextTaskId,
+            actorId: uid,
+            type: "task.created",
+            data: { recurrence: true, from_task_id: taskId },
+          }).catch(() => undefined);
+        }
       }
     }
     if ("assignee_id" in b) {
@@ -276,9 +287,77 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
     }
     if (b.completed === true && prev.completed === false) {
       await runAutomations(targetProjectId, taskId, "task_completed").catch(() => undefined);
+      await emitTaskEvent({
+        projectId: targetProjectId,
+        taskId,
+        actorId: uid,
+        type: "task.completed",
+        data: { previous: false, next: true },
+      }).catch(() => undefined);
+    }
+    if (b.completed === false && prev.completed === true) {
+      await emitTaskEvent({
+        projectId: targetProjectId,
+        taskId,
+        actorId: uid,
+        type: "task.reopened",
+        data: { previous: true, next: false },
+      }).catch(() => undefined);
+    }
+    if ("assignee_id" in b) {
+      const next = b.assignee_id === "" || b.assignee_id === null ? null : Number(b.assignee_id);
+      if (next !== prev.assignee_id) {
+        await emitTaskEvent({
+          projectId: targetProjectId,
+          taskId,
+          actorId: uid,
+          type: "task.assigned",
+          data: { previous_assignee_id: prev.assignee_id, assignee_id: next },
+        }).catch(() => undefined);
+      }
+    }
+    if ("due_on" in b) {
+      const next = b.due_on === "" || b.due_on === null ? null : String(b.due_on);
+      if (next !== prev.due_on) {
+        await emitTaskEvent({
+          projectId: targetProjectId,
+          taskId,
+          actorId: uid,
+          type: "task.due_changed",
+          data: { previous_due_on: prev.due_on, due_on: next },
+        }).catch(() => undefined);
+      }
+    }
+    if ("section_id" in b) {
+      const next = b.section_id === "" || b.section_id === null ? null : Number(b.section_id);
+      if (next !== prev.section_id) {
+        await emitTaskEvent({
+          projectId: targetProjectId,
+          taskId,
+          actorId: uid,
+          type: "task.section_changed",
+          data: { previous_section_id: prev.section_id, section_id: next },
+        }).catch(() => undefined);
+      }
     }
     if (typeof b.status === "string" && b.status !== prev.status) {
       await runAutomations(targetProjectId, taskId, "status_changed").catch(() => undefined);
+      await emitTaskEvent({
+        projectId: targetProjectId,
+        taskId,
+        actorId: uid,
+        type: "task.status_changed",
+        data: { previous_status: prev.status, status: b.status },
+      }).catch(() => undefined);
+    }
+    if (targetProjectId !== currentProjectId) {
+      await emitTaskEvent({
+        projectId: targetProjectId,
+        taskId,
+        actorId: uid,
+        type: "task.added_to_project",
+        data: { previous_project_id: currentProjectId, project_id: targetProjectId },
+      }).catch(() => undefined);
     }
   }
   await notifyTask(taskId);

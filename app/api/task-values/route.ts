@@ -4,6 +4,7 @@ import { notifyField, notifyTask } from "@/lib/notify";
 import { withTask } from "@/lib/api/route";
 import { isReadOnlyFieldType, type CustomFieldType } from "@/lib/custom-fields";
 import { canEditFieldValue } from "@/lib/field-access";
+import { emitTaskEvent } from "@/lib/domain/events";
 
 function validDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -19,7 +20,7 @@ export const POST = withTask("edit", async (_req, { uid, taskId: task_id, projec
     return NextResponse.json({ error: "task_id and field_id are required" }, { status: 400 });
   }
   const f = await db.query(
-    "SELECT field_type, project_id, config, access_level, editor_ids FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
+    "SELECT name, field_type, project_id, config, access_level, editor_ids FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
     [field_id],
   );
   if (f.rowCount === 0 || Number(f.rows[0].project_id) !== projectId) {
@@ -134,6 +135,13 @@ export const POST = withTask("edit", async (_req, { uid, taskId: task_id, projec
     );
     await notifyTask(task_id);
     await notifyField(field_id);
+    await emitTaskEvent({
+      projectId,
+      taskId: task_id,
+      actorId: uid,
+      type: "task.custom_field_changed",
+      data: { field_id, field_name: f.rows[0].name, value: null, cleared: true },
+    }).catch(() => undefined);
     return NextResponse.json({ cleared: true });
   }
 
@@ -150,5 +158,12 @@ export const POST = withTask("edit", async (_req, { uid, taskId: task_id, projec
   );
   await notifyTask(task_id);
   await notifyField(field_id);
+  await emitTaskEvent({
+    projectId,
+    taskId: task_id,
+    actorId: uid,
+    type: "task.custom_field_changed",
+    data: { field_id, field_name: f.rows[0].name, value },
+  }).catch(() => undefined);
   return NextResponse.json({ ok: true }, { status: 201 });
 }, { body: true });

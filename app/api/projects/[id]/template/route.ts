@@ -70,6 +70,12 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
   const fieldIndex = new Map<number, number>();
   (fieldsResult.rows as { id: number }[]).forEach((field, index) => fieldIndex.set(Number(field.id), index));
 
+  const rulesResult = await db.query(
+    `SELECT name, description, definition, enabled
+     FROM project_rules WHERE project_id = $1::bigint ORDER BY id`,
+    [projectId],
+  );
+
   const tasks: ProjectTaskForestNode[] = includeTasks ? await getProjectTaskForest(db, projectId) : [];
   const taskIds = tasks.map((t) => Number(t.id));
   const valuesByTask = new Map<number, SnapshotValue[]>();
@@ -187,6 +193,17 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
       position: field.position ?? 0,
       access_level: field.access_level ?? "everyone",
       editor_ids: field.editor_ids ?? [],
+    })),
+    rules: (rulesResult.rows as {
+      name: string;
+      description: string;
+      definition: unknown;
+      enabled: boolean;
+    }[]).map((rule) => ({
+      name: rule.name,
+      description: rule.description,
+      definition: rule.definition,
+      enabled: rule.enabled,
     })),
   };
 

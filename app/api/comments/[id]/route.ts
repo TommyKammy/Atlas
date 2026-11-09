@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import { requireProjectPermission } from "@/lib/api-project-auth";
 import { replaceCommentMentions } from "@/lib/mentions";
 import { parseCommentPayload } from "@/lib/comment-payload";
+import { emitTaskEvent } from "@/lib/domain/events";
 
 type CommentOwner = {
   id: number;
@@ -62,6 +63,15 @@ export const PATCH = withUser(async (req, { uid, params }) => {
     projectId: comment.project_id,
     summary: parsed.text.slice(0, 120),
   });
+  if (comment.project_id !== null) {
+    await emitTaskEvent({
+      projectId: Number(comment.project_id),
+      taskId: comment.task_id,
+      actorId: uid,
+      type: "comment.updated",
+      data: { comment_id: commentId, body: parsed.text.slice(0, 500) },
+    }).catch(() => undefined);
+  }
   return NextResponse.json(r.rows[0]);
 });
 

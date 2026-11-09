@@ -141,6 +141,34 @@ export const POST = withProject(
         }
       }
 
+      // Automation rules are copied as new rules owned by the duplicating user.
+      const sourceRules = await q.query(
+        `SELECT name, description, definition, enabled
+         FROM project_rules WHERE project_id = $1::bigint ORDER BY id LIMIT 50`,
+        [projectId],
+      );
+      for (const rule of sourceRules.rows as {
+        name: string;
+        description: string;
+        definition: unknown;
+        enabled: boolean;
+      }[]) {
+        await q.query(
+          `INSERT INTO project_rules (
+             workspace_id, project_id, name, description, definition, owner_id, enabled
+           ) VALUES ($1::bigint, $2::bigint, $3, $4, $5::jsonb, $6::bigint, $7)`,
+          [
+            src.workspace_id,
+            newId,
+            rule.name,
+            rule.description ?? "",
+            JSON.stringify(rule.definition ?? {}),
+            uid,
+            rule.enabled !== false,
+          ],
+        );
+      }
+
       // Tasks visible in the source project, including secondary multi-homes.
       const taskMap = new Map<number, number>();
       if (includeTasks) {

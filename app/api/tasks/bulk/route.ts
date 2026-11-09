@@ -5,6 +5,7 @@ import { getTaskProjectIds, requireProjectPermission, requireWorkspaceAdmin } fr
 import { withUser } from "@/lib/api/route";
 import { audit } from "@/lib/audit";
 import { runAutomations } from "@/lib/automation-runner";
+import { emitTaskEvent } from "@/lib/domain/events";
 import { insertNextOccurrence, type RecurringTask } from "@/lib/services/task-write";
 
 // Bulk task operations (last-writer-wins; per-item conflict UI is out of scope).
@@ -89,6 +90,26 @@ export const POST = withUser(async (req, { uid }) => {
         const projectId = projects.get(id) ?? null;
         if (projectId !== null) {
           await runAutomations(projectId, id, "task_completed").catch(() => undefined);
+          await emitTaskEvent({
+            projectId,
+            taskId: id,
+            actorId: uid,
+            type: "task.completed",
+            data: { bulk: true, previous: false, next: true },
+          }).catch(() => undefined);
+        }
+      }
+    } else {
+      for (const id of updatedIds) {
+        const projectId = projects.get(id) ?? null;
+        if (projectId !== null) {
+          await emitTaskEvent({
+            projectId,
+            taskId: id,
+            actorId: uid,
+            type: "task.reopened",
+            data: { bulk: true, previous: true, next: false },
+          }).catch(() => undefined);
         }
       }
     }
@@ -98,6 +119,18 @@ export const POST = withUser(async (req, { uid }) => {
       [body.section_id ?? null, ids],
     );
     updated = r.rowCount ?? 0;
+    for (const id of ids) {
+      const projectId = projects.get(id) ?? null;
+      if (projectId !== null) {
+        await emitTaskEvent({
+          projectId,
+          taskId: id,
+          actorId: uid,
+          type: "task.section_changed",
+          data: { bulk: true, section_id: body.section_id ?? null },
+        }).catch(() => undefined);
+      }
+    }
   } else if (op === "assign") {
     const r = await db.query(
       `UPDATE tasks SET assignee_id = $1::bigint, updated_at = now() WHERE id = ANY($2::bigint[])`,
@@ -109,6 +142,18 @@ export const POST = withUser(async (req, { uid }) => {
        SELECT id, $2::bigint, 'assignee_changed', '担当者を変更しました' FROM tasks WHERE id = ANY($1::bigint[])`,
       [ids, uid],
     ).catch(() => undefined);
+    for (const id of ids) {
+      const projectId = projects.get(id) ?? null;
+      if (projectId !== null) {
+        await emitTaskEvent({
+          projectId,
+          taskId: id,
+          actorId: uid,
+          type: "task.assigned",
+          data: { bulk: true, assignee_id: body.assignee_id ?? null },
+        }).catch(() => undefined);
+      }
+    }
   } else if (op === "delete") {
     if (body.force === true) {
       const r = await db.query(`DELETE FROM tasks WHERE id = ANY($1::bigint[])`, [ids]);

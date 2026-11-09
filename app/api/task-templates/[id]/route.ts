@@ -5,6 +5,7 @@ import { todayISO } from "@/lib/dates";
 import { shiftDate } from "@/lib/timeline-dnd";
 import { notifyProject } from "@/lib/notify";
 import { withResourceProject } from "@/lib/api/route";
+import { emitTaskEvent } from "@/lib/domain/events";
 
 
 export const PATCH = withResourceProject("edit", "task_templates", async (_req, { projectId, params, body }) => {
@@ -110,5 +111,12 @@ export const POST = withResourceProject("edit", "task_templates", async (_req, {
   });
   await logEvent(taskId, uid, "created", "タスクをテンプレートから作成しました").catch(() => undefined);
   await notifyProject(projectId);
+  await emitTaskEvent({
+    projectId,
+    taskId,
+    actorId: uid,
+    type: "task.created",
+    data: { from_task_template: Number(id), section_id: overrideSection },
+  }).catch(() => undefined);
   return NextResponse.json({ id: taskId }, { status: 201 });
 }, { body: true });
