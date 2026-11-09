@@ -4,6 +4,7 @@ import { confirmAction, toast as toastMessage } from "@/lib/ui-feedback";
 
 import { ApiError, api } from "@/lib/api-client";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
+import { copyTaskLink as copyTaskLinkAction, deleteTask } from "@/lib/task-actions";
 import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -210,18 +211,14 @@ export default function TaskPane({
 
   const remove = async () => {
     if (!(await confirmAction(`「${task.name}」を削除しますか？`))) return;
-    await api(`/api/tasks/${task.id}`, "DELETE");
+    await deleteTask(task.id);
     router.push(closeHref);
   };
 
   const copyTaskLink = async () => {
-    const url = `${window.location.origin}/projects/${projectId}?view=${view}&task=${task.id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toastMessage("タスクのリンクをコピーしました");
-    } catch {
-      window.prompt("タスクのリンク", url);
-    }
+    await copyTaskLinkAction(
+      `${window.location.origin}/projects/${projectId}?view=${view}&task=${task.id}`,
+    );
   };
 
   const shareTask = async () => {

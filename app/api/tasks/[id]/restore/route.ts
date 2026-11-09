@@ -19,4 +19,4 @@ export const POST = withTask("edit", async (_req, { taskId, uid }) => {
     () => undefined,
   );
   return NextResponse.json({ restored: taskId });
-});
+}, { taskScope: "primary" });

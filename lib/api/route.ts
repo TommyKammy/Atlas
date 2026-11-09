@@ -51,6 +51,8 @@ export type TaskContext<P extends Params = Params> = UserContext<P> & {
 export type TaskOptions<P extends Params = Params> = {
   body?: boolean;
   resolveTaskId?: (req: NextRequest, params: P, body: unknown) => number | Promise<number>;
+  /** "primary" for destructive operations; defaults to any multi-home project. */
+  taskScope?: "any" | "primary";
 };
 
 function taskIdFromBody(body: unknown): unknown {
@@ -197,7 +199,9 @@ export function withTask<P extends Params = Params>(
         ? await options.resolveTaskId(req, params, body)
         : (params.id ?? new URL(req.url).searchParams.get("task_id") ?? taskIdFromBody(body));
       const taskId = positiveId(raw, "task_id");
-      const auth = await requireTaskPermission(req, taskId, level);
+      const auth = await requireTaskPermission(req, taskId, level, {
+        scope: options?.taskScope ?? "any",
+      });
       if (!auth.ok) throw new ApiError(auth.status, auth.error, "not_found");
       return await handler(req, { uid: auth.uid, taskId, projectId: auth.projectId, params, body });
     } catch (error) {

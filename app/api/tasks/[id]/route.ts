@@ -429,4 +429,4 @@ export const DELETE = withTask("edit", async (req, { taskId, uid, projectId }) =
   await audit(uid, "task.delete", { entity: "task", entityId: taskId, projectId: projectId ?? undefined });
   await logEvent(taskId, uid, "deleted", "タスクをゴミ箱に入れました").catch(() => undefined);
   return NextResponse.json({ deleted: taskId });
-});
+}, { taskScope: "primary" });

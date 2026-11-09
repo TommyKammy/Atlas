@@ -7,6 +7,14 @@ import { ApiError, api } from "@/lib/api-client";
 import type { TaskRow } from "@/lib/data";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { confirmAction, toast } from "@/lib/ui-feedback";
+import {
+  convertTask,
+  copyTaskLink,
+  createFollowUpTask,
+  deleteTask,
+  duplicateTask,
+  resetTimelineRow as resetTaskTimelineRow,
+} from "@/lib/task-actions";
 import Dialog from "../ui/Dialog";
 
 type TaskMenuView = "list" | "board" | "timeline" | "calendar";
@@ -266,13 +274,7 @@ export default function ProjectTaskContextMenu({
 
   const copyLink = async () => {
     if (!task) return;
-    const url = `${location.origin}${hrefFor(task)}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast("タスクのリンクをコピーしました");
-    } catch {
-      window.prompt("タスクのリンク", url);
-    }
+    await copyTaskLink(`${location.origin}${hrefFor(task)}`);
     close();
   };
 
@@ -311,49 +313,35 @@ export default function ProjectTaskContextMenu({
   const duplicate = () => {
     if (!task) return;
     void run(async () => {
-      await api(`/api/tasks/${task.id}/duplicate`, "POST");
+      await duplicateTask(task.id);
     }, "タスクを複製しました");
   };
 
   const followUp = () => {
     if (!task) return;
     void run(async () => {
-      await api(`/api/tasks/${task.id}/follow-up`, "POST");
+      await createFollowUpTask(task.id);
     }, "フォローアップタスクを作成しました");
   };
 
   const convertToTopLevel = () => {
     if (!task) return;
     void run(async () => {
-      await patchTask(
-        task.id,
-        { parent_task_id: null, is_milestone: false },
-        task.updated_at,
-      );
+      await convertTask(task.id, { parent_task_id: null, is_milestone: false }, task.updated_at);
     }, "タスクに変換しました");
   };
 
   const convertToMilestone = () => {
     if (!task) return;
     void run(async () => {
-      await patchTask(
-        task.id,
-        { parent_task_id: null, is_milestone: true },
-        task.updated_at,
-      );
+      await convertTask(task.id, { parent_task_id: null, is_milestone: true }, task.updated_at);
     }, "マイルストーンに変換しました");
   };
 
   const resetTimelineRow = () => {
     if (!task) return;
     void run(async () => {
-      await api(`/api/tasks/${task.id}/timeline-row`, "PUT", {
-        project_id: projectId,
-        row_index: null,
-        ...(task.timeline_row_updated_at
-          ? { expected_updated_at: task.timeline_row_updated_at }
-          : {}),
-      });
+      await resetTaskTimelineRow(task.id, projectId, task.timeline_row_updated_at);
     }, "行の固定を解除しました");
   };
 
@@ -409,7 +397,7 @@ export default function ProjectTaskContextMenu({
     if (!task) return;
     if (!(await confirmAction(`タスク「${task.name}」を削除しますか？`))) return;
     void run(async () => {
-      await api(`/api/tasks/${task.id}`, "DELETE");
+      await deleteTask(task.id);
     }, "タスクを削除しました");
   };
 
