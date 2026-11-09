@@ -1,0 +1,52 @@
+name: atlas-ci
+
+services:
+  db:
+    image: pgvector/pgvector:pg18
+    container_name: atlas-db
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas
+      POSTGRES_DB: atlas
+      TZ: Asia/Tokyo
+    command: ["postgres", "-c", "timezone=Asia/Tokyo"]
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas -d atlas"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:8-alpine
+    container_name: atlas-redis
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    container_name: atlas-app
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      DATABASE_URL: postgres://atlas:atlas@db:5432/atlas
+      REDIS_URL: redis://redis:6379
+      TZ: Asia/Tokyo
+    volumes:
+      - atlas-uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  atlas-uploads:
