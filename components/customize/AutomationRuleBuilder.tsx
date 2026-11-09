@@ -103,15 +103,22 @@ export default function AutomationRuleBuilder({
   projectId,
   descriptors,
   rule,
+  ruleApiBase,
+  aiSuggestUrl,
   onClose,
   onSaved,
 }: {
-  projectId: number;
+  projectId?: number;
   descriptors: RuleDescriptors;
   rule: ProjectRule | null;
+  ruleApiBase?: string;
+  aiSuggestUrl?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const apiBase = ruleApiBase ?? `/api/projects/${projectId}/rules`;
+  const suggestUrl =
+    aiSuggestUrl ?? `/api/projects/${projectId}/rules/ai-suggest`;
   const [name, setName] = useState(rule?.name ?? "");
   const [description, setDescription] = useState(rule?.description ?? "");
   const [triggers, setTriggers] = useState<RuleTrigger[]>(
@@ -221,7 +228,7 @@ export default function AutomationRuleBuilder({
           conditions?: RuleCondition[];
           actions?: RuleAction[];
         };
-      }>(`/api/projects/${projectId}/rules/ai-suggest`, "POST", { prompt: aiPrompt.trim() });
+      }>(suggestUrl, "POST", { prompt: aiPrompt.trim() });
       setName(result.name);
       setDescription(result.description);
       setTriggers(result.definition.triggers);
@@ -268,9 +275,9 @@ export default function AutomationRuleBuilder({
         },
       };
       if (rule) {
-        await api(`/api/projects/${projectId}/rules/${rule.id}`, "PATCH", payload);
+        await api(`${apiBase}/${rule.id}`, "PATCH", payload);
       } else {
-        await api(`/api/projects/${projectId}/rules`, "POST", payload);
+        await api(apiBase, "POST", payload);
       }
       onSaved();
       onClose();

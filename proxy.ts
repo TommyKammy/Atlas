@@ -49,6 +49,7 @@ export async function proxy(req: NextRequest) {
   const publicPath =
     req.nextUrl.pathname === "/login" ||
     req.nextUrl.pathname === "/api/automation/process" ||
+    req.nextUrl.pathname.startsWith("/api/automation/webhook/") ||
     req.nextUrl.pathname.startsWith("/share/") ||
     req.nextUrl.pathname.startsWith("/invite/") ||
     req.nextUrl.pathname.startsWith("/api/invitations/");

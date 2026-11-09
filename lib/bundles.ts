@@ -4,12 +4,20 @@ export type BundleField = {
   options: string[];
 };
 
+export type BundleRule = {
+  name: string;
+  description: string;
+  definition: Record<string, unknown>;
+  enabled: boolean;
+};
+
 export type Bundle = {
   id: number;
   workspace_id: number;
   name: string;
   description: string;
   fields: BundleField[];
+  rules: BundleRule[];
   applied: boolean;
   applied_count: number;
   created_at: string;
@@ -36,4 +44,33 @@ export function normalizeBundleFields(input: unknown): BundleField[] | null {
     fields.push({ name, field_type: fieldType as BundleField["field_type"], options });
   }
   return fields;
+}
+
+/** Structural normalization for rule packaging. Semantic validation runs server-side. */
+export function normalizeBundleRules(input: unknown): BundleRule[] | null {
+  if (input === undefined || input === null) return [];
+  if (!Array.isArray(input) || input.length > 50) return null;
+  const rules: BundleRule[] = [];
+  for (const raw of input) {
+    if (typeof raw !== "object" || raw === null) return null;
+    const item = raw as Record<string, unknown>;
+    const name = typeof item.name === "string" ? item.name.trim().slice(0, 120) : "";
+    const definition = item.definition;
+    if (
+      name === "" ||
+      !definition ||
+      typeof definition !== "object" ||
+      Array.isArray(definition)
+    ) {
+      return null;
+    }
+    rules.push({
+      name,
+      description:
+        typeof item.description === "string" ? item.description.trim().slice(0, 1000) : "",
+      definition: definition as Record<string, unknown>,
+      enabled: item.enabled !== false,
+    });
+  }
+  return rules;
 }

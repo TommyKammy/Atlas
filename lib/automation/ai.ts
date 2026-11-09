@@ -114,3 +114,48 @@ export async function suggestRuleDefinition(
     definition: validated.definition,
   };
 }
+
+/** Portfolio suggestion: reuse the project heuristic and drop project-only actions. */
+export async function suggestPortfolioRuleDefinition(
+  portfolioId: number,
+  viewerId: number,
+  prompt: string,
+  firstProjectId: number,
+): Promise<{ name: string; description: string; definition: RuleDefinition }> {
+  const suggestion = await suggestRuleDefinition(firstProjectId, viewerId, prompt);
+  const first = (suggestion.definition.actions ?? [])[0];
+  const supported = new Set([
+    "task.assign",
+    "task.set_status",
+    "task.set_due_date",
+    "task.complete",
+    "task.create",
+    "task.add_comment",
+    "task.create_subtask",
+    "project.set_status",
+    "task.add_to_project",
+    "webhook.post",
+  ]);
+  const branchActions = suggestion.definition.branches?.map((branch) => ({
+    ...branch,
+    actions: branch.actions.filter((action) => supported.has(action.capability)),
+  }));
+  const actions = (suggestion.definition.actions ?? []).filter((action) =>
+    supported.has(action.capability),
+  );
+  const definition = {
+    version: 1 as const,
+    triggers: suggestion.definition.triggers,
+    conditions: suggestion.definition.conditions,
+    ...(branchActions && branchActions.length > 0
+      ? { branches: branchActions.filter((branch) => branch.actions.length > 0) }
+      : { actions: actions.length > 0 ? actions : first ? [first] : [] }),
+  };
+  const validated = validateRuleDefinition(definition);
+  if (!validated.ok) throw new Error(validated.error);
+  return {
+    name: suggestion.name,
+    description: "ポートフォリオ用に生成したルール案です。内容を確認して保存してください。",
+    definition: validated.definition,
+  };
+}

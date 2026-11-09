@@ -10,6 +10,7 @@ import type { CustomField } from "../custom-fields";
 import type { Attachment, User } from "../data";
 import type { RichTextDoc } from "../rich-text-types";
 import type { ProjectTemplateSummary } from "../project-templates";
+import type { BundleRule } from "../bundles";
 import {
   DEFAULT_PROJECT_TEMPLATES,
   defaultProjectTemplatePayload,
@@ -251,7 +252,7 @@ export async function getProjectAutomations(projectId: number): Promise<ProjectA
 
 export async function getBundlesForProject(projectId: number): Promise<Bundle[]> {
   const r = await db.query(
-    `SELECT b.id, b.workspace_id, b.name, b.description, b.fields,
+    `SELECT b.id, b.workspace_id, b.name, b.description, b.fields, b.rules,
             b.created_at::text AS created_at, b.updated_at::text AS updated_at,
             EXISTS (SELECT 1 FROM bundle_applications ba WHERE ba.bundle_id = b.id AND ba.project_id = $1) AS applied,
             (SELECT COUNT(*)::int FROM bundle_applications ba WHERE ba.bundle_id = b.id) AS applied_count
@@ -264,6 +265,7 @@ export async function getBundlesForProject(projectId: number): Promise<Bundle[]>
   return r.rows.map((row) => ({
     ...row,
     fields: (row.fields ?? []) as BundleField[],
+    rules: (row.rules ?? []) as BundleRule[],
     applied: row.applied === true,
     applied_count: Number(row.applied_count ?? 0),
   }));

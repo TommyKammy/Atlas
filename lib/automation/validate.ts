@@ -18,6 +18,7 @@ const REQUIRED_PARAMS: Record<string, string[]> = {
   "task.move_section": ["section_id"],
   "task.add_comment": ["body"],
   "task.create_subtask": ["name"],
+  "task.create": ["name"],
   "task.set_custom_field": ["field_id", "value"],
   "project.set_status": ["status"],
   "task.add_to_project": ["project_id"],

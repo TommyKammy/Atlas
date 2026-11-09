@@ -1,0 +1,312 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api-client";
+import type { Portfolio, PortfolioProject, PortfolioRule } from "@/lib/portfolios";
+import { confirmAction, toast } from "@/lib/ui-feedback";
+import AutomationRulesPanel from "./customize/AutomationRulesPanel";
+
+type PortfolioDetail = {
+  portfolio: Portfolio;
+  projects: PortfolioProject[];
+  rules: PortfolioRule[];
+};
+
+export default function PortfolioWorkspace({
+  initialPortfolios,
+  availableProjects,
+}: {
+  initialPortfolios: Portfolio[];
+  availableProjects: { id: number; name: string }[];
+}) {
+  const [portfolios, setPortfolios] = useState(initialPortfolios);
+  const [selectedId, setSelectedId] = useState<number | null>(
+    initialPortfolios[0]?.id ?? null,
+  );
+  const [detail, setDetail] = useState<PortfolioDetail | null>(null);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const loadPortfolios = async (select?: number) => {
+    const res = await fetch("/api/portfolios");
+    if (res.ok) {
+      const data = (await res.json()) as { portfolios: Portfolio[] };
+      setPortfolios(data.portfolios);
+      setSelectedId((current) => select ?? current ?? data.portfolios[0]?.id ?? null);
+    }
+  };
+
+  const loadDetail = async (id: number) => {
+    const res = await fetch(`/api/portfolios/${id}`);
+    if (res.ok) {
+      setDetail((await res.json()) as PortfolioDetail);
+    } else {
+      setDetail(null);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedId === null) return;
+    let cancelled = false;
+    fetch(`/api/portfolios/${selectedId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: PortfolioDetail | null) => {
+        if (!cancelled) setDetail(data);
+      })
+      .catch(() => {
+        if (!cancelled) setDetail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  const create = async () => {
+    if (name.trim() === "" || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api<{ id: number }>("/api/portfolios", "POST", {
+        name: name.trim(),
+        description: description.trim(),
+      });
+      setName("");
+      setDescription("");
+      await loadPortfolios(result.id);
+      await loadDetail(result.id);
+      toast("ポートフォリオを作成しました");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "作成に失敗しました");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (portfolio: Portfolio) => {
+    if (!(await confirmAction(`ポートフォリオ「${portfolio.name}」を削除しますか？`))) return;
+    setBusy(true);
+    try {
+      await api(`/api/portfolios/${portfolio.id}`, "DELETE");
+      await loadPortfolios();
+      if (selectedId === portfolio.id) {
+        setSelectedId(null);
+        setDetail(null);
+      }
+      toast("ポートフォリオを削除しました");
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "削除に失敗しました");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const addProject = async () => {
+    if (!detail || projectId === "" || busy) return;
+    setBusy(true);
+    try {
+      await api(`/api/portfolios/${detail.portfolio.id}/projects`, "POST", {
+        project_id: Number(projectId),
+      });
+      setProjectId("");
+      await loadDetail(detail.portfolio.id);
+      await loadPortfolios(detail.portfolio.id);
+      toast("プロジェクトを追加しました");
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "追加に失敗しました");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeProject = async (project: PortfolioProject) => {
+    if (!detail || !(await confirmAction(`「${project.name}」をポートフォリオから外しますか？`))) return;
+    setBusy(true);
+    try {
+      await api(`/api/portfolios/${detail.portfolio.id}/projects?project_id=${project.id}`, "DELETE");
+      await loadDetail(detail.portfolio.id);
+      await loadPortfolios(detail.portfolio.id);
+      toast("プロジェクトを外しました");
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "削除に失敗しました");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const selectedProjectIds = new Set(detail?.projects.map((project) => project.id) ?? []);
+  const addableProjects = availableProjects.filter((project) => !selectedProjectIds.has(project.id));
+
+  return (
+    <section className="mt-8 max-w-6xl" data-portfolio-workspace>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold">共有ポートフォリオ</h2>
+          <p className="mt-0.5 text-xs text-neutral-400">
+            複数プロジェクトをまとめ、ポートフォリオ単位のルールを実行できます。
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="rounded-lg border border-neutral-200 bg-white p-3">
+          <div className="space-y-2">
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="新しいポートフォリオ名"
+              className="h-8 w-full rounded-md border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#2c60b8]"
+            />
+            <input
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="説明（任意）"
+              className="h-8 w-full rounded-md border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#2c60b8]"
+            />
+            <button
+              type="button"
+              onClick={() => void create()}
+              disabled={busy || name.trim() === ""}
+              className="h-8 w-full rounded-md bg-[#2c60b8] text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+            >
+              ＋ ポートフォリオを作成
+            </button>
+            {error && <p className="text-[11px] text-rose-600">{error}</p>}
+          </div>
+          <div className="mt-3 space-y-1 border-t border-neutral-100 pt-3">
+            {portfolios.length === 0 ? (
+              <p className="py-3 text-center text-[11px] text-neutral-400">
+                ポートフォリオはまだありません。
+              </p>
+            ) : (
+              portfolios.map((portfolio) => (
+                <button
+                  key={portfolio.id}
+                  type="button"
+                  onClick={() => setSelectedId(portfolio.id)}
+                  className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left ${
+                    selectedId === portfolio.id ? "bg-[#eff4fd]" : "hover:bg-neutral-50"
+                  }`}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-medium text-neutral-800">
+                      {portfolio.name}
+                    </span>
+                    <span className="block text-[10px] text-neutral-400">
+                      {portfolio.project_count}プロジェクト・{portfolio.rule_count}ルール
+                    </span>
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          {detail === null ? (
+            <div className="rounded-lg border border-dashed border-neutral-300 bg-white px-6 py-12 text-center text-[12px] text-neutral-400">
+              ポートフォリオを選択するか、新規作成してください。
+            </div>
+          ) : (
+            <>
+              <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-[16px] font-semibold text-neutral-900">
+                      {detail.portfolio.name}
+                    </h3>
+                    <p className="mt-0.5 text-[11px] text-neutral-500">
+                      {detail.portfolio.description || "説明はありません"}
+                    </p>
+                    <p className="mt-1 text-[10px] text-neutral-400">
+                      所有者: {detail.portfolio.owner_name ?? "不明"} ・{" "}
+                      {detail.portfolio.project_count}プロジェクト
+                    </p>
+                  </div>
+                  {detail.portfolio.can_edit && (
+                    <button
+                      type="button"
+                      onClick={() => void remove(detail.portfolio)}
+                      disabled={busy}
+                      className="text-[11px] text-neutral-400 hover:text-rose-600 disabled:opacity-50"
+                    >
+                      ポートフォリオを削除
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {detail.projects.map((project) => (
+                    <span
+                      key={project.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[11px] text-neutral-700"
+                    >
+                      {project.name}
+                      {detail.portfolio.can_edit && (
+                        <button
+                          type="button"
+                          aria-label={`${project.name}を外す`}
+                          onClick={() => void removeProject(project)}
+                          disabled={busy}
+                          className="text-neutral-400 hover:text-rose-600"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                  {detail.projects.length === 0 && (
+                    <span className="text-[11px] text-neutral-400">
+                      プロジェクトがありません。
+                    </span>
+                  )}
+                </div>
+
+                {detail.portfolio.can_edit && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <select
+                      value={projectId}
+                      onChange={(event) => setProjectId(event.target.value)}
+                      className="h-8 rounded-md border border-neutral-200 bg-white px-2 text-[12px]"
+                    >
+                      <option value="">プロジェクトを選択…</option>
+                      {addableProjects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => void addProject()}
+                      disabled={busy || projectId === ""}
+                      className="h-8 rounded-md border border-neutral-200 px-3 text-[12px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                    >
+                      プロジェクトを追加
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 rounded-lg border border-neutral-200 bg-white">
+                <AutomationRulesPanel
+                  key={detail.portfolio.id}
+                  projectId={0}
+                  initialRules={detail.rules}
+                  canEdit={detail.portfolio.can_edit}
+                  rulesApiBase={`/api/portfolios/${detail.portfolio.id}/rules`}
+                  descriptorsUrl={`/api/portfolios/${detail.portfolio.id}/descriptors`}
+                  runUrlBase={`/api/portfolios/${detail.portfolio.id}/rules`}
+                  aiSuggestUrl={`/api/portfolios/${detail.portfolio.id}/rules/ai-suggest`}
+                  allowManualRun={false}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

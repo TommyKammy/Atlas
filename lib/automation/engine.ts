@@ -25,8 +25,7 @@ type RuleSnapshot = {
 const MAX_EVENTS_PER_TICK = 20;
 let lastScheduleScan = 0;
 
-function eventRow(row: Record<string, unknown>): DomainEventRow {
-  return {
+function eventRow(row: Record<string, unknown>): DomainEventRow {  return {
     id: Number(row.id),
     workspace_id: Number(row.workspace_id),
     project_id: row.project_id === null ? null : Number(row.project_id),
@@ -283,6 +282,14 @@ function chooseActions(definition: RuleDefinition, snapshot: RuleSnapshot): Rule
   return fallback?.actions ?? null;
 }
 
+function isRetryable(message: string): boolean {
+  return !/(access|denied|permission|required|invalid|not found|unknown capability)/i.test(message);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function runRule(
   rule: ProjectRule,
   event: DomainEventRow,
@@ -329,27 +336,43 @@ async function runRule(
     const params: Record<string, unknown> = { ...action.params };
     if (event.subject_type === "task") params.task_id = event.subject_id;
     if (event.subject_type === "project") params.project_id = event.subject_id;
-    try {
-      const result = await executeCapability(action.capability, params, ctx);
-      details.push({
-        index,
-        capability: action.capability,
-        params,
-        status: "success",
-        result: result.data ?? { summary: result.summary },
-      });
-    } catch (caught) {
-      const message = caught instanceof Error ? caught.message : String(caught);
-      details.push({
-        index,
-        capability: action.capability,
-        params,
-        status: "failed",
-        error: message,
-      });
-      failure = message;
-      break;
+    let attempts = 0;
+    const maxAttempts = Math.max(
+      1,
+      Math.min(5, Number(process.env.AUTOMATION_ACTION_MAX_ATTEMPTS ?? 3)),
+    );
+    while (attempts < maxAttempts) {
+      attempts += 1;
+      try {
+        const result = await executeCapability(action.capability, params, ctx);
+        details.push({
+          index,
+          capability: action.capability,
+          params,
+          status: "success",
+          attempts,
+          result: result.data ?? { summary: result.summary },
+        });
+        break;
+      } catch (caught) {
+        const message = caught instanceof Error ? caught.message : String(caught);
+        if (attempts < maxAttempts && isRetryable(message)) {
+          await sleep(150 * attempts);
+          continue;
+        }
+        details.push({
+          index,
+          capability: action.capability,
+          params,
+          status: "failed",
+          attempts,
+          error: message,
+        });
+        failure = message;
+        break;
+      }
     }
+    if (failure) break;
   }
 
   await recordRuleRun({

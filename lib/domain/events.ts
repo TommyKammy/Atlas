@@ -19,6 +19,7 @@ export const DOMAIN_EVENT_TYPES = [
   "task.due_soon",
   "task.overdue",
   "task.manual_rule",
+  "webhook.received",
 ] as const;
 
 export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[number];
@@ -29,7 +30,7 @@ export type DomainEventInput = {
   actorId?: number | null;
   type: DomainEventType;
   version?: number;
-  subjectType: "task" | "project" | "comment" | "form";
+  subjectType: "task" | "project" | "comment" | "form" | "webhook";
   subjectId: number;
   data?: Record<string, unknown>;
   correlationId?: string | null;

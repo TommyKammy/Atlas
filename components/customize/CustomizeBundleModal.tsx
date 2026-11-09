@@ -2,12 +2,14 @@
 
 import type { FormEvent } from "react";
 import type { BundleField } from "@/lib/bundles";
+import type { ProjectRule } from "@/lib/automation/types";
 import CustomizeModal from "./CustomizeModal";
 
 export type BundleDraft = {
   name: string;
   description: string;
   fields: BundleField[];
+  ruleIds: number[];
 };
 
 /** Create bundle modal. */
@@ -16,6 +18,7 @@ export default function CustomizeBundleModal({
   onDraft,
   onClose,
   onSubmit,
+  availableRules,
   busy,
   fieldTypeClass,
   primaryButton,
@@ -25,6 +28,7 @@ export default function CustomizeBundleModal({
   onDraft: (draft: BundleDraft) => void;
   onClose: () => void;
   onSubmit: (event: FormEvent) => void;
+  availableRules: ProjectRule[];
   busy: boolean;
   fieldTypeClass: string;
   primaryButton: string;
@@ -143,6 +147,42 @@ export default function CustomizeBundleModal({
             </div>
           ))}
         </div>
+        {availableRules.length > 0 && (
+          <div className="mt-4">
+            <div className="text-[12px] font-medium text-neutral-700">ルールを含める</div>
+            <p className="mt-0.5 text-[10px] text-neutral-400">
+              現在のプロジェクトのルールをバンドルに同梱できます。
+            </p>
+            <div className="mt-2 space-y-1.5">
+              {availableRules.map((rule) => (
+                <label
+                  key={rule.id}
+                  className="flex items-start gap-2 rounded-md border border-neutral-200 p-2 text-[11px]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={draft.ruleIds.includes(rule.id)}
+                    onChange={(event) =>
+                      onDraft({
+                        ...draft,
+                        ruleIds: event.target.checked
+                          ? [...draft.ruleIds, rule.id]
+                          : draft.ruleIds.filter((id) => id !== rule.id),
+                      })
+                    }
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block font-medium text-neutral-800">{rule.name}</span>
+                    {rule.description && (
+                      <span className="block text-[10px] text-neutral-500">{rule.description}</span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={onClose} className={secondaryButton}>
             キャンセル

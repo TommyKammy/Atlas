@@ -18,7 +18,7 @@ export type TriggerDescriptor = {
   id: string;
   label: string;
   description: string;
-  subject: "task" | "project" | "comment" | "form";
+  subject: "task" | "project" | "comment" | "form" | "webhook";
   days?: { label: string; default: number; help?: string };
 };
 
@@ -73,6 +73,12 @@ export const TRIGGER_DESCRIPTORS: TriggerDescriptor[] = [
     days: { label: "何日過ぎたら実行", default: 0 },
   },
   { id: "task.manual_rule", label: "手動で実行", description: "ルール画面から手動実行したときに実行", subject: "task" },
+  {
+    id: "webhook.received",
+    label: "外部Webhookを受信したとき",
+    description: "外部システムから受信WebhookへPOSTされたときに実行",
+    subject: "webhook",
+  },
 ];
 
 export const ACTION_DESCRIPTORS: Omit<ActionDescriptor, "params">[] = [
@@ -81,6 +87,7 @@ export const ACTION_DESCRIPTORS: Omit<ActionDescriptor, "params">[] = [
   { id: "task.set_due_date", label: "期日を変更", description: "期日を指定日付、または今日からの日数で設定します。" },
   { id: "task.move_section", label: "セクションを移動", description: "タスクを指定セクションに移動します。" },
   { id: "task.complete", label: "タスクを完了", description: "タスクを完了状態にします。" },
+  { id: "task.create", label: "タスクを作成", description: "プロジェクトに新しいタスクを作成します。" },
   { id: "task.add_comment", label: "コメントを追加", description: "タスクにコメントを投稿します。変数が使えます。" },
   { id: "task.create_subtask", label: "サブタスクを作成", description: "対象タスクの下にサブタスクを作成します。" },
   { id: "task.set_custom_field", label: "カスタムフィールドを設定", description: "指定フィールドに値を設定します。" },
@@ -121,8 +128,7 @@ const projectOptions = async (viewerId: number): Promise<DescriptorOption[]> => 
 export async function getRuleDescriptors(
   projectId: number,
   viewerId: number,
-): Promise<RuleDescriptors> {
-  const [project, users, sections, fields, projects] = await Promise.all([
+): Promise<RuleDescriptors> {  const [project, users, sections, fields, projects] = await Promise.all([
     db.query(
       `SELECT id, name, status, status_color, status_options, owner_id
        FROM projects WHERE id = $1::bigint`,
@@ -205,6 +211,11 @@ export async function getRuleDescriptors(
       { name: "section_id", label: "移動先セクション", type: "select", required: true, options: sectionOptions },
     ],
     "task.complete": [],
+    "task.create": [
+      { name: "name", label: "タスク名", type: "text", required: true, placeholder: "例: {{event.data.title}}" },
+      { name: "assignee_id", label: "担当者", type: "select", options: users },
+      { name: "due_offset_days", label: "今日からの期日", type: "number", placeholder: "3" },
+    ],
     "task.add_comment": [
       {
         name: "body",
@@ -260,4 +271,52 @@ export async function getRuleDescriptors(
     actions,
     limits: RULE_LIMITS,
   };
+}
+
+/** Portfolio scope exposes only project/task fields that are safe across projects. */
+export async function getPortfolioRuleDescriptors(
+  portfolioId: number,
+  viewerId: number,
+): Promise<RuleDescriptors | null> {
+  const projects = await db.query(
+    `SELECT p.id, p.status_options
+     FROM portfolio_items i JOIN projects p ON p.id = i.project_id
+     WHERE i.portfolio_id = $1::bigint AND p.deleted_at IS NULL
+     ORDER BY i.added_at, p.id`,
+    [portfolioId],
+  );
+  if (projects.rowCount === 0) return null;
+  const base = await getRuleDescriptors(Number(projects.rows[0].id), viewerId);
+  const statusValues: string[] = [];
+  for (const row of projects.rows as { status_options: unknown }[]) {
+    if (!Array.isArray(row.status_options)) continue;
+    for (const value of row.status_options) {
+      const label = String(value);
+      if (label !== "" && !statusValues.includes(label)) statusValues.push(label);
+    }
+  }
+  const statusOptions = statusValues.map((value) => ({ value, label: value }));
+  const conditionFields = base.conditionFields
+    .filter(
+      (field) =>
+        field.id !== "task.section_id" && !field.id.startsWith("custom."),
+    )
+    .map((field) =>
+      field.id === "task.status" ? { ...field, options: statusOptions } : field,
+    );
+  const actions = base.actions
+    .filter(
+      (action) =>
+        action.id !== "task.move_section" && action.id !== "task.set_custom_field",
+    )
+    .map((action) => {
+      if (action.id !== "task.set_status") return action;
+      return {
+        ...action,
+        params: action.params.map((param) =>
+          param.name === "status" ? { ...param, options: statusOptions } : param,
+        ),
+      };
+    });
+  return { ...base, conditionFields, actions };
 }

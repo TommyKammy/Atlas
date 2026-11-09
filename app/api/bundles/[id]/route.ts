@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withAdmin } from "@/lib/api/route";
-import { normalizeBundleFields } from "@/lib/bundles";
+import { normalizeBundleFields, normalizeBundleRules, type BundleRule } from "@/lib/bundles";
+import { validateRuleDefinition } from "@/lib/automation/validate";
 import { audit } from "@/lib/audit";
+
+function validatedRules(input: unknown): BundleRule[] | null {
+  const rules = normalizeBundleRules(input);
+  if (rules === null) return null;
+  const out: BundleRule[] = [];
+  for (const rule of rules) {
+    const validated = validateRuleDefinition(rule.definition);
+    if (!validated.ok) return null;
+    out.push({ ...rule, definition: validated.definition });
+  }
+  return out;
+}
 
 export const PATCH = withAdmin(async (req, { uid, params }) => {
   const id = params.id;
@@ -22,6 +35,12 @@ export const PATCH = withAdmin(async (req, { uid, params }) => {
     if (!fields) return NextResponse.json({ error: "invalid fields" }, { status: 400 });
     values.push(JSON.stringify(fields));
     sets.push(`fields = $${values.length}::jsonb`);
+  }
+  if (body.rules !== undefined) {
+    const rules = validatedRules(body.rules);
+    if (!rules) return NextResponse.json({ error: "invalid rules" }, { status: 400 });
+    values.push(JSON.stringify(rules));
+    sets.push(`rules = $${values.length}::jsonb`);
   }
   if (sets.length === 0) return NextResponse.json({ error: "no fields to update" }, { status: 400 });
   values.push(id);

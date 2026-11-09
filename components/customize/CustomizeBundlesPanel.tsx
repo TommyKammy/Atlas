@@ -60,12 +60,18 @@ export default function CustomizeBundlesPanel({
                     <div className="mt-0.5 text-[12px] text-neutral-500">{bundle.description}</div>
                   )}
                   <div className="mt-1 text-[11px] text-neutral-400">
-                    {bundle.fields.length} フィールド ・ {bundle.applied_count} プロジェクトで利用
+                    {bundle.fields.length} フィールド ・ {bundle.rules.length} ルール ・{" "}
+                    {bundle.applied_count} プロジェクトで利用
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {bundle.fields.map((field) => (
                       <span key={field.name} className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600">
                         {field.name}
+                      </span>
+                    ))}
+                    {bundle.rules.map((rule) => (
+                      <span key={rule.name} className="rounded bg-[#eff4fd] px-1.5 py-0.5 text-[11px] text-[#2c60b8]">
+                        {rule.name}
                       </span>
                     ))}
                   </div>

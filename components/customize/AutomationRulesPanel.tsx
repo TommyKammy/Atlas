@@ -31,11 +31,25 @@ export default function AutomationRulesPanel({
   projectId,
   initialRules,
   canEdit,
+  rulesApiBase,
+  descriptorsUrl,
+  runUrlBase,
+  aiSuggestUrl,
+  allowManualRun = true,
 }: {
-  projectId: number;
+  projectId?: number;
   initialRules: ProjectRule[];
   canEdit: boolean;
+  rulesApiBase?: string;
+  descriptorsUrl?: string;
+  runUrlBase?: string;
+  aiSuggestUrl?: string;
+  allowManualRun?: boolean;
 }) {
+  const apiBase = rulesApiBase ?? `/api/projects/${projectId}/rules`;
+  const metaUrl =
+    descriptorsUrl ?? `/api/projects/${projectId}/automation/descriptors`;
+  const runsBase = runUrlBase ?? apiBase;
   const [rules, setRules] = useState(initialRules);
   const [descriptors, setDescriptors] = useState<RuleDescriptors | null>(null);
   const [builderRule, setBuilderRule] = useState<ProjectRule | null | undefined>(undefined);
@@ -47,6 +61,12 @@ export default function AutomationRulesPanel({
   const [manualTaskId, setManualTaskId] = useState("");
   const [manualBusy, setManualBusy] = useState(false);
   const [manualError, setManualError] = useState("");
+  const [endpoints, setEndpoints] = useState<
+    { id: number; name: string; token: string; secret: string }[]
+  >([]);
+  const [webhookName, setWebhookName] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [webhookBusy, setWebhookBusy] = useState(false);
 
   const statusValue =
     descriptors?.actions
@@ -118,7 +138,7 @@ export default function AutomationRulesPanel({
     if (presetBusy) return;
     setPresetBusy(true);
     try {
-      await api(`/api/projects/${projectId}/rules`, "POST", {
+      await api(apiBase, "POST", {
         name: preset.name,
         description: preset.description,
         definition: preset.definition,
@@ -133,7 +153,7 @@ export default function AutomationRulesPanel({
   };
 
   const loadRules = async () => {
-    const res = await fetch(`/api/projects/${projectId}/rules`);
+    const res = await fetch(apiBase);
     if (res.ok) {
       const data = (await res.json()) as { rules: ProjectRule[] };
       setRules(data.rules);
@@ -142,7 +162,7 @@ export default function AutomationRulesPanel({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/projects/${projectId}/automation/descriptors`)
+    fetch(metaUrl)
       .then((res) => (res.ok ? res.json() : null))
       .then((data: RuleDescriptors | null) => {
         if (!cancelled && data) setDescriptors(data);
@@ -151,12 +171,64 @@ export default function AutomationRulesPanel({
     return () => {
       cancelled = true;
     };
+  }, [metaUrl]);
+
+  useEffect(() => {
+    if (!projectId || projectId <= 0) return;
+    let cancelled = false;
+    fetch(`/api/projects/${projectId}/webhook-endpoints`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then(
+        (
+          data:
+            | { endpoints?: { id: number; name: string; token: string; secret: string }[] }
+            | null,
+        ) => {
+          if (!cancelled && data?.endpoints) setEndpoints(data.endpoints);
+        },
+      )
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [projectId]);
+
+  const createWebhook = async () => {
+    if (!projectId || webhookName.trim() === "" || webhookBusy) return;
+    setWebhookBusy(true);
+    try {
+      const result = await api<{
+        endpoint: { id: number; name: string; token: string; secret: string };
+      }>(`/api/projects/${projectId}/webhook-endpoints`, "POST", {
+        name: webhookName.trim(),
+        secret: webhookSecret.trim(),
+      });
+      setEndpoints((current) => [...current, result.endpoint]);
+      setWebhookName("");
+      setWebhookSecret("");
+      toast("受信Webhookを作成しました");
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "作成に失敗しました");
+    } finally {
+      setWebhookBusy(false);
+    }
+  };
+
+  const removeWebhook = async (endpoint: { id: number; name: string }) => {
+    if (!projectId || !(await confirmAction(`Webhook「${endpoint.name}」を削除しますか？`))) return;
+    try {
+      await api(`/api/projects/${projectId}/webhook-endpoints/${endpoint.id}`, "DELETE");
+      setEndpoints((current) => current.filter((entry) => entry.id !== endpoint.id));
+      toast("受信Webhookを削除しました");
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "削除に失敗しました");
+    }
+  };
 
   const toggle = async (rule: ProjectRule) => {
     setBusyId(rule.id);
     try {
-      await api(`/api/projects/${projectId}/rules/${rule.id}`, "PATCH", {
+      await api(`${apiBase}/${rule.id}`, "PATCH", {
         enabled: !rule.enabled,
       });
       setRules((current) =>
@@ -173,7 +245,7 @@ export default function AutomationRulesPanel({
     if (!(await confirmAction(`ルール「${rule.name}」を削除しますか？`))) return;
     setBusyId(rule.id);
     try {
-      await api(`/api/projects/${projectId}/rules/${rule.id}`, "DELETE");
+      await api(`${apiBase}/${rule.id}`, "DELETE");
       setRules((current) => current.filter((entry) => entry.id !== rule.id));
       toast("ルールを削除しました");
     } catch (caught) {
@@ -187,7 +259,7 @@ export default function AutomationRulesPanel({
     setHistoryRule(rule);
     setRuns([]);
     try {
-      const res = await fetch(`/api/projects/${projectId}/rules/${rule.id}/runs?limit=30`);
+      const res = await fetch(`${runsBase}/${rule.id}/runs?limit=30`);
       if (res.ok) {
         const data = (await res.json()) as { runs: RuleRun[] };
         setRuns(data.runs);
@@ -207,7 +279,7 @@ export default function AutomationRulesPanel({
     setManualBusy(true);
     setManualError("");
     try {
-      await api(`/api/projects/${projectId}/rules/${manualRule.id}/run`, "POST", {
+      await api(`${apiBase}/${manualRule.id}/run`, "POST", {
         task_id: taskId,
       });
       toast("ルールを手動実行しました");
@@ -262,6 +334,73 @@ export default function AutomationRulesPanel({
           ))}
         </div>
       </div>
+
+      {projectId && projectId > 0 && (
+        <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-3">
+          <div className="text-[11px] font-semibold text-neutral-700">受信Webhook</div>
+          <p className="mt-0.5 text-[10px] text-neutral-400">
+            外部システムからPOSTすると「外部Webhookを受信したとき」トリガーが発火します。
+          </p>
+          {endpoints.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              {endpoints.map((endpoint) => {
+                const path = `/api/automation/webhook/${endpoint.token}`;
+                return (
+                  <div
+                    key={endpoint.id}
+                    className="flex flex-wrap items-center gap-2 rounded border border-neutral-100 bg-neutral-50 px-2 py-1.5"
+                  >
+                    <span className="text-[11px] font-medium text-neutral-700">{endpoint.name}</span>
+                    <code className="min-w-0 flex-1 truncate text-[10px] text-neutral-500">
+                      {path}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(`${location.origin}${path}`);
+                        toast("Webhook URLをコピーしました");
+                      }}
+                      className="text-[10px] text-[#2c60b8] hover:underline"
+                    >
+                      コピー
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void removeWebhook(endpoint)}
+                      aria-label={`${endpoint.name}を削除`}
+                      className="text-neutral-400 hover:text-rose-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <input
+              value={webhookName}
+              onChange={(event) => setWebhookName(event.target.value)}
+              placeholder="Webhook名"
+              className="h-8 min-w-[140px] flex-1 rounded-md border border-neutral-200 px-2 text-[11px] outline-none focus:border-[#2c60b8]"
+            />
+            <input
+              value={webhookSecret}
+              onChange={(event) => setWebhookSecret(event.target.value)}
+              placeholder="署名シークレット（任意）"
+              className="h-8 min-w-[160px] flex-1 rounded-md border border-neutral-200 px-2 text-[11px] outline-none focus:border-[#2c60b8]"
+            />
+            <button
+              type="button"
+              onClick={() => void createWebhook()}
+              disabled={webhookBusy || webhookName.trim() === ""}
+              className="h-8 rounded-md border border-neutral-200 px-3 text-[11px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            >
+              ＋ 作成
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 space-y-2">
         {rules.length === 0 ? (
@@ -326,17 +465,19 @@ export default function AutomationRulesPanel({
                     >
                       履歴
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setManualRule(rule);
-                        setManualTaskId("");
-                        setManualError("");
-                      }}
-                      className="h-7 rounded-md border border-neutral-200 px-2 text-[11px] text-neutral-700 hover:bg-neutral-50"
-                    >
-                      実行
-                    </button>
+                    {allowManualRun && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualRule(rule);
+                          setManualTaskId("");
+                          setManualError("");
+                        }}
+                        className="h-7 rounded-md border border-neutral-200 px-2 text-[11px] text-neutral-700 hover:bg-neutral-50"
+                      >
+                        実行
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => void toggle(rule)}
@@ -370,6 +511,8 @@ export default function AutomationRulesPanel({
       {builderRule !== undefined && descriptors && (
         <AutomationRuleBuilder
           projectId={projectId}
+          ruleApiBase={apiBase}
+          aiSuggestUrl={aiSuggestUrl}
           descriptors={descriptors}
           rule={builderRule}
           onClose={() => setBuilderRule(undefined)}
@@ -475,6 +618,7 @@ export default function AutomationRulesPanel({
                             {descriptors?.actions.find((entry) => entry.id === detail.capability)?.label ??
                               detail.capability}
                             {detail.error ? `: ${detail.error}` : ""}
+                            {detail.attempts && detail.attempts > 1 ? `（${detail.attempts}回試行）` : ""}
                           </li>
                         ))}
                       </ul>

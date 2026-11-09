@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getPortfolio, getPortfolioProjects, getWorkspace } from "@/lib/data";
 import { getCurrentUserId } from "@/lib/current-user";
+import { getPortfolios } from "@/lib/repositories/portfolios";
+import PortfolioWorkspace from "@/components/PortfolioWorkspace";
 import { redirect } from "next/navigation";
 
 export const instant = false;
@@ -11,6 +13,7 @@ export default async function PortfolioPage() {
   if (!viewerId) redirect("/login");
   const rows = ws ? await getPortfolio(ws.id, viewerId ?? undefined) : [];
   const saved = await getPortfolioProjects(viewerId);
+  const portfolios = ws ? await getPortfolios(ws.id, viewerId) : [];
 
   return (
     <div className="p-6">
@@ -83,6 +86,10 @@ export default async function PortfolioPage() {
           );
         })}
       </div>
+      <PortfolioWorkspace
+        initialPortfolios={portfolios}
+        availableProjects={rows.map((row) => ({ id: row.id, name: row.name }))}
+      />
     </div>
   );
 }

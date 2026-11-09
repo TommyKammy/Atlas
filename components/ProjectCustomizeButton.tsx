@@ -108,6 +108,7 @@ export default function ProjectCustomizeButton({
     name: string;
     description: string;
     fields: BundleField[];
+    ruleIds: number[];
   } | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
@@ -446,6 +447,14 @@ export default function ProjectCustomizeButton({
         name: bundleDraft.name.trim(),
         description: bundleDraft.description.trim(),
         fields: bundleDraft.fields,
+        rules: initialRules
+          .filter((rule) => bundleDraft.ruleIds.includes(rule.id))
+          .map((rule) => ({
+            name: rule.name,
+            description: rule.description,
+            definition: rule.definition,
+            enabled: rule.enabled,
+          })),
       });
       setBundleDraft(null);
       router.refresh();
@@ -729,6 +738,7 @@ export default function ProjectCustomizeButton({
                     name: "",
                     description: "",
                     fields: [{ name: "優先度", field_type: "select", options: ["高", "中", "低"] }],
+                    ruleIds: [],
                   })
                 }
                 onApply={(bundle) => void applyBundle(bundle)}
@@ -848,6 +858,7 @@ export default function ProjectCustomizeButton({
           onDraft={setBundleDraft}
           onClose={() => setBundleDraft(null)}
           onSubmit={saveBundle}
+          availableRules={initialRules}
           busy={busy}
           fieldTypeClass={fieldTypeClass}
           primaryButton={primaryButton}

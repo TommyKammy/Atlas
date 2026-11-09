@@ -72,6 +72,7 @@ export type RuleRunActionDetail = {
   params: Record<string, unknown>;
   status: "success" | "failed";
   error?: string;
+  attempts?: number;
   result?: unknown;
 };
 
