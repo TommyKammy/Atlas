@@ -1,15 +1,8 @@
 import { redirect } from "next/navigation";
 import HomeDashboard from "@/components/home/HomeDashboard";
-import ProjectTemplateBar from "@/components/ProjectTemplateBar";
 import { getCurrentUserId } from "@/lib/current-user";
 import { todayISO } from "@/lib/dates";
-import {
-  getProjectTemplateList,
-  getProjectsForUser,
-  getUnreadCount,
-  getUsers,
-  getWorkspace,
-} from "@/lib/data";
+import { getUnreadCount, getUsers, getWorkspace } from "@/lib/data";
 import {
   getHomeAssignedTasks,
   getHomeCommentDrafts,
@@ -57,8 +50,6 @@ export default async function Home() {
     commentDrafts,
     notepad,
     unread,
-    templates,
-    projectList,
   ] = await Promise.all([
     getUsers(),
     getHomeWidgets(ws.id, uid),
@@ -74,8 +65,6 @@ export default async function Home() {
     getHomeCommentDrafts(uid),
     getUserNotepad(uid),
     getUnreadCount(uid, ws.id),
-    getProjectTemplateList(ws.id),
-    getProjectsForUser(ws.id, uid),
   ]);
 
   const me = users.find((user) => user.id === uid) ?? null;
@@ -89,7 +78,6 @@ export default async function Home() {
   return (
     <>
       <HomeDashboard
-        workspaceId={ws.id}
         userId={uid}
         today={today}
         dateLine={dateLine}
@@ -110,9 +98,6 @@ export default async function Home() {
         notepad={notepad}
         users={users.map((user) => ({ id: user.id, name: user.name, avatar_url: user.avatar_url }))}
       />
-      <div className="px-6">
-        <ProjectTemplateBar workspaceId={ws.id} projects={projectList} initial={templates} />
-      </div>
     </>
   );
 }

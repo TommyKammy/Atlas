@@ -9,6 +9,7 @@ import type { ProjectAutomation } from "../automations";
 import type { CustomField } from "../custom-fields";
 import type { Attachment, User } from "../data";
 import type { RichTextDoc } from "../rich-text-types";
+import type { ProjectTemplateSummary } from "../project-templates";
 import { projectTaskScope } from "./scope";
 
 export type Project = {
@@ -411,12 +412,65 @@ export type TaskTemplate = {
   subtasks: { name: string }[];
 };
 
-export async function getProjectTemplateList(workspaceId: number) {
+/** Template gallery data: project metadata plus bounded section/task previews. */
+export async function getProjectTemplateSummaries(
+  workspaceId: number,
+): Promise<ProjectTemplateSummary[]> {
   const r = await db.query(
-    "SELECT id, name FROM project_templates WHERE workspace_id = $1 ORDER BY id",
+    `WITH base AS (
+       SELECT t.id, t.name, t.payload, t.created_by, t.created_at,
+         CASE
+           WHEN jsonb_typeof(t.payload->'sections') = 'array' THEN t.payload->'sections'
+           ELSE '[]'::jsonb
+         END AS sections
+       FROM project_templates t
+       WHERE t.workspace_id = $1::bigint
+     )
+     SELECT b.id, b.name,
+       COALESCE(b.payload->'project'->>'description', '') AS description,
+       b.payload->'project'->>'color' AS color,
+       b.payload->'project'->>'icon' AS icon,
+       b.created_by, u.name AS creator_name, b.created_at::text AS created_at,
+       jsonb_array_length(b.sections)::int AS section_count,
+       COALESCE((
+         SELECT SUM(jsonb_array_length(
+           CASE WHEN jsonb_typeof(sec->'tasks') = 'array' THEN sec->'tasks' ELSE '[]'::jsonb END
+         ))
+         FROM jsonb_array_elements(b.sections) sec
+       ), 0)::int AS task_count,
+       COALESCE((
+         SELECT jsonb_agg(
+           jsonb_build_object('name', x.name, 'task_count', x.task_count)
+           ORDER BY x.ord
+         )
+         FROM (
+           SELECT sec->>'name' AS name,
+             jsonb_array_length(
+               CASE WHEN jsonb_typeof(sec->'tasks') = 'array' THEN sec->'tasks' ELSE '[]'::jsonb END
+             ) AS task_count,
+             ord
+           FROM jsonb_array_elements(b.sections) WITH ORDINALITY AS s(sec, ord)
+           LIMIT 8
+         ) x
+       ), '[]'::jsonb) AS sections,
+       COALESCE((
+         SELECT jsonb_agg(x.name)
+         FROM (
+           SELECT task->>'name' AS name
+           FROM jsonb_array_elements(b.sections) sec
+           CROSS JOIN LATERAL jsonb_array_elements(
+             CASE WHEN jsonb_typeof(sec->'tasks') = 'array' THEN sec->'tasks' ELSE '[]'::jsonb END
+           ) task
+           WHERE task->>'name' IS NOT NULL
+           LIMIT 8
+         ) x
+       ), '[]'::jsonb) AS sample_tasks
+     FROM base b
+     LEFT JOIN users u ON u.id = b.created_by
+     ORDER BY b.created_at DESC, b.id DESC`,
     [workspaceId],
   );
-  return r.rows as { id: number; name: string }[];
+  return r.rows as ProjectTemplateSummary[];
 }
 
 export async function getProjectMembers(projectId: number): Promise<User[]> {

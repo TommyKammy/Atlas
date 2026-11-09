@@ -151,7 +151,7 @@ export default async function SidebarNav() {
         <NavLink item={TRASH_NAV} className={item} />
         <div className={`${label} flex items-center justify-between pr-1`}>
           <span>{NAV_LABELS.projects}</span>
-          {ws && <SidebarAddProject workspaceId={ws.id} />}
+          {ws && <SidebarAddProject />}
         </div>
         {projects.map((p) => (
           <SidebarProjectLink

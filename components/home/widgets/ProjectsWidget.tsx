@@ -3,16 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { HomeProject } from "@/lib/home-widgets";
-import NewProjectForm from "../../NewProjectForm";
 import ProjectIcon from "../../ProjectIcon";
 
 type Tab = "recent" | "search";
 
 export default function ProjectsWidget({
-  workspaceId,
   projects,
 }: {
-  workspaceId: number;
   projects: HomeProject[];
 }) {
   const [tab, setTab] = useState<Tab>("recent");
@@ -71,7 +68,12 @@ export default function ProjectsWidget({
                 ? "一致するプロジェクトがありません。"
                 : "プロジェクトがありません。"}
             </p>
-            <NewProjectForm workspaceId={workspaceId} />
+            <Link
+              href="/projects/new"
+              className="rounded bg-[#2c60b8] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#24529c]"
+            >
+              ＋ 新規プロジェクト
+            </Link>
           </div>
         ) : (
           <>
@@ -105,7 +107,12 @@ export default function ProjectsWidget({
             </div>
             {projects.length > 0 && (
               <div className="mt-2">
-                <NewProjectForm workspaceId={workspaceId} />
+                <Link
+                  href="/projects/new"
+                  className="text-[12px] text-[#2c60b8] hover:underline"
+                >
+                  ＋ 新規プロジェクト
+                </Link>
               </div>
             )}
           </>

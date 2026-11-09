@@ -2,16 +2,17 @@ import { NextResponse } from "next/server";
 import { todayISO } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { withUser, withProject } from "@/lib/api/route";
+import { getProjectTemplateSummaries } from "@/lib/repositories/projects";
 
 export const GET = withUser(async (req) => {
   const { searchParams } = new URL(req.url);
   const workspaceId = searchParams.get("workspace_id");
   if (!workspaceId) return NextResponse.json({ error: "workspace_id is required" }, { status: 400 });
-  const r = await db.query(
-    "SELECT id, name FROM project_templates WHERE workspace_id = $1::bigint ORDER BY id",
-    [workspaceId],
-  );
-  return NextResponse.json(r.rows);
+  const id = Number(workspaceId);
+  if (!Number.isInteger(id) || id <= 0) {
+    return NextResponse.json({ error: "invalid workspace_id" }, { status: 400 });
+  }
+  return NextResponse.json(await getProjectTemplateSummaries(id));
 });
 
 // Snapshot an existing project's structure (sections + top-level tasks with

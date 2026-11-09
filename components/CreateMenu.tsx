@@ -61,7 +61,7 @@ export default function CreateMenu() {
           <button
             onClick={() => {
               setOpen(false);
-              router.push("/");
+              router.push("/projects/new");
             }}
             className="block w-full px-3 py-1.5 text-left hover:bg-neutral-100"
           >
