@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { createPortal } from "react-dom";
 import type { ProjectTab } from "@/lib/data";
+import { useMenuKeyboard } from "@/lib/use-menu-keyboard";
 
 export type ProjectTabMenuAction = "rename" | "default" | "duplicate" | "copy" | "delete";
 
@@ -27,27 +28,7 @@ export default function ProjectTabContextMenu({
   onAction: (action: ProjectTabMenuAction) => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef(onClose);
-
-  useEffect(() => {
-    closeRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    panelRef.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeRef.current();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      previous?.focus();
-    };
-  }, []);
+  useMenuKeyboard({ containerRef: panelRef, onClose });
 
   if (typeof document === "undefined") return null;
   const item =

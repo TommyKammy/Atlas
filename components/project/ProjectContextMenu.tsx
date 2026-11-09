@@ -1,6 +1,8 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { useRef } from "react";
+import { useMenuKeyboard } from "@/lib/use-menu-keyboard";
 
 type MenuProject = { id: number; name: string };
 
@@ -104,6 +106,8 @@ export default function ProjectContextMenu({
   onAddPortfolio: () => void;
   onArchive: () => void;
 }) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  useMenuKeyboard({ containerRef: menuRef, onClose });
   if (typeof document === "undefined") return null;
   const item =
     "flex h-9 w-full items-center gap-2 px-3 text-left text-[14px] text-neutral-800 hover:bg-neutral-100";
@@ -118,6 +122,7 @@ export default function ProjectContextMenu({
         }}
       />
       <div
+        ref={menuRef}
         role="menu"
         aria-label={`${project.name}のメニュー`}
         style={{ left: pos.x, top: pos.y }}

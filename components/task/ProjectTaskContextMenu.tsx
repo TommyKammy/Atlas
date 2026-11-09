@@ -7,6 +7,7 @@ import { ApiError, api } from "@/lib/api-client";
 import type { TaskRow } from "@/lib/data";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { confirmAction, toast } from "@/lib/ui-feedback";
+import { useMenuKeyboard } from "@/lib/use-menu-keyboard";
 import {
   convertTask,
   copyTaskLink,
@@ -228,17 +229,12 @@ export default function ProjectTaskContextMenu({
     const onDown = (event: MouseEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) setRequest(null);
     };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setRequest(null);
-    };
     const onScroll = () => setRequest(null);
     document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onScroll);
     document.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onScroll);
       document.removeEventListener("scroll", onScroll, true);
     };
@@ -248,6 +244,7 @@ export default function ProjectTaskContextMenu({
     setRequest(null);
     setConvertOpen(false);
   };
+  useMenuKeyboard({ open: Boolean(request), containerRef: menuRef, onClose: close });
 
   const refresh = () => {
     close();
