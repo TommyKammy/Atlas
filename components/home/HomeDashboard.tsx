@@ -1,0 +1,283 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { api } from "@/lib/api-client";
+import type { HomeMember, HomeProject, HomeTask, HomeWidget } from "@/lib/home-widgets";
+import { patchTask } from "@/lib/task-client";
+import { confirmAction, toast } from "@/lib/ui-feedback";
+import AddWidgetPanel from "./AddWidgetPanel";
+import HomeTaskComposer from "./HomeTaskComposer";
+import HomeWidgetCard, { type HomeWidgetMenuItem } from "./HomeWidgetCard";
+import AssignedTasksWidget from "./widgets/AssignedTasksWidget";
+import MembersWidget from "./widgets/MembersWidget";
+import MyTasksWidget from "./widgets/MyTasksWidget";
+import ProjectsWidget from "./widgets/ProjectsWidget";
+
+export default function HomeDashboard({
+  workspaceId,
+  userId,
+  today,
+  dateLine,
+  greeting,
+  myTaskCount,
+  unreadCount,
+  widgets,
+  myTasks,
+  assignedTasks,
+  projects,
+  members,
+  users,
+}: {
+  workspaceId: number;
+  userId: number;
+  today: string;
+  dateLine: string;
+  greeting: string;
+  myTaskCount: number;
+  unreadCount: number;
+  widgets: HomeWidget[];
+  myTasks: HomeTask[];
+  assignedTasks: HomeTask[];
+  projects: HomeProject[];
+  members: HomeMember[];
+  users: { id: number; name: string; avatar_url?: string | null }[];
+}) {
+  const router = useRouter();
+  const [period, setPeriod] = useState<"week" | "month">("week");
+  const [showCompleted, setShowCompleted] = useState(true);
+  const [collaborator, setCollaborator] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [composer, setComposer] = useState<"my_tasks" | "assigned_tasks" | null>(null);
+  const [busyTaskId, setBusyTaskId] = useState<number | null>(null);
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+
+  const collaboratorId = collaborator === "" ? null : Number(collaborator);
+  const matchesCollaborator = (task: HomeTask) =>
+    collaboratorId === null ||
+    task.assignee_id === collaboratorId ||
+    (task.collaborators ?? []).some((person) => person.id === collaboratorId);
+  const visibleMyTasks = myTasks.filter(matchesCollaborator);
+  const visibleAssignedTasks = assignedTasks.filter(matchesCollaborator);
+  const visibleMembers =
+    collaboratorId === null ? members : members.filter((member) => member.id === collaboratorId);
+
+  const refresh = () => router.refresh();
+
+  const removeWidget = async (widget: HomeWidget) => {
+    if (!(await confirmAction("このウィジェットを削除しますか？"))) return;
+    await api(`/api/home/widgets/${widget.id}`, "DELETE");
+    refresh();
+  };
+
+  const setWidgetSize = async (widget: HomeWidget, size: "half" | "full") => {
+    if (widget.size === size) return;
+    await api(`/api/home/widgets/${widget.id}`, "PATCH", { size });
+    refresh();
+  };
+
+  const addWidget = async (type: HomeWidget["widget_type"]) => {
+    await api("/api/home/widgets", "POST", { widget_type: type });
+    setAddOpen(false);
+    refresh();
+  };
+
+  const reorder = async (sourceId: number, targetId: number) => {
+    if (sourceId === targetId) return;
+    const ids = widgets.map((widget) => widget.id).filter((id) => id !== sourceId);
+    const targetIndex = ids.indexOf(targetId);
+    ids.splice(targetIndex < 0 ? ids.length : targetIndex, 0, sourceId);
+    setDraggingId(null);
+    await api("/api/home/widgets", "PATCH", { order: ids });
+    refresh();
+  };
+
+  const toggleTask = async (task: HomeTask) => {
+    setBusyTaskId(task.id);
+    try {
+      await patchTask(task.id, { completed: !task.completed }, task.updated_at);
+      refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "タスクの更新に失敗しました");
+    } finally {
+      setBusyTaskId(null);
+    }
+  };
+
+  const commonMenu = (widget: HomeWidget): HomeWidgetMenuItem[] => [
+    { label: "ハーフサイズ", checked: widget.size === "half", onClick: () => void setWidgetSize(widget, "half") },
+    { label: "フルサイズ", checked: widget.size === "full", onClick: () => void setWidgetSize(widget, "full") },
+    { label: "ウィジェットを削除", danger: true, onClick: () => void removeWidget(widget) },
+  ];
+
+  const menuFor = (widget: HomeWidget): HomeWidgetMenuItem[] => {
+    if (widget.widget_type === "my_tasks") {
+      return [
+        { label: "＋ タスクを作成", onClick: () => setComposer("my_tasks") },
+        { label: "マイタスクをすべて表示", onClick: () => router.push("/my-tasks") },
+        ...commonMenu(widget),
+      ];
+    }
+    if (widget.widget_type === "assigned_tasks") {
+      return [
+        { label: "＋ タスクを割り当てる", onClick: () => setComposer("assigned_tasks") },
+        ...commonMenu(widget),
+      ];
+    }
+    if (widget.widget_type === "projects") {
+      return [
+        { label: "プロジェクトをすべて表示", onClick: () => router.push("/portfolio") },
+        ...commonMenu(widget),
+      ];
+    }
+    return commonMenu(widget);
+  };
+
+  return (
+    <div data-home-dashboard className="px-6 py-6 pb-16">
+      <div className="text-[13px] text-neutral-700">{dateLine}</div>
+      <h1 className="mt-1 text-[30px] leading-10 font-normal text-neutral-900">{greeting}</h1>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
+        <Link
+          href="/my-tasks"
+          className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
+        >
+          マイタスク（担当 {myTaskCount}）
+        </Link>
+        <Link
+          href="/inbox"
+          className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
+        >
+          受信トレイ（未読 {unreadCount}）
+        </Link>
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-3 border-b border-neutral-200 pb-2 text-[12px] text-neutral-500">
+        <label className="flex items-center gap-1">
+          <span>期間</span>
+          <select
+            data-home-period
+            value={period}
+            onChange={(event) => setPeriod(event.target.value as "week" | "month")}
+            className="rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-[12px]"
+          >
+            <option value="week">週</option>
+            <option value="month">月</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            data-home-show-completed
+            checked={showCompleted}
+            onChange={(event) => setShowCompleted(event.target.checked)}
+          />
+          完了済みのタスク
+        </label>
+        <label className="flex items-center gap-1">
+          <span>コラボレーター</span>
+          <select
+            data-home-collaborator
+            value={collaborator}
+            onChange={(event) => setCollaborator(event.target.value)}
+            className="max-w-[180px] rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-[12px]"
+          >
+            <option value="">全員</option>
+            {users
+              .filter((user) => user.id !== userId)
+              .map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+          </select>
+        </label>
+        <span className="flex-1" />
+        <button
+          type="button"
+          data-home-add-widget-button
+          onClick={() => setAddOpen(true)}
+          className="rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[12px] font-medium text-neutral-700 hover:bg-neutral-50"
+        >
+          ＋ ウィジェットを追加
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+        {widgets.map((widget) => (
+          <HomeWidgetCard
+            key={widget.id}
+            widgetId={widget.id}
+            widgetType={widget.widget_type}
+            size={widget.size}
+            title={
+              widget.widget_type === "my_tasks"
+                ? "マイタスク"
+                : widget.widget_type === "projects"
+                  ? "プロジェクト"
+                  : widget.widget_type === "assigned_tasks"
+                    ? "自分が割り当てたタスク"
+                    : "メンバー"
+            }
+            locked={widget.widget_type === "my_tasks"}
+            menuItems={menuFor(widget)}
+            onDragStart={() => setDraggingId(widget.id)}
+            onDragEnd={() => setDraggingId(null)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const source = Number(event.dataTransfer.getData("text/home-widget")) || draggingId;
+              if (source) void reorder(source, widget.id);
+            }}
+            dragging={draggingId === widget.id}
+            className={widget.size === "full" ? "xl:col-span-2" : ""}
+          >
+            {widget.widget_type === "my_tasks" && (
+              <MyTasksWidget
+                tasks={visibleMyTasks}
+                today={today}
+                period={period}
+                showCompleted={showCompleted}
+                busyTaskId={busyTaskId}
+                onCompose={() => setComposer("my_tasks")}
+                onToggle={(task) => void toggleTask(task)}
+              />
+            )}
+            {widget.widget_type === "projects" && (
+              <ProjectsWidget workspaceId={workspaceId} projects={projects} />
+            )}
+            {widget.widget_type === "assigned_tasks" && (
+              <AssignedTasksWidget
+                tasks={visibleAssignedTasks}
+                today={today}
+                period={period}
+                showCompleted={showCompleted}
+                busyTaskId={busyTaskId}
+                onCompose={() => setComposer("assigned_tasks")}
+                onToggle={(task) => void toggleTask(task)}
+              />
+            )}
+            {widget.widget_type === "members" && <MembersWidget members={visibleMembers} />}
+          </HomeWidgetCard>
+        ))}
+      </div>
+
+      <AddWidgetPanel
+        open={addOpen}
+        existingTypes={widgets.map((widget) => widget.widget_type)}
+        onAdd={(type) => void addWidget(type)}
+        onClose={() => setAddOpen(false)}
+      />
+      <HomeTaskComposer
+        open={composer !== null}
+        mode={composer ?? "my_tasks"}
+        projects={projects.map((project) => ({ id: project.id, name: project.name }))}
+        users={users}
+        viewerId={userId}
+        onClose={() => setComposer(null)}
+        onCreated={refresh}
+      />
+    </div>
+  );
+}
