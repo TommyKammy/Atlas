@@ -1,8 +1,14 @@
 // Custom production server: Next.js + WebSocket live channel.
 // Run with `node server.js` (see Dockerfile). Single-instance only.
 const { createServer } = require("http");
+const { createHash } = require("crypto");
 const next = require("next");
 const { WebSocketServer } = require("ws");
+const { Pool } = require("pg");
+
+const dbPool = new Pool({ connectionString: process.env.DATABASE_URL });
+const SESSION_COOKIE_RE = /(?:^|;\s*)atlas_session=([A-Za-z0-9_-]{43})(?:;|$)/;
+const hashSessionToken = (token) => createHash("sha256").update(token).digest("hex");
 
 function splitUrl(raw) {
   const u = new URL(raw, "http://internal");
@@ -30,21 +36,39 @@ app.prepare().then(async () => {
       return;
     }
     const cookie = String(req.headers.cookie || "");
-    const m = cookie.match(/(?:^|;\s*)atlas_uid=(\d+)/);
-    if (!m) {
+    const match = cookie.match(SESSION_COOKIE_RE);
+    const projectId = Number(query.project);
+    if (!match) {
       socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
       return;
     }
-    const projectId = Number(query.project);
     if (!Number.isInteger(projectId)) {
       socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
       socket.destroy();
       return;
     }
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit("connection", ws, req, projectId);
-    });
+    const tokenHash = hashSessionToken(match[1]);
+    dbPool
+      .query(
+        `SELECT 1 FROM user_sessions s JOIN users u ON u.id = s.user_id
+         WHERE s.token_hash = $1 AND s.expires_at > now() AND u.deactivated_at IS NULL`,
+        [tokenHash],
+      )
+      .then((r) => {
+        if (r.rowCount === 0) {
+          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+          socket.destroy();
+          return;
+        }
+        wss.handleUpgrade(req, socket, head, (ws) => {
+          wss.emit("connection", ws, req, projectId);
+        });
+      })
+      .catch(() => {
+        socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+        socket.destroy();
+      });
   });
 
   wss.on("connection", (ws, _req, projectId) => {
@@ -78,8 +102,7 @@ app.prepare().then(async () => {
   const trashDays = Number(process.env.RETENTION_DAYS_TRASH || 30);
   const janitor = async () => {
     try {
-      const { Pool } = require("pg");
-      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      const pool = dbPool;
       const a = await pool.query(
         "WITH del AS (DELETE FROM audit_log WHERE created_at < NOW() - make_interval(days => $1) RETURNING 1) SELECT COUNT(*) AS n FROM del",
         [auditDays],
@@ -114,7 +137,10 @@ app.prepare().then(async () => {
         [trashDays],
       );
       if (Number(t.rows[0].n) > 0) console.log(`janitor: purged trash=${t.rows[0].n}`);
-      await pool.end();
+      const s = await pool.query(
+        "WITH del AS (DELETE FROM user_sessions WHERE expires_at <= NOW() RETURNING 1) SELECT COUNT(*) AS n FROM del",
+      );
+      if (Number(s.rows[0].n) > 0) console.log(`janitor: purged sessions=${s.rows[0].n}`);
       if (Number(a.rows[0].n) + Number(e.rows[0].n) + Number(de.rows[0].n) + Number(rr.rows[0].n) > 0) {
         console.log(
           `janitor: purged audit=${a.rows[0].n} events=${e.rows[0].n} domain_events=${de.rows[0].n} rule_runs=${rr.rows[0].n}`,

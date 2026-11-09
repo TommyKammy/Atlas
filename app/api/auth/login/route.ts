@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth";
-import { COOKIE_NAME } from "@/lib/current-user";
+import { createSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
 import { consumeRecoveryCode, verifyTotp } from "@/lib/totp";
 import { getSecuritySettings } from "@/lib/admin-data";
 
@@ -86,11 +86,9 @@ export async function POST(req: Request) {
     name: row.name,
     two_factor_setup_required: security.two_factor_policy === "required" && !row.totp_enabled,
   });
-  res.cookies.set(COOKIE_NAME, String(row.id), {
-    path: "/",
-    maxAge: 7 * 24 * 3600,
-    sameSite: "lax",
-    httpOnly: true,
-  });
+  const token = await createSession(Number(row.id), req.headers.get("user-agent"));
+  res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+  // Remove the legacy numeric demo cookie if it is still present.
+  res.cookies.set("atlas_uid", "", { path: "/", maxAge: 0 });
   return res;
 }

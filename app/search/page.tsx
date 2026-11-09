@@ -14,6 +14,8 @@ import {
 } from "@/lib/data";
 import { getCurrentUserId } from "@/lib/current-user";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { recordSearchHistoryAtBoundary } from "@/lib/search-history";
 import SavedSearchBar from "@/components/SavedSearchBar";
 import SearchHistoryClear from "@/components/SearchHistoryClear";
 import SearchResults from "@/components/search/SearchResults";
@@ -36,6 +38,10 @@ export default async function SearchPage(props: {
   const ws = await getWorkspace();
   const viewerId = await getCurrentUserId();
   if (!viewerId) redirect("/login");
+  const q = str(sp, "q").trim();
+  if (q !== "") {
+    after(() => recordSearchHistoryAtBoundary(viewerId, q).catch(() => undefined));
+  }
   const [projects, users, customFields, savedSearches, searchHistory] = ws
     ? await Promise.all([
         getProjectsForUser(ws.id, viewerId),
@@ -46,7 +52,6 @@ export default async function SearchPage(props: {
       ])
     : [[], [], [], [], []];
 
-  const q = str(sp, "q").trim();
   const projectRaw = str(sp, "project");
   const assigneeRaw = str(sp, "assignee");
   const completedRaw = str(sp, "completed");

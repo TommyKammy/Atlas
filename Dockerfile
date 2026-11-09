@@ -21,5 +21,6 @@ COPY --from=build /app/next.config.ts ./
 COPY --from=build /app/server.js ./
 COPY --from=build /app/lib ./lib
 COPY --from=build /app/scripts ./scripts
+COPY --from=build /app/db ./db
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "npm run db:migrate && node server.js"]

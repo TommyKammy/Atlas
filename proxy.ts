@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { recordSearchHistoryAtBoundary } from "@/lib/search-history";
+import { isSessionToken, SESSION_COOKIE } from "@/lib/session-token";
 
 function securityHeaders(nonce: string): Record<string, string> {
   // React's development build needs eval() for debugging features. Keep the
@@ -58,8 +58,8 @@ export async function proxy(req: NextRequest) {
     return withSecurityHeaders(next(), nonce);
   }
 
-  const uid = req.cookies.get("atlas_uid")?.value;
-  if (!uid || !/^\d+$/.test(uid)) {
+  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  if (!isSessionToken(token)) {
     if (req.nextUrl.pathname.startsWith("/api/")) {
       return withSecurityHeaders(
         NextResponse.json({ error: "unauthenticated" }, { status: 401 }),
@@ -69,12 +69,6 @@ export async function proxy(req: NextRequest) {
     return withSecurityHeaders(NextResponse.redirect(new URL("/login", req.url)), nonce);
   }
 
-  if (req.method === "GET" && req.nextUrl.pathname === "/search") {
-    const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
-    if (q !== "") {
-      await recordSearchHistoryAtBoundary(Number(uid), q).catch(() => undefined);
-    }
-  }
   return withSecurityHeaders(next(), nonce);
 }
 
