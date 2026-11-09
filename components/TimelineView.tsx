@@ -7,7 +7,7 @@ import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Section, TaskRow, User } from "@/lib/data";
-import { dayDeltaFromPixels, shiftDate } from "@/lib/timeline-dnd";
+import { shiftDate } from "@/lib/timeline-dnd";
 import { formatDay } from "@/lib/calendar";
 import EmptyState from "./EmptyState";
 import TaskAvatar from "./task/TaskAvatar";
@@ -22,6 +22,7 @@ import { isSingleDayTimelineTask, usesTimelineExternalLabel } from "@/lib/timeli
 import { timelineBarDragStyle } from "@/lib/timeline-drag-style";
 import { useTimelineFilters } from "@/lib/use-timeline-filters";
 import { useTimelineDependencies } from "@/lib/use-timeline-dependencies";
+import { useTimelineDrag } from "@/lib/use-timeline-drag";
 import { useTimelineDraft } from "@/lib/use-timeline-draft";
 import { useTimelineHover } from "@/lib/use-timeline-hover";
 import { useTimelineLayout } from "@/lib/use-timeline-layout";
@@ -76,7 +77,6 @@ export default function TimelineView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const suppressCanvasClick = useRef(false);
   const revealBarId = useRef<number | null>(null);
-  const moved = useRef(false);
   const {
     depLink,
     depTargetId,
@@ -163,18 +163,6 @@ export default function TimelineView({
     critical: showCritical,
   });
   const [canvasWidth, setCanvasWidth] = useState(0);
-  const longPressTimer = useRef<number | null>(null);
-  const [drag, setDrag] = useState<{
-    id: number;
-    mode: "move" | "start" | "end";
-    axis: "x" | "row" | null;
-    dx: number;
-    dy: number;
-    startX: number;
-    startY: number;
-    rowDrop: { sectionId: number; row: number; top: number } | null;
-  } | null>(null);
-
   const {
     draft,
     draftInputRef,
@@ -324,123 +312,6 @@ export default function TimelineView({
     }
     refresh();
   };
-
-  const beginDrag = (e: React.PointerEvent, t: TaskRow, mode: "move" | "start" | "end") => {
-    if (e.button !== 0) return;
-    e.stopPropagation();
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-    moved.current = false;
-    setHover(null);
-    clearBarHover();
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    if (e.pointerType === "touch" && mode === "move") {
-      longPressTimer.current = window.setTimeout(() => {
-        setDrag((prev) => (prev && prev.axis === null ? { ...prev, axis: "row" } : prev));
-        longPressTimer.current = null;
-      }, 300);
-    }
-    setDrag({
-      id: t.id,
-      mode,
-      axis: null,
-      dx: 0,
-      dy: 0,
-      startX: e.clientX,
-      startY: e.clientY,
-      rowDrop: null,
-    });
-  };
-
-  const beginBarDrag = (e: React.PointerEvent, t: TaskRow) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const fromLeft = e.clientX - rect.left;
-    const fromRight = rect.right - e.clientX;
-    const edgeHit = edgeHitFor(rect.width);
-    const mode: "move" | "start" | "end" =
-      fromLeft <= edgeHit && fromLeft <= fromRight
-        ? "start"
-        : fromRight <= edgeHit
-          ? "end"
-          : "move";
-    beginDrag(e, t, mode);
-  };
-
-  const onBarMove = (e: React.PointerEvent) => {
-    if (!drag) return;
-    const scroller = scrollRef.current;
-    if (scroller) {
-      const rect = scroller.getBoundingClientRect();
-      const edge = 48;
-      if (e.clientX < rect.left + edge) scroller.scrollLeft = Math.max(0, scroller.scrollLeft - 14);
-      else if (e.clientX > rect.right - edge) scroller.scrollLeft += 14;
-    }
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-    if (Math.abs(dx) > 2 || Math.abs(dy) > 4) moved.current = true;
-    let axis = drag.axis;
-    if (axis === null && Math.max(Math.abs(dx), Math.abs(dy)) > 6) {
-      axis =
-        drag.mode === "move" && canEdit && Math.abs(dy) > Math.abs(dx)
-          ? "row"
-          : "x";
-    }
-    if (axis !== null && longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    if (axis === "row") {
-      const group = groups.find((entry) => entry.tasks.some((task) => task.id === drag.id));
-      const rect = contentRef.current?.getBoundingClientRect();
-      if (!group || !rect) {
-        setDrag({ ...drag, axis, dx: 0, dy, rowDrop: null });
-        return;
-      }
-      const y = e.clientY - rect.top;
-      const row = Math.max(
-        0,
-        Math.min(group.laneCount, Math.floor((y - group.top) / ROW_PITCH)),
-      );
-      setDrag({
-        ...drag,
-        axis,
-        dx: 0,
-        dy,
-        rowDrop: { sectionId: group.section.id, row, top: group.top + row * ROW_PITCH },
-      });
-      return;
-    }
-    setDrag({ ...drag, axis, dx, dy, rowDrop: null });
-  };
-  const onBarUp = async () => {
-    if (!drag) return;
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    const d = drag;
-    setDrag(null);
-    if (d.axis === "row") {
-      if (!d.rowDrop) return;
-      const target = tasks.find((x) => x.id === d.id);
-      if (target) await setTimelineRow(target, d.rowDrop.row);
-      return;
-    }
-    if (d.axis !== "x") return;
-    const el = contentRef.current;
-    if (!el) {
-      refresh();
-      return;
-    }
-    const t = tasks.find((x) => x.id === d.id);
-    if (!t) return;
-    const delta = dayDeltaFromPixels(d.dx, el.getBoundingClientRect().width, span);
-    await commitChange(t, delta, d.mode);
-  };
-
-  const dragDelta = (id: number) => (drag && drag.id === id ? drag.dx : 0);
 
   const linkDay = (d: number) => formatDay(d);
 
@@ -611,6 +482,29 @@ export default function TimelineView({
       }
     }
   };
+
+  const {
+    drag,
+    moved,
+    beginDrag,
+    beginBarDrag,
+    onBarMove,
+    onBarUp,
+    dragDelta,
+  } = useTimelineDrag({
+    contentRef,
+    scrollRef,
+    groups,
+    tasks,
+    span,
+    canEdit,
+    onDragStart: () => {
+      setHover(null);
+      clearBarHover();
+    },
+    onCommit: commitChange,
+    onRowDrop: setTimelineRow,
+  });
 
   const moveTimelineRow = (t: TaskRow, delta: number) => {
     if (!canEdit) return;
