@@ -27,6 +27,7 @@ const PATCHABLE = new Set([
   "project_id",
   "parent_task_id",
   "recurrence",
+  "is_milestone",
 ]);
 
 export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: currentProjectId }) => {
@@ -151,6 +152,14 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
   }
   Object.assign(body, validated.values);
 
+  // Milestones are top-level tasks. Keep the two fields consistent whichever
+  // one the caller sends first.
+  if (body.is_milestone === true) {
+    body.parent_task_id = null;
+  } else if ("parent_task_id" in body && body.parent_task_id !== null) {
+    body.is_milestone = false;
+  }
+
   const sets: string[] = [];
   const values: unknown[] = [];
   for (const [k, v] of Object.entries(body)) {
@@ -171,7 +180,7 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
     const snap = await db.query(
       `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
          t.start_on::text AS start_on, t.due_on::text AS due_on,
-         t.progress, t.status, t.description, t.section_id,
+         t.progress, t.status, t.description, t.section_id, t.is_milestone,
          t.updated_at::text AS updated_at
        FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
        WHERE t.id = $1::bigint`,
@@ -188,7 +197,7 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
     if (cur.rows[0].u !== expected) return conflictResponse();
   }
   const before = await db.query(
-    "SELECT name, completed, assignee_id, status, section_id, start_on::text AS start_on, due_on::text AS due_on FROM tasks WHERE id = $1::bigint",
+    "SELECT name, completed, assignee_id, status, section_id, start_on::text AS start_on, due_on::text AS due_on, is_milestone FROM tasks WHERE id = $1::bigint",
     [taskId],
   );
   values.push(taskId);
@@ -218,12 +227,14 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
         section_id: number | null;
         start_on: string | null;
         due_on: string | null;
+        is_milestone: boolean;
       }
     | undefined;
   const full = (
     await db.query(
       `SELECT project_id, section_id, parent_task_id, name, description, assignee_id,
-         start_on::text AS start_on, due_on::text AS due_on, progress, status, recurrence
+         start_on::text AS start_on, due_on::text AS due_on, progress, status, recurrence,
+         is_milestone
        FROM tasks WHERE id = $1::bigint`,
       [taskId],
     )
@@ -240,6 +251,7 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
         progress: number;
         status: string;
         recurrence: string;
+        is_milestone: boolean;
       }
     | undefined;
   if (prev) {
@@ -284,6 +296,12 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
     }
     if (typeof b.name === "string" && b.name.trim() !== "" && b.name.trim() !== prev.name) {
       await log("renamed", "タスク名を変更しました");
+    }
+    if (typeof b.is_milestone === "boolean" && b.is_milestone !== prev.is_milestone) {
+      await log(
+        "type_changed",
+        b.is_milestone ? "マイルストーンに変換しました" : "タスクに変換しました",
+      );
     }
     if (b.completed === true && prev.completed === false) {
       await runAutomations(targetProjectId, taskId, "task_completed").catch(() => undefined);
@@ -339,6 +357,15 @@ export const PATCH = withTask("edit", async (req, { taskId, uid, projectId: curr
           data: { previous_section_id: prev.section_id, section_id: next },
         }).catch(() => undefined);
       }
+    }
+    if (typeof b.is_milestone === "boolean" && b.is_milestone !== prev.is_milestone) {
+      await emitTaskEvent({
+        projectId: targetProjectId,
+        taskId,
+        actorId: uid,
+        type: "task.milestone_changed",
+        data: { previous: prev.is_milestone, is_milestone: b.is_milestone },
+      }).catch(() => undefined);
     }
     if (typeof b.status === "string" && b.status !== prev.status) {
       await runAutomations(targetProjectId, taskId, "status_changed").catch(() => undefined);

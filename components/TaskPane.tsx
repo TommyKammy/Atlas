@@ -23,6 +23,7 @@ import {
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import TaskPaneHeader from "./task/TaskPaneHeader";
+import TaskMilestoneIcon from "./task/TaskMilestoneIcon";
 import TaskVisibilityBanner from "./task/TaskVisibilityBanner";
 import TaskDescriptionSection from "./task/TaskDescriptionSection";
 import TaskDueDateField from "./task/TaskDueDateField";
@@ -602,6 +603,13 @@ export default function TaskPane({
             className="w-full border-b border-transparent bg-transparent pb-1 text-[24px] font-semibold leading-8 tracking-[-0.01em] text-neutral-900 outline-none placeholder:text-neutral-300 focus:border-[#4075cf]"
             placeholder="タスク名を入力"
           />
+
+          {task.is_milestone && (
+            <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-[#9a6a12]">
+              <TaskMilestoneIcon />
+              マイルストーン
+            </div>
+          )}
 
           <div className="mt-2 space-y-0.5" data-task-fields>
             <FieldRow label="担当者">

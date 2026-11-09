@@ -2,6 +2,7 @@
 
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { TaskRow } from "@/lib/data";
+import TaskMilestoneIcon from "../task/TaskMilestoneIcon";
 
 export default function CalendarMultiDayBar({
   task,
@@ -86,6 +87,7 @@ export default function CalendarMultiDayBar({
       {continuesLeft && <span className="shrink-0 text-neutral-400">‹</span>}
       {completion}
       {avatars}
+      {task.is_milestone && <TaskMilestoneIcon />}
       <span
         title={task.name}
         dir="auto"

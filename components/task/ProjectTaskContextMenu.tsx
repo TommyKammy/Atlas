@@ -63,6 +63,12 @@ function MenuIcon({ name }: { name: string }) {
         <path d="M13 11H5l2-2m-2 2 2 2" />
       </svg>
     );
+  if (name === "milestone")
+    return (
+      <svg {...common}>
+        <path d="M8 2 14 8 8 14 2 8z" />
+      </svg>
+    );
   if (name === "details")
     return (
       <svg {...common}>
@@ -308,8 +314,23 @@ export default function ProjectTaskContextMenu({
   const convertToTopLevel = () => {
     if (!task) return;
     void run(async () => {
-      await patchTask(task.id, { parent_task_id: null }, task.updated_at);
+      await patchTask(
+        task.id,
+        { parent_task_id: null, is_milestone: false },
+        task.updated_at,
+      );
     }, "タスクに変換しました");
+  };
+
+  const convertToMilestone = () => {
+    if (!task) return;
+    void run(async () => {
+      await patchTask(
+        task.id,
+        { parent_task_id: null, is_milestone: true },
+        task.updated_at,
+      );
+    }, "マイルストーンに変換しました");
   };
 
   const createSubtask = async () => {
@@ -341,7 +362,7 @@ export default function ProjectTaskContextMenu({
     try {
       await patchTask(
         convertFor.id,
-        { parent_task_id: Number(parentId) },
+        { parent_task_id: Number(parentId), is_milestone: false },
         convertFor.updated_at,
       );
       setConvertFor(null);
@@ -444,25 +465,28 @@ export default function ProjectTaskContextMenu({
                         <MenuItem
                           icon="complete"
                           label="タスク"
-                          checked={request.task.parent_task_id === null}
-                          disabled={request.task.parent_task_id === null}
+                          checked={request.task.parent_task_id === null && !request.task.is_milestone}
+                          disabled={request.task.parent_task_id === null && !request.task.is_milestone}
                           onClick={convertToTopLevel}
+                        />
+                        <MenuItem
+                          icon="milestone"
+                          label="マイルストーン"
+                          checked={request.task.parent_task_id === null && request.task.is_milestone}
+                          disabled={request.task.parent_task_id === null && request.task.is_milestone}
+                          onClick={convertToMilestone}
                         />
                         <MenuItem
                           icon="subtask"
                           label="サブタスク"
+                          checked={request.task.parent_task_id !== null}
+                          disabled={request.task.parent_task_id !== null}
                           onClick={() => {
                             setRequest(null);
                             setConvertFor(request.task);
                             setParentId("");
                             setError("");
                           }}
-                        />
-                        <MenuItem
-                          icon="complete"
-                          label="マイルストーン"
-                          disabled
-                          title="Atlasでは未対応"
                         />
                         <MenuItem
                           icon="complete"

@@ -54,6 +54,7 @@ export const TRIGGER_DESCRIPTORS: TriggerDescriptor[] = [
   { id: "task.due_changed", label: "期日が変更されたとき", description: "タスクの期日が設定・変更されたときに実行", subject: "task" },
   { id: "task.section_changed", label: "セクションが変更されたとき", description: "タスクが別のセクションに移動したときに実行", subject: "task" },
   { id: "task.custom_field_changed", label: "カスタムフィールドが変更されたとき", description: "タスクのカスタムフィールド値が変わったときに実行", subject: "task" },
+  { id: "task.milestone_changed", label: "マイルストーンへの変換・解除がされたとき", description: "タスクがマイルストーンに変換されたとき、またはタスクに戻されたときに実行", subject: "task" },
   { id: "task.added_to_project", label: "プロジェクトに追加されたとき", description: "マルチホームなどでプロジェクトに追加されたときに実行", subject: "task" },
   { id: "comment.created", label: "コメントが追加されたとき", description: "タスクにコメントが投稿されたときに実行", subject: "task" },
   { id: "form.submitted", label: "フォームが送信されたとき", description: "プロジェクトのフォームからタスクが作成されたときに実行", subject: "task" },
@@ -170,6 +171,16 @@ export async function getRuleDescriptors(
       options: [
         { value: "true", label: "完了" },
         { value: "false", label: "未完了" },
+      ],
+    },
+    {
+      id: "task.is_milestone",
+      label: "マイルストーン",
+      type: "select",
+      group: "タスク",
+      options: [
+        { value: "true", label: "マイルストーン" },
+        { value: "false", label: "通常タスク" },
       ],
     },
     { id: "task.due_on", label: "期日", type: "date", group: "タスク" },

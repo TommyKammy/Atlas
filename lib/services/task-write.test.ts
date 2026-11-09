@@ -15,6 +15,7 @@ test("validateTaskPatch accepts and normalizes valid fields", () => {
       position: 1000,
       status: "  進行中  ",
       recurrence: "",
+      is_milestone: true,
       start_on: "2026-11-02",
       due_on: "2026-11-20",
     },
@@ -31,6 +32,7 @@ test("validateTaskPatch accepts and normalizes valid fields", () => {
     position: 1000,
     status: "進行中",
     recurrence: "none",
+    is_milestone: true,
     start_on: "2026-11-02",
     due_on: "2026-11-20",
   });
@@ -69,6 +71,7 @@ test("validateTaskPatch rejects empty name/status and invalid enum values", () =
   assert.equal(validateTaskPatch({ completed: "true" }, current).ok, false);
   assert.equal(validateTaskPatch({ description: 42 }, current).ok, false);
   assert.equal(validateTaskPatch({ position: -1 }, current).ok, false);
+  assert.equal(validateTaskPatch({ is_milestone: "true" }, current).ok, false);
 });
 
 test("validateTaskPatch returns an empty payload when no fields are present", () => {
@@ -97,11 +100,13 @@ test("insertNextOccurrence writes the next daily occurrence", async () => {
     due_on: "2026-01-31",
     status: "未着手",
     recurrence: "daily",
+    is_milestone: true,
   });
 
   assert.equal(id, 99);
   assert.equal(captured[5], "2026-02-01");
   assert.equal(captured[6], "2026-02-01");
+  assert.equal(captured[9], true);
 });
 
 test("insertNextOccurrence skips non-recurring tasks", async () => {

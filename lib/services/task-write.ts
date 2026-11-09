@@ -69,6 +69,13 @@ export function validateTaskPatch(
     values.completed = input.completed;
   }
 
+  if ("is_milestone" in input) {
+    if (typeof input.is_milestone !== "boolean") {
+      return { ok: false, error: "is_milestone must be a boolean" };
+    }
+    values.is_milestone = input.is_milestone;
+  }
+
   if ("progress" in input) {
     const progress = integerOrError(input.progress, "progress", 0, 100);
     if (typeof progress !== "number") return { ok: false, error: progress.error };
@@ -127,6 +134,7 @@ export type RecurringTask = {
   due_on: string | null;
   status: string;
   recurrence: string;
+  is_milestone?: boolean;
 };
 
 /** Create the next occurrence for a completed recurring task inside the caller's transaction. */
@@ -137,8 +145,8 @@ export async function insertNextOccurrence(
   if (task.recurrence === "none") return null;
   const r = await q.query(
     `INSERT INTO tasks (project_id, section_id, parent_task_id, name, description, assignee_id,
-       start_on, due_on, progress, status, recurrence, position)
-     VALUES ($1, $2, NULL, $3, $4, $5, $6::date, $7::date, 0, $8, $9,
+       start_on, due_on, progress, status, recurrence, is_milestone, position)
+     VALUES ($1, $2, NULL, $3, $4, $5, $6::date, $7::date, 0, $8, $9, $10,
        COALESCE((SELECT MAX(position) FROM tasks WHERE COALESCE(project_id,-1) = COALESCE($1::bigint,-1) AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1) AND parent_task_id IS NULL), 0) + 1000)
      RETURNING id`,
     [
@@ -151,6 +159,7 @@ export async function insertNextOccurrence(
       nextOccurrence(task.due_on, task.recurrence),
       task.status,
       task.recurrence,
+      task.is_milestone === true,
     ],
   );
   return r.rows[0]?.id ?? null;

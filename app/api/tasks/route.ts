@@ -14,6 +14,13 @@ export const POST = withUser(async (req, { uid }) => {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
   const { project_id, section_id, name, parent_task_id, start_on, due_on, assignee_id } = body;
+  let isMilestone = false;
+  if (body.is_milestone !== undefined) {
+    if (typeof body.is_milestone !== "boolean") {
+      return NextResponse.json({ error: "is_milestone must be a boolean" }, { status: 400 });
+    }
+    isMilestone = body.is_milestone;
+  }
   if (!name || typeof name !== "string" || name.trim() === "") {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
@@ -51,19 +58,22 @@ export const POST = withUser(async (req, { uid }) => {
       return NextResponse.json({ error: "assignee not found" }, { status: 400 });
     }
   }
+  if (isMilestone && parentId !== null) {
+    return NextResponse.json({ error: "milestone cannot be a subtask" }, { status: 400 });
+  }
   const dateOrNull = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
   const start = dateOrNull(start_on);
   const due = dateOrNull(due_on);
   const r = await db.query(
-    `INSERT INTO tasks (project_id, section_id, parent_task_id, name, position, start_on, due_on, assignee_id, created_by)
+    `INSERT INTO tasks (project_id, section_id, parent_task_id, name, position, start_on, due_on, assignee_id, created_by, is_milestone)
      VALUES ($1, $2, $3, $4,
        COALESCE((SELECT MAX(position) FROM tasks
                  WHERE COALESCE(project_id,-1) = COALESCE($1::bigint,-1)
                    AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1)
                    AND COALESCE(parent_task_id,-1) = COALESCE($3::bigint,-1)), 0) + 1000,
-       $5, $6, $7, $8)
+       $5, $6, $7, $8, $9)
      RETURNING id`,
-    [projectId, sectionId, parentId, name.trim(), start, due, assigneeId, uid],
+    [projectId, sectionId, parentId, name.trim(), start, due, assigneeId, uid, isMilestone],
   );
   const id = r.rows[0].id as number;
   await notifyProject(projectId);
@@ -75,7 +85,7 @@ export const POST = withUser(async (req, { uid }) => {
     taskId: Number(id),
     actorId: uid,
     type: "task.created",
-    data: { name: name.trim(), section_id: sectionId, assignee_id: assigneeId, parent_task_id: parentId },
+    data: { name: name.trim(), section_id: sectionId, assignee_id: assigneeId, parent_task_id: parentId, is_milestone: isMilestone },
   }).catch(() => undefined);
   return NextResponse.json({ id }, { status: 201 });
 });

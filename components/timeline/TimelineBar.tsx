@@ -4,6 +4,7 @@ import { memo, type CSSProperties, type PointerEvent as ReactPointerEvent } from
 import type { TaskRow } from "@/lib/data";
 import TaskAvatar from "../task/TaskAvatar";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
+import TaskMilestoneIcon from "../task/TaskMilestoneIcon";
 
 export type TimelineBarProps = {
   task: TaskRow;
@@ -121,16 +122,20 @@ function TimelineBar({
             } ${task.completed ? "line-through" : ""}`}
             style={{ maxWidth: 172 }}
           >
+            {task.is_milestone && <TaskMilestoneIcon className="mr-0.5 align-[-1px]" />}
             {task.name}
           </span>
         ) : (
-          <span
-            data-timeline-bar-name={task.id}
-            dir="auto"
-            className={`pointer-events-none line-clamp-2 min-w-0 flex-1 leading-[14px] ${task.completed ? "line-through" : ""}`}
-          >
-            {task.name}
-          </span>
+          <>
+            {task.is_milestone && <TaskMilestoneIcon className="pointer-events-none" />}
+            <span
+              data-timeline-bar-name={task.id}
+              dir="auto"
+              className={`pointer-events-none line-clamp-2 min-w-0 flex-1 leading-[14px] ${task.completed ? "line-through" : ""}`}
+            >
+              {task.name}
+            </span>
+          </>
         )}
         {!skinny && showSubtasks && (
           <span className="pointer-events-none flex shrink-0 items-center gap-0.5 text-[11px] text-neutral-700" title="サブタスク">

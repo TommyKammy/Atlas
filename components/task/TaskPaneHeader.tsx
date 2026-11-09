@@ -5,6 +5,7 @@ import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
 import type { TaskRow } from "@/lib/data";
 import UserAvatar from "../UserAvatar";
+import TaskMilestoneIcon from "./TaskMilestoneIcon";
 
 /** Top action bar of the task pane, aligned with Asana's task header. */
 export default function TaskPaneHeader({
@@ -87,6 +88,7 @@ export default function TaskPaneHeader({
 
       {showTitle ? (
         <span className="ml-1 hidden min-w-0 flex-1 truncate text-[12px] text-neutral-600 md:block" title={task.name}>
+          {task.is_milestone && <TaskMilestoneIcon className="mr-1 align-[-1px]" />}
           {task.name}
         </span>
       ) : (

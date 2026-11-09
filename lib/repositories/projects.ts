@@ -59,6 +59,7 @@ export type TaskRow = {
   due_on: string | null;
   progress: number;
   status: string;
+  is_milestone: boolean;
   position: number;
   created_at: string;
   updated_at: string;

@@ -28,7 +28,9 @@ export async function suggestRuleDefinition(
   const sections = action("task.move_section")?.params.find((param) => param.name === "section_id")?.options;
 
   const triggers: RuleTrigger[] = [];
-  if (/(期限超過|期限を過ぎ|overdue)/i.test(text)) {
+  if (/(マイルストーン(?:に|へ)?(?:変換|変更)|マイルストーンになった)/.test(text)) {
+    triggers.push({ event: "task.milestone_changed" });
+  } else if (/(期限超過|期限を過ぎ|overdue)/i.test(text)) {
     triggers.push({ event: "task.overdue", days: 0 });
   } else if (/(期日が近|期限が近|期日接近)/i.test(text)) {
     triggers.push({ event: "task.due_soon", days: 1 });
@@ -51,6 +53,10 @@ export async function suggestRuleDefinition(
   const conditions: RuleCondition[] = [];
   if (/未完了/.test(text)) conditions.push({ field: "task.completed", op: "eq", value: "false" });
   if (/完了済み/.test(text)) conditions.push({ field: "task.completed", op: "eq", value: "true" });
+  if (/マイルストーン/.test(text)) {
+    const regular = /(マイルストーン(?:以外|でない|ではない)|非マイルストーン)/.test(text);
+    conditions.push({ field: "task.is_milestone", op: "eq", value: regular ? "false" : "true" });
+  }
 
   const actions: RuleAction[] = [];
   const user = findOption(users, text);

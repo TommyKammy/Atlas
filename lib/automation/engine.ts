@@ -217,7 +217,7 @@ async function loadSnapshot(event: DomainEventRow): Promise<RuleSnapshot> {
     const t = await db.query(
       `SELECT id, project_id, section_id, parent_task_id, name, description,
          assignee_id, created_by, completed, start_on::text AS start_on,
-         due_on::text AS due_on, progress, status, position,
+         due_on::text AS due_on, progress, status, is_milestone, position,
          created_at::text AS created_at, updated_at::text AS updated_at
        FROM tasks WHERE id = $1::bigint`,
       [event.subject_id],

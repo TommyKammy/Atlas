@@ -10,6 +10,7 @@ export const DOMAIN_EVENT_TYPES = [
   "task.due_changed",
   "task.section_changed",
   "task.custom_field_changed",
+  "task.milestone_changed",
   "task.added_to_project",
   "task.deleted",
   "comment.created",

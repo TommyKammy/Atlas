@@ -12,7 +12,7 @@ export const POST = withTask("edit", async (_req, { taskId, uid, projectId }) =>
   const source = await db.query(
     `SELECT project_id, section_id, parent_task_id, name, description, description_doc,
        assignee_id, start_on::text AS start_on, due_on::text AS due_on,
-       progress, status, recurrence
+       progress, status, recurrence, is_milestone
      FROM tasks WHERE id = $1::bigint AND deleted_at IS NULL`,
     [taskId],
   );
@@ -30,15 +30,17 @@ export const POST = withTask("edit", async (_req, { taskId, uid, projectId }) =>
     progress: number;
     status: string;
     recurrence: string;
+    is_milestone: boolean;
   };
   const inserted = await db.query(
     `INSERT INTO tasks (
        project_id, section_id, parent_task_id, name, description, description_doc,
-       assignee_id, created_by, completed, start_on, due_on, progress, status, recurrence, position
+       assignee_id, created_by, completed, start_on, due_on, progress, status, recurrence,
+       is_milestone, position
      ) VALUES (
        $1::bigint, $2::bigint, $3::bigint, $4, $5, $6::jsonb,
        $7::bigint, $8::bigint, FALSE, $9::date, $10::date, $11, $12, $13,
-       COALESCE((SELECT MAX(position) FROM tasks
+       $14, COALESCE((SELECT MAX(position) FROM tasks
          WHERE project_id = $1::bigint AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1)
            AND COALESCE(parent_task_id,-1) = COALESCE($3::bigint,-1)), 0) + 1000
      ) RETURNING id`,
@@ -58,6 +60,7 @@ export const POST = withTask("edit", async (_req, { taskId, uid, projectId }) =>
       t.progress ?? 0,
       t.status ?? "inbox",
       t.recurrence ?? "none",
+      t.is_milestone === true,
     ],
   );
   const newId = Number(inserted.rows[0].id);

@@ -14,6 +14,7 @@ import EmptyCellIcon from "../fields/EmptyCellIcon";
 import AssigneePicker from "../fields/AssigneePicker";
 import DueDatePicker from "../fields/DueDatePicker";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
+import TaskMilestoneIcon from "../task/TaskMilestoneIcon";
 import TaskStatusChip from "../task/TaskStatusChip";
 import ReferencePicker from "../fields/ReferencePicker";
 import TimerCell from "../fields/TimerCell";
@@ -317,6 +318,7 @@ export default function TaskListRow({
           <span className="w-4 shrink-0" />
         )}
         <TaskCompletionToggle completed={t.completed} onToggle={() => void toggle(t)} />
+        {t.is_milestone && <TaskMilestoneIcon />}
         {editing?.id === t.id && editing.field === "name" ? (
           <input
             autoFocus

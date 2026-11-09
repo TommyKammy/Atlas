@@ -27,6 +27,7 @@ function task(overrides: Partial<TaskRow> & { id: number }): TaskRow {
     due_on: null,
     progress: 0,
     status: "未着手",
+    is_milestone: false,
     position: overrides.id * 1000,
     created_at: "2026-11-01T00:00:00Z",
     updated_at: "2026-11-01T00:00:00Z",

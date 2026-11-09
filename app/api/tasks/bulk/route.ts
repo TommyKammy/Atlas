@@ -74,7 +74,8 @@ export const POST = withUser(async (req, { uid }) => {
       if (done && changed.length > 0) {
         const rec = await q.query(
           `SELECT id, project_id, section_id, name, description, assignee_id,
-             start_on::text AS start_on, due_on::text AS due_on, status, recurrence
+             start_on::text AS start_on, due_on::text AS due_on, status, recurrence,
+             is_milestone
            FROM tasks WHERE id = ANY($1::bigint[]) AND recurrence <> 'none' AND parent_task_id IS NULL`,
           [changed],
         );

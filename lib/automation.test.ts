@@ -77,6 +77,20 @@ test("validateRuleDefinition supports branches and else paths", () => {
   if (result.ok) assert.equal(result.definition.branches?.length, 2);
 });
 
+test("validateRuleDefinition accepts milestone trigger and condition", () => {
+  const result = validateRuleDefinition({
+    version: 1,
+    triggers: [{ event: "task.milestone_changed" }],
+    conditions: [{ field: "task.is_milestone", op: "eq", value: "true" }],
+    actions: [{ capability: "task.add_comment", params: { body: "milestone" } }],
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.definition.triggers[0].event, "task.milestone_changed");
+    assert.equal(result.definition.conditions?.[0].field, "task.is_milestone");
+  }
+});
+
 test("validateRuleDefinition accepts scheduled date triggers", () => {
   const result = validateRuleDefinition({
     version: 1,

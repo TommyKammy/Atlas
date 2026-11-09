@@ -18,6 +18,7 @@ import { usePersistedViewState } from "@/lib/view-state-client";
 import BoardToolbar, { type BoardCardFields } from "./board/BoardToolbar";
 import { taskMatchesListFilters, parseListDateFilter, parseListGroupBy, parseListSortKey, type ListDateFilter, type ListFilters, type ListGroupBy, type ListSortKey } from "@/lib/list-view";
 import TaskCompletionToggle from "./task/TaskCompletionToggle";
+import TaskMilestoneIcon from "./task/TaskMilestoneIcon";
 import TaskAvatar from "./task/TaskAvatar";
 import TaskStatusChip from "./task/TaskStatusChip";
 import TaskMetaBadges from "./task/TaskMetaBadges";
@@ -696,6 +697,7 @@ export default function BoardView({
                       dir="auto"
                       className={`line-clamp-2 break-words ${t.completed ? "text-neutral-500 line-through" : ""}`}
                     >
+                      {t.is_milestone && <TaskMilestoneIcon className="mr-1 inline-flex align-[-1px]" />}
                       {t.name}
                     </Link>
                   </div>
