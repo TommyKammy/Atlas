@@ -32,6 +32,8 @@
 | `f2f381a` | 実ブラウザ1,000タスクのタイムライン計測を追加 |
 | `1f1cdbb` | CalendarViewのフィルタを`useCalendarFilters`へ抽出 |
 | `daf1426` | TaskPaneの状態・更新処理を`useTaskPane`へ抽出（889→707行） |
+| `c6273e0` | FieldDialogの状態と型別エディタを分割（860→255行） |
+| `3b21099` | 1,000タスク計測に基づく仮想化・ページング判断を記録 |
 
 ## 検証結果
 
@@ -93,6 +95,8 @@
   `filterCalendarTasks` の純関数テストを追加。
 - `TaskPane` の状態・競合回復・コメント・添付・メンバー操作を
   `useTaskPane` へ抽出（889行 → 707行）。
+- `FieldDialog` の状態・保存処理を `useFieldDialog` へ、型別UIを
+  `components/list/FieldTypeEditors.tsx` へ分割（860行 → 255行）。
 - `useMenuKeyboard` でタスク・プロジェクト・タブメニューの
   Arrow/Home/End/Escape・フォーカス復帰を統一。
 - 1,000タスクのレーン計算ベンチマークを追加。
@@ -102,8 +106,8 @@
 ## 残課題
 
 - TimelineViewのdragを含む全フック分割は完了。
-- Customize / FieldDialog の追加分割。
+- Customize の追加分割。
 - 残りの大規模ルートのサービス化（主要タスク・プロジェクト系は完了）。
-- Customize / FieldDialog の追加分割。
+- Customize の追加分割。
 - 1,000タスク規模の実ブラウザ性能計測と、必要に応じた仮想化。
 - 実ブラウザでの1,000タスク性能計測と仮想化の要否判断。
