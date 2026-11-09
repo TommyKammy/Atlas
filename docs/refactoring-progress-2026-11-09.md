@@ -24,6 +24,7 @@
 | `6e8f0a9` | Playwrightによるリサイズ・メニュー操作テスト、CIブラウザジョブ |
 | `ea41b20` | Timeline依存関係・下書きフック抽出、プロジェクト取込をサービス化 |
 | `a953fa4` | 自動化タスクスナップショットの一元化、プロジェクトエクスポートをサービス化 |
+| `9ae3ef3` | Timelineホバー状態をフック化（1,006行） |
 
 ## 検証結果
 
@@ -55,8 +56,8 @@
 
 ### Phase 1
 - `useTimelineFilters` / `useTimelineViewport` / `useTimelineLayout` /
-  `useTimelineDependencies` / `useTimelineDraft` を抽出。
-  - `TimelineView.tsx`: 1,621行 → 1,047行。
+  `useTimelineDependencies` / `useTimelineDraft` / `useTimelineHover` を抽出。
+  - `TimelineView.tsx`: 1,621行 → 1,006行。
 - タスクの複製・フォローアップ・削除・変換・行解除・リンクコピーを
   `lib/task-actions.ts` に集約。
 - タイムライン専用の軽量SELECTを追加し、不要な集計サブクエリを除外。
@@ -81,7 +82,7 @@
 
 ## 残課題
 
-- TimelineViewのdrag/hoverフック分割は未完了（layout/draft/dependencyは完了）。
+- TimelineViewのdragフック分割は未完了（layout/draft/dependency/hoverは完了）。
 - `TaskSummary` / `TaskDetail` の型レベル分離と、一覧系クエリへの適用。
 - `projects/template` など残りの大規模ルートのサービス化。
 - Calendar / TaskPane / Customize / FieldDialog / Security の追加分割。
