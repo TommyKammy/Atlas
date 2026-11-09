@@ -26,6 +26,7 @@ import TimelineDependencyLayer from "./timeline/TimelineDependencyLayer";
 import TimelineToolbar from "./timeline/TimelineToolbar";
 import { usePersistedViewState } from "@/lib/view-state-client";
 import { dayOrNull } from "@/lib/task-dates";
+import { isSingleDayTimelineTask } from "@/lib/timeline-marker";
 
 const DAY_MS = 86_400_000;
 
@@ -428,8 +429,9 @@ export default function TimelineView({
     for (const group of groups) {
       for (let i = 0; i < group.tasks.length; i++) {
         const t = group.tasks[i];
-        const st = toDay(t.start_on) ?? toDay(t.due_on)!;
-        const en = toDay(t.due_on) ?? toDay(t.start_on)!;
+        const milestoneDay = t.is_milestone ? (toDay(t.due_on) ?? toDay(t.start_on)) : null;
+        const st = milestoneDay ?? toDay(t.start_on) ?? toDay(t.due_on)!;
+        const en = milestoneDay ?? toDay(t.due_on) ?? toDay(t.start_on)!;
         rowY.set(t.id, group.top + i * ROW_PITCH + ROW_PITCH / 2);
         pos.set(t.id, { x1: pct(Math.max(st, min)), x2: pct(Math.min(en, max) + 1) });
       }
@@ -465,6 +467,21 @@ export default function TimelineView({
       }),
     [edges, pos, rowY, canvasWidth],
   );
+  // Asana marks each milestone with a green stripe through the whole canvas.
+  const milestoneLines = useMemo(() => {
+    const offset = Math.min(8, dayWidth / 2);
+    const lines: { id: number; left: string }[] = [];
+    for (const group of groups) {
+      if (group.collapsed) continue;
+      for (const t of group.tasks) {
+        if (!t.is_milestone) continue;
+        const p = pos.get(t.id);
+        if (!p) continue;
+        lines.push({ id: t.id, left: `calc(${p.x1} + ${offset}px)` });
+      }
+    }
+    return lines;
+  }, [groups, pos, dayWidth]);
   const showDepHover = (key: string) => {
     if (depHoverTimer.current) {
       window.clearTimeout(depHoverTimer.current);
@@ -1035,12 +1052,14 @@ export default function TimelineView({
   };
 
   const barFace = (t: TaskRow) => {
+    if (t.is_milestone) return "bg-white text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]";
     if (t.completed) return "bg-[#aaaaaa] text-[#050505]";
     if (showCritical && critical.has(t.id)) return "bg-red-200 text-neutral-900";
     return "bg-white text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]";
   };
 
   const barPxFor = (t: TaskRow) => {
+    if (t.is_milestone) return dayWidth;
     const startDay = toDay(t.start_on) ?? toDay(t.due_on)!;
     const endDay = toDay(t.due_on) ?? toDay(t.start_on)!;
     return (endDay - startDay + 1) * dayWidth;
@@ -1076,7 +1095,8 @@ export default function TimelineView({
   const handleStyle = (t: TaskRow, edge: "start" | "end"): React.CSSProperties => {
     const p = pos.get(t.id)!;
     const d = drag && drag.id === t.id ? drag : null;
-    const hit = edgeHitFor(barPxFor(t));
+    const sameDay = isSingleDayTimelineTask(t);
+    const hit = edgeHitFor(sameDay && barHoverId !== t.id ? 8 : barPxFor(t));
     let left = edge === "start" ? p.x1 : p.x2;
     if (d?.mode === "start") left = `calc(${p.x1} + ${d.dx}px)`;
     else if (d?.mode === "end") left = `calc(${p.x2} + ${d.dx}px)`;
@@ -1097,7 +1117,7 @@ export default function TimelineView({
     const showSubtasks = t.subtask_count > 0 && barPx >= 160;
     const p = pos.get(t.id)!;
     const leftPct = parseFloat(p.x1);
-    const sameDay = t.start_on !== null && t.due_on !== null && t.start_on === t.due_on;
+    const sameDay = isSingleDayTimelineTask(t);
     const skinny = barPx < 52;
     const labelOnLeft = leftPct > 72;
     const barInfo = `${t.name}（${t.start_on ?? "?"} 〜 ${t.due_on ?? "?"}・進捗${t.progress}%${t.assignee_name ? `・担当${t.assignee_name}` : ""}）${!t.completed && showCritical && critical.has(t.id) ? "【クリティカルパス】" : ""} — ドラッグで移動、上下で並び替え、左右端で期間変更`;
@@ -1339,6 +1359,16 @@ export default function TimelineView({
                 </span>
               </div>
             )}
+
+            {milestoneLines.map((line) => (
+              <div
+                key={`milestone-line-${line.id}`}
+                data-timeline-milestone-line={line.id}
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-0 top-0 z-[2] w-0.5 bg-[#46a75a] opacity-20"
+                style={{ left: line.left }}
+              />
+            ))}
 
             {groups.map((group) => (
               <div key={group.section.id} className="relative" data-timeline-group={group.section.id}>

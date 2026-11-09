@@ -4,7 +4,6 @@ import { memo, type CSSProperties, type PointerEvent as ReactPointerEvent } from
 import type { TaskRow } from "@/lib/data";
 import TaskAvatar from "../task/TaskAvatar";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
-import TaskMilestoneIcon from "../task/TaskMilestoneIcon";
 
 export type TimelineBarProps = {
   task: TaskRow;
@@ -44,6 +43,30 @@ export type TimelineBarProps = {
   onToggleComplete: () => void;
 };
 
+function MilestoneDiamond({
+  completed,
+  className = "",
+}: {
+  completed: boolean;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      className={className}
+      fill="none"
+      stroke="#46a75a"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <path d="M20.1 2.8c-2.3-2.3-5.9-2.3-8.2 0L2.7 12c-2.3 2.3-2.3 5.9 0 8.2l9.2 9.2c2.3 2.3 5.9 2.3 8.2 0l9.2-9.2c2.3-2.3 2.3-5.9 0-8.2L20.1 2.8z" />
+      {completed && (
+        <path d="M13.4 22.2c-0.3 0-0.5-0.1-0.7-0.3L8.8 18c-0.4-0.4-0.4-1 0-1.4s1-0.4 1.4 0l3.1 3.1 8.1-8.1c0.4-0.4 1-0.4 1.4 0s0.4 1 0 1.4l-8.9 8.9c-0.3 0.2-0.5 0.3-0.8 0.3z" />
+      )}
+    </svg>
+  );
+}
+
 function TimelineBar({
   task,
   x1,
@@ -82,6 +105,23 @@ function TimelineBar({
   onToggleComplete,
 }: TimelineBarProps) {
   const completionLeft = `calc(${x1} + 4px)`;
+  const milestone = task.is_milestone;
+  const markerStyle = sameDay || milestone;
+  const collapsedMarker = markerStyle && !hovered && !active;
+  const labelHidden = markerStyle && hovered;
+  const outsideLabel = (
+    <span
+      data-timeline-bar-label={task.id}
+      dir="auto"
+      title={task.name}
+      className={`absolute top-1/2 -translate-y-1/2 truncate text-[12px] font-medium whitespace-nowrap text-[#050505] ${
+        labelOnLeft ? "right-full mr-2 text-right" : "left-full ml-2"
+      } ${task.completed ? "line-through" : ""} ${labelHidden ? "opacity-0" : ""}`}
+      style={{ maxWidth: 172 }}
+    >
+      {task.name}
+    </span>
+  );
   const dependencyHandleClass = (visible: boolean) =>
     `absolute z-40 flex h-3.5 w-3.5 cursor-crosshair items-center justify-center rounded-full border border-neutral-400 bg-white shadow-sm hover:border-[#2c60b8] hover:bg-[#2c60b8] ${
       visible ? "opacity-100" : "pointer-events-none opacity-0"
@@ -99,45 +139,54 @@ function TimelineBar({
         onPointerEnter={onBarEnter}
         onPointerLeave={onBarLeave}
         onClick={onBarClick}
-        className={`tl-bar absolute top-[3px] flex min-w-2 cursor-grab select-none touch-none items-center gap-1.5 overflow-visible rounded-[4px] px-2 text-[12px] active:cursor-grabbing hover:z-30 hover:shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${barFaceClass} ${
+        className={`tl-bar absolute top-[3px] flex min-w-2 cursor-grab select-none touch-none items-center gap-1.5 overflow-visible rounded-[4px] px-2 text-[12px] transition-[width,box-shadow] duration-150 active:cursor-grabbing hover:z-30 hover:shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${
+          collapsedMarker && milestone ? "bg-transparent shadow-none" : barFaceClass
+        } ${
           active ? "z-30 shadow-lg" : "z-10"
         } ${dependencyTarget ? "ring-2 ring-[#2c60b8] ring-offset-1" : ""} ${
           dx !== 0 ? "opacity-80" : ""
         }`}
         style={{
           ...barStyle,
-          ...(hovered && !sameDay ? { paddingLeft: 26 } : {}),
+          ...(collapsedMarker ? { width: 8, paddingLeft: 0, paddingRight: 0 } : {}),
+          ...(milestone ? { paddingLeft: 0, paddingRight: 0 } : {}),
+          ...(hovered && !markerStyle ? { paddingLeft: 26 } : {}),
         }}
       >
-        {!skinny && showAvatar && task.assignee_name && (
+        {!skinny && showAvatar && !milestone && task.assignee_name && (
           <TaskAvatar name={task.assignee_name} className="h-6 w-6" />
         )}
-        {skinny || sameDay ? (
+        {milestone ? (
+          <>
+            <MilestoneDiamond
+              completed={task.completed}
+              className="h-4 w-4 shrink-0"
+            />
+            {outsideLabel}
+          </>
+        ) : skinny || sameDay ? (
+          <>
+            {sameDay && hovered && (
+              <span
+                data-timeline-bar-name={task.id}
+                dir="auto"
+                className={`pointer-events-none min-w-0 flex-1 truncate ${task.completed ? "line-through" : ""}`}
+              >
+                {task.name}
+              </span>
+            )}
+            {outsideLabel}
+          </>
+        ) : (
           <span
-            data-timeline-bar-label={task.id}
+            data-timeline-bar-name={task.id}
             dir="auto"
-            title={task.name}
-            className={`pointer-events-none absolute top-1/2 -translate-y-1/2 truncate text-[12px] font-medium whitespace-nowrap text-[#050505] ${
-              labelOnLeft ? "right-full mr-2 text-right" : "left-full ml-2"
-            } ${task.completed ? "line-through" : ""}`}
-            style={{ maxWidth: 172 }}
+            className={`pointer-events-none line-clamp-2 min-w-0 flex-1 leading-[14px] ${task.completed ? "line-through" : ""}`}
           >
-            {task.is_milestone && <TaskMilestoneIcon className="mr-0.5 align-[-1px]" />}
             {task.name}
           </span>
-        ) : (
-          <>
-            {task.is_milestone && <TaskMilestoneIcon className="pointer-events-none" />}
-            <span
-              data-timeline-bar-name={task.id}
-              dir="auto"
-              className={`pointer-events-none line-clamp-2 min-w-0 flex-1 leading-[14px] ${task.completed ? "line-through" : ""}`}
-            >
-              {task.name}
-            </span>
-          </>
         )}
-        {!skinny && showSubtasks && (
+        {!skinny && showSubtasks && !milestone && (
           <span className="pointer-events-none flex shrink-0 items-center gap-0.5 text-[11px] text-neutral-700" title="サブタスク">
             <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.2">
               <path d="M4 3v4.5a2 2 0 0 0 2 2h6" />
@@ -154,8 +203,12 @@ function TimelineBar({
         onPointerDown={onStartDrag}
         onPointerMove={onBarPointerMove}
         onPointerUp={onBarPointerUp}
+        onPointerEnter={onBarEnter}
+        onPointerLeave={onBarLeave}
         onClick={(event) => event.stopPropagation()}
-        className="tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-l-[4px] bg-transparent transition-colors hover:bg-[#2c60b8]/90"
+        className={`tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-l-[4px] bg-transparent transition-colors hover:bg-[#2c60b8]/90 ${
+          collapsedMarker ? "pointer-events-none" : ""
+        }`}
         style={startHandleStyle}
       />
       <div
@@ -164,8 +217,12 @@ function TimelineBar({
         onPointerDown={onEndDrag}
         onPointerMove={onBarPointerMove}
         onPointerUp={onBarPointerUp}
+        onPointerEnter={onBarEnter}
+        onPointerLeave={onBarLeave}
         onClick={(event) => event.stopPropagation()}
-        className="tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-r-[4px] bg-transparent transition-colors hover:bg-[#2c60b8]/90"
+        className={`tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-r-[4px] bg-transparent transition-colors hover:bg-[#2c60b8]/90 ${
+          collapsedMarker ? "pointer-events-none" : ""
+        }`}
         style={endHandleStyle}
       />
 
@@ -210,7 +267,7 @@ function TimelineBar({
         </>
       )}
 
-      {!active && hovered && (
+      {!active && hovered && !markerStyle && (
         <>
           <TaskCompletionToggle
             data-timeline-complete={task.id}
