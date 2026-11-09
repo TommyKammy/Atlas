@@ -23,12 +23,13 @@
 | `26a6054` | タイムライン専用の軽量タスク投影 |
 | `6e8f0a9` | Playwrightによるリサイズ・メニュー操作テスト、CIブラウザジョブ |
 | `ea41b20` | Timeline依存関係・下書きフック抽出、プロジェクト取込をサービス化 |
+| `a953fa4` | 自動化タスクスナップショットの一元化、プロジェクトエクスポートをサービス化 |
 
 ## 検証結果
 
 - `npx tsc --noEmit`: PASS
 - `npm run lint`: PASS
-- `npm test`: **76 PASS / 0 FAIL**
+- `npm test`: **77 PASS / 0 FAIL**
 - `npm run build`: PASS
 - 空DB（`init.sql` → `db:migrate` → 再実行）: PASS
 - 本番Docker E2E: **635 PASS / 0 FAIL**
@@ -65,8 +66,9 @@
 - 破壊的操作（DELETE / restore）は主プロジェクト限定。
 - `tasks/[id]`（更新・削除）を `lib/services/task-update.ts` へ移動（432行 → 7行）。
 - duplicate / follow-up を `lib/services/task-copy.ts` へ移動。
-- プロジェクト複製・CSV取込を `lib/services/project-duplicate.ts` /
-  `lib/services/project-import.ts` へ移動。
+- プロジェクト複製・CSV取込・エクスポートを `lib/services/project-duplicate.ts` /
+  `lib/services/project-import.ts` / `lib/services/project-export.ts` へ移動。
+- 自動化エンジンのタスクスナップショットを `TASK_RULE_SNAPSHOT_SQL` に一元化。
 - 自動化アクションのID・ラベル・必須パラメータを
   `ACTION_CAPABILITIES` に一元化し、descriptorsとvalidateが参照。
 
@@ -81,7 +83,7 @@
 
 - TimelineViewのdrag/hoverフック分割は未完了（layout/draft/dependencyは完了）。
 - `TaskSummary` / `TaskDetail` の型レベル分離と、一覧系クエリへの適用。
-- `projects/export` / `template` など残りの大規模ルートのサービス化。
+- `projects/template` など残りの大規模ルートのサービス化。
 - Calendar / TaskPane / Customize / FieldDialog / Security の追加分割。
 - 1,000タスク規模の実ブラウザ性能計測と、必要に応じた仮想化。
 - CIのE2Eジョブ（現在は型・lint・unit・build・DB・Playwrightまで）。
