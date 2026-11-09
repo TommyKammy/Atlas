@@ -27,6 +27,7 @@ import { usePersistedViewState } from "@/lib/view-state-client";
 import { dayOrNull } from "@/lib/task-dates";
 import { isSingleDayTimelineTask, usesTimelineExternalLabel } from "@/lib/timeline-marker";
 import { assignTimelineLanes, estimateTimelineLabelDays, timelineInterval } from "@/lib/timeline-lanes";
+import { timelineBarDragStyle } from "@/lib/timeline-drag-style";
 
 const DAY_MS = 86_400_000;
 
@@ -1133,21 +1134,18 @@ export default function TimelineView({
       width: `calc(${p.x2} - ${p.x1})`,
     };
     if (!d) return style;
-    if (d.axis === "row") {
-      style.transform = `translateY(${d.dy}px)`;
-    } else if (d.axis === "x") {
-      style.transform = `translateX(${d.dx}px)`;
-    } else if (d.mode === "move") {
-      style.transform = canReorder
-        ? `translate(${d.dx}px, ${d.dy}px)`
-        : `translateX(${d.dx}px)`;
-    } else if (d.mode === "start") {
-      style.left = `calc(${p.x1} + ${d.dx}px)`;
-      style.width = `max(2px, calc(${p.x2} - ${p.x1} - ${d.dx}px))`;
-    } else if (d.mode === "end") {
-      style.width = `max(2px, calc(${p.x2} - ${p.x1} + ${d.dx}px))`;
-    }
-    return style;
+    return {
+      ...style,
+      ...timelineBarDragStyle({
+        mode: d.mode,
+        axis: d.axis,
+        dx: d.dx,
+        dy: d.dy,
+        x1: p.x1,
+        x2: p.x2,
+        canReorder,
+      }),
+    };
   };
 
   const handleStyle = (t: TaskRow, edge: "start" | "end"): React.CSSProperties => {

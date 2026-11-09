@@ -163,7 +163,7 @@ function TimelineBar({
         className={`tl-bar group absolute top-[3px] flex min-w-2 cursor-grab select-none touch-none items-center gap-1.5 overflow-visible rounded-[4px] px-2 text-[12px] transition-[width,box-shadow] duration-150 active:cursor-grabbing hover:z-30 hover:shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${
           collapsedMarker && milestone ? "bg-transparent shadow-none" : barFaceClass
         } ${
-          active ? "z-30 shadow-lg" : "z-10"
+          active ? "z-30 shadow-lg transition-none" : "z-10"
         } ${dependencyTarget ? "ring-2 ring-[#2c60b8] ring-offset-1" : ""} ${
           overlapping ? "outline outline-2 outline-offset-1 outline-amber-400" : ""
         } ${
