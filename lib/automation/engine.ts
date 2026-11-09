@@ -2,6 +2,7 @@ import { db } from "../db";
 import type { DomainEventRow } from "../domain/events";
 import { emitDomainEvent } from "../domain/events";
 import { executeCapability, type CapabilityContext } from "../capabilities";
+import { TASK_RULE_SNAPSHOT_SQL } from "../repositories/task-rule-snapshot";
 import {
   getProjectRules,
   recordRuleRun,
@@ -214,14 +215,7 @@ async function loadSnapshot(event: DomainEventRow): Promise<RuleSnapshot> {
   }
 
   if (event.subject_type === "task") {
-    const t = await db.query(
-      `SELECT id, project_id, section_id, parent_task_id, name, description,
-         assignee_id, created_by, completed, start_on::text AS start_on,
-         due_on::text AS due_on, progress, status, is_milestone, position,
-         created_at::text AS created_at, updated_at::text AS updated_at
-       FROM tasks WHERE id = $1::bigint`,
-      [event.subject_id],
-    );
+    const t = await db.query(TASK_RULE_SNAPSHOT_SQL, [event.subject_id]);
     task = t.rows[0] ?? null;
     if (task && !project) {
       const p = await db.query(
