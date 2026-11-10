@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import type { Section } from "./data";
 import type { TaskTimelineRow } from "./timeline-task-payload";
-import { criticalPath } from "./critical-path";
 import { estimateTimelineLabelDays, assignTimelineLanes, timelineInterval } from "./timeline-lanes";
 import { usesTimelineExternalLabel } from "./timeline-marker";
 import { dayOrNull } from "./task-dates";
@@ -57,7 +56,6 @@ export function useTimelineLayout({
   pct,
   min,
   max,
-  showCritical,
 }: {
   dated: TaskTimelineRow[];
   sections: Section[];
@@ -71,7 +69,6 @@ export function useTimelineLayout({
   pct: (day: number) => string;
   min: number;
   max: number;
-  showCritical: boolean;
 }) {
   const groups = useMemo<TimelineGroup[]>(() => {
     const bySection = new Map<number | null, TaskTimelineRow[]>();
@@ -216,16 +213,5 @@ export function useTimelineLayout({
     return lines;
   }, [groups, pos, dayWidth]);
 
-  const critical = useMemo(
-    () =>
-      showCritical
-        ? criticalPath(
-            dated.map((t) => ({ id: t.id, start_on: t.start_on, due_on: t.due_on })),
-            deps,
-          )
-        : new Set<number>(),
-    [showCritical, dated, deps],
-  );
-
-  return { groups, rowY, pos, edges, dependencyShapes, milestoneLines, critical };
+  return { groups, rowY, pos, edges, dependencyShapes, milestoneLines };
 }

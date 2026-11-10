@@ -4,11 +4,11 @@ cd "$(dirname "$0")/.."
 source scripts/e2e-guard.sh
 
 suite="${1:-shell}"
-usage='usage: bash tests/run-e2e.sh [shell|browser|timeline-stability [repeat-count [workers]]]'
+usage='usage: bash tests/run-e2e.sh [shell|browser|critical-performance|timeline-stability [repeat-count [workers]]]'
 timeline_repeat=50
 timeline_workers=4
 case "$suite" in
-  shell|browser) [[ $# -le 1 ]] || e2e_abort "$usage" ;;
+  shell|browser|critical-performance) [[ $# -le 1 ]] || e2e_abort "$usage" ;;
   timeline-stability)
     [[ $# -le 3 ]] || e2e_abort "$usage"
     timeline_repeat="${2-50}"
@@ -33,6 +33,7 @@ ATLAS_E2E_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.
 export ATLAS_E2E_PORT
 export ATLAS_E2E_BASE="http://127.0.0.1:$ATLAS_E2E_PORT"
 compose=(docker compose -f docker-compose.ci.yml --project-name "$ATLAS_E2E_STACK")
+perf_override=''
 [[ -z "$(docker ps -aq --filter "label=com.docker.compose.project=$ATLAS_E2E_STACK")" ]] \
   || e2e_abort 'test stack name already exists'
 
@@ -40,8 +41,22 @@ cleanup() {
   local status=$?
   if (( status != 0 )); then "${compose[@]}" logs --tail 50 app db >&2 || true; fi
   "${compose[@]}" down --volumes --rmi local >&2 || true
+  if [[ -n "$perf_override" ]]; then rm -f "$perf_override"; fi
 }
 trap cleanup EXIT
+
+if [[ "$suite" == critical-performance ]]; then
+  # This override belongs only to this newly generated stack. Ordinary full
+  # regressions retain the worker; performance runs exclude background polling.
+  perf_override=$(mktemp /tmp/atlas-critical-perf-compose.XXXXXX)
+  cat > "$perf_override" <<'YAML'
+services:
+  app:
+    environment:
+      AUTOMATION_WORKER_DISABLED: "1"
+YAML
+  compose+=(-f "$perf_override")
+fi
 
 "${compose[@]}" up -d --wait --wait-timeout 90 db redis
 E2E_DB_ID=$(e2e_container db) || e2e_abort 'test database did not start'
@@ -95,6 +110,18 @@ if [[ "$suite" == browser || "$suite" == timeline-stability ]]; then
   else
     E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- --output "$browser_output"
   fi
+elif [[ "$suite" == critical-performance ]]; then
+  require_e2e_target
+  fixture_project=$(db_sql -qAt < scripts/bench-critical-timeline.sql)
+  [[ "$fixture_project" =~ ^[1-9][0-9]*$ ]] || e2e_abort 'critical performance fixture project was not created'
+  [[ "$(db_sql -qAtc "SELECT count(*) FROM tasks WHERE project_id = $fixture_project")" == 3000 ]] \
+    || e2e_abort 'critical performance fixture must contain exactly 3000 tasks'
+  [[ "$(db_sql -qAtc "SELECT count(*) FROM task_dependencies d JOIN tasks t ON t.id = d.task_id WHERE t.project_id = $fixture_project")" == 3550 ]] \
+    || e2e_abort 'critical performance dependency fixture is incomplete'
+  benchmark_output="${BENCH_OUTPUT:-test-results/critical-performance-$ATLAS_E2E_STACK.json}"
+  printf 'Critical performance artifact: %s\n' "$benchmark_output"
+  E2E_BASE_URL="$ATLAS_E2E_BASE" BENCH_PROJECT_ID="$fixture_project" BENCH_OUTPUT="$benchmark_output" \
+    node scripts/bench-critical-browser.mjs
 else
   bash tests/e2e.sh "$ATLAS_E2E_BASE"
 fi

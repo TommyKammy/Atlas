@@ -27,6 +27,7 @@ import { useTimelineDrag } from "@/lib/use-timeline-drag";
 import { useTimelineDraft } from "@/lib/use-timeline-draft";
 import { useTimelineHover } from "@/lib/use-timeline-hover";
 import { useTimelineLayout } from "@/lib/use-timeline-layout";
+import { criticalPath } from "@/lib/critical-path";
 import { isTimelineBarInWindow, useTimelineRenderWindow } from "@/lib/use-timeline-render-window";
 import { useTimelineViewport, ZOOM_PRESETS } from "@/lib/use-timeline-viewport";
 import {
@@ -204,6 +205,12 @@ export default function TimelineView({
   const [showWeekends, setShowWeekends] = useState(stored.weekends !== false);
   const [showDependencies, setShowDependencies] = useState(stored.dependencies !== false);
   const [showCritical, setShowCritical] = useState(stored.critical !== false);
+  // Compute once over the authorized project graph. Rendering windows and
+  // personal filters must never remove a predecessor from this calculation.
+  const critical = useMemo(
+    () => showCritical ? criticalPath(tasks, deps) : new Set<number>(),
+    [showCritical, tasks, deps],
+  );
   const viewState = useMemo(() => ({
     zoom,
     ...persistedState,
@@ -291,7 +298,7 @@ export default function TimelineView({
     return days !== null && days.start <= max && days.end >= min;
   }), [dated, min, max]);
 
-  const { groups, pos, dependencyShapes, milestoneLines, critical } = useTimelineLayout({
+  const { groups, pos, dependencyShapes, milestoneLines } = useTimelineLayout({
     dated: windowedTasks,
     sections,
     sortBy,
@@ -304,7 +311,6 @@ export default function TimelineView({
     pct,
     min,
     max,
-    showCritical,
   });
   const commitChange = useCallback(async (
     t: TaskTimelineRow,

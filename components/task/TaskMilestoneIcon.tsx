@@ -3,18 +3,21 @@ export default function TaskMilestoneIcon({
   className = "",
   sizeClassName = "h-3 w-3",
   completed = false,
+  critical = false,
 }: {
   className?: string;
   sizeClassName?: string;
   completed?: boolean;
+  critical?: boolean;
 }) {
   return (
     <span
       data-task-milestone
       data-task-milestone-completed={completed ? "true" : undefined}
+      data-task-milestone-critical={critical && !completed ? "true" : undefined}
       title="マイルストーン"
       aria-label="マイルストーン"
-      className={`inline-flex shrink-0 items-center text-[#46a75a] ${sizeClassName} ${className}`}
+      className={`inline-flex shrink-0 items-center text-[#46a75a] ${critical && !completed ? "rounded-sm bg-red-100 ring-2 ring-red-400" : ""} ${sizeClassName} ${className}`}
     >
       <svg viewBox="0 0 32 32" className="h-full w-full" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <path

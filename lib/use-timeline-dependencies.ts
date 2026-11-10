@@ -33,21 +33,21 @@ export function useTimelineDependencies({
     if (depHoverTimer.current !== null) window.clearTimeout(depHoverTimer.current);
   }, []);
 
-  const showDepHover = (key: string) => {
+  const showDepHover = useCallback((key: string) => {
     if (depHoverTimer.current) {
       window.clearTimeout(depHoverTimer.current);
       depHoverTimer.current = null;
     }
     setHoveredDep(key);
-  };
+  }, []);
 
-  const scheduleDepHoverClear = () => {
+  const scheduleDepHoverClear = useCallback(() => {
     if (depHoverTimer.current) window.clearTimeout(depHoverTimer.current);
     depHoverTimer.current = window.setTimeout(() => {
       setHoveredDep(null);
       depHoverTimer.current = null;
     }, 180);
-  };
+  }, []);
 
   const beginDependency = useCallback((
     e: ReactPointerEvent,
@@ -126,7 +126,7 @@ export function useTimelineDependencies({
     refresh();
   }, [cancelDependency, refresh]);
 
-  const removeDependency = async (dep: { task_id: number; depends_on_id: number }) => {
+  const removeDependency = useCallback(async (dep: { task_id: number; depends_on_id: number }) => {
     const res = await fetch(
       `/api/dependencies?task_id=${dep.task_id}&depends_on_id=${dep.depends_on_id}`,
       { method: "DELETE" },
@@ -134,7 +134,7 @@ export function useTimelineDependencies({
     if (!res.ok) return;
     setHoveredDep(null);
     refresh();
-  };
+  }, [refresh]);
 
   return {
     depLink,

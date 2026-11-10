@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 export type TimelineDependencyShape = {
   key: string;
   d: string;
@@ -20,7 +22,77 @@ export type TimelineDependencyDraft = {
   y2: number;
 };
 
-export default function TimelineDependencyLayer({
+const TimelineDependencyEdge = memo(function TimelineDependencyEdge({
+  shape,
+  selected,
+  onHover,
+  onLeave,
+}: {
+  shape: TimelineDependencyShape;
+  selected: boolean;
+  onHover: (key: string) => void;
+  onLeave: () => void;
+}) {
+  return (
+    <g data-timeline-dependency={shape.key}>
+      <path
+        d={shape.d}
+        fill="none"
+        stroke={selected ? "#2c60b8" : "#737373"}
+        strokeWidth={selected ? 2 : 1.5}
+        strokeLinejoin="round"
+      />
+      <circle cx={shape.from.x} cy={shape.y1} r="2.5" fill={selected ? "#2c60b8" : "#737373"} />
+      <path d={shape.arrow} fill={selected ? "#2c60b8" : "#737373"} />
+      <path
+        data-timeline-dependency-hit={shape.key}
+        d={shape.d}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={12}
+        strokeLinejoin="round"
+        style={{ pointerEvents: "stroke", cursor: "pointer" }}
+        tabIndex={0}
+        onPointerEnter={() => onHover(shape.key)}
+        onPointerLeave={onLeave}
+        onFocus={() => onHover(shape.key)}
+        onBlur={onLeave}
+        onClick={(event) => event.stopPropagation()}
+      />
+    </g>
+  );
+});
+
+// Draft pointer updates do not rebuild the existing dependency SVG. Hovering
+// a different edge only changes the selected state of the affected edges.
+const TimelineDependencyShapes = memo(function TimelineDependencyShapes({
+  shapes,
+  hoveredKey,
+  onHover,
+  onLeave,
+}: {
+  shapes: TimelineDependencyShape[];
+  hoveredKey: string | null;
+  onHover: (key: string) => void;
+  onLeave: () => void;
+}) {
+  if (shapes.length === 0) return null;
+  return (
+    <svg className="pointer-events-none absolute inset-0 z-[2] h-full w-full">
+      {shapes.map((shape) => (
+        <TimelineDependencyEdge
+          key={shape.key}
+          shape={shape}
+          selected={hoveredKey === shape.key}
+          onHover={onHover}
+          onLeave={onLeave}
+        />
+      ))}
+    </svg>
+  );
+});
+
+function TimelineDependencyLayer({
   shapes,
   hoveredKey,
   draft,
@@ -38,41 +110,12 @@ export default function TimelineDependencyLayer({
   const hoveredShape = hoveredKey ? shapes.find((shape) => shape.key === hoveredKey) : undefined;
   return (
     <>
-      {shapes.length > 0 && (
-        <svg className="pointer-events-none absolute inset-0 z-[2] h-full w-full">
-          {shapes.map((shape) => {
-            const selected = hoveredKey === shape.key;
-            return (
-              <g key={shape.key} data-timeline-dependency={shape.key}>
-                <path
-                  d={shape.d}
-                  fill="none"
-                  stroke={selected ? "#2c60b8" : "#737373"}
-                  strokeWidth={selected ? 2 : 1.5}
-                  strokeLinejoin="round"
-                />
-                <circle cx={shape.from.x} cy={shape.y1} r="2.5" fill={selected ? "#2c60b8" : "#737373"} />
-                <path d={shape.arrow} fill={selected ? "#2c60b8" : "#737373"} />
-                <path
-                  data-timeline-dependency-hit={shape.key}
-                  d={shape.d}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth={12}
-                  strokeLinejoin="round"
-                  style={{ pointerEvents: "stroke", cursor: "pointer" }}
-                  tabIndex={0}
-                  onPointerEnter={() => onHover(shape.key)}
-                  onPointerLeave={onLeave}
-                  onFocus={() => onHover(shape.key)}
-                  onBlur={onLeave}
-                  onClick={(event) => event.stopPropagation()}
-                />
-              </g>
-            );
-          })}
-        </svg>
-      )}
+      <TimelineDependencyShapes
+        shapes={shapes}
+        hoveredKey={hoveredKey}
+        onHover={onHover}
+        onLeave={onLeave}
+      />
       {hoveredShape && (
         <button
           type="button"
@@ -109,3 +152,6 @@ export default function TimelineDependencyLayer({
     </>
   );
 }
+
+// Scrolling changes the bar render window, not these dependency shapes.
+export default memo(TimelineDependencyLayer);

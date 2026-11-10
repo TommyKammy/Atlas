@@ -140,6 +140,7 @@ function TimelineBar({
     <div className="relative h-10" data-timeline-row={task.id} data-timeline-lane={lane}>
       <div
         data-timeline-bar={task.id}
+        data-timeline-critical-task={critical ? "true" : "false"}
         data-timeline-lane={lane}
         data-timeline-row-locked={rowLocked ? "true" : undefined}
         data-timeline-overlap={overlapping ? "true" : undefined}
@@ -191,6 +192,7 @@ function TimelineBar({
           <>
             <TaskMilestoneIcon
               completed={task.completed}
+              critical={critical}
               sizeClassName="h-4 w-4"
               className="shrink-0"
             />

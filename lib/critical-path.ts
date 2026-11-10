@@ -1,83 +1,134 @@
-// Critical-path computation over dated tasks (pure, unit-tested).
-// Duration of a task = inclusive day span; undated tasks are excluded.
-// Returns the set of task ids on one longest dependency chain.
-// Ties resolve to the chain whose terminal task has the smallest id.
-
+/**
+ * Date-aware critical paths ending at the project's latest due date.
+ * Includes calendar gaps and every tied longest path, not just one ID-based tie.
+ * Call with the complete project graph, before display filters or date windows.
+ */
 export type DatedTask = {
   id: number;
   start_on: string | null;
   due_on: string | null;
+  is_milestone?: boolean;
 };
 
-const DAY = 86400000;
+type PathNode = {
+  id: number;
+  due: number;
+  start: number;
+  finish: number;
+  duration: number;
+  pending: number;
+  predecessorIds: Set<number>;
+  successors: PathNode[];
+  bestPredecessors: PathNode[];
+  score: number;
+};
 
-function dayNum(s: string): number | null {
-  const t = Date.parse(s);
-  return Number.isNaN(t) ? null : Math.floor(t / DAY);
+const DAY_MS = 86_400_000;
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Strict UTC date parsing: Date.parse alone normalizes dates such as Feb 30. */
+function dayNumber(value: string | null, cache: Map<string, number | null>): number | null {
+  if (typeof value !== "string") return null;
+  if (cache.has(value)) return cache.get(value)!;
+  let day: number | null = null;
+  if (ISO_DAY.test(value) && value.slice(0, 4) !== "0000") {
+    const time = Date.parse(`${value}T00:00:00Z`);
+    if (Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value) {
+      day = time / DAY_MS;
+    }
+  }
+  cache.set(value, day);
+  return day;
 }
 
 export function criticalPath(
   tasks: DatedTask[],
   deps: { task_id: number; depends_on_id: number }[],
 ): Set<number> {
-  const dated = tasks.filter((t) => dayNum(t.start_on ?? "") !== null || dayNum(t.due_on ?? "") !== null);
-  const dur = new Map<number, number>();
-  for (const t of dated) {
-    const s = dayNum(t.start_on ?? "") ?? dayNum(t.due_on ?? "")!;
-    const e = dayNum(t.due_on ?? "") ?? dayNum(t.start_on ?? "")!;
-    dur.set(t.id, Math.max(1, e - s + 1));
+  const dates = new Map<string, number | null>();
+  const nodes = new Map<number, PathNode>();
+  let latestDue = Number.NEGATIVE_INFINITY;
+  for (const task of tasks) {
+    const due = dayNumber(task.due_on, dates);
+    // A due date is required. A start-only task cannot define project completion.
+    if (due === null) continue;
+    // A milestone is an end-of-day event with zero duration. Its old start date
+    // may remain after conversion and must not contribute work or waiting time.
+    const finish = due + 1;
+    const start = task.is_milestone
+      ? finish
+      : task.start_on == null ? due : dayNumber(task.start_on, dates);
+    if (start === null || start > finish || (!task.is_milestone && start > due)) continue;
+    nodes.set(task.id, {
+      id: task.id, due, start, finish, duration: finish - start,
+      pending: 0, predecessorIds: new Set(), successors: [],
+      bestPredecessors: [], score: Number.NEGATIVE_INFINITY,
+    });
+    latestDue = Math.max(latestDue, due);
   }
-  const preds = new Map<number, number[]>();
-  for (const t of dated) preds.set(t.id, []);
-  for (const d of deps) {
-    if (preds.has(d.task_id) && dur.has(d.depends_on_id) && d.task_id !== d.depends_on_id) {
-      preds.get(d.task_id)!.push(d.depends_on_id);
+  if (nodes.size === 0) return new Set<number>();
+
+  for (const edge of deps) {
+    const node = nodes.get(edge.task_id);
+    const predecessor = nodes.get(edge.depends_on_id);
+    if (!node || !predecessor || node.predecessorIds.has(predecessor.id)) continue;
+    node.predecessorIds.add(predecessor.id);
+    node.pending += 1;
+    predecessor.successors.push(node);
+  }
+
+  const queue: PathNode[] = [];
+  for (const node of nodes.values()) {
+    // Edge deduplication is finished; retain only the incoming-edge count.
+    node.predecessorIds.clear();
+    if (node.pending === 0) {
+      node.score = node.duration;
+      queue.push(node);
     }
   }
-  const memo = new Map<number, number>();
-  const visiting = new Set<number>();
-  const dist = (id: number): number => {
-    if (memo.has(id)) return memo.get(id)!;
-    if (visiting.has(id)) return dur.get(id)!; // cycle guard
-    visiting.add(id);
-    let best = 0;
-    let bestPred = -1;
-    for (const p of preds.get(id) ?? []) {
-      const v = dist(p);
-      if (v > best || (v === best && p < bestPred)) {
-        best = v;
-        bestPred = p;
+
+  // Kahn's traversal is linear and cannot overflow the JS call stack on a long
+  // chain. Overlapping scheduled tasks have no positive gap; their work still
+  // contributes to the dependency chain instead of being silently discarded.
+  for (let index = 0; index < queue.length; index += 1) {
+    const predecessor = queue[index];
+    for (const node of predecessor.successors) {
+      const gap = Math.max(0, node.start - predecessor.finish);
+      const score = predecessor.score + gap + node.duration;
+      if (score > node.score) {
+        node.score = score;
+        node.bestPredecessors.length = 0;
+        node.bestPredecessors.push(predecessor);
+      } else if (score === node.score) {
+        node.bestPredecessors.push(predecessor);
       }
-    }
-    visiting.delete(id);
-    void bestPred;
-    const total = best + (dur.get(id) ?? 0);
-    memo.set(id, total);
-    return total;
-  };
-  let end = -1;
-  let bestTotal = 0;
-  for (const t of dated) {
-    const v = dist(t.id);
-    if (v > bestTotal || (v === bestTotal && (end === -1 || t.id < end))) {
-      bestTotal = v;
-      end = t.id;
+      node.pending -= 1;
+      if (node.pending === 0) queue.push(node);
     }
   }
-  const path = new Set<number>();
-  let cur: number | undefined = end === -1 ? undefined : end;
-  while (cur !== undefined && !path.has(cur)) {
-    path.add(cur);
-    let next: number | undefined;
-    let best = -1;
-    for (const p of preds.get(cur) ?? []) {
-      const v = memo.get(p) ?? 0;
-      if (v > best || (v === best && (next === undefined || p < next))) {
-        best = v;
-        next = p;
-      }
+  // A cyclic dated graph has no valid critical path; never invent one by
+  // breaking a cycle at a task or publishing a partial acyclic component.
+  if (queue.length !== nodes.size) return new Set<number>();
+
+  let longest = Number.NEGATIVE_INFINITY;
+  const ends: PathNode[] = [];
+  for (const node of nodes.values()) {
+    if (node.due !== latestDue) continue;
+    if (node.score > longest) {
+      longest = node.score;
+      ends.length = 0;
+      ends.push(node);
+    } else if (node.score === longest) {
+      ends.push(node);
     }
-    cur = next;
   }
-  return path;
+
+  const critical = new Set<number>();
+  while (ends.length > 0) {
+    const node = ends.pop()!;
+    if (critical.has(node.id)) continue;
+    critical.add(node.id);
+    for (const predecessor of node.bestPredecessors) ends.push(predecessor);
+  }
+  return critical;
 }
