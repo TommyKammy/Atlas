@@ -1,13 +1,17 @@
 import { db } from "../db";
 import { PROJECT_STATUS_COLORS } from "../project-status";
 import { CONDITION_OPERATORS, RULE_LIMITS } from "./types";
+import { isCustomFieldType, isReadOnlyFieldType, normalizeCustomFieldConfig, type CustomField } from "../custom-fields";
+import { canEditFieldValue } from "../field-access";
+import { SCHEDULED_TRIGGER_DEFAULTS } from "./trigger-defaults";
+import { customConditionType, type ConditionType } from "./condition-schema";
 
 export type DescriptorOption = { value: string | number; label: string };
 
 export type DescriptorParam = {
   name: string;
   label: string;
-  type: "text" | "textarea" | "number" | "date" | "select" | "boolean";
+  type: "text" | "textarea" | "number" | "date" | "select" | "boolean" | "password";
   required?: boolean;
   placeholder?: string;
   help?: string;
@@ -28,12 +32,14 @@ export type ConditionFieldDescriptor = {
   type: "text" | "number" | "date" | "select" | "boolean";
   group: string;
   options?: DescriptorOption[];
+  valueType?: ConditionType;
 };
 
 export type ActionDescriptor = {
   id: string;
   label: string;
   description: string;
+  requiresTask: boolean;
   params: DescriptorParam[];
 };
 
@@ -42,6 +48,7 @@ export type RuleDescriptors = {
   conditionFields: ConditionFieldDescriptor[];
   operators: typeof CONDITION_OPERATORS;
   actions: ActionDescriptor[];
+  customFields: CustomField[];
   limits: typeof RULE_LIMITS;
 };
 
@@ -64,14 +71,14 @@ export const TRIGGER_DESCRIPTORS: TriggerDescriptor[] = [
     label: "期日が近づいたとき",
     description: "期日まで指定日数以内になった未完了タスクに対して実行",
     subject: "task",
-    days: { label: "何日前に実行", default: 1, help: "0を指定すると期日当日に実行します。" },
+    days: { label: "何日前に実行", default: SCHEDULED_TRIGGER_DEFAULTS["task.due_soon"], help: "0を指定すると期日当日に実行します。" },
   },
   {
     id: "task.overdue",
     label: "期日を過ぎたとき",
     description: "期日を指定日数過ぎた未完了タスクに対して実行",
     subject: "task",
-    days: { label: "何日過ぎたら実行", default: 0 },
+    days: { label: "何日過ぎたら実行", default: SCHEDULED_TRIGGER_DEFAULTS["task.overdue"] },
   },
   { id: "task.manual_rule", label: "手動で実行", description: "ルール画面から手動実行したときに実行", subject: "task" },
   {
@@ -86,6 +93,7 @@ export type ActionCapability = {
   id: string;
   label: string;
   description: string;
+  requiresTask: boolean;
   /** Params that must be non-empty before the action can run. */
   requiredParams: string[];
 };
@@ -95,18 +103,18 @@ export type ActionCapability = {
  * The rule builder's dynamic params and API validation both derive from this.
  */
 export const ACTION_CAPABILITIES: ActionCapability[] = [
-  { id: "task.assign", label: "担当者を変更", description: "タスクの担当者を設定・変更します。", requiredParams: ["user_id"] },
-  { id: "task.set_status", label: "Statusを変更", description: "タスクのStatusを変更します。", requiredParams: ["status"] },
-  { id: "task.set_due_date", label: "期日を変更", description: "期日を指定日付、または今日からの日数で設定します。", requiredParams: [] },
-  { id: "task.move_section", label: "セクションを移動", description: "タスクを指定セクションに移動します。", requiredParams: ["section_id"] },
-  { id: "task.complete", label: "タスクを完了", description: "タスクを完了状態にします。", requiredParams: [] },
-  { id: "task.create", label: "タスクを作成", description: "プロジェクトに新しいタスクを作成します。", requiredParams: ["name"] },
-  { id: "task.add_comment", label: "コメントを追加", description: "タスクにコメントを投稿します。変数が使えます。", requiredParams: ["body"] },
-  { id: "task.create_subtask", label: "サブタスクを作成", description: "対象タスクの下にサブタスクを作成します。", requiredParams: ["name"] },
-  { id: "task.set_custom_field", label: "カスタムフィールドを設定", description: "指定フィールドに値を設定します。", requiredParams: ["field_id", "value"] },
-  { id: "project.set_status", label: "プロジェクトステータスを更新", description: "プロジェクトの現在ステータスを更新します。", requiredParams: ["status"] },
-  { id: "task.add_to_project", label: "別プロジェクトに追加", description: "タスクを別プロジェクトにマルチホームします。", requiredParams: ["project_id"] },
-  { id: "webhook.post", label: "Webhookを送信", description: "外部URLへJSONをPOSTします。", requiredParams: ["url"] },
+  { id: "task.assign", label: "担当者を変更", description: "タスクの担当者を設定・変更します。", requiresTask: true, requiredParams: ["user_id"] },
+  { id: "task.set_status", label: "Statusを変更", description: "タスクのStatusを変更します。", requiresTask: true, requiredParams: ["status"] },
+  { id: "task.set_due_date", label: "期日を変更", description: "期日を指定日付、または今日からの日数で設定します。", requiresTask: true, requiredParams: [] },
+  { id: "task.move_section", label: "セクションを移動", description: "タスクを指定セクションに移動します。", requiresTask: true, requiredParams: ["section_id"] },
+  { id: "task.complete", label: "タスクを完了", description: "タスクを完了状態にします。", requiresTask: true, requiredParams: [] },
+  { id: "task.create", label: "タスクを作成", description: "プロジェクトに新しいタスクを作成します。", requiresTask: false, requiredParams: ["name"] },
+  { id: "task.add_comment", label: "コメントを追加", description: "タスクにコメントを投稿します。変数が使えます。", requiresTask: true, requiredParams: ["body"] },
+  { id: "task.create_subtask", label: "サブタスクを作成", description: "対象タスクの下にサブタスクを作成します。", requiresTask: true, requiredParams: ["name"] },
+  { id: "task.set_custom_field", label: "カスタムフィールドを設定", description: "指定フィールドに値を設定します。", requiresTask: true, requiredParams: ["field_id"] },
+  { id: "project.set_status", label: "プロジェクトステータスを更新", description: "プロジェクトの現在ステータスを更新します。", requiresTask: false, requiredParams: ["status"] },
+  { id: "task.add_to_project", label: "別プロジェクトに追加", description: "タスクを別プロジェクトにマルチホームします。", requiresTask: true, requiredParams: ["project_id"] },
+  { id: "webhook.post", label: "Webhookを送信", description: "外部URLへJSONをPOSTします。", requiresTask: false, requiredParams: ["url"] },
 ];
 
 export const ACTION_IDS = new Set(ACTION_CAPABILITIES.map((action) => action.id));
@@ -116,7 +124,7 @@ export function requiredActionParams(capability: string): string[] {
 }
 
 export const ACTION_DESCRIPTORS: Omit<ActionDescriptor, "params">[] = ACTION_CAPABILITIES.map(
-  ({ id, label, description }) => ({ id, label, description }),
+  ({ id, label, description, requiresTask }) => ({ id, label, description, requiresTask }),
 );
 
 const userOptions = async (): Promise<DescriptorOption[]> => {
@@ -160,7 +168,7 @@ export async function getRuleDescriptors(
     userOptions(),
     db.query("SELECT id, name FROM sections WHERE project_id = $1 ORDER BY position, id", [projectId]),
     db.query(
-      `SELECT id, name, field_type, options FROM custom_fields
+      `SELECT id, name, field_type, options, config, access_level, editor_ids FROM custom_fields
        WHERE project_id = $1 AND deleted_at IS NULL ORDER BY position, id`,
       [projectId],
     ),
@@ -174,8 +182,18 @@ export async function getRuleDescriptors(
     value: Number(row.id),
     label: String(row.name),
   }));
-  const fieldRows = fields.rows as { id: number; name: string; field_type: string; options: unknown }[];
-  const fieldOptions = fieldRows.map((field) => ({
+  const fieldRows = fields.rows as { id: number; name: string; field_type: string; options: unknown; config: unknown; access_level: string; editor_ids: unknown }[];
+  const customFields: CustomField[] = [];
+  for (const field of fieldRows) {
+    if (!isCustomFieldType(field.field_type) || isReadOnlyFieldType(field.field_type) ||
+      field.field_type === "timer" || !(await canEditFieldValue(viewerId, projectId, field))) continue;
+    customFields.push({
+      id: Number(field.id), name: field.name, field_type: field.field_type,
+      options: Array.isArray(field.options) ? field.options.map(String) : [],
+      config: normalizeCustomFieldConfig(field.config),
+    });
+  }
+  const fieldOptions = customFields.map((field) => ({
     value: Number(field.id),
     label: `${field.name} (${field.field_type})`,
   }));
@@ -222,6 +240,7 @@ export async function getRuleDescriptors(
               ? ("select" as const)
               : ("text" as const),
       group: "カスタムフィールド",
+      valueType: customConditionType(field.field_type),
       options:
         field.field_type === "select" && Array.isArray(field.options)
           ? field.options.map((value) => ({ value: String(value), label: String(value) }))
@@ -288,7 +307,8 @@ export async function getRuleDescriptors(
     ],
     "webhook.post": [
       { name: "url", label: "URL", type: "text", required: true, placeholder: "https://example.com/webhook" },
-      { name: "secret", label: "署名シークレット", type: "text", placeholder: "任意" },
+      { name: "secret", label: "署名シークレット", type: "password", placeholder: "新しいシークレット",
+        help: "同じアクション・URL で変更しなければ、設定済みの値を使います。" },
     ],
   };
 
@@ -302,6 +322,7 @@ export async function getRuleDescriptors(
     conditionFields,
     operators: CONDITION_OPERATORS,
     actions,
+    customFields,
     limits: RULE_LIMITS,
   };
 }

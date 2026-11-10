@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api-client";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { api, ApiError } from "@/lib/api-client";
 import type { RuleDescriptors } from "@/lib/automation/descriptors";
-import type { ProjectRule, RuleRun } from "@/lib/automation/types";
+import type { ManualRuleExecution, ProjectRule, RuleRun } from "@/lib/automation/types";
 import { confirmAction, toast } from "@/lib/ui-feedback";
 import Dialog from "../ui/Dialog";
 import AutomationRuleBuilder from "./AutomationRuleBuilder";
+import RuleDraftList from "../automation/RuleDraftList";
 
 function triggerText(rule: ProjectRule, descriptors: RuleDescriptors | null): string {
   const labels = rule.definition.triggers.map(
@@ -26,6 +28,13 @@ function actionText(rule: ProjectRule, descriptors: RuleDescriptors | null): str
     )
     .join(" → ");
 }
+
+type WebhookEndpoint = {
+  id: number;
+  name: string;
+  token?: string;
+  enabled: boolean;
+};
 
 export default function AutomationRulesPanel({
   projectId,
@@ -55,18 +64,92 @@ export default function AutomationRulesPanel({
   const [builderRule, setBuilderRule] = useState<ProjectRule | null | undefined>(undefined);
   const [historyRule, setHistoryRule] = useState<ProjectRule | null>(null);
   const [runs, setRuns] = useState<RuleRun[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const historyRequest = useRef<AbortController | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [presetBusy, setPresetBusy] = useState(false);
   const [manualRule, setManualRule] = useState<ProjectRule | null>(null);
   const [manualTaskId, setManualTaskId] = useState("");
   const [manualBusy, setManualBusy] = useState(false);
   const [manualError, setManualError] = useState("");
-  const [endpoints, setEndpoints] = useState<
-    { id: number; name: string; token: string; has_secret: boolean }[]
-  >([]);
+  const [manualExecution, setManualExecution] = useState<ManualRuleExecution | null>(null);
+  const [completedManualEventId, setCompletedManualEventId] = useState<number | null>(null);
+  const [manualPollingStopped, setManualPollingStopped] = useState(false);
+  const manualRequest = useRef<AbortController | null>(null);
+  const manualPollRequest = useRef<AbortController | null>(null);
+  const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([]);
   const [webhookName, setWebhookName] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
   const [webhookBusy, setWebhookBusy] = useState(false);
+
+  useEffect(() => () => {
+    historyRequest.current?.abort();
+    manualRequest.current?.abort();
+    manualPollRequest.current?.abort();
+  }, []);
+
+  const manualRuleId = manualRule?.id;
+  const manualEventId = manualExecution?.event_id;
+  const manualStatus = manualExecution?.status;
+  useEffect(() => {
+    if (!completedManualEventId) return;
+    const controller = new AbortController();
+    void api<{ rules: ProjectRule[] }>(apiBase, { signal: controller.signal })
+      .then((data) => { if (!controller.signal.aborted) setRules(data.rules); })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [apiBase, completedManualEventId]);
+
+  useEffect(() => {
+    if (!manualRuleId || !manualEventId || manualStatus !== "queued" || manualPollingStopped) return;
+    const controller = new AbortController();
+    manualPollRequest.current = controller;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const result = await api<{ execution: ManualRuleExecution }>(
+          `${apiBase}/${manualRuleId}/runs?event_id=${manualEventId}`,
+          { signal: controller.signal },
+        );
+        if (controller.signal.aborted) return;
+        setManualError("");
+        setManualExecution(result.execution);
+        if (result.execution.status !== "queued") {
+          setCompletedManualEventId(result.execution.event_id);
+          return;
+        }
+      } catch (caught) {
+        if (controller.signal.aborted) return;
+        if (caught instanceof ApiError && [400, 401, 403, 404, 409].includes(caught.status)) {
+          setManualError("ルールの削除や権限の変更により実行結果を取得できません。実行履歴やアクセス権を確認してください。");
+          setManualPollingStopped(true);
+          return;
+        }
+        setManualError("実行結果を取得できません。確認を再試行しています。");
+      }
+      timer = setTimeout(() => void poll(), 1000);
+    };
+    timer = setTimeout(() => void poll(), 1000);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [apiBase, manualRuleId, manualEventId, manualStatus, manualPollingStopped]);
+
+  const closeManual = () => {
+    manualRequest.current?.abort();
+    manualPollRequest.current?.abort();
+    setManualRule(null);
+    setManualExecution(null);
+    setManualPollingStopped(false);
+    setManualBusy(false);
+  };
+
+  const closeHistory = () => {
+    historyRequest.current?.abort();
+    setHistoryRule(null);
+  };
 
   const statusValue =
     descriptors?.actions
@@ -180,9 +263,7 @@ export default function AutomationRulesPanel({
       .then((res) => (res.ok ? res.json() : null))
       .then(
         (
-          data:
-            | { endpoints?: { id: number; name: string; token: string; has_secret: boolean }[] }
-            | null,
+          data: { endpoints?: WebhookEndpoint[] } | null,
         ) => {
           if (!cancelled && data?.endpoints) setEndpoints(data.endpoints);
         },
@@ -194,11 +275,11 @@ export default function AutomationRulesPanel({
   }, [projectId]);
 
   const createWebhook = async () => {
-    if (!projectId || webhookName.trim() === "" || webhookBusy) return;
+    if (!projectId || webhookName.trim() === "" || webhookSecret.trim() === "" || webhookBusy) return;
     setWebhookBusy(true);
     try {
       const result = await api<{
-        endpoint: { id: number; name: string; token: string; has_secret: boolean };
+        endpoint: WebhookEndpoint;
       }>(`/api/projects/${projectId}/webhook-endpoints`, "POST", {
         name: webhookName.trim(),
         secret: webhookSecret.trim(),
@@ -256,21 +337,27 @@ export default function AutomationRulesPanel({
   };
 
   const openHistory = async (rule: ProjectRule) => {
+    historyRequest.current?.abort();
+    const controller = new AbortController();
+    historyRequest.current = controller;
     setHistoryRule(rule);
     setRuns([]);
+    setHistoryLoading(true);
+    setHistoryError("");
     try {
-      const res = await fetch(`${runsBase}/${rule.id}/runs?limit=30`);
-      if (res.ok) {
-        const data = (await res.json()) as { runs: RuleRun[] };
-        setRuns(data.runs);
-      }
+      const data = await api<{ runs: RuleRun[] }>(`${runsBase}/${rule.id}/runs?limit=30`, {
+        signal: controller.signal,
+      });
+      if (!controller.signal.aborted) setRuns(data.runs);
     } catch {
-      toast("実行履歴を取得できませんでした");
+      if (!controller.signal.aborted) setHistoryError("実行履歴を取得できませんでした");
+    } finally {
+      if (!controller.signal.aborted) setHistoryLoading(false);
     }
   };
 
   const runManual = async () => {
-    if (!manualRule || manualBusy) return;
+    if (!manualRule || manualBusy || manualExecution?.status === "queued") return;
     const taskId = Number(manualTaskId);
     if (!Number.isInteger(taskId) || taskId <= 0) {
       setManualError("有効なタスクIDを入力してください");
@@ -278,18 +365,22 @@ export default function AutomationRulesPanel({
     }
     setManualBusy(true);
     setManualError("");
+    setManualExecution(null);
+    setManualPollingStopped(false);
+    const controller = new AbortController();
+    manualRequest.current = controller;
     try {
-      await api(`${apiBase}/${manualRule.id}/run`, "POST", {
-        task_id: taskId,
+      const result = await api<ManualRuleExecution>(`${apiBase}/${manualRule.id}/run`, {
+        method: "POST", body: { task_id: taskId }, signal: controller.signal,
       });
-      toast("ルールを手動実行しました");
-      setManualRule(null);
-      setManualTaskId("");
-      await loadRules();
+      if (!controller.signal.aborted) {
+        setManualExecution(result);
+        if (result.status !== "queued") setCompletedManualEventId(result.event_id);
+      }
     } catch (caught) {
-      setManualError(caught instanceof Error ? caught.message : "実行に失敗しました");
+      if (!controller.signal.aborted) setManualError(caught instanceof Error ? caught.message : "実行に失敗しました");
     } finally {
-      setManualBusy(false);
+      if (!controller.signal.aborted) setManualBusy(false);
     }
   };
 
@@ -305,6 +396,8 @@ export default function AutomationRulesPanel({
           </p>
         </div>
         {canEdit && (
+          <div className="flex shrink-0 gap-2">
+          {projectId && projectId > 0 && <Link href={`/projects/${projectId}/rules/new`} data-automation-editor-add className="flex h-8 items-center rounded-md bg-[#2c60b8] px-3 text-[12px] text-white hover:bg-[#24529c]">＋ フローを作成</Link>}
           <button
             type="button"
             data-customize-automation-add
@@ -314,6 +407,7 @@ export default function AutomationRulesPanel({
           >
             ＋ ルール
           </button>
+          </div>
         )}
       </div>
 
@@ -335,6 +429,8 @@ export default function AutomationRulesPanel({
         </div>
       </div>
 
+      {canEdit && projectId && projectId > 0 && <RuleDraftList projectId={projectId} />}
+
       {projectId && projectId > 0 && (
         <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-3">
           <div className="text-[11px] font-semibold text-neutral-700">受信Webhook</div>
@@ -344,61 +440,74 @@ export default function AutomationRulesPanel({
           {endpoints.length > 0 && (
             <div className="mt-2 space-y-1.5">
               {endpoints.map((endpoint) => {
-                const path = `/api/automation/webhook/${endpoint.token}`;
+                const path = endpoint.enabled && endpoint.token
+                  ? `/api/automation/webhook/${endpoint.token}`
+                  : null;
                 return (
                   <div
                     key={endpoint.id}
                     className="flex flex-wrap items-center gap-2 rounded border border-neutral-100 bg-neutral-50 px-2 py-1.5"
                   >
                     <span className="text-[11px] font-medium text-neutral-700">{endpoint.name}</span>
-                    <code className="min-w-0 flex-1 truncate text-[10px] text-neutral-500">
-                      {path}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(`${location.origin}${path}`);
-                        toast("Webhook URLをコピーしました");
-                      }}
-                      className="text-[10px] text-[#2c60b8] hover:underline"
-                    >
-                      コピー
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void removeWebhook(endpoint)}
-                      aria-label={`${endpoint.name}を削除`}
-                      className="text-neutral-400 hover:text-rose-600"
-                    >
-                      ×
-                    </button>
+                    {!endpoint.enabled && <span className="text-[10px] text-neutral-500">無効</span>}
+                    {path && (
+                      <>
+                        <code className="min-w-0 flex-1 truncate text-[10px] text-neutral-500">
+                          {path}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(`${location.origin}${path}`);
+                            toast("Webhook URLをコピーしました");
+                          }}
+                          className="text-[10px] text-[#2c60b8] hover:underline"
+                        >
+                          コピー
+                        </button>
+                      </>
+                    )}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => void removeWebhook(endpoint)}
+                        aria-label={`${endpoint.name}を削除`}
+                        className="text-neutral-400 hover:text-rose-600"
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
-          <div className="mt-2 flex flex-wrap gap-2">
-            <input
-              value={webhookName}
-              onChange={(event) => setWebhookName(event.target.value)}
-              placeholder="Webhook名"
-              className="h-8 min-w-[140px] flex-1 rounded-md border border-neutral-200 px-2 text-[11px] outline-none focus:border-[#2c60b8]"
-            />
-            <input
-              value={webhookSecret}
-              onChange={(event) => setWebhookSecret(event.target.value)}
-              placeholder="署名シークレット（任意）"
-              className="h-8 min-w-[160px] flex-1 rounded-md border border-neutral-200 px-2 text-[11px] outline-none focus:border-[#2c60b8]"
-            />
-            <button
-              type="button"
-              onClick={() => void createWebhook()}
-              disabled={webhookBusy || webhookName.trim() === ""}
-              className="h-8 rounded-md border border-neutral-200 px-3 text-[11px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
-            >
-              ＋ 作成
-            </button>
-          </div>
+          {canEdit && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input
+                value={webhookName}
+                onChange={(event) => setWebhookName(event.target.value)}
+                placeholder="Webhook名"
+                className="h-8 min-w-[140px] flex-1 rounded-md border border-neutral-200 px-2 text-[11px] outline-none focus:border-[#2c60b8]"
+              />
+              <input
+                type="password"
+                value={webhookSecret}
+                onChange={(event) => setWebhookSecret(event.target.value)}
+                placeholder="署名シークレット（必須）"
+                maxLength={200}
+                className="h-8 min-w-[160px] flex-1 rounded-md border border-neutral-200 px-2 text-[11px] outline-none focus:border-[#2c60b8]"
+              />
+              <button
+                type="button"
+                onClick={() => void createWebhook()}
+                disabled={webhookBusy || webhookName.trim() === "" || webhookSecret.trim() === ""}
+                className="h-8 rounded-md border border-neutral-200 px-3 text-[11px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+              >
+                ＋ 作成
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -451,6 +560,7 @@ export default function AutomationRulesPanel({
                 </div>
                 {canEdit && (
                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                    {projectId && projectId > 0 && <Link href={`/projects/${projectId}/rules/${rule.id}`} data-automation-editor-link className="flex h-7 items-center rounded-md border border-[#dbe7fb] bg-[#eff4fd] px-2 text-[11px] text-[#2c60b8] hover:bg-blue-100">フロー編集</Link>}
                     <button
                       type="button"
                       onClick={() => setBuilderRule(rule)}
@@ -465,13 +575,15 @@ export default function AutomationRulesPanel({
                     >
                       履歴
                     </button>
-                    {allowManualRun && (
+                    {allowManualRun && rule.enabled && rule.definition.triggers.some((trigger) => trigger.event === "task.manual_rule") && (
                       <button
                         type="button"
                         onClick={() => {
                           setManualRule(rule);
                           setManualTaskId("");
                           setManualError("");
+                          setManualExecution(null);
+                          setManualPollingStopped(false);
                         }}
                         className="h-7 rounded-md border border-neutral-200 px-2 text-[11px] text-neutral-700 hover:bg-neutral-50"
                       >
@@ -523,7 +635,7 @@ export default function AutomationRulesPanel({
       {manualRule && (
         <Dialog
           open
-          onClose={() => setManualRule(null)}
+          onClose={closeManual}
           title={`${manualRule.name} を手動実行`}
           panelClassName="w-[min(460px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
         >
@@ -538,26 +650,39 @@ export default function AutomationRulesPanel({
                 value={manualTaskId}
                 onChange={(event) => setManualTaskId(event.target.value)}
                 inputMode="numeric"
+                disabled={manualBusy || manualExecution?.status === "queued"}
                 placeholder="例: 123"
                 className="mt-1 h-9 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
               />
             </label>
             {manualError && <p className="mt-2 text-[11px] text-rose-600">{manualError}</p>}
+            {manualExecution && (
+              <p role="status" className="mt-2 text-[12px] text-neutral-700">
+                {manualExecution.status === "success" ? "ルールの実行が成功しました。"
+                  : manualExecution.status === "failed" ? `ルールの実行に失敗しました。${manualExecution.error ?? "実行履歴を確認してください。"}`
+                    : manualExecution.status === "skipped" ? "対象や条件により、ルールの実行をスキップしました。"
+                      : manualPollingStopped ? "実行結果の確認を終了しました。"
+                        : "実行待ちです。結果を確認しています。"}
+              </p>
+            )}
+            {(manualBusy || manualExecution?.status === "queued") && (
+              <p className="mt-2 text-[11px] text-neutral-500">閉じても開始済みの処理は継続します。</p>
+            )}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setManualRule(null)}
+                onClick={closeManual}
                 className="h-8 rounded-md border border-neutral-200 px-3 text-[12px] text-neutral-700 hover:bg-neutral-50"
               >
-                キャンセル
+                閉じる
               </button>
               <button
                 type="button"
                 onClick={() => void runManual()}
-                disabled={manualBusy}
+                disabled={manualBusy || manualExecution?.status === "queued"}
                 className="h-8 rounded-md bg-[#2c60b8] px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
               >
-                {manualBusy ? "実行中…" : "実行"}
+                {manualBusy ? "実行中…" : manualPollingStopped ? "結果未確認" : manualExecution?.status === "queued" ? "実行待ち…" : "実行"}
               </button>
             </div>
           </div>
@@ -567,7 +692,7 @@ export default function AutomationRulesPanel({
       {historyRule && (
         <Dialog
           open
-          onClose={() => setHistoryRule(null)}
+          onClose={closeHistory}
           title={`${historyRule.name} の実行履歴`}
           panelClassName="flex max-h-[80vh] w-[min(680px,96vw)] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
         >
@@ -578,7 +703,7 @@ export default function AutomationRulesPanel({
             </div>
             <button
               type="button"
-              onClick={() => setHistoryRule(null)}
+              onClick={closeHistory}
               aria-label="閉じる"
               className="flex h-7 w-7 items-center justify-center rounded-md text-xl text-neutral-500 hover:bg-neutral-100"
             >
@@ -586,7 +711,11 @@ export default function AutomationRulesPanel({
             </button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            {runs.length === 0 ? (
+            {historyLoading ? (
+              <p role="status" className="py-8 text-center text-[12px] text-neutral-400">実行履歴を読み込んでいます…</p>
+            ) : historyError ? (
+              <p role="alert" className="py-8 text-center text-[12px] text-rose-600">{historyError}</p>
+            ) : runs.length === 0 ? (
               <p className="py-8 text-center text-[12px] text-neutral-400">実行履歴はありません。</p>
             ) : (
               <div className="space-y-2">

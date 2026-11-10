@@ -790,7 +790,7 @@ export function normalizeAccessLevel(value: unknown): FieldAccessLevel {
 
 /** Whether the viewer may change this field's task values. */
 export function canEditCustomField(
-  field: CustomField,
+  field: Pick<CustomField, "access_level" | "editor_ids">,
   viewer: { viewerId: number; canEdit: boolean; canAdmin: boolean },
 ): boolean {
   if (!viewer.canEdit) return false;

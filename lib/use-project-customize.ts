@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { confirmAction } from "./ui-feedback";
-import { api } from "./api-client";
+import { api, ApiError } from "./api-client";
 import { projectDrawerTop } from "./drawer-position";
 import type { TaskTemplate } from "./data";
 import type { CustomField } from "./custom-fields";
@@ -32,6 +32,13 @@ type StatusDraft = {
   value: string;
 };
 
+type StatusOptionsConflict = {
+  status_options: string[];
+  status_options_version: number;
+  status_field_name: string;
+  status_field_enabled: boolean;
+};
+
 async function fetchFields(projectId: number): Promise<CustomField[]> {
   const res = await fetch(`/api/custom-fields?project_id=${projectId}`);
   return res.ok ? res.json() : [];
@@ -48,6 +55,7 @@ export function useProjectCustomize({
   initialColor,
   initialIcon,
   initialStatusOptions,
+  initialStatusOptionsVersion,
   initialStatusFieldName,
   initialStatusFieldEnabled,
   initialFields,
@@ -61,6 +69,7 @@ export function useProjectCustomize({
   initialColor: string | null;
   initialIcon: string | null;
   initialStatusOptions: string[];
+  initialStatusOptionsVersion: number;
   initialStatusFieldName: string;
   initialStatusFieldEnabled: boolean;
   initialFields: CustomField[];
@@ -78,6 +87,7 @@ export function useProjectCustomize({
   const [icon, setIcon] = useState<string | null>(initialIcon);
   const [statusFieldName, setStatusFieldName] = useState(initialStatusFieldName);
   const [statusFieldEnabled, setStatusFieldEnabled] = useState(initialStatusFieldEnabled);
+  const [statusOptionsVersion, setStatusOptionsVersion] = useState(initialStatusOptionsVersion);
   const [statusDrafts, setStatusDrafts] = useState<StatusDraft[]>(() =>
     initialStatusOptions.map((option, index) => ({ key: index, original: option, value: option })),
   );
@@ -220,12 +230,14 @@ export function useProjectCustomize({
       .map((draft) => ({ from: draft.original!, to: draft.value.trim() }));
     setBusy(true);
     try {
-      await api(`/api/projects/${projectId}`, "PATCH", {
+      const saved = await api<{ status_options_version: number }>(`/api/projects/${projectId}`, "PATCH", {
         status_field_name: name,
         status_field_enabled: true,
         status_options: options,
         status_renames: renames,
+        expected_status_options_version: statusOptionsVersion,
       });
+      setStatusOptionsVersion(saved.status_options_version);
       setStatusFieldName(name);
       setStatusFieldEnabled(true);
       setStatusDrafts((current) =>
@@ -235,8 +247,19 @@ export function useProjectCustomize({
       );
       router.refresh();
       notify("ステータスフィールドを更新しました");
-    } catch {
-      notify("ステータスの更新に失敗しました");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        const current = error.body as StatusOptionsConflict;
+        setStatusOptionsVersion(current.status_options_version);
+        setStatusFieldName(current.status_field_name);
+        setStatusFieldEnabled(current.status_field_enabled);
+        setStatusDrafts(current.status_options.map((option, index) => ({ key: index, original: option, value: option })));
+        statusKey.current = current.status_options.length;
+        router.refresh();
+        notify("別の操作でステータスが更新されました。最新の選択肢を確認してから編集してください");
+      } else {
+        notify("ステータスの更新に失敗しました");
+      }
     } finally {
       setBusy(false);
     }

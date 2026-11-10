@@ -1,4 +1,5 @@
 import type { Queryable } from "./db";
+import { lockProjectDeletion } from "./project-automation-lock";
 
 /**
  * Preserve tasks that live in more than one project when their primary
@@ -9,6 +10,7 @@ import type { Queryable } from "./db";
  * first remaining membership so the task keeps existing for those projects.
  */
 export async function detachMultiHomedTasks(q: Queryable, projectId: number): Promise<number> {
+  await lockProjectDeletion(q);
   const rows = await q.query(
     `SELECT t.id
      FROM tasks t
@@ -44,7 +46,7 @@ export async function detachMultiHomedTasks(q: Queryable, projectId: number): Pr
     await q.query(
       `WITH RECURSIVE descendants AS (
          SELECT id FROM tasks WHERE parent_task_id = $1::bigint
-         UNION ALL
+         UNION
          SELECT t.id FROM tasks t JOIN descendants d ON t.parent_task_id = d.id
        )
        UPDATE tasks SET project_id = $2::bigint, section_id = $3::bigint, updated_at = now()
@@ -54,7 +56,7 @@ export async function detachMultiHomedTasks(q: Queryable, projectId: number): Pr
     await q.query(
       `WITH RECURSIVE descendants AS (
          SELECT id FROM tasks WHERE parent_task_id = $1::bigint
-         UNION ALL
+         UNION
          SELECT t.id FROM tasks t JOIN descendants d ON t.parent_task_id = d.id
        )
        DELETE FROM task_project_memberships m

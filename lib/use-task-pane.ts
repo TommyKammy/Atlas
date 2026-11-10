@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { confirmAction, toast as toastMessage } from "./ui-feedback";
 import { ApiError, api } from "./api-client";
@@ -65,6 +65,9 @@ export function useTaskPane({
   const [newMemberProject, setNewMemberProject] = useState("");
   const [newMemberSections, setNewMemberSections] = useState<{ id: number; name: string }[]>([]);
   const [newMemberSection, setNewMemberSection] = useState("");
+  const memberSectionsRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => () => memberSectionsRequest.current?.abort(), [task.id]);
 
   const canEditField = (field: CustomField) =>
     canEditCustomField(field, { viewerId, canEdit, canAdmin });
@@ -198,7 +201,7 @@ export function useTaskPane({
   const addSubtask = async () => {
     if (!subtaskDraft.trim()) return;
     await api("/api/tasks", "POST", {
-      project_id: projectId,
+      project_id: task.project_id ?? projectId,
       section_id: task.section_id,
       parent_task_id: task.id,
       name: subtaskDraft,
@@ -221,14 +224,33 @@ export function useTaskPane({
   };
 
   const onPickMemberProject = async (projectIdValue: string) => {
+    memberSectionsRequest.current?.abort();
+    memberSectionsRequest.current = null;
     setNewMemberProject(projectIdValue);
     setNewMemberSection("");
-    if (!projectIdValue) {
-      setNewMemberSections([]);
-      return;
+    setNewMemberSections([]);
+    if (!projectIdValue) return;
+
+    const request = new AbortController();
+    memberSectionsRequest.current = request;
+    try {
+      const res = await fetch(`/api/lookup?project_id=${projectIdValue}`, {
+        signal: request.signal,
+      });
+      if (!res.ok) throw new Error(`lookup: ${res.status}`);
+      const sections = await res.json();
+      if (!Array.isArray(sections)) throw new Error("Invalid section lookup response");
+      if (!request.signal.aborted) setNewMemberSections(sections);
+    } catch {
+      if (!request.signal.aborted) toastMessage("セクションの取得に失敗しました");
+    } finally {
+      if (memberSectionsRequest.current === request) memberSectionsRequest.current = null;
     }
-    const res = await fetch(`/api/lookup?project_id=${projectIdValue}`);
-    setNewMemberSections(await res.json());
+  };
+
+  const closeAddProject = () => {
+    void onPickMemberProject("");
+    setAddingProject(false);
   };
 
   const addMembership = async () => {
@@ -238,9 +260,7 @@ export function useTaskPane({
       project_id: Number(newMemberProject),
       section_id: newMemberSection === "" ? null : Number(newMemberSection),
     });
-    setAddingProject(false);
-    setNewMemberProject("");
-    setNewMemberSection("");
+    closeAddProject();
     refresh();
   };
 
@@ -317,7 +337,7 @@ export function useTaskPane({
     feedTab,
     setFeedTab,
     addingProject,
-    setAddingProject,
+    closeAddProject,
     assigneeEditing,
     setAssigneeEditing,
     allProjects,

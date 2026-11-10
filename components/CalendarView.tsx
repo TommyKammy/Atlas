@@ -4,6 +4,7 @@ import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { ApiError } from "@/lib/api-client";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
+import { taskSectionId } from "@/lib/task-section";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Section, TaskRow, User } from "@/lib/data";
@@ -185,7 +186,7 @@ export default function CalendarView({
 
   const colorKeyFor = (task: TaskRow): string => {
     if (colorBy === "default") {
-      const sid = task.eff_section_id ?? task.section_id;
+      const sid = taskSectionId(task);
       if (sid === null || sid === undefined) return "";
       return sections.find((section) => section.id === sid)?.name ?? "";
     }
@@ -284,6 +285,10 @@ export default function CalendarView({
   };
 
   const toggleComplete = async (task: TaskRow) => {
+    if (task.approval) {
+      openTask(task.id);
+      return;
+    }
     await patchTaskFields(task, { completed: !task.completed, progress: task.completed ? task.progress : 100 });
   };
 
@@ -661,7 +666,8 @@ export default function CalendarView({
   const title = monthLabel(`${anchorY}-${String(anchorM).padStart(2, "0")}`);
 
   const completion = (task: TaskRow, size = "h-4 w-4") => (
-    <TaskCompletionToggle completed={task.completed} milestone={task.is_milestone} onToggle={() => toggleComplete(task)} size={size} />
+    <TaskCompletionToggle completed={task.completed} milestone={task.is_milestone} onToggle={() => toggleComplete(task)} size={size}
+      {...(task.approval ? { "aria-label": "承認の詳細を開く", title: "承認の詳細を開く" } : {})} />
   );
 
   const taskFace = (task: TaskRow, bar: boolean) => {

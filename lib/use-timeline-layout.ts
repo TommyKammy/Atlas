@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Section, TaskRow } from "./data";
+import type { Section } from "./data";
+import type { TaskTimelineRow } from "./timeline-task-payload";
 import { criticalPath } from "./critical-path";
 import { estimateTimelineLabelDays, assignTimelineLanes, timelineInterval } from "./timeline-lanes";
 import { usesTimelineExternalLabel } from "./timeline-marker";
 import { dayOrNull } from "./task-dates";
+import { taskSectionId } from "./task-section";
 import { TIMELINE_AXIS_HEIGHT, TIMELINE_ROW_PITCH } from "./timeline-metrics";
 import type { TimelineSortKey } from "./use-timeline-filters";
 
@@ -13,8 +15,8 @@ export type TimelineDraftPosition = { sectionId: number | null } | null;
 
 export type TimelineGroup = {
   section: Section;
-  tasks: TaskRow[];
-  all: TaskRow[];
+  tasks: TaskTimelineRow[];
+  all: TaskTimelineRow[];
   collapsed: boolean;
   hasDraft: boolean;
   top: number;
@@ -57,7 +59,7 @@ export function useTimelineLayout({
   max,
   showCritical,
 }: {
-  dated: TaskRow[];
+  dated: TaskTimelineRow[];
   sections: Section[];
   sortBy: TimelineSortKey;
   collapsed: Set<number>;
@@ -72,9 +74,9 @@ export function useTimelineLayout({
   showCritical: boolean;
 }) {
   const groups = useMemo<TimelineGroup[]>(() => {
-    const bySection = new Map<number | null, TaskRow[]>();
+    const bySection = new Map<number | null, TaskTimelineRow[]>();
     for (const t of dated) {
-      const k = t.eff_section_id ?? t.section_id;
+      const k = taskSectionId(t);
       if (!bySection.has(k)) bySection.set(k, []);
       bySection.get(k)!.push(t);
     }

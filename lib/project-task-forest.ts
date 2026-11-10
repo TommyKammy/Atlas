@@ -1,3 +1,5 @@
+import { compatibleTaskParent } from "./repositories/scope";
+
 export type TaskForestQueryable = {
   query: (text: string, params?: unknown[]) => Promise<{ rows: unknown[] }>;
 };
@@ -19,6 +21,7 @@ export type ProjectTaskForestRow = {
   status: string;
   position: number;
   recurrence: string;
+  is_milestone: boolean;
 };
 
 export type ProjectTaskForestNode = ProjectTaskForestRow & {
@@ -30,17 +33,16 @@ export type ProjectTaskForestNode = ProjectTaskForestRow & {
 const COLUMNS = `t.id, t.project_id, t.section_id, t.parent_task_id, t.name,
   t.description, t.description_doc, t.assignee_id, t.completed,
   t.completed_at::text AS completed_at, t.start_on::text AS start_on,
-  t.due_on::text AS due_on, t.progress, t.status, t.position, t.recurrence`;
+  t.due_on::text AS due_on, t.progress, t.status, t.position, t.recurrence, t.is_milestone`;
 
 type RootRow = ProjectTaskForestRow & { membership_section_id: number | null };
 
 /**
  * Load the task forest visible in a project.
  *
- * Root tasks are selected from the primary project and from secondary
- * multi-homes. Descendants are then loaded recursively even when their
- * `project_id` points at the task's primary project; this keeps subtask
- * trees intact for duplicate/template operations.
+ * Seed from primary and secondary homes. Descendants can inherit that
+ * placement when they are projectless or share their parent's primary home.
+ * A legacy link to a different primary project cannot grant visibility.
  */
 export async function getProjectTaskForest(
   q: TaskForestQueryable,
@@ -78,7 +80,9 @@ export async function getProjectTaskForest(
     const children = await q.query(
       `SELECT ${COLUMNS}
        FROM tasks t
+       JOIN tasks parent ON parent.id = t.parent_task_id
        WHERE t.parent_task_id = ANY($1::bigint[]) AND t.deleted_at IS NULL
+         AND ${compatibleTaskParent("t", "parent")}
        ORDER BY t.position, t.id`,
       [frontier],
     );
@@ -97,11 +101,32 @@ export async function getProjectTaskForest(
         parent_task_id: parentId,
         assignee_id: row.assignee_id === null ? null : Number(row.assignee_id),
         effective_section_id: parent.effective_section_id,
-        depth: parent.depth + 1,
+        depth: 0,
       });
       next.push(id);
     }
     frontier = next;
+  }
+
+  // A projected subtask can already be present in the initial query, with a
+  // position lower than its parent's. Derive depth from the finished forest.
+  const children = new Map<number, ProjectTaskForestNode[]>();
+  const parents: ProjectTaskForestNode[] = [];
+  for (const node of nodes.values()) {
+    const parentId = node.parent_task_id;
+    if (parentId === null || !nodes.has(parentId)) {
+      parents.push(node);
+      continue;
+    }
+    const siblings = children.get(parentId) ?? [];
+    siblings.push(node);
+    children.set(parentId, siblings);
+  }
+  for (const parent of parents) {
+    for (const child of children.get(parent.id) ?? []) {
+      child.depth = parent.depth + 1;
+      parents.push(child);
+    }
   }
 
   return [...nodes.values()].sort(

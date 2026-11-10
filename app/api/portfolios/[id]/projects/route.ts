@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api/route";
-import { getWorkspace, getProjectAccess } from "@/lib/data";
+import { getWorkspace } from "@/lib/data";
 import { audit } from "@/lib/audit";
 import {
   addPortfolioProject,
@@ -31,10 +31,10 @@ export const POST = withUser(async (req, { uid, params }) => {
   if (!Number.isInteger(projectId) || projectId <= 0) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
-  const access = await getProjectAccess(uid, projectId);
-  if (!access.role) return NextResponse.json({ error: "project access denied" }, { status: 403 });
   try {
-    await addPortfolioProject(id, projectId);
+    if (!(await addPortfolioProject(id, projectId, uid))) {
+      return NextResponse.json({ error: "project access denied" }, { status: 403 });
+    }
   } catch (caught) {
     return NextResponse.json(
       { error: caught instanceof Error ? caught.message : "project add failed" },

@@ -46,7 +46,7 @@ export const getProjectShellData = cache(async (projectId: number, viewerId: num
       getCustomFields(projectId),
       getProjectApps(projectId),
       getBundlesForProject(projectId),
-      getProjectRules(projectId),
+      getProjectRules(projectId, viewerId),
       isFavorite(viewerId, projectId),
     ]);
   return {
@@ -122,7 +122,7 @@ export async function getFilesViewData(projectId: number) {
 export async function getTaskPaneData(taskId: number, projectId: number, viewerId: number) {
   const [subtasks, comments, memberships, dependencies, taskOptions, attachments, reactions, events, customValues] =
     await Promise.all([
-      getSubtasks(taskId),
+      getSubtasks(taskId, projectId),
       getComments(taskId),
       getTaskProjects(taskId),
       getDependencies(taskId),

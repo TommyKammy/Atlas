@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import { notifyProject } from "@/lib/notify";
 import { withAdmin, withUser } from "@/lib/api/route";
 import { ensureDefaultProjectTabs } from "@/lib/repositories/projects";
+import { copyRuleWithoutWebhookCredentials } from "@/lib/automation/webhook-credentials";
 import type {
   ProjectTemplatePayload,
   TemplateTask,
@@ -122,6 +123,7 @@ export const POST = withUser(async (req, { uid, params }) => {
       for (const rule of rules) {
         if (!rule || typeof rule.name !== "string" || rule.name.trim() === "") continue;
         if (!rule.definition || typeof rule.definition !== "object") continue;
+        const copy = copyRuleWithoutWebhookCredentials({ ...rule, definition: rule.definition });
         await q.query(
           `INSERT INTO project_rules (
              workspace_id, project_id, name, description, definition, owner_id, enabled
@@ -131,9 +133,9 @@ export const POST = withUser(async (req, { uid, params }) => {
             newId,
             rule.name.trim().slice(0, 120),
             typeof rule.description === "string" ? rule.description.slice(0, 1000) : "",
-            JSON.stringify(rule.definition),
+            JSON.stringify(copy.definition),
             uid,
-            rule.enabled !== false,
+            copy.enabled !== false,
           ],
         );
       }
@@ -156,9 +158,9 @@ export const POST = withUser(async (req, { uid, params }) => {
           : null;
       const created = await q.query(
         `INSERT INTO tasks (project_id, section_id, parent_task_id, name, description, description_doc,
-           assignee_id, start_on, due_on, progress, status, position)
+           assignee_id, start_on, due_on, progress, status, position, is_milestone)
          VALUES ($1::bigint, $2::bigint, $3::bigint, $4, $5, $6::jsonb,
-           $7::bigint, $8::date, $9::date, $10, $11, $12)
+           $7::bigint, $8::date, $9::date, $10, $11, $12, $13)
          RETURNING id`,
         [
           newId,
@@ -175,6 +177,7 @@ export const POST = withUser(async (req, { uid, params }) => {
           Math.max(0, Math.min(100, Number(task.progress ?? 0))),
           typeof task.status === "string" && task.status !== "" ? task.status.slice(0, 64) : "inbox",
           position,
+          parentId === null && task.is_milestone === true,
         ],
       );
       const taskId = Number(created.rows[0].id);

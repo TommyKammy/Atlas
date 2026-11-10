@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withProject } from "@/lib/api/route";
 import { audit } from "@/lib/audit";
+import { canEditProject } from "@/lib/project-roles";
 
 type EndpointRow = {
   id: number;
@@ -14,28 +15,35 @@ type EndpointRow = {
   created_at: string;
 };
 
-export const GET = withProject("view", async (_req, { projectId }) => {
+export const GET = withProject("view", async (_req, { projectId, role }) => {
+  const includeToken = canEditProject(role);
   const r = await db.query(
-    `SELECT id, project_id, name, token, enabled,
-       (secret <> '') AS has_secret, created_at::text AS created_at
+    `SELECT id, project_id, name, CASE WHEN $2::boolean THEN token END AS token, enabled,
+       (btrim(secret) <> '') AS has_secret, created_at::text AS created_at
      FROM automation_webhook_endpoints
      WHERE project_id = $1::bigint
      ORDER BY id`,
-    [projectId],
+    [projectId, includeToken],
   );
-  return NextResponse.json({ endpoints: r.rows as EndpointRow[] });
+  const endpoints = (r.rows as EndpointRow[]).map(({ token, ...endpoint }) =>
+    includeToken ? { ...endpoint, token } : endpoint,
+  );
+  return NextResponse.json({ endpoints });
 });
 
 export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
   const payload = (body ?? {}) as { name?: unknown; secret?: unknown };
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
   if (name === "") return NextResponse.json({ error: "name is required" }, { status: 400 });
+  const secret = typeof payload.secret === "string" ? payload.secret.trim() : "";
+  if (secret.length === 0 || secret.length > 200) {
+    return NextResponse.json({ error: "secret must be between 1 and 200 characters" }, { status: 400 });
+  }
   const project = await db.query("SELECT workspace_id FROM projects WHERE id = $1::bigint", [
     projectId,
   ]);
   if (project.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const token = randomBytes(24).toString("hex");
-  const secret = typeof payload.secret === "string" ? payload.secret.trim().slice(0, 200) : "";
   const r = await db.query(
     `INSERT INTO automation_webhook_endpoints (
        workspace_id, project_id, name, token, secret, created_by

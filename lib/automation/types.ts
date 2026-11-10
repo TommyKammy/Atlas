@@ -1,4 +1,5 @@
 import type { DomainEventType } from "../domain/events";
+import type { RuleEvaluationTrace } from "./evaluation";
 
 export type RuleFilter = Record<string, unknown>;
 
@@ -32,6 +33,7 @@ export type RuleCondition = {
 export type RuleAction = {
   capability: string;
   params: Record<string, unknown>;
+  webhookActionId?: string;
 };
 
 export type RulePath = {
@@ -91,8 +93,15 @@ export type RuleRun = {
   actions_failed: number;
   error: string | null;
   details: RuleRunActionDetail[];
+  evaluation?: RuleEvaluationTrace;
   started_at: string;
   finished_at: string | null;
+};
+
+export type ManualRuleExecution = {
+  event_id: number;
+  status: "queued" | "success" | "failed" | "skipped";
+  error: string | null;
 };
 
 export const RULE_LIMITS = {

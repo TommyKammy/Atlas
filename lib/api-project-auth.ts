@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, type Queryable } from "./db";
 import { getRequestSession } from "./api/session";
 import { getProjectAccess } from "./data";
 import {
@@ -72,10 +72,10 @@ export async function getTaskProjectId(taskId: number): Promise<number | null> {
 }
 
 /** Resolve the governing project for many tasks in one query. */
-export async function getTaskProjectIds(taskIds: number[]): Promise<Map<number, number | null>> {
+export async function getTaskProjectIds(taskIds: number[], q: Queryable = db): Promise<Map<number, number | null>> {
   const unique = [...new Set(taskIds.filter((id) => Number.isInteger(id) && id > 0))];
   if (unique.length === 0) return new Map();
-  const r = await db.query(
+  const r = await q.query(
     `SELECT t.id,
        COALESCE(
          t.project_id,
@@ -100,7 +100,7 @@ export type TaskAuth =
 export type TaskProjectContext = {
   /** Project that governs legacy single-project behaviour (primary / first / parent). */
   defaultProjectId: number | null;
-  /** Every project the task belongs to: primary, multi-home memberships and parent. */
+  /** Primary, explicit memberships, and the parent fallback for projectless tasks. */
   projectIds: number[];
 };
 
@@ -116,8 +116,8 @@ export function orderTaskProjectIds(context: TaskProjectContext): number[] {
  * Resolve all projects a task belongs to. Multi-homed tasks are editable from
  * any project they appear in, not only from their primary project.
  */
-export async function getTaskProjectContext(taskId: number): Promise<TaskProjectContext | null> {
-  const r = await db.query(
+export async function getTaskProjectContext(taskId: number, q: Queryable = db): Promise<TaskProjectContext | null> {
+  const r = await q.query(
     `SELECT t.id,
        COALESCE(
          t.project_id,
@@ -131,7 +131,7 @@ export async function getTaskProjectContext(taskId: number): Promise<TaskProject
            UNION ALL
            SELECT m.project_id FROM task_project_memberships m WHERE m.task_id = t.id
            UNION ALL
-           SELECT p.project_id FROM tasks p WHERE p.id = t.parent_task_id
+           SELECT p.project_id FROM tasks p WHERE p.id = t.parent_task_id AND t.project_id IS NULL
          ) candidates
          WHERE candidate IS NOT NULL
        ) AS project_ids

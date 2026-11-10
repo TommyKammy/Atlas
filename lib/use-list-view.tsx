@@ -27,6 +27,7 @@ import { useListRowInteraction } from "@/lib/use-list-row-interaction";
 import { useListSections } from "@/lib/use-list-sections";
 import { useListSelection } from "@/lib/use-list-selection";
 import { useListTaskActions } from "@/lib/use-list-task-actions";
+import { taskSectionId } from "@/lib/task-section";
 import { useListToolbar } from "@/lib/use-list-toolbar";
 import { confirmAction, toast as toastMessage } from "@/lib/ui-feedback";
 import ListFooterRow from "@/components/list/ListFooterRow";
@@ -346,14 +347,14 @@ export function useListView({
 
   const bySection = new Map<number | null, TaskRow[]>();
   for (const t of visible) {
-    const k = t.eff_section_id ?? t.section_id;
+    const k = taskSectionId(t);
     if (!bySection.has(k)) bySection.set(k, []);
     bySection.get(k)!.push(t);
   }
   for (const list of bySection.values()) list.sort((a, b) => compareListTasks(a, b, sortKey, sortDir));
 
   const { dragging, dropHint, setHint, beginRowDrag, endRowDrag, appendToSection, moveTask } =
-    useListRowDnd({ tasks, visible, refresh });
+    useListRowDnd({ projectId, tasks, visible, refresh });
 
   const { expanded, openTask, rowClick, toggleExpand, clearExpanded } = useListRowInteraction({
     projectId,

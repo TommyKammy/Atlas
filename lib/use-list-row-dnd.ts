@@ -1,20 +1,23 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ApiError } from "./api-client";
+import { ApiError, api } from "./api-client";
 import type { TaskRow } from "./data";
 import { positionBetween } from "./order";
 import { patchTask, TaskConflictError } from "./task-client";
+import { taskSectionId } from "./task-section";
 import { toast as toastMessage } from "./ui-feedback";
 
 export type RowDropHint = { id: number; before: boolean };
 
 /** Row drag/drop state and persistence for list task reordering. */
 export function useListRowDnd({
+  projectId,
   tasks,
   visible,
   refresh,
 }: {
+  projectId: number;
   tasks: TaskRow[];
   visible: TaskRow[];
   refresh: () => void;
@@ -44,19 +47,19 @@ export function useListRowDnd({
     }, 0);
   };
 
-  const appendToSection = async (dragId: number, sectionId: number | null) => {
-    const dragged = tasks.find((task) => task.id === dragId);
-    if (!dragged) return;
-    const column = visible
-      .filter((task) => (task.eff_section_id ?? task.section_id) === sectionId && task.id !== dragId)
-      .sort((a, b) => a.position - b.position || a.id - b.id);
-    const maxPosition = column.reduce((max, task) => Math.max(max, task.position), 0);
-    const fields: Record<string, unknown> = { position: maxPosition + 1000 };
-    if ((dragged.eff_section_id ?? dragged.section_id) !== sectionId) {
-      fields.section_id = sectionId;
-    }
+  const savePlacement = async (task: TaskRow, sectionId: number | null, position: number) => {
+    const changesSection = taskSectionId(task) !== sectionId;
     try {
-      await patchTask(dragId, fields, dragged.updated_at);
+      if (task.project_id !== null && task.project_id !== projectId) {
+        if (!changesSection) return;
+        await api("/api/memberships", "POST", {
+          task_id: task.id,
+          project_id: projectId,
+          section_id: sectionId,
+        });
+      } else {
+        await patchTask(task.id, { position, ...(changesSection ? { section_id: sectionId } : {}) }, task.updated_at);
+      }
     } catch (error) {
       if (error instanceof TaskConflictError) {
         toastMessage("他のユーザーが先に更新しました。最新を表示します。");
@@ -67,32 +70,29 @@ export function useListRowDnd({
     refresh();
   };
 
+  const appendToSection = async (dragId: number, sectionId: number | null) => {
+    const dragged = tasks.find((task) => task.id === dragId);
+    if (!dragged) return;
+    const column = visible
+      .filter((task) => taskSectionId(task) === sectionId && task.id !== dragId)
+      .sort((a, b) => a.position - b.position || a.id - b.id);
+    const maxPosition = column.reduce((max, task) => Math.max(max, task.position), 0);
+    await savePlacement(dragged, sectionId, maxPosition + 1000);
+  };
+
   const moveTask = async (dragId: number, target: TaskRow, before: boolean) => {
     if (dragId === target.id) return;
     const dragged = tasks.find((task) => task.id === dragId);
     if (!dragged) return;
-    const sectionKey = target.eff_section_id ?? target.section_id;
+    const sectionKey = taskSectionId(target);
     const column = visible
-      .filter((task) => (task.eff_section_id ?? task.section_id) === sectionKey && task.id !== dragId)
+      .filter((task) => taskSectionId(task) === sectionKey && task.id !== dragId)
       .sort((a, b) => a.position - b.position || a.id - b.id);
     const index = column.findIndex((task) => task.id === target.id);
     const at = before ? index : index + 1;
     const previous = at - 1 >= 0 ? column[at - 1].position : null;
     const next = at < column.length ? column[at].position : null;
-    const fields: Record<string, unknown> = { position: positionBetween(previous, next) };
-    if ((dragged.eff_section_id ?? dragged.section_id) !== sectionKey) {
-      fields.section_id = sectionKey;
-    }
-    try {
-      await patchTask(dragId, fields, dragged.updated_at);
-    } catch (error) {
-      if (error instanceof TaskConflictError) {
-        toastMessage("他のユーザーが先に更新しました。最新を表示します。");
-      } else {
-        toastMessage(`移動に失敗しました: ${error instanceof ApiError ? error.status : ""}`);
-      }
-    }
-    refresh();
+    await savePlacement(dragged, sectionKey, positionBetween(previous, next));
   };
 
   return {

@@ -1,27 +1,28 @@
 #!/usr/bin/env bash
 # Atlas restore (DESTRUCTIVE, disposable local env only).
-# Usage: ./scripts/restore.sh <backup_dir>
+# Usage inside the disposable stack that created the backup: bash scripts/restore.sh <backup_dir>
 # Drops the public schema, replays db.sql, restores uploads, restarts app.
-set -e -u
-cd "$(dirname "$0")/.."
+set -euo pipefail
+source "$(dirname "$0")/e2e-guard.sh"
+require_e2e_target
 SRC="${1:?usage: restore.sh <backup_dir>}"
-[[ -f "$SRC/db.sql" ]] || { echo "no db.sql in $SRC"; exit 1; }
-echo "-> uploads restore (clear live files first)"
-docker exec atlas-app sh -c 'rm -rf /app/uploads/* 2>/dev/null || true; mkdir -p /app/uploads' >/dev/null
+[[ -s "$SRC/db.sql" && -f "$SRC/uploads.tar.gz" && -f "$SRC/stack-identity" ]] \
+  || e2e_abort 'backup is incomplete'
+[[ "$(cat -- "$SRC/stack-identity")" == "$ATLAS_E2E_STACK:$ATLAS_E2E_MARKER" ]] \
+  || e2e_abort 'backup belongs to a different test stack'
+uploads=$(mktemp -d)
+trap 'rm -rf -- "$uploads"' EXIT
+tar -xzf "$SRC/uploads.tar.gz" -C "$uploads"
 echo "STOPPING app (db/redis keep running)"
-docker compose stop app >/dev/null
+docker stop "$E2E_APP_ID" >/dev/null
 echo "-> drop + recreate schema"
-docker exec atlas-db psql -U atlas -d atlas -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" >/dev/null
+db_sql -q -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' >/dev/null
 echo "-> replay dump"
-docker exec -i atlas-db psql -U atlas -d atlas -q -v ON_ERROR_STOP=1 < "$SRC/db.sql" >/dev/null
-if [[ -f "$SRC/uploads.tar.gz" ]]; then
-  rm -rf ./restore-tmp && mkdir -p ./restore-tmp
-  tar -xzf "$SRC/uploads.tar.gz" -C ./restore-tmp
-  docker cp ./restore-tmp/. atlas-app:/app/uploads/ 2>/dev/null || true
-  rm -rf ./restore-tmp
-fi
+db_sql -q < "$SRC/db.sql" >/dev/null
+e2e_assert_db_marker
 echo "-> starting app"
-docker compose start app >/dev/null
-sleep 6
-docker compose ps --format '{{.Name}} {{.Status}}' | head -3
+docker start "$E2E_APP_ID" >/dev/null
+docker exec "$E2E_APP_ID" sh -ec 'mkdir -p /app/uploads; find /app/uploads -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +'
+docker cp "$uploads/." "$E2E_APP_ID:/app/uploads/"
+e2e_wait_for_http || e2e_abort 'restored test app did not become ready'
 echo "restore done from $SRC"

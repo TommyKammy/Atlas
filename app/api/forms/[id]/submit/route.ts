@@ -96,6 +96,14 @@ export const POST = withResourceProject("view", "project_forms", async (_req, { 
        VALUES ($1::bigint, $2::bigint, $3::jsonb, $4)`,
       [id, insertedId, JSON.stringify(cleaned), uid],
     );
+    const event = {
+      projectId: Number(form.project_id),
+      taskId: insertedId,
+      actorId: uid,
+      data: { form_id: Number(id), form_name: form.name, answers: cleaned },
+    };
+    await emitTaskEvent({ ...event, type: "task.created" }, q);
+    await emitTaskEvent({ ...event, type: "form.submitted" }, q);
     return insertedId;
   });
   await notifyProject(Number(form.project_id));
@@ -105,19 +113,5 @@ export const POST = withResourceProject("view", "project_forms", async (_req, { 
     projectId: Number(form.project_id),
     summary: `task ${taskId}`,
   });
-  await emitTaskEvent({
-    projectId: Number(form.project_id),
-    taskId,
-    actorId: uid,
-    type: "task.created",
-    data: { form_id: Number(id), form_name: form.name, answers: cleaned },
-  }).catch(() => undefined);
-  await emitTaskEvent({
-    projectId: Number(form.project_id),
-    taskId,
-    actorId: uid,
-    type: "form.submitted",
-    data: { form_id: Number(id), form_name: form.name, answers: cleaned },
-  }).catch(() => undefined);
   return NextResponse.json({ ok: true, task_id: taskId, project_id: Number(form.project_id) }, { status: 201 });
 }, { body: true });

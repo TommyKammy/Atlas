@@ -96,7 +96,7 @@ export async function getDashboardWidgets(projectId: number): Promise<DashboardW
 export async function getDashboardTasks(projectId: number): Promise<DashboardTask[]> {
   const r = await db.query(
     `SELECT t.id, t.name,
-       COALESCE(m.section_id, t.section_id) AS section_id,
+       CASE WHEN t.project_id = $1 THEN t.section_id ELSE m.section_id END AS section_id,
        t.assignee_id, u.name AS assignee_name, t.status, t.completed,
        t.due_on::text AS due_on,
        t.created_at::date::text AS created_on,

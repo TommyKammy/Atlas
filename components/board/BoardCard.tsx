@@ -4,11 +4,13 @@ import Link from "next/link";
 import type { DragEvent, MouseEvent } from "react";
 import type { TaskRow } from "@/lib/data";
 import { dueSegs } from "@/lib/dates";
+import { taskSectionId } from "@/lib/task-section";
 import type { BoardCardFields } from "./BoardToolbar";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
 import TaskAvatar from "../task/TaskAvatar";
 import TaskStatusChip from "../task/TaskStatusChip";
 import TaskMetaBadges from "../task/TaskMetaBadges";
+import TaskApprovalBadge from "../task/TaskApprovalBadge";
 
 /**
  * One board card. Kept separate from BoardView so column layout, drag
@@ -43,6 +45,7 @@ export default function BoardCard({
   onToggleComplete: () => void;
   onMove: (delta: 1 | -1) => void;
 }) {
+  const sectionId = taskSectionId(task);
   return (
     <div
       data-board-card={task.id}
@@ -65,6 +68,9 @@ export default function BoardCard({
           completed={task.completed}
           milestone={task.is_milestone}
           onToggle={onToggleComplete}
+          disabled={Boolean(task.approval)}
+          title={task.approval ? "承認の状態はタスク詳細から変更してください" : undefined}
+          {...(task.approval ? { "aria-label": "承認タスクの完了は承認操作から行います" } : {})}
           className="mt-0.5"
         />
         <Link
@@ -77,9 +83,10 @@ export default function BoardCard({
         </Link>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-        {effectiveGroupBy !== "section" && (task.eff_section_id ?? task.section_id) !== null && (
+        {task.approval && <TaskApprovalBadge approval={task.approval} href={`/projects/${projectId}?view=board&task=${task.id}&approval=1`} />}
+        {effectiveGroupBy !== "section" && sectionId !== null && (
           <span className="rounded bg-neutral-200 px-1.5 py-0.5">
-            {sectionName.get((task.eff_section_id ?? task.section_id) as number) ?? ""}
+            {sectionName.get(sectionId) ?? ""}
           </span>
         )}
         {cardFields.assignee && task.assignee_name && (

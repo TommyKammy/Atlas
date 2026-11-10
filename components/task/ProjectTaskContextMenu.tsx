@@ -20,8 +20,13 @@ import Dialog from "../ui/Dialog";
 
 type TaskMenuView = "list" | "board" | "timeline" | "calendar";
 
+type ContextTask = Pick<TaskRow,
+  "id" | "name" | "project_id" | "section_id" | "parent_task_id" | "completed" |
+  "is_milestone" | "updated_at" | "timeline_row" | "timeline_row_updated_at" | "approval"
+> & Partial<Pick<TaskRow, "recurrence">>;
+
 type MenuRequest = {
-  task: TaskRow;
+  task: ContextTask;
   view: TaskMenuView;
   x: number;
   y: number;
@@ -168,14 +173,14 @@ export default function ProjectTaskContextMenu({
   canEdit,
 }: {
   projectId: number;
-  tasks: TaskRow[];
+  tasks: ContextTask[];
   canEdit: boolean;
 }) {
   const router = useRouter();
   const [request, setRequest] = useState<MenuRequest | null>(null);
-  const [subtaskFor, setSubtaskFor] = useState<TaskRow | null>(null);
+  const [subtaskFor, setSubtaskFor] = useState<ContextTask | null>(null);
   const [subtaskName, setSubtaskName] = useState("");
-  const [convertFor, setConvertFor] = useState<TaskRow | null>(null);
+  const [convertFor, setConvertFor] = useState<ContextTask | null>(null);
   const [parentId, setParentId] = useState("");
   const [convertOpen, setConvertOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -251,7 +256,7 @@ export default function ProjectTaskContextMenu({
     router.refresh();
   };
 
-  const hrefFor = (target: TaskRow) => {
+  const hrefFor = (target: ContextTask) => {
     const url = new URL(window.location.href);
     url.searchParams.set("task", String(target.id));
     return `${url.pathname}${url.search}`;
@@ -260,6 +265,14 @@ export default function ProjectTaskContextMenu({
   const openDetails = () => {
     if (!task) return;
     router.push(hrefFor(task));
+    close();
+  };
+
+  const openApproval = () => {
+    if (!task) return;
+    const url = new URL(hrefFor(task), window.location.origin);
+    url.searchParams.set("approval", "1");
+    router.push(`${url.pathname}${url.search}`);
     close();
   };
 
@@ -404,7 +417,7 @@ export default function ProjectTaskContextMenu({
   const candidates = convertFor
     ? tasks.filter((candidate) => {
         if (candidate.id === convertFor.id) return false;
-        let cursor: TaskRow | undefined = candidate;
+        let cursor: ContextTask | undefined = candidate;
         const seen = new Set<number>();
         while (cursor && cursor.parent_task_id !== null && !seen.has(cursor.id)) {
           if (cursor.parent_task_id === convertFor.id) return false;
@@ -433,8 +446,8 @@ export default function ProjectTaskContextMenu({
                 <MenuItem icon="follow" label="フォローアップタスクを作成" onClick={followUp} />
                 <MenuItem
                   icon="complete"
-                  label={request.task.completed ? "未完了に戻す" : "完了にする"}
-                  onClick={toggleComplete}
+                  label={request.task.approval ? "承認の詳細を開く" : request.task.completed ? "未完了に戻す" : "完了にする"}
+                  onClick={request.task.approval ? openApproval : toggleComplete}
                 />
                 {(request.view === "list" || request.view === "board") && (
                   <MenuItem
@@ -474,15 +487,15 @@ export default function ProjectTaskContextMenu({
                         <MenuItem
                           icon="complete"
                           label="タスク"
-                          checked={request.task.parent_task_id === null && !request.task.is_milestone}
-                          disabled={request.task.parent_task_id === null && !request.task.is_milestone}
+                          checked={request.task.parent_task_id === null && !request.task.is_milestone && !request.task.approval}
+                          disabled={Boolean(request.task.approval) || (request.task.parent_task_id === null && !request.task.is_milestone)}
                           onClick={convertToTopLevel}
                         />
                         <MenuItem
                           icon="milestone"
                           label="マイルストーン"
                           checked={request.task.parent_task_id === null && request.task.is_milestone}
-                          disabled={request.task.parent_task_id === null && request.task.is_milestone}
+                          disabled={Boolean(request.task.approval) || (request.task.parent_task_id === null && request.task.is_milestone)}
                           onClick={convertToMilestone}
                         />
                         <MenuItem
@@ -500,8 +513,10 @@ export default function ProjectTaskContextMenu({
                         <MenuItem
                           icon="complete"
                           label="承認リクエスト"
-                          disabled
-                          title="Atlasでは未対応"
+                          checked={Boolean(request.task.approval)}
+                          disabled={Boolean(request.task.is_milestone || (request.task.recurrence && request.task.recurrence !== "none"))}
+                          title={request.task.is_milestone ? "通常のタスクに変換してから承認を申請してください" : undefined}
+                          onClick={openApproval}
                         />
                       </div>
                     </div>

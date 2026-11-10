@@ -32,12 +32,15 @@ export const DELETE = withProject(
   async (_req, { uid, projectId }) => {
     const movedTasks = await withTransaction(async (q) => {
       const moved = await detachMultiHomedTasks(q, projectId);
-      await audit(uid, "project.delete", {
-        entity: "project",
-        entityId: projectId,
-        projectId,
-        summary: `permanent delete; multi-homed tasks moved: ${moved}`,
-      });
+      const existing = await q.query("SELECT 1 FROM projects WHERE id = $1::bigint", [projectId]);
+      if (existing.rowCount) {
+        await audit(uid, "project.delete", {
+          entity: "project",
+          entityId: projectId,
+          projectId,
+          summary: `permanent delete; multi-homed tasks moved: ${moved}`,
+        }, q);
+      }
       await q.query("DELETE FROM projects WHERE id = $1::bigint", [projectId]);
       return moved;
     });

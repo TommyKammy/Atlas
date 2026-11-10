@@ -4,7 +4,10 @@ import { notifyProject } from "@/lib/notify";
 import { ensureAutoIdValues } from "@/lib/auto-id";
 import { validateCustomFieldReferences } from "@/lib/custom-field-validation";
 import { withProject } from "@/lib/api/route";
+import { normalizeFieldEditorIds } from "@/lib/field-access";
+import { canManageProject } from "@/lib/project-roles";
 import {
+  normalizeAccessLevel,
   normalizeCustomFieldConfig,
   parseCustomFieldConfig,
   type CustomFieldType,
@@ -52,7 +55,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
   );
 });
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("edit", async (_req, { uid, projectId, role, body }) => {
   const { name, field_type, options, description, config, access_level, editor_ids } = (body ?? {}) as {
     name?: string;
     field_type?: string;
@@ -80,10 +83,11 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
           .filter((o: string) => o !== "")
       : [];
   const descriptionValue = typeof description === "string" ? description.trim().slice(0, 500) : "";
-  const accessLevel = access_level === "admins" || access_level === "custom" ? access_level : "everyone";
-  const editorIds = Array.isArray(editor_ids)
-    ? [...new Set(editor_ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))]
-    : [];
+  const accessLevel = normalizeAccessLevel(access_level);
+  const editorIds = normalizeFieldEditorIds(editor_ids);
+  if (!canManageProject(role) && (accessLevel !== "everyone" || editorIds.length > 0)) {
+    return NextResponse.json({ error: "field access settings require project admin" }, { status: 403 });
+  }
   const r = await db.query(
     `INSERT INTO custom_fields
        (project_id, name, field_type, options, description, config, access_level, editor_ids, position)

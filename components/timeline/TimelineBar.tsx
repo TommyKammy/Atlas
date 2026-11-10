@@ -1,96 +1,118 @@
 "use client";
 
 import { memo, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import type { TaskRow } from "@/lib/data";
+import type { TaskTimelineRow } from "@/lib/timeline-task-payload";
+import { timelineInterval } from "@/lib/timeline-lanes";
+import { isSingleDayTimelineTask, usesTimelineExternalLabel } from "@/lib/timeline-marker";
+import { timelineBarDragStyle } from "@/lib/timeline-drag-style";
+import {
+  TIMELINE_BAR_HEIGHT,
+  TIMELINE_EDGE_HIT,
+} from "@/lib/timeline-metrics";
+import type { TimelineDragMode, TimelineDragState } from "@/lib/use-timeline-drag";
 import TaskAvatar from "../task/TaskAvatar";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
 import TaskMilestoneIcon from "../task/TaskMilestoneIcon";
 
 export type TimelineBarProps = {
-  task: TaskRow;
+  task: TaskTimelineRow;
   lane: number;
-  rowLocked: boolean;
   overlapping: boolean;
-  externalLabel: boolean;
-  onMoveRow: (delta: number) => void;
+  onMoveRow: (task: TaskTimelineRow, delta: number) => void;
   x1: string;
   x2: string;
-  skinny: boolean;
-  sameDay: boolean;
-  labelOnLeft: boolean;
-  active: boolean;
-  dragMode: "move" | "start" | "end" | null;
-  dx: number;
+  min: number;
+  max: number;
+  dayWidth: number;
+  critical: boolean;
+  drag: TimelineDragState | null;
+  canReorder: boolean;
   hovered: boolean;
   overflow: boolean;
   dependencyTarget: boolean;
-  showAvatar: boolean;
-  showSubtasks: boolean;
-  barFaceClass: string;
-  barStyle: CSSProperties;
-  startHandleStyle: CSSProperties;
-  endHandleStyle: CSSProperties;
-  activeGuideLeft: string | number | undefined;
-  barInfo: string;
-  onBarPointerDown: (event: ReactPointerEvent) => void;
+  onBarPointerDown: (event: ReactPointerEvent, task: TaskTimelineRow) => void;
+  onResizeStart: (event: ReactPointerEvent, task: TaskTimelineRow, mode: TimelineDragMode) => void;
   onBarPointerMove: (event: ReactPointerEvent) => void;
   onBarPointerUp: (event: ReactPointerEvent) => void;
-  onBarClick: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onBarEnter: () => void;
+  onBarPointerCancel: (event: ReactPointerEvent) => void;
+  onBarClick: (event: React.MouseEvent<HTMLDivElement>, taskId: number) => void;
+  onBarEnter: (taskId: number) => void;
   onBarLeave: () => void;
-  onStartDrag: (event: ReactPointerEvent) => void;
-  onEndDrag: (event: ReactPointerEvent) => void;
-  onStartDependency: (event: ReactPointerEvent) => void;
-  onEndDependency: (event: ReactPointerEvent) => void;
+  onDependencyStart: (event: ReactPointerEvent, task: TaskTimelineRow, edge: "start" | "end") => void;
+  onDependencyCancel: (event: ReactPointerEvent) => void;
   onDependencyUp: (event: ReactPointerEvent) => void;
   onDependencyMove: (event: ReactPointerEvent) => void;
-  onDependencyEnter: () => void;
-  onDependencyLeave: () => void;
-  onToggleComplete: () => void;
+  onToggleComplete: (task: TaskTimelineRow) => void;
 };
 
 function TimelineBar({
   task,
   lane,
-  rowLocked,
   overlapping,
-  externalLabel,
   onMoveRow,
   x1,
   x2,
-  skinny,
-  sameDay,
-  labelOnLeft,
-  active,
-  dragMode,
-  dx,
+  min,
+  max,
+  dayWidth,
+  critical,
+  drag,
+  canReorder,
   hovered,
   overflow,
   dependencyTarget,
-  showAvatar,
-  showSubtasks,
-  barFaceClass,
-  barStyle,
-  startHandleStyle,
-  endHandleStyle,
-  activeGuideLeft,
-  barInfo,
   onBarPointerDown,
+  onResizeStart,
   onBarPointerMove,
   onBarPointerUp,
+  onBarPointerCancel,
   onBarClick,
   onBarEnter,
   onBarLeave,
-  onStartDrag,
-  onEndDrag,
-  onStartDependency,
-  onEndDependency,
+  onDependencyStart,
+  onDependencyCancel,
   onDependencyUp,
   onDependencyMove,
-  onDependencyEnter,
-  onDependencyLeave,
   onToggleComplete,
 }: TimelineBarProps) {
+  const days = timelineInterval(task)!;
+  const barPx = (Math.min(max, days.end) - Math.max(min, days.start) + 1) * dayWidth;
+  const rowLocked = task.timeline_row !== null && task.timeline_row !== undefined;
+  const skinny = barPx < 52;
+  const sameDay = isSingleDayTimelineTask(task);
+  const externalLabel = usesTimelineExternalLabel(task, barPx, dayWidth);
+  const labelOnLeft = parseFloat(x1) > 72;
+  const showAvatar = Boolean(task.assignee_name) && barPx >= 140;
+  const showSubtasks = task.subtask_count > 0 && barPx >= 160;
+  const defaultBarFace = "bg-white text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]";
+  const barFaceClass = task.is_milestone ? defaultBarFace
+    : task.completed ? "bg-[#aaaaaa] text-[#050505]"
+    : critical ? "bg-red-200 text-neutral-900"
+    : defaultBarFace;
+  const barInfo = `${task.name}（${task.start_on ?? "?"} 〜 ${task.due_on ?? "?"}・進捗${task.progress}%${task.assignee_name ? `・担当${task.assignee_name}` : ""}${rowLocked ? "・行固定" : ""}）${!task.completed && critical ? "【クリティカルパス】" : ""} — 左右で日付移動、上下で行移動、左右端で期間変更、Alt+上下で行移動`;
+
+  const active = drag !== null;
+  const dragMode = drag?.mode ?? null;
+  const dx = drag?.dx ?? 0;
+  const barStyle: CSSProperties = {
+    height: TIMELINE_BAR_HEIGHT,
+    left: x1,
+    width: `calc(${x2} - ${x1})`,
+    ...(drag ? timelineBarDragStyle({ ...drag, x1, x2, canReorder }) : {}),
+  };
+  // Short bars retain a usable center grip for vertical reordering.
+  const hit = Math.min(TIMELINE_EDGE_HIT, Math.max(4, (sameDay && !hovered ? 8 : barPx) / 4));
+  const handleStyle = (edge: "start" | "end"): CSSProperties => {
+    const anchor = edge === "start" ? x1 : x2;
+    const left = dragMode === edge || dragMode === "move" ? `calc(${anchor} + ${dx}px)` : anchor;
+    return {
+      height: TIMELINE_BAR_HEIGHT,
+      width: hit,
+      left,
+      marginLeft: edge === "end" ? -hit : 0,
+    };
+  };
+  const enterBar = () => onBarEnter(task.id);
   const completionLeft = `calc(${x1} + 4px)`;
   const milestone = task.is_milestone;
   const markerStyle = sameDay || milestone;
@@ -110,7 +132,7 @@ function TimelineBar({
     </span>
   );
   const dependencyHandleClass = (visible: boolean) =>
-    `absolute z-40 flex h-3.5 w-3.5 cursor-crosshair items-center justify-center rounded-full border border-neutral-400 bg-white shadow-sm hover:border-[#2c60b8] hover:bg-[#2c60b8] ${
+    `absolute z-40 flex h-3.5 w-3.5 cursor-crosshair touch-none items-center justify-center rounded-full border border-neutral-400 bg-white shadow-sm hover:border-[#2c60b8] hover:bg-[#2c60b8] ${
       visible ? "opacity-100" : "pointer-events-none opacity-0"
     }`;
 
@@ -129,14 +151,16 @@ function TimelineBar({
           if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
           event.preventDefault();
           event.stopPropagation();
-          onMoveRow(event.key === "ArrowUp" ? -1 : 1);
+          onMoveRow(task, event.key === "ArrowUp" ? -1 : 1);
         }}
-        onPointerDown={onBarPointerDown}
+        onPointerDown={(event) => onBarPointerDown(event, task)}
         onPointerMove={onBarPointerMove}
         onPointerUp={onBarPointerUp}
-        onPointerEnter={onBarEnter}
+        onPointerCancel={onBarPointerCancel}
+        onLostPointerCapture={onBarPointerCancel}
+        onPointerEnter={enterBar}
         onPointerLeave={onBarLeave}
-        onClick={onBarClick}
+        onClick={(event) => onBarClick(event, task.id)}
         className={`tl-bar group absolute top-[3px] flex min-w-2 cursor-grab select-none touch-none items-center gap-1.5 overflow-visible rounded-[4px] px-2 text-[12px] transition-[width,box-shadow] duration-150 active:cursor-grabbing hover:z-30 hover:shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${
           collapsedMarker && milestone ? "bg-transparent shadow-none" : barFaceClass
         } ${
@@ -208,30 +232,34 @@ function TimelineBar({
       <div
         data-timeline-handle="start"
         title="開始日を変更"
-        onPointerDown={onStartDrag}
+        onPointerDown={(event) => onResizeStart(event, task, "start")}
         onPointerMove={onBarPointerMove}
         onPointerUp={onBarPointerUp}
-        onPointerEnter={onBarEnter}
+        onPointerCancel={onBarPointerCancel}
+        onLostPointerCapture={onBarPointerCancel}
+        onPointerEnter={enterBar}
         onPointerLeave={onBarLeave}
         onClick={(event) => event.stopPropagation()}
         className={`tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-l-[4px] bg-transparent transition-colors hover:bg-[#2c60b8]/90 ${
           collapsedMarker ? "pointer-events-none" : ""
         }`}
-        style={startHandleStyle}
+        style={handleStyle("start")}
       />
       <div
         data-timeline-handle="end"
         title="期日を変更"
-        onPointerDown={onEndDrag}
+        onPointerDown={(event) => onResizeStart(event, task, "end")}
         onPointerMove={onBarPointerMove}
         onPointerUp={onBarPointerUp}
-        onPointerEnter={onBarEnter}
+        onPointerCancel={onBarPointerCancel}
+        onLostPointerCapture={onBarPointerCancel}
+        onPointerEnter={enterBar}
         onPointerLeave={onBarLeave}
         onClick={(event) => event.stopPropagation()}
         className={`tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-r-[4px] bg-transparent transition-colors hover:bg-[#2c60b8]/90 ${
           collapsedMarker ? "pointer-events-none" : ""
         }`}
-        style={endHandleStyle}
+        style={handleStyle("end")}
       />
 
       {!active && (
@@ -242,11 +270,13 @@ function TimelineBar({
             data-timeline-dependency-direction="precedent"
             aria-label="先行タスクとの依存関係を作成"
             title="ドラッグして依存関係を作成"
-            onPointerDown={onStartDependency}
+            onPointerDown={(event) => onDependencyStart(event, task, "start")}
             onPointerMove={onDependencyMove}
             onPointerUp={onDependencyUp}
-            onPointerEnter={onDependencyEnter}
-            onPointerLeave={onDependencyLeave}
+            onPointerCancel={onDependencyCancel}
+            onLostPointerCapture={onDependencyCancel}
+            onPointerEnter={enterBar}
+            onPointerLeave={onBarLeave}
             onClick={(event) => event.stopPropagation()}
             data-timeline-dependency-placement="top"
             style={{ left: `calc(${x1} + 8px)`, top: -8 }}
@@ -260,11 +290,13 @@ function TimelineBar({
             data-timeline-dependency-direction="dependent"
             aria-label="後続タスクとの依存関係を作成"
             title="ドラッグして依存関係を作成"
-            onPointerDown={onEndDependency}
+            onPointerDown={(event) => onDependencyStart(event, task, "end")}
             onPointerMove={onDependencyMove}
             onPointerUp={onDependencyUp}
-            onPointerEnter={onDependencyEnter}
-            onPointerLeave={onDependencyLeave}
+            onPointerCancel={onDependencyCancel}
+            onLostPointerCapture={onDependencyCancel}
+            onPointerEnter={enterBar}
+            onPointerLeave={onBarLeave}
             onClick={(event) => event.stopPropagation()}
             data-timeline-dependency-placement="bottom"
             style={{ left: `max(calc(${x1} + 8px), calc(${x2} - 22px))`, top: 32 }}
@@ -280,10 +312,11 @@ function TimelineBar({
           <TaskCompletionToggle
             data-timeline-complete={task.id}
             completed={task.completed}
-            onToggle={onToggleComplete}
+            {...(task.approval ? { "aria-label": "承認の詳細を開く", title: "承認の詳細を開く" } : {})}
+            onToggle={() => onToggleComplete(task)}
             onPointerDown={(event) => event.stopPropagation()}
-            onPointerEnter={onDependencyEnter}
-            onPointerLeave={onDependencyLeave}
+            onPointerEnter={enterBar}
+            onPointerLeave={onBarLeave}
             style={{ left: completionLeft, top: 12 }}
             className="absolute z-30 shadow-sm"
           />
@@ -313,10 +346,10 @@ function TimelineBar({
         </>
       )}
 
-      {active && dragMode !== "move" && (
+      {dragMode !== null && dragMode !== "move" && (
         <span
           className="pointer-events-none absolute top-0 z-30 h-10 w-px bg-[#2c60b8]"
-          style={{ left: activeGuideLeft }}
+          style={{ left: handleStyle(dragMode).left }}
         />
       )}
     </div>

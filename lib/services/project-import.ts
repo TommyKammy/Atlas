@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { withTransaction } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
 import { parseCsv } from "@/lib/csv";
-import { isBuiltinFieldType, type CustomFieldType } from "@/lib/custom-fields";
+import { canEditCustomField, isReadOnlyFieldType, normalizeAccessLevel, type CustomFieldType } from "@/lib/custom-fields";
+import { normalizeFieldEditorIds } from "@/lib/field-access";
+import { canManageProject, type ProjectRole } from "@/lib/project-roles";
+import { receiveMultipart } from "@/lib/api/multipart";
+import { text as readText } from "node:stream/consumers";
 
 const MAX_ROWS = 1000;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -14,18 +18,13 @@ const ROW_SAVEPOINT = "atlas_import_row";
  */
 export async function importProject(
   req: Request,
-  { uid, projectId }: { uid: number; projectId: number },
+  { uid, projectId, role }: { uid: number; projectId: number; role: ProjectRole },
 ): Promise<Response> {
 
-  const form = await req.formData();
-  const file = form.get("file");
-  if (!(file instanceof File)) {
+  const { file: text } = await receiveMultipart(req, MAX_BYTES, "file exceeds 5MB", readText);
+  if (text === undefined) {
     return NextResponse.json({ error: "file is required" }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "file exceeds 5MB" }, { status: 413 });
-  }
-  const text = await file.text();
   const records = parseCsv(text).filter((row) => row.some((cell) => cell.trim() !== ""));
   if (records.length < 2) return NextResponse.json({ error: "empty csv" }, { status: 400 });
 
@@ -40,11 +39,20 @@ export async function importProject(
 
   const result = await withTransaction(async (q) => {
     const fields = await q.query(
-      "SELECT id, name, field_type FROM custom_fields WHERE project_id = $1 AND deleted_at IS NULL",
+      `SELECT id, name, field_type, access_level, editor_ids
+       FROM custom_fields WHERE project_id = $1 AND deleted_at IS NULL
+       ORDER BY id FOR SHARE`,
       [projectId],
     );
     const fieldByName = new Map(
-      (fields.rows as { id: number; name: string; field_type: string }[]).map((f) => [f.name, f]),
+      fields.rows.map((field) => [String(field.name), {
+        id: Number(field.id),
+        field_type: field.field_type as CustomFieldType,
+        canWrite: canEditCustomField(
+          { access_level: normalizeAccessLevel(field.access_level), editor_ids: normalizeFieldEditorIds(field.editor_ids) },
+          { viewerId: uid, canEdit: true, canAdmin: canManageProject(role) },
+        ),
+      }]),
     );
     const users = await q.query("SELECT id, name FROM users");
     const userByName = new Map((users.rows as { id: number; name: string }[]).map((u) => [u.name, u.id]));
@@ -84,10 +92,19 @@ export async function importProject(
       const get = (i: number) => (cols[i] ?? "").trim();
       try {
         const kind = get(1);
+        if (kind !== "サブタスク") lastTop = null;
         const name = get(2);
         if (name === "") {
           skipped++;
           continue;
+        }
+        if (kind !== "サブタスク") {
+          const restricted = customNames.find((column, index) => {
+            const field = fieldByName.get(column);
+            return field && !field.canWrite && !isReadOnlyFieldType(field.field_type) &&
+              get(base.length + index) !== "";
+          });
+          if (restricted !== undefined) throw new Error(`field access denied: ${restricted}`);
         }
         const completed = get(3) === "完了";
         const assigneeId = get(4) === "" ? null : (userByName.get(get(4)) ?? null);
@@ -160,7 +177,7 @@ export async function importProject(
             const f = fieldByName.get(customNames[ci]);
             const raw = (cols[base.length + ci] ?? "").trim();
             if (!f || raw === "") continue;
-            const fieldType = f.field_type as CustomFieldType;
+            const fieldType = f.field_type;
             if (fieldType === "number" || fieldType === "timer") {
               const n = Number(raw);
               if (!Number.isFinite(n)) continue;
@@ -200,14 +217,7 @@ export async function importProject(
                   [newId, f.id, names.join(", "), JSON.stringify(ids)],
                 );
               }
-            } else if (
-              fieldType === "auto_id" ||
-              fieldType === "formula" ||
-              fieldType === "lookup" ||
-              fieldType === "rollup" ||
-              fieldType === "time_tracking" ||
-              isBuiltinFieldType(fieldType)
-            ) {
+            } else if (isReadOnlyFieldType(fieldType)) {
               continue;
             } else {
               await q.query(

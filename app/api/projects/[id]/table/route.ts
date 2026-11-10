@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { withProject } from "@/lib/api/route";
 import { badRequest } from "@/lib/api/errors";
+import { TASK_CUSTOM_VALUE_PAIRS, type TaskCustomValuePairs } from "@/lib/repositories/task-custom-value-pairs";
 
 type TableTask = {
   id: number;
@@ -15,7 +16,7 @@ type TableTask = {
   completed: boolean;
   status: string;
   progress: number;
-  custom_values: string | null;
+  custom_values: TaskCustomValuePairs;
 };
 
 /**
@@ -71,14 +72,7 @@ export const POST = withProject("edit", async (_req, { uid, projectId, role, bod
     const tasks = await db.query(
       `SELECT t.id, t.section_id, t.parent_task_id, t.name, u.name AS assignee,
          t.start_on::text AS start_on, t.due_on::text AS due_on,
-         t.completed, t.status, t.progress,
-         (SELECT string_agg(v.field_id || '=' || CASE
-            WHEN f.field_type IN ('number', 'timer')
-              THEN COALESCE(v.value_number::text, v.value_text, '')
-            ELSE COALESCE(v.value_text, v.value_number::text, '')
-          END, ';' ORDER BY v.field_id)
-          FROM task_custom_values v JOIN custom_fields f ON f.id = v.field_id
-          WHERE v.task_id = t.id AND f.deleted_at IS NULL) AS custom_values
+         t.completed, t.status, t.progress, ${TASK_CUSTOM_VALUE_PAIRS}
        FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
        WHERE t.project_id = $1::bigint AND t.deleted_at IS NULL
        ORDER BY t.position, t.id
@@ -86,11 +80,7 @@ export const POST = withProject("edit", async (_req, { uid, projectId, role, bod
       [projectId],
     );
     for (const task of tasks.rows as TableTask[]) {
-      const values = new Map<number, string>();
-      for (const pair of (task.custom_values ?? "").split(";").filter(Boolean)) {
-        const eq = pair.indexOf("=");
-        if (eq > 0) values.set(Number(pair.slice(0, eq)), pair.slice(eq + 1));
-      }
+      const values = new Map(task.custom_values ?? []);
       rows.push([
         task.section_id === null ? "" : (sectionName.get(Number(task.section_id)) ?? ""),
         task.parent_task_id === null ? task.name : `↳ ${task.name}`,
@@ -100,7 +90,7 @@ export const POST = withProject("edit", async (_req, { uid, projectId, role, bod
         task.completed ? "完了" : "未完了",
         task.progress,
         task.status,
-        ...fieldRows.map((field) => values.get(Number(field.id)) ?? ""),
+        ...fieldRows.map((field) => values.get(String(field.id)) ?? ""),
       ]);
     }
   }

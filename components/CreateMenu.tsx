@@ -46,7 +46,7 @@ export default function CreateMenu() {
   };
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex h-8 items-center gap-1 rounded-full bg-[#c94848] px-3 text-sm font-medium text-white hover:bg-[#b83c3c]"

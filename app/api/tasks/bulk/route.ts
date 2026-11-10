@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
-import { db, withTransaction } from "@/lib/db";
+import { db, withTransaction, type Queryable } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
 import { getTaskProjectIds, requireProjectPermission, requireWorkspaceAdmin } from "@/lib/api-project-auth";
 import { withUser } from "@/lib/api/route";
 import { audit } from "@/lib/audit";
+import { conflict } from "@/lib/api/errors";
 import { runAutomations } from "@/lib/automation-runner";
 import { emitTaskEvent } from "@/lib/domain/events";
-import { insertNextOccurrence, type RecurringTask } from "@/lib/services/task-write";
+import { recordTaskCompletion, TASK_COMPLETION_COLUMNS, type TaskCompletionRow } from "@/lib/services/task-completion";
+import { mutateTaskTrees } from "@/lib/services/task-tree-mutation";
+import { assertOrdinaryTaskMutation } from "@/lib/services/task-approval-guard";
 
 // Bulk task operations (last-writer-wins; per-item conflict UI is out of scope).
 // Body: { ids: number[], op: "complete"|"reopen"|"move"|"assign"|"delete",
@@ -49,41 +52,34 @@ export const POST = withUser(async (req, { uid }) => {
       return NextResponse.json({ error: "section does not belong to task project" }, { status: 400 });
     }
   }
+  const lockTaskProjects = async (q: Queryable) => {
+    await q.query("SELECT id FROM tasks WHERE id = ANY($1::bigint[]) ORDER BY id FOR UPDATE", [ids]);
+    const currentProjects = await getTaskProjectIds(ids, q);
+    if (ids.some((id) => currentProjects.get(id) !== projects.get(id))) {
+      throw conflict("task primary project changed");
+    }
+  };
   let updated = 0;
   if (op === "complete" || op === "reopen") {
     const done = op === "complete";
     const updatedIds = await withTransaction(async (q) => {
-      const r = await q.query(
+      await lockTaskProjects(q);
+      await assertOrdinaryTaskMutation(q, ids, { completed: done });
+      const r = await q.query<TaskCompletionRow>(
         `UPDATE tasks SET completed = $1, completed_at = ${done ? "now()" : "NULL"}, updated_at = now()
-         WHERE id = ANY($2::bigint[]) RETURNING id`,
+         WHERE id = ANY($2::bigint[]) AND completed IS DISTINCT FROM $1
+         RETURNING ${TASK_COMPLETION_COLUMNS}`,
         [done, ids],
       );
-      const changed = r.rows.map((row) => Number(row.id));
-      if (changed.length > 0) {
-        await q.query(
-          `INSERT INTO task_events (task_id, actor_id, kind, summary)
-           SELECT id, $2::bigint, $3, $4 FROM tasks WHERE id = ANY($1::bigint[])`,
-          [
-            changed,
-            uid,
-            done ? "completed" : "reopened",
-            done ? "タスクを完了しました" : "タスクを未完了に戻しました",
-          ],
-        );
+      for (const task of r.rows) {
+        await recordTaskCompletion(q, {
+          task,
+          projectId: projects.get(task.id) ?? null,
+          actorId: uid,
+          data: { bulk: true },
+        });
       }
-      if (done && changed.length > 0) {
-        const rec = await q.query(
-          `SELECT id, project_id, section_id, name, description, assignee_id,
-             start_on::text AS start_on, due_on::text AS due_on, status, recurrence,
-             is_milestone
-           FROM tasks WHERE id = ANY($1::bigint[]) AND recurrence <> 'none' AND parent_task_id IS NULL`,
-          [changed],
-        );
-        for (const task of rec.rows as RecurringTask[]) {
-          await insertNextOccurrence(q, task);
-        }
-      }
-      return changed;
+      return r.rows.map((row) => row.id);
     });
     updated = updatedIds.length;
     if (done) {
@@ -91,89 +87,55 @@ export const POST = withUser(async (req, { uid }) => {
         const projectId = projects.get(id) ?? null;
         if (projectId !== null) {
           await runAutomations(projectId, id, "task_completed").catch(() => undefined);
-          await emitTaskEvent({
-            projectId,
-            taskId: id,
-            actorId: uid,
-            type: "task.completed",
-            data: { bulk: true, previous: false, next: true },
-          }).catch(() => undefined);
-        }
-      }
-    } else {
-      for (const id of updatedIds) {
-        const projectId = projects.get(id) ?? null;
-        if (projectId !== null) {
-          await emitTaskEvent({
-            projectId,
-            taskId: id,
-            actorId: uid,
-            type: "task.reopened",
-            data: { bulk: true, previous: true, next: false },
-          }).catch(() => undefined);
         }
       }
     }
   } else if (op === "move") {
-    const r = await db.query(
-      `UPDATE tasks SET section_id = $1::bigint, updated_at = now() WHERE id = ANY($2::bigint[])`,
-      [body.section_id ?? null, ids],
-    );
-    updated = r.rowCount ?? 0;
-    if (projectIds.size > 0) {
-      await db
-        .query("DELETE FROM task_timeline_rows WHERE task_id = ANY($1::bigint[])", [ids])
-        .catch(() => undefined);
-    }
-    for (const id of ids) {
-      const projectId = projects.get(id) ?? null;
-      if (projectId !== null) {
+    updated = await withTransaction(async (q) => {
+      await lockTaskProjects(q);
+      const r = await q.query(
+        "UPDATE tasks SET section_id = $1::bigint, updated_at = now() WHERE id = ANY($2::bigint[])",
+        [body.section_id ?? null, ids],
+      );
+      if (projectIds.size > 0) {
+        await q.query("DELETE FROM task_timeline_rows WHERE task_id = ANY($1::bigint[])", [ids]);
+      }
+      for (const id of ids) {
         await emitTaskEvent({
-          projectId,
+          projectId: projects.get(id) ?? null,
           taskId: id,
           actorId: uid,
           type: "task.section_changed",
           data: { bulk: true, section_id: body.section_id ?? null },
-        }).catch(() => undefined);
+        }, q);
       }
-    }
+      return r.rowCount ?? 0;
+    });
   } else if (op === "assign") {
-    const r = await db.query(
-      `UPDATE tasks SET assignee_id = $1::bigint, updated_at = now() WHERE id = ANY($2::bigint[])`,
-      [body.assignee_id ?? null, ids],
-    );
-    updated = r.rowCount ?? 0;
-    await db.query(
-      `INSERT INTO task_events (task_id, actor_id, kind, summary)
-       SELECT id, $2::bigint, 'assignee_changed', '担当者を変更しました' FROM tasks WHERE id = ANY($1::bigint[])`,
-      [ids, uid],
-    ).catch(() => undefined);
-    for (const id of ids) {
-      const projectId = projects.get(id) ?? null;
-      if (projectId !== null) {
+    updated = await withTransaction(async (q) => {
+      await lockTaskProjects(q);
+      const r = await q.query(
+        "UPDATE tasks SET assignee_id = $1::bigint, updated_at = now() WHERE id = ANY($2::bigint[])",
+        [body.assignee_id ?? null, ids],
+      );
+      await q.query(
+        `INSERT INTO task_events (task_id, actor_id, kind, summary)
+         SELECT id, $2::bigint, 'assignee_changed', '担当者を変更しました' FROM tasks WHERE id = ANY($1::bigint[])`,
+        [ids, uid],
+      );
+      for (const id of ids) {
         await emitTaskEvent({
-          projectId,
+          projectId: projects.get(id) ?? null,
           taskId: id,
           actorId: uid,
           type: "task.assigned",
           data: { bulk: true, assignee_id: body.assignee_id ?? null },
-        }).catch(() => undefined);
+        }, q);
       }
-    }
+      return r.rowCount ?? 0;
+    });
   } else if (op === "delete") {
-    if (body.force === true) {
-      const r = await db.query(`DELETE FROM tasks WHERE id = ANY($1::bigint[])`, [ids]);
-      updated = r.rowCount ?? 0;
-    } else {
-      const r = await db.query(
-        `WITH RECURSIVE sub AS (
-           SELECT id FROM tasks WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL
-           UNION ALL SELECT t.id FROM tasks t JOIN sub s ON t.parent_task_id = s.id WHERE t.deleted_at IS NULL
-         ) UPDATE tasks SET deleted_at = now(), updated_at = now() WHERE id IN (SELECT id FROM sub) RETURNING id`,
-        [ids],
-      );
-      updated = r.rowCount ?? 0;
-    }
+    updated = await mutateTaskTrees(projects, body.force === true ? "purge" : "trash");
   } else {
     return NextResponse.json({ error: "unknown op" }, { status: 400 });
   }

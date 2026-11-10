@@ -16,6 +16,7 @@ export type TemplateTask = {
   start_offset_days?: number | null;
   status?: string;
   progress?: number;
+  is_milestone?: boolean;
   subtasks?: TemplateTask[];
   values?: TemplateValue[];
 };

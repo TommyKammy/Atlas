@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { api } from "@/lib/api-client";
+import { useState, type SetStateAction } from "react";
+import { api, ApiError } from "@/lib/api-client";
+import { ruleEditorDefinition, ruleEditorDraft, toggleRuleBranches, type RuleEditorDraft } from "@/lib/automation/editor-draft";
+import { configuredTaskId, hasTaskSubject } from "@/lib/automation/task-target";
 import type {
   DescriptorOption,
   DescriptorParam,
@@ -11,16 +13,47 @@ import type {
   ProjectRule,
   RuleAction,
   RuleCondition,
-  RulePath,
+  RuleDefinition,
   RuleTrigger,
 } from "@/lib/automation/types";
 import { toast } from "@/lib/ui-feedback";
 import Dialog from "../ui/Dialog";
+import AutomationCustomFieldValue from "./AutomationCustomFieldValue";
 
 const inputClass =
   "mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[12px] outline-none focus:border-[#2c60b8]";
 const areaClass =
   "mt-1 min-h-[68px] w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[12px] outline-none focus:border-[#2c60b8]";
+
+function actionWithParam(action: RuleAction, name: string, value: unknown): RuleAction {
+  const params = { ...action.params, [name]: value };
+  if (action.capability === "task.set_custom_field" && name === "field_id") params.value = undefined;
+  return { ...action, params };
+}
+
+function ActionParamField({ action, descriptors, param, value, onChange }: {
+  action: RuleAction;
+  descriptors: RuleDescriptors;
+  param: DescriptorParam;
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  if (action.capability === "task.set_custom_field" && param.name === "value") {
+    const field = descriptors.customFields.find((entry) => entry.id === Number(action.params.field_id));
+    return (
+      <div>
+        <AutomationCustomFieldValue key={field?.id ?? "none"} field={field} value={value} onChange={onChange}
+          users={descriptors.conditionFields.find((entry) => entry.id === "task.assignee_id")?.options ?? []} />
+        {field && <button type="button" className="mt-1 text-[11px] text-neutral-500 hover:text-neutral-800"
+          onClick={() => onChange(null)}>値をクリア</button>}
+        {value === null && <p className="mt-1 text-[11px] text-neutral-500">実行すると値をクリアします。</p>}
+      </div>
+    );
+  }
+  return <ParamField param={param} value={value} onChange={onChange} />;
+}
+
+type RuleSuggestion = { name: string; description: string; definition: RuleDefinition };
 
 function defaultParams(paramDefs: DescriptorParam[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
@@ -88,7 +121,7 @@ function ParamField({
     <label className="block">
       {label}
       <input
-        type={param.type === "number" ? "number" : param.type === "date" ? "date" : "text"}
+        type={param.type === "number" || param.type === "date" || param.type === "password" ? param.type : "text"}
         value={String(value ?? "")}
         onChange={(event) => onChange(event.target.value)}
         placeholder={param.placeholder}
@@ -119,31 +152,50 @@ export default function AutomationRuleBuilder({
   const apiBase = ruleApiBase ?? `/api/projects/${projectId}/rules`;
   const suggestUrl =
     aiSuggestUrl ?? `/api/projects/${projectId}/rules/ai-suggest`;
-  const [name, setName] = useState(rule?.name ?? "");
-  const [description, setDescription] = useState(rule?.description ?? "");
-  const [triggers, setTriggers] = useState<RuleTrigger[]>(
-    rule?.definition.triggers.length
-      ? rule.definition.triggers
-      : [{ event: "task.created" }],
-  );
-  const [conditions, setConditions] = useState<RuleCondition[]>(
-    rule?.definition.conditions ?? [],
-  );
-  const [actions, setActions] = useState<RuleAction[]>(
-    rule?.definition.actions?.length
-      ? rule.definition.actions
-      : (() => {
-          const first = descriptors.actions[0];
-          return first ? [{ capability: first.id, params: defaultParams(first.params) }] : [];
-        })(),
-  );
-  const [useBranches, setUseBranches] = useState(Boolean(rule?.definition.branches?.length));
-  const [branches, setBranches] = useState<RulePath[]>(rule?.definition.branches ?? []);
+  const [draft, setDraft] = useState(() => ruleEditorDraft(rule ?? {
+    name: "",
+    description: "",
+    definition: {
+      version: 1,
+      triggers: [{ event: "task.created" }],
+      actions: descriptors.actions[0]
+        ? [{ capability: descriptors.actions[0].id, params: defaultParams(descriptors.actions[0].params) }]
+        : [],
+    },
+  }));
+  const { name, description, triggers, conditions, actions, useBranches, branches } = draft;
+  function draftSetter<K extends keyof RuleEditorDraft>(key: K) {
+    return (next: SetStateAction<RuleEditorDraft[K]>) => setDraft((current) => ({
+      ...current,
+      [key]: typeof next === "function" ? next(current[key]) : next,
+    }));
+  }
+  const setName = draftSetter("name");
+  const setDescription = draftSetter("description");
+  const setTriggers = draftSetter("triggers");
+  const setConditions = draftSetter("conditions");
+  const setActions = draftSetter("actions");
+  const setBranches = draftSetter("branches");
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(rule?.updated_at);
+  const [conflict, setConflict] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
+  const [suggestion, setSuggestion] = useState<RuleSuggestion | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const actionDescriptor = (id: string) => descriptors.actions.find((action) => action.id === id);
+  const taskTriggersOnly = triggers.every((trigger) => hasTaskSubject(trigger.event));
+  const needsTaskTarget = (requiresTask: boolean, taskId?: unknown) =>
+    requiresTask && !taskTriggersOnly && configuredTaskId(taskId) === null;
+  const actionOptions = (current: RuleAction) => descriptors.actions.map((entry) => {
+    const taskId = entry.id === current.capability ? current.params.task_id : undefined;
+    const disabled = needsTaskTarget(entry.requiresTask, taskId);
+    return (
+      <option key={entry.id} value={entry.id} disabled={disabled}>
+        {entry.label}{disabled ? "（タスクが必要）" : ""}
+      </option>
+    );
+  });
 
   const addTrigger = () => {
     if (triggers.length >= descriptors.limits.triggersPerRule) return;
@@ -159,38 +211,16 @@ export default function AutomationRuleBuilder({
   };
   const addAction = () => {
     if (actions.length >= descriptors.limits.actionsPerRule) return;
-    const first = descriptors.actions[0];
-    if (!first) return;
-    setActions((current) => [
-      ...current,
-      { capability: first.id, params: defaultParams(first.params) },
-    ]);
+    setActions((current) => [...current, blankAction()]);
   };
 
   const blankAction = (): RuleAction => {
-    const first = descriptors.actions[0];
+    const first = descriptors.actions.find((action) => !needsTaskTarget(action.requiresTask));
     return first ? { capability: first.id, params: defaultParams(first.params) } : { capability: "", params: {} };
   };
 
   const toggleBranches = () => {
-    if (useBranches) {
-      const first = branches[0];
-      if (first) setActions(first.actions);
-      setBranches([]);
-      setUseBranches(false);
-      return;
-    }
-    if (branches.length === 0) {
-      setBranches([
-        {
-          name: "パス1",
-          conditions: [],
-          actions: actions.length > 0 ? actions : [blankAction()],
-        },
-      ]);
-      setActions([]);
-    }
-    setUseBranches(true);
+    setDraft((current) => toggleRuleBranches(current, blankAction()));
   };
 
   const addBranch = () => {
@@ -216,25 +246,13 @@ export default function AutomationRuleBuilder({
   };
 
   const suggest = async () => {
-    if (aiPrompt.trim() === "") return;
+    if (busy || aiPrompt.trim() === "") return;
     setBusy(true);
     setError("");
+    setSuggestion(null);
     try {
-      const result = await api<{
-        name: string;
-        description: string;
-        definition: {
-          triggers: RuleTrigger[];
-          conditions?: RuleCondition[];
-          actions?: RuleAction[];
-        };
-      }>(suggestUrl, "POST", { prompt: aiPrompt.trim() });
-      setName(result.name);
-      setDescription(result.description);
-      setTriggers(result.definition.triggers);
-      setConditions(result.definition.conditions ?? []);
-      setActions(result.definition.actions ?? []);
-      toast("AIアシストがルール案を作成しました");
+      const result = await api<RuleSuggestion>(suggestUrl, "POST", { prompt: aiPrompt.trim() });
+      setSuggestion(result);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "提案の作成に失敗しました");
     } finally {
@@ -243,7 +261,7 @@ export default function AutomationRuleBuilder({
   };
 
   const save = async () => {
-    if (busy) return;
+    if (busy || conflict) return;
     if (name.trim() === "") {
       setError("ルール名を入力してください");
       return;
@@ -261,18 +279,23 @@ export default function AutomationRuleBuilder({
       setError("アクションを1つ以上設定してください");
       return;
     }
+    const configuredActions = useBranches ? branches.flatMap((branch) => branch.actions) : actions;
+    const incompatible = configuredActions.find((action) =>
+      needsTaskTarget(actionDescriptor(action.capability)?.requiresTask === true, action.params.task_id),
+    );
+    if (incompatible) {
+      const label = actionDescriptor(incompatible.capability)?.label ?? incompatible.capability;
+      setError(`「${label}」には、タスクを対象とするトリガーまたは固定のタスクIDが必要です`);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       const payload = {
         name: name.trim(),
         description: description.trim(),
-        definition: {
-          version: 1 as const,
-          triggers,
-          conditions,
-          ...(useBranches ? { branches } : { actions }),
-        },
+        ...(rule ? { webhookActionIds: true, expected_updated_at: baseUpdatedAt } : {}),
+        definition: ruleEditorDefinition(draft),
       };
       if (rule) {
         await api(`${apiBase}/${rule.id}`, "PATCH", payload);
@@ -282,7 +305,26 @@ export default function AutomationRuleBuilder({
       onSaved();
       onClose();
     } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 409) setConflict(true);
       setError(caught instanceof Error ? caught.message : "保存に失敗しました");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reloadLatest = async () => {
+    if (!rule || busy) return;
+    setBusy(true);
+    try {
+      const { rules } = await api<{ rules: ProjectRule[] }>(apiBase);
+      const latest = rules.find((entry) => entry.id === rule.id);
+      if (!latest) throw new Error("このルールは削除されました。閉じて一覧を更新してください");
+      setDraft(ruleEditorDraft(latest));
+      setBaseUpdatedAt(latest.updated_at);
+      setConflict(false);
+      setError("");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "再読み込みに失敗しました");
     } finally {
       setBusy(false);
     }
@@ -333,6 +375,18 @@ export default function AutomationRuleBuilder({
               提案
             </button>
           </div>
+          {suggestion && (
+            <div className="mt-3 rounded-md border border-[#dbe7fb] bg-white p-3 text-[12px]" role="status">
+              <p className="font-medium text-neutral-800">AIの提案: {suggestion.name}</p>
+              <p className="mt-1 text-neutral-500">{suggestion.description}</p>
+              <p className="mt-1 text-[11px] text-neutral-500">適用すると、現在のトリガー・条件・アクション・分岐を提案全体で置き換えます。</p>
+              <button type="button" disabled={busy} onClick={() => {
+                setDraft(ruleEditorDraft(suggestion));
+                setSuggestion(null);
+                toast("AIの提案を適用しました");
+              }} className="mt-2 text-[#2c60b8] hover:underline disabled:opacity-50">AIの提案を適用</button>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -872,11 +926,7 @@ export default function AutomationRuleBuilder({
                               }}
                               className={inputClass}
                             >
-                              {descriptors.actions.map((entry) => (
-                                <option key={entry.id} value={entry.id}>
-                                  {entry.label}
-                                </option>
-                              ))}
+                              {actionOptions(action)}
                             </select>
                             <button
                               type="button"
@@ -903,8 +953,10 @@ export default function AutomationRuleBuilder({
                           {descriptor && descriptor.params.length > 0 && (
                             <div className="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                               {descriptor.params.map((param) => (
-                                <ParamField
+                                <ActionParamField
                                   key={param.name}
+                                  action={action}
+                                  descriptors={descriptors}
                                   param={param}
                                   value={action.params[param.name]}
                                   onChange={(value) =>
@@ -915,10 +967,7 @@ export default function AutomationRuleBuilder({
                                               ...entry,
                                               actions: entry.actions.map((item, itemIndex) =>
                                                 itemIndex === actionIndex
-                                                  ? {
-                                                      ...item,
-                                                      params: { ...item.params, [param.name]: value },
-                                                    }
+                                                  ? actionWithParam(item, param.name, value)
                                                   : item,
                                               ),
                                             }
@@ -978,11 +1027,7 @@ export default function AutomationRuleBuilder({
                         onChange={(event) => setAction(index, event.target.value)}
                         className={inputClass}
                       >
-                        {descriptors.actions.map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.label}
-                          </option>
-                        ))}
+                        {actionOptions(action)}
                       </select>
                     </label>
                     <button
@@ -1001,15 +1046,17 @@ export default function AutomationRuleBuilder({
                   {descriptor && descriptor.params.length > 0 && (
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {descriptor.params.map((param) => (
-                        <ParamField
+                        <ActionParamField
                           key={param.name}
+                          action={action}
+                          descriptors={descriptors}
                           param={param}
                           value={action.params[param.name]}
                           onChange={(value) =>
                             setActions((current) =>
                               current.map((entry, entryIndex) =>
                                 entryIndex === index
-                                  ? { ...entry, params: { ...entry.params, [param.name]: value } }
+                                  ? actionWithParam(entry, param.name, value)
                                   : entry,
                               ),
                             )
@@ -1029,6 +1076,15 @@ export default function AutomationRuleBuilder({
         )}
 
         {error !== "" && <p className="mt-4 text-[12px] text-rose-600">{error}</p>}
+        {conflict && (
+          <div className="mt-2 text-[12px] text-neutral-600" role="alert">
+            編集中の内容は保持しています。最新のルールを読み込んでから編集を続けてください。
+            <button type="button" onClick={() => void reloadLatest()} disabled={busy}
+              className="mt-2 block text-[#2c60b8] hover:underline disabled:opacity-50">
+              最新のルールを読み込む（編集中の内容を破棄）
+            </button>
+          </div>
+        )}
 
         <div className="mt-5 rounded-md bg-neutral-50 px-3 py-2 text-[10px] text-neutral-500">
           変数: <code>{"{{task.name}}"}</code>, <code>{"{{task.due_on}}"}</code>,{" "}
@@ -1047,7 +1103,7 @@ export default function AutomationRuleBuilder({
         <button
           type="button"
           onClick={() => void save()}
-          disabled={busy}
+          disabled={busy || conflict}
           className="h-8 rounded-md bg-[#2c60b8] px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
         >
           {busy ? "保存中…" : rule ? "変更を保存" : "ルールを作成"}

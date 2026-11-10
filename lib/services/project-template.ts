@@ -3,6 +3,7 @@ import { todayISO } from "@/lib/dates";
 import { audit } from "@/lib/audit";
 import { badRequest } from "@/lib/api/errors";
 import { getProjectTaskForest, type ProjectTaskForestNode } from "@/lib/project-task-forest";
+import { copyRuleWithoutWebhookCredentials } from "@/lib/automation/webhook-credentials";
 
 type SnapshotValue = {
   field_index: number;
@@ -19,6 +20,7 @@ type SnapshotNode = {
   assignee_id: number | null;
   status: string;
   progress: number;
+  is_milestone: boolean;
   due_offset_days: number | null;
   start_offset_days: number | null;
   subtasks: SnapshotNode[];
@@ -135,6 +137,7 @@ export async function saveProjectTemplate({
       assignee_id: task.assignee_id === null ? null : Number(task.assignee_id),
       status: task.status ?? "inbox",
       progress: Number(task.progress ?? 0),
+      is_milestone: task.parent_task_id === null && task.is_milestone,
       due_offset_days: offsetDays(task.due_on, today),
       start_offset_days: offsetDays(task.start_on, today),
       subtasks,
@@ -207,7 +210,7 @@ export async function saveProjectTemplate({
       description: string;
       definition: unknown;
       enabled: boolean;
-    }[]).map((rule) => ({
+    }[]).map((rule) => copyRuleWithoutWebhookCredentials({
       name: rule.name,
       description: rule.description,
       definition: rule.definition,

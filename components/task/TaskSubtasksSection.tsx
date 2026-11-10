@@ -80,7 +80,12 @@ export default function TaskSubtasksSection({
             data-subtask-row={subtask.id}
             className="group/sub flex min-h-8 items-center gap-2 border-b border-neutral-100 py-1 text-[13px]"
           >
-            <TaskCompletionToggle completed={subtask.completed} milestone={subtask.is_milestone} onToggle={() => onToggle(subtask)} />
+            {subtask.approval ? <Link
+              href={`/projects/${projectId}?view=${view}&task=${subtask.id}&approval=1`}
+              aria-label={`${subtask.name} の承認を開く`}
+              title="承認の詳細を開く"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-blue-300 text-[10px] text-blue-700 hover:bg-blue-50"
+            >承</Link> : <TaskCompletionToggle completed={subtask.completed} milestone={subtask.is_milestone} onToggle={() => onToggle(subtask)} />}
             <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}`}
               className={`min-w-0 flex-1 truncate hover:text-blue-700 hover:underline ${

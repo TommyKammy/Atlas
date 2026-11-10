@@ -26,6 +26,13 @@ export type SecuritySettings = {
   updated_at: string;
 };
 
+export function requiresSaml(
+  mode: SecuritySettings["saml_mode"],
+  user: { is_admin: boolean; is_guest: boolean },
+): boolean {
+  return !user.is_admin && (mode === "required" || (mode === "members_only" && !user.is_guest));
+}
+
 export type TeamMember = {
   id: number;
   name: string;

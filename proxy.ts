@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { isSessionToken, SESSION_COOKIE } from "@/lib/session-token";
+import { STATIC_SECURITY_HEADERS } from "@/lib/security-headers";
 
 function securityHeaders(nonce: string): Record<string, string> {
   // React's development build needs eval() for debugging features. Keep the
@@ -23,11 +24,8 @@ function securityHeaders(nonce: string): Record<string, string> {
     "form-action 'self'",
   ].join("; ");
   return {
+    ...STATIC_SECURITY_HEADERS,
     "Content-Security-Policy": csp,
-    "X-Content-Type-Options": "nosniff",
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    "X-Frame-Options": "DENY",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
   };
 }
 
@@ -73,5 +71,7 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth).*)"],
+  // These two authenticated JSON routes consume multipart bodies directly.
+  // Next's Proxy otherwise clones the request body before the handler runs.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth|api/attachments/?$|api/projects/[^/]+/import/?$).*)"],
 };

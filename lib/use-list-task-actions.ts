@@ -37,8 +37,8 @@ export function useListTaskActions({
     const name = subDraft.trim();
     if (!name) return;
     await api("/api/tasks", "POST", {
-      project_id: projectId,
-      section_id: parent.eff_section_id ?? parent.section_id,
+      project_id: parent.project_id ?? projectId,
+      section_id: parent.section_id,
       parent_task_id: parent.id,
       name,
     });

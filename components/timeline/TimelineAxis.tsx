@@ -1,14 +1,9 @@
 "use client";
 
-export type TimelineAxisInterval = {
-  key: string;
-  start: number;
-  end: number;
-  label: string;
-  daysWide: number;
-};
+import { memo } from "react";
+import type { TimelineAxisInterval } from "@/lib/timeline-axis";
 
-export default function TimelineAxis({
+function TimelineAxis({
   axisTop,
   axisBottom,
   weekendDays,
@@ -103,3 +98,5 @@ export default function TimelineAxis({
     </>
   );
 }
+
+export default memo(TimelineAxis);

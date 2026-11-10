@@ -3,7 +3,10 @@ import { withUser } from "@/lib/api/route";
 import { getWorkspace } from "@/lib/data";
 import { audit } from "@/lib/audit";
 import { validateRuleDefinition } from "@/lib/automation/validate";
+import { validateRuleConditionScope } from "@/lib/automation/condition-validation";
+import { validateRuleCustomFieldActions } from "@/lib/automation/custom-field-actions";
 import type { RuleDefinition } from "@/lib/automation/types";
+import { retainWebhookSecrets } from "@/lib/automation/webhook-credentials";
 import {
   deletePortfolioRule,
   getPortfolio,
@@ -34,7 +37,26 @@ export const PATCH = withUser(async (req, { uid, params }) => {
     description?: unknown;
     definition?: unknown;
     enabled?: unknown;
+    webhookActionIds?: unknown;
+    expected_updated_at?: unknown;
   } | null;
+  if (body?.enabled !== undefined && typeof body.enabled !== "boolean") {
+    return NextResponse.json({ error: "enabled must be a boolean" }, { status: 400 });
+  }
+  // Replicas execute the definition with the portfolio rule owner's permissions.
+  if (loaded.rule.owner_id !== uid && (body?.definition !== undefined || body?.enabled === true)) {
+    return NextResponse.json(
+      { error: "ルールの定義を変更・有効化できるのは所有者のみです" },
+      { status: 403 },
+    );
+  }
+  if (body?.expected_updated_at !== undefined &&
+      (typeof body.expected_updated_at !== "string" || body.expected_updated_at.trim() === "")) {
+    return NextResponse.json({ error: "invalid expected_updated_at" }, { status: 400 });
+  }
+  if (body?.expected_updated_at !== undefined && body.expected_updated_at !== loaded.rule.updated_at) {
+    return NextResponse.json({ error: "ルールが更新されました。最新のルールを読み込んでください" }, { status: 409 });
+  }
   const patch: {
     name?: string;
     description?: string;
@@ -43,15 +65,29 @@ export const PATCH = withUser(async (req, { uid, params }) => {
   } = {};
   if (typeof body?.name === "string" && body.name.trim() !== "") patch.name = body.name.trim();
   if (typeof body?.description === "string") patch.description = body.description.trim();
+  if (body?.enabled === true && body.definition === undefined) {
+    const validated = validateRuleDefinition(loaded.rule.definition);
+    if (!validated.ok) return NextResponse.json({ error: validated.error }, { status: 400 });
+  }
   if (body?.definition !== undefined) {
     const validated = validateRuleDefinition(body.definition);
     if (!validated.ok) {
       return NextResponse.json({ error: validated.error }, { status: 400 });
     }
-    patch.definition = validated.definition;
+    const conditions = await validateRuleConditionScope(validated.definition, { portfolioId: id }, uid);
+    if (!conditions.ok) return NextResponse.json({ error: conditions.error }, { status: 400 });
+    const retained = retainWebhookSecrets(validated.definition, loaded.rule.definition,
+      `portfolio:${loaded.rule.id}:${loaded.rule.version}`, body.webhookActionIds === true);
+    if (!retained.ok) return NextResponse.json({ error: retained.error }, { status: 400 });
+    patch.definition = retained.definition;
+    const customFields = await validateRuleCustomFieldActions(patch.definition, uid);
+    if (!customFields.ok) return NextResponse.json({ error: customFields.error }, { status: customFields.status });
   }
   if (typeof body?.enabled === "boolean") patch.enabled = body.enabled;
-  await updatePortfolioRule(ruleId, id, patch);
+  const updated = await updatePortfolioRule(ruleId, id, patch, loaded.rule.version, loaded.rule.updated_at);
+  if (!updated) {
+    return NextResponse.json({ error: "ルールが更新されました。最新のルールを読み込んでください" }, { status: 409 });
+  }
   await audit(uid, "portfolio_rule.update", {
     entity: "portfolio_rule",
     entityId: ruleId,

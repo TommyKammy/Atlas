@@ -5,6 +5,7 @@ import type { BundleField, BundleRule } from "@/lib/bundles";
 import { validateRuleDefinition } from "@/lib/automation/validate";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
+import { copyRuleWithoutWebhookCredentials } from "@/lib/automation/webhook-credentials";
 
 export const POST = withProject("edit", async (_req, { uid, projectId, params }) => {
   const id = params.id;
@@ -46,6 +47,7 @@ export const POST = withProject("edit", async (_req, { uid, projectId, params })
       for (const rule of rules.slice(0, 50)) {
         const validated = validateRuleDefinition(rule.definition);
         if (!validated.ok) continue;
+        const copy = copyRuleWithoutWebhookCredentials({ ...rule, definition: validated.definition });
         await q.query(
           `INSERT INTO project_rules (
              workspace_id, project_id, name, description, definition, owner_id, enabled
@@ -55,9 +57,9 @@ export const POST = withProject("edit", async (_req, { uid, projectId, params })
             projectId,
             rule.name.slice(0, 120),
             (rule.description ?? "").slice(0, 1000),
-            JSON.stringify(validated.definition),
+            JSON.stringify(copy.definition),
             uid,
-            rule.enabled !== false,
+            copy.enabled !== false,
           ],
         );
         createdRules += 1;

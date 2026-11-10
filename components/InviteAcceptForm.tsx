@@ -56,7 +56,11 @@ export default function InviteAcceptForm({ token }: { token: string }) {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? `参加に失敗しました (${res.status})`);
-      router.push("/");
+      if (data?.saml_required) {
+        window.location.assign(new URL("/api/auth/saml/start", window.location.origin));
+        return;
+      }
+      router.push(data?.two_factor_setup_required ? "/profile#two-factor" : "/");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

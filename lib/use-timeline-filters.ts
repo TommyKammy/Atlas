@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { TaskRow } from "./data";
+import type { TaskTimelineRow } from "./timeline-task-payload";
 import {
   parseListDateFilter,
   taskMatchesListFilters,
@@ -26,7 +26,7 @@ export function useTimelineFilters({
   viewerId,
   statusFieldEnabled,
 }: {
-  tasks: TaskRow[];
+  tasks: TaskTimelineRow[];
   initialState?: StoredState;
   viewerId: number;
   statusFieldEnabled: boolean;
@@ -148,7 +148,7 @@ export function useTimelineFilters({
     setCompletedDateFilter("");
   };
 
-  const persistedState = {
+  const persistedState = useMemo(() => ({
     hide_completed: hideCompleted,
     completed_only: completedOnly,
     mine_only: mineOnly,
@@ -161,7 +161,10 @@ export function useTimelineFilters({
     updated: updatedFilter,
     completed_on: completedDateFilter,
     sort: sortBy,
-  };
+  }), [
+    hideCompleted, completedOnly, mineOnly, assigneeFilter, statusFilter, dueFilter,
+    startFilter, creatorFilter, createdFilter, updatedFilter, completedDateFilter, sortBy,
+  ]);
 
   return {
     filters,

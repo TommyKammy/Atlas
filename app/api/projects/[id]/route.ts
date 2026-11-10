@@ -9,12 +9,17 @@ import { detachMultiHomedTasks } from "@/lib/project-delete";
 export const DELETE = withProject("admin", async (_req, { uid, projectId }) => {
   const movedTasks = await withTransaction(async (q) => {
     const moved = await detachMultiHomedTasks(q, projectId);
-    await audit(uid, "project.delete", {
-      entity: "project",
-      entityId: projectId,
-      projectId,
-      summary: `hard delete; multi-homed tasks moved: ${moved}`,
-    });
+    // Another authorized DELETE may have completed while this request waited
+    // for the deletion gate. Keep that retry idempotent without a stale audit FK.
+    const existing = await q.query("SELECT 1 FROM projects WHERE id = $1::bigint", [projectId]);
+    if (existing.rowCount) {
+      await audit(uid, "project.delete", {
+        entity: "project",
+        entityId: projectId,
+        projectId,
+        summary: `hard delete; multi-homed tasks moved: ${moved}`,
+      }, q);
+    }
     await q.query("DELETE FROM projects WHERE id = $1::bigint", [projectId]);
     return moved;
   });
@@ -25,6 +30,7 @@ export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
   const body = await req.json().catch(() => ({}));
   const sets: string[] = [];
   const values: unknown[] = [];
+  let statusOptions: string[] | undefined;
   if (typeof body.name === "string" && body.name.trim() !== "") {
     values.push(body.name.trim().slice(0, 100));
     sets.push(`name = $${values.length}`);
@@ -54,6 +60,7 @@ export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
     if (opts.length === 0) {
       return NextResponse.json({ error: "status_options must be a non-empty array" }, { status: 400 });
     }
+    statusOptions = opts;
     values.push(JSON.stringify(opts));
     sets.push(`status_options = $${values.length}::jsonb`);
   }
@@ -81,6 +88,22 @@ export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
         .filter((entry: { from: string; to: string }) => entry.from !== "" && entry.to !== "" && entry.from !== entry.to)
         .slice(0, 20)
     : [];
+  if (new Set(statusRenames.map(({ from }) => from)).size !== statusRenames.length) {
+    return NextResponse.json({ error: "status_renames must have unique source names" }, { status: 400 });
+  }
+  const expectedVersion: unknown = body.expected_status_options_version;
+  if (expectedVersion !== undefined &&
+      (!statusOptions || typeof expectedVersion !== "number" || !Number.isInteger(expectedVersion) ||
+        expectedVersion < 0 || expectedVersion > 2_147_483_647)) {
+    return NextResponse.json({ error: "invalid expected_status_options_version" }, { status: 400 });
+  }
+  if (statusRenames.length && (!statusOptions || expectedVersion === undefined)) {
+    return NextResponse.json({ error: "status_renames requires options and their expected version" }, { status: 400 });
+  }
+  if (statusRenames.some(({ to }) => !statusOptions?.includes(to))) {
+    return NextResponse.json({ error: "status_renames targets must be included in status_options" }, { status: 400 });
+  }
+  if (statusOptions) sets.push("status_options_version = status_options_version + 1");
   if ("color" in body) {
     const color = body.color;
     if (color !== null && (typeof color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(color))) {
@@ -164,22 +187,46 @@ export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
     );
   }
   values.push(projectId);
-  const r = await db.query(
-    `UPDATE projects SET ${sets.join(", ")} WHERE id = $${values.length}::bigint RETURNING id`,
-    values,
-  );
-  if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  for (const rename of statusRenames) {
-    await db.query(
-      `UPDATE tasks SET status = $1, updated_at = now()
-       WHERE project_id = $2::bigint AND status = $3 AND deleted_at IS NULL`,
-      [rename.to, projectId, rename.from],
+  let where = `id = $${values.length}::bigint`;
+  if (expectedVersion !== undefined) {
+    values.push(expectedVersion);
+    where += ` AND status_options_version = $${values.length}::int`;
+  }
+  const updated = await withTransaction(async (q) => {
+    const project = await q.query<{ status_options_version: number }>(
+      `UPDATE projects SET ${sets.join(", ")} WHERE ${where} RETURNING status_options_version`,
+      values,
     );
+    if (!project.rows[0]) return null;
+    if (statusRenames.length > 0) {
+      // One UPDATE maps the original values, so chains and swaps cannot
+      // remap a task that was already renamed by this request.
+      await q.query(
+        `UPDATE tasks t SET status = rename.new_status, updated_at = now()
+         FROM unnest($1::text[], $2::text[]) AS rename(old_status, new_status)
+         WHERE t.project_id = $3::bigint AND t.deleted_at IS NULL AND t.status = rename.old_status`,
+        [statusRenames.map(({ from }) => from), statusRenames.map(({ to }) => to), projectId],
+      );
+    }
+    return project.rows[0];
+  });
+  if (!updated) {
+    if (expectedVersion !== undefined) {
+      const current = await db.query(
+        `SELECT status_options, status_options_version, status_field_name, status_field_enabled
+         FROM projects WHERE id = $1::bigint`,
+        [projectId],
+      );
+      if (current.rows[0]) {
+        return NextResponse.json({ error: "status options changed", ...current.rows[0] }, { status: 409 });
+      }
+    }
+    return NextResponse.json({ error: "not found" }, { status: 404 });
   }
   await audit(uid, "project.update", {
     entity: "project",
     entityId: projectId,
   });
   await import("@/lib/notify").then((m) => m.notifyProject(projectId));
-  return NextResponse.json({ id: projectId });
+  return NextResponse.json(statusOptions ? { id: projectId, ...updated } : { id: projectId });
 });

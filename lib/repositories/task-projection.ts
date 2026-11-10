@@ -1,8 +1,11 @@
 import type { RichTextDoc } from "../rich-text-types";
+import type { TaskTimelineRow, TimelineTaskPayload } from "../timeline-task-payload";
 import type { TaskRow } from "./projects";
 import {
   TASK_SELECT_COLS,
   TASK_TIMELINE_COLS,
+  taskSelectColumns,
+  taskTimelineColumns,
   toTaskRow,
 } from "./task-select";
 
@@ -19,14 +22,6 @@ export type TaskSummary = TaskRow & {
   blocked_by_count: number;
   blocking_count: number;
   collaborators: { id: number; name: string }[];
-};
-
-/** Timeline read model: dates, marker flags, lane pinning and subtask count. */
-export type TaskTimelineRow = TaskRow & {
-  subtask_count: number;
-  timeline_row: number | null;
-  timeline_row_updated_at: string | null;
-  eff_section_id: number | null;
 };
 
 /** Task-pane read model. Rich text is always present (possibly null). */
@@ -47,16 +42,29 @@ export const TASK_PROJECTIONS: Record<TaskProjectionKind, string> = {
   detail: TASK_SELECT_COLS,
 };
 
-export function taskProjection(kind: TaskProjectionKind): string {
-  return TASK_PROJECTIONS[kind];
+export function taskProjection(kind: TaskProjectionKind, project?: string): string {
+  if (!project) return TASK_PROJECTIONS[kind];
+  return kind === "timeline" ? taskTimelineColumns(project) : taskSelectColumns(project);
 }
 
 export function toTaskSummary(row: TaskRow): TaskSummary {
   return toTaskRow(row) as TaskSummary;
 }
 
-export function toTaskTimelineRow(row: TaskRow): TaskTimelineRow {
-  return toTaskRow(row) as TaskTimelineRow;
+const nullableNumber = (value: number | null) => value === null ? null : Number(value);
+
+export function toTimelineTaskPayload(row: Omit<TaskTimelineRow, "parent_task_id">): TimelineTaskPayload {
+  const payload: TimelineTaskPayload = [
+    Number(row.id), nullableNumber(row.project_id), nullableNumber(row.section_id), row.name,
+    nullableNumber(row.assignee_id), row.assignee_name, nullableNumber(row.created_by),
+    row.completed, row.completed_at, row.start_on, row.due_on, Number(row.progress), row.status,
+    row.is_milestone === true, Number(row.position), row.created_at, row.updated_at,
+    Number(row.subtask_count ?? 0), nullableNumber(row.eff_section_id),
+    nullableNumber(row.timeline_row), row.timeline_row_updated_at,
+  ];
+  // Ordinary tasks keep the existing compact wire format.
+  if (row.approval) payload.push(row.approval);
+  return payload;
 }
 
 export function toTaskDetail(row: TaskRow): TaskDetail {

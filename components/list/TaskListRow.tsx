@@ -15,6 +15,7 @@ import AssigneePicker from "../fields/AssigneePicker";
 import DueDatePicker from "../fields/DueDatePicker";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
 import TaskStatusChip from "../task/TaskStatusChip";
+import TaskApprovalBadge from "../task/TaskApprovalBadge";
 import ReferencePicker from "../fields/ReferencePicker";
 import TimerCell from "../fields/TimerCell";
 
@@ -316,7 +317,9 @@ export default function TaskListRow({
         ) : (
           <span className="w-4 shrink-0" />
         )}
-        <TaskCompletionToggle completed={t.completed} milestone={t.is_milestone} onToggle={() => void toggle(t)} />
+        <TaskCompletionToggle completed={t.completed} milestone={t.is_milestone} onToggle={() => void toggle(t)}
+          disabled={Boolean(t.approval)} title={t.approval ? "承認の状態はタスク詳細から変更してください" : undefined}
+          {...(t.approval ? { "aria-label": "承認タスクの完了は承認操作から行います" } : {})} />
         {editing?.id === t.id && editing.field === "name" ? (
           <input
             autoFocus
@@ -359,6 +362,7 @@ export default function TaskListRow({
             {t.name}
           </span>
         )}
+        {t.approval && <TaskApprovalBadge approval={t.approval} onClick={() => openTask(t.id)} />}
         {t.recurrence && t.recurrence !== "none" && (
           <span title="繰り返しタスク" className="shrink-0 text-xs text-neutral-500">
             ↻

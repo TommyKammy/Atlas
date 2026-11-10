@@ -4,6 +4,7 @@ import { badRequest } from "@/lib/api/errors";
 import { csvResponse, toCsv } from "@/lib/csv";
 import { buildXlsx } from "@/lib/xlsx";
 import { shiftDate } from "@/lib/timeline-dnd";
+import { TASK_CUSTOM_VALUE_PAIRS, type TaskCustomValuePairs } from "@/lib/repositories/task-custom-value-pairs";
 
 type ExportTask = {
   id: number;
@@ -19,7 +20,7 @@ type ExportTask = {
   status: string;
   recurrence: string;
   comments: string | null;
-  custom_values: string | null;
+  custom_values: TaskCustomValuePairs;
 };
 
 type ExportField = {
@@ -68,13 +69,7 @@ export async function exportProject(
        t.completed, t.start_on::text AS start_on, t.due_on::text AS due_on,
        t.progress, t.status, t.recurrence,
        (SELECT string_agg(c.body, E'\\n---\\n' ORDER BY c.id) FROM comments c WHERE c.task_id = t.id) AS comments,
-       (SELECT string_agg(v.field_id || '=' || CASE
-          WHEN f.field_type IN ('number', 'timer')
-            THEN COALESCE(v.value_number::text, v.value_text, '')
-          ELSE COALESCE(v.value_text, v.value_number::text, '')
-        END, ';' ORDER BY v.field_id)
-        FROM task_custom_values v JOIN custom_fields f ON f.id = v.field_id
-        WHERE v.task_id = t.id AND f.deleted_at IS NULL) AS custom_values
+       ${TASK_CUSTOM_VALUE_PAIRS}
      FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
      WHERE t.project_id = $1::bigint AND t.deleted_at IS NULL ORDER BY t.position, t.id`,
     [projectId],
@@ -91,7 +86,13 @@ export async function exportProject(
         project,
         sections: sections.rows,
         custom_fields: fields.rows,
-        tasks: taskRows,
+        tasks: taskRows.map((task) => ({
+          ...task,
+          // Keep the legacy JSON field for existing consumers and expose the
+          // unambiguous values separately.
+          custom_values: task.custom_values?.map(([id, value]) => `${id}=${value}`).join(";") ?? null,
+          custom_values_by_field: Object.fromEntries(task.custom_values ?? []),
+        })),
       },
       null,
       2,
@@ -137,7 +138,6 @@ export async function exportProject(
   }
 
   const sectionName = new Map((sections.rows as { id: number; name: string }[]).map((s) => [s.id, s.name]));
-  const valueByField = new Map(fieldRows.map((f, i) => [Number(f.id), i] as const));
 
   if (format === "timecsv") {
     const timerFields = fieldRows.filter(
@@ -146,12 +146,8 @@ export async function exportProject(
     const header = ["セクション", "種別", "名前", "担当者", "期日", "合計（時間）", ...timerFields.map((f) => `${f.name}（秒）`)];
     const rows: unknown[][] = [header];
     for (const task of taskRows) {
-      const customs = new Map<number, string>();
-      for (const pair of (task.custom_values ?? "").split(";").filter(Boolean)) {
-        const eq = pair.indexOf("=");
-        if (eq > 0) customs.set(Number(pair.slice(0, eq)), pair.slice(eq + 1));
-      }
-      const seconds = timerFields.reduce((sum, field) => sum + (Number(customs.get(Number(field.id)) ?? 0) || 0), 0);
+      const customs = new Map(task.custom_values ?? []);
+      const seconds = timerFields.reduce((sum, field) => sum + (Number(customs.get(String(field.id)) ?? 0) || 0), 0);
       rows.push([
         task.section_id === null ? "" : (sectionName.get(task.section_id) ?? ""),
         task.parent_task_id === null ? "タスク" : "サブタスク",
@@ -159,7 +155,7 @@ export async function exportProject(
         task.assignee ?? "",
         task.due_on ?? "",
         (seconds / 3600).toFixed(2),
-        ...timerFields.map((field) => customs.get(Number(field.id)) ?? "0"),
+        ...timerFields.map((field) => customs.get(String(field.id)) ?? "0"),
       ]);
     }
     return csvResponse(`${filename}_time.csv`, toCsv(rows));
@@ -181,13 +177,7 @@ export async function exportProject(
   ];
   const rows: unknown[][] = [header];
   for (const task of taskRows) {
-    const customs = new Array(fieldRows.length).fill("");
-    for (const pair of (task.custom_values ?? "").split(";").filter(Boolean)) {
-      const eq = pair.indexOf("=");
-      if (eq === -1) continue;
-      const idx = valueByField.get(Number(pair.slice(0, eq)));
-      if (idx !== undefined) customs[idx] = pair.slice(eq + 1);
-    }
+    const customs = new Map(task.custom_values ?? []);
     rows.push([
       task.section_id === null ? "" : (sectionName.get(task.section_id) ?? ""),
       task.parent_task_id === null ? "タスク" : "サブタスク",
@@ -200,7 +190,7 @@ export async function exportProject(
       task.status,
       task.recurrence === "none" ? "" : task.recurrence,
       task.comments ?? "",
-      ...customs,
+      ...fieldRows.map((field) => customs.get(String(field.id)) ?? ""),
     ]);
   }
 

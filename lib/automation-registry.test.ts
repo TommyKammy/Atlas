@@ -19,7 +19,7 @@ test("descriptors are derived from the capability registry", () => {
 });
 
 test("required params are declared once per capability", () => {
-  assert.deepEqual(requiredActionParams("task.set_custom_field"), ["field_id", "value"]);
+  assert.deepEqual(requiredActionParams("task.set_custom_field"), ["field_id"]);
   assert.deepEqual(requiredActionParams("task.complete"), []);
   assert.deepEqual(requiredActionParams("unknown-capability"), []);
 });

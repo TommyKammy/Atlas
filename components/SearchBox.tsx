@@ -101,7 +101,7 @@ export default function SearchBox() {
     <div
       ref={root}
       data-global-search
-      className="pointer-events-none absolute inset-x-0 top-1/2 hidden -translate-y-1/2 px-4 md:block"
+      className="min-w-0 flex-1 lg:pointer-events-none lg:absolute lg:inset-x-0 lg:top-1/2 lg:-translate-y-1/2 lg:px-4"
     >
       <div className="pointer-events-auto relative mx-auto w-full max-w-[640px]">
         <svg

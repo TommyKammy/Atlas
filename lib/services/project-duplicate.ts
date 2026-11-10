@@ -3,6 +3,7 @@ import { audit } from "@/lib/audit";
 import { badRequest } from "@/lib/api/errors";
 import { ensureDefaultProjectTabs } from "@/lib/repositories/projects";
 import { getProjectTaskForest } from "@/lib/project-task-forest";
+import { copyRuleWithoutWebhookCredentials } from "@/lib/automation/webhook-credentials";
 
 type DuplicateBody = {
   name?: unknown;
@@ -159,6 +160,7 @@ export async function duplicateProject({
         definition: unknown;
         enabled: boolean;
       }[]) {
+        const copy = copyRuleWithoutWebhookCredentials(rule);
         await q.query(
           `INSERT INTO project_rules (
              workspace_id, project_id, name, description, definition, owner_id, enabled
@@ -168,9 +170,9 @@ export async function duplicateProject({
             newId,
             rule.name,
             rule.description ?? "",
-            JSON.stringify(rule.definition ?? {}),
+            JSON.stringify(copy.definition ?? {}),
             uid,
-            rule.enabled !== false,
+            copy.enabled !== false,
           ],
         );
       }
@@ -190,6 +192,11 @@ export async function duplicateProject({
         );
         const sourceTasks = await getProjectTaskForest(q, projectId);
         if (sourceTasks.length > 5000) throw badRequest("project has too many tasks to duplicate (max 5000)");
+        const approvals = await q.query(
+          "SELECT task_id FROM task_approvals WHERE task_id = ANY($1::bigint[])",
+          [sourceTasks.map((task) => task.id)],
+        );
+        const approvalIds = new Set(approvals.rows.map((row) => Number(row.task_id)));
         for (const task of sourceTasks) {
           if (task.completed && !includeCompleted) continue;
           if (task.parent_task_id !== null && !includeSubtasks) continue;
@@ -199,11 +206,11 @@ export async function duplicateProject({
             `INSERT INTO tasks (
                project_id, section_id, parent_task_id, name, description, description_doc,
                assignee_id, created_by, completed, completed_at, start_on, due_on,
-               progress, status, position, recurrence
+               progress, status, position, recurrence, is_milestone
              ) VALUES (
                $1::bigint, $2::bigint, $3::bigint, $4, $5, $6::jsonb,
                $7::bigint, $8::bigint, $9, $10::timestamptz, $11::date, $12::date,
-               $13, $14, $15, $16
+               $13, $14, $15, $16, $17
              ) RETURNING id`,
             [
               newId,
@@ -216,14 +223,15 @@ export async function duplicateProject({
                 : JSON.stringify(task.description_doc),
               task.assignee_id,
               uid,
-              task.completed,
-              task.completed_at,
+              approvalIds.has(task.id) ? false : task.completed,
+              approvalIds.has(task.id) ? null : task.completed_at,
               task.start_on,
               task.due_on,
               task.progress ?? 0,
               task.status ?? "inbox",
               task.position ?? 0,
               task.recurrence ?? "none",
+              task.parent_task_id === null && task.is_milestone,
             ],
           );
           const newTaskId = Number(inserted.rows[0].id);

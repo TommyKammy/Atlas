@@ -1,4 +1,5 @@
 import { db, type Queryable } from "../db";
+import { automationLineage } from "../automation/causation";
 
 /** Stable domain-event names consumed by automation and future AI features. */
 export const DOMAIN_EVENT_TYPES = [
@@ -11,6 +12,7 @@ export const DOMAIN_EVENT_TYPES = [
   "task.section_changed",
   "task.custom_field_changed",
   "task.milestone_changed",
+  "task.approval_changed",
   "task.added_to_project",
   "task.deleted",
   "comment.created",
@@ -38,6 +40,7 @@ export type DomainEventInput = {
   causationId?: number | null;
   chainDepth?: number;
   occurredAt?: Date | string;
+  automationRuleId?: number | null;
 };
 
 export type DomainEventRow = {
@@ -64,12 +67,18 @@ export async function emitDomainEvent(
   input: DomainEventInput,
   q?: Queryable,
 ): Promise<number> {
-  const result = await writer(q).query(
+  const queryable = writer(q);
+  const lineage = input.automationRuleId != null && input.causationId != null
+    ? await automationLineage(queryable, input.causationId)
+    : null;
+  if (input.automationRuleId != null && !lineage) throw new Error("automation causation not found");
+  const result = await queryable.query(
     `INSERT INTO domain_events (
        workspace_id, project_id, actor_id, type, version, subject_type, subject_id,
-       data, correlation_id, causation_id, chain_depth, occurred_at
+       data, correlation_id, causation_id, chain_depth, occurred_at,
+       automation_root_event_id, automation_rule_path
      ) VALUES ($1::bigint, $2::bigint, $3::bigint, $4, $5, $6, $7::bigint,
-       $8::jsonb, $9, $10::bigint, $11, COALESCE($12::timestamptz, now()))
+       $8::jsonb, $9, $10::bigint, $11, COALESCE($12::timestamptz, now()), $13::bigint, $14::bigint[])
      RETURNING id`,
     [
       input.workspaceId,
@@ -84,29 +93,38 @@ export async function emitDomainEvent(
       input.causationId ?? null,
       input.chainDepth ?? 0,
       input.occurredAt ?? null,
+      lineage?.rootEventId ?? null,
+      lineage ? [...lineage.ruleIds, input.automationRuleId!] : [],
     ],
   );
   return Number(result.rows[0].id);
 }
 
-async function workspaceForProject(projectId: number | null | undefined): Promise<number | null> {
+async function workspaceForProject(
+  projectId: number | null | undefined,
+  q: Queryable,
+): Promise<number | null> {
   if (!projectId) return null;
-  const r = await db.query("SELECT workspace_id FROM projects WHERE id = $1::bigint", [projectId]);
+  const r = await q.query("SELECT workspace_id FROM projects WHERE id = $1::bigint", [projectId]);
   return r.rows[0]?.workspace_id ? Number(r.rows[0].workspace_id) : null;
 }
 
 /** Convenience helper for task mutations when workspace id is not at hand. */
-export async function emitTaskEvent(input: {
-  projectId: number | null;
-  taskId: number;
-  actorId: number | null;
-  type: DomainEventType;
-  data?: Record<string, unknown>;
-  causationId?: number | null;
-  chainDepth?: number;
-  correlationId?: string | null;
-}): Promise<void> {
-  const workspaceId = await workspaceForProject(input.projectId);
+export async function emitTaskEvent(
+  input: {
+    projectId: number | null;
+    taskId: number;
+    actorId: number | null;
+    type: DomainEventType;
+    data?: Record<string, unknown>;
+    causationId?: number | null;
+    chainDepth?: number;
+    correlationId?: string | null;
+    automationRuleId?: number | null;
+  },
+  q: Queryable = db,
+): Promise<void> {
+  const workspaceId = await workspaceForProject(input.projectId, q);
   if (workspaceId === null) return;
   await emitDomainEvent({
     workspaceId,
@@ -119,7 +137,8 @@ export async function emitTaskEvent(input: {
     causationId: input.causationId,
     chainDepth: input.chainDepth,
     correlationId: input.correlationId,
-  });
+    automationRuleId: input.automationRuleId,
+  }, q);
 }
 
 export function isDomainEventType(value: unknown): value is DomainEventType {

@@ -18,6 +18,7 @@ export default function ProfileForm({
   initialAvatarUrl,
   isGuest,
   initialTotpEnabled,
+  mfaPending,
   twoFactorPolicy,
   passwordMinLength,
   passwordPolicyText,
@@ -29,6 +30,7 @@ export default function ProfileForm({
   initialAvatarUrl: string;
   isGuest: boolean;
   initialTotpEnabled: boolean;
+  mfaPending: boolean;
   twoFactorPolicy: "optional" | "required";
   passwordMinLength: number;
   passwordPolicyText: string;
@@ -49,6 +51,7 @@ export default function ProfileForm({
   const [twoFaMsg, setTwoFaMsg] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
   const [twoFaBusy, setTwoFaBusy] = useState(false);
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
 
   const saveProfile = async () => {
     setMsg("");
@@ -141,6 +144,28 @@ export default function ProfileForm({
       setTotpCode("");
       setRecoveryCodes(Array.isArray(data?.recovery_codes) ? data.recovery_codes : []);
       setTwoFaMsg("二要素認証を有効化しました");
+      if (!mfaPending) router.refresh();
+    } finally {
+      setTwoFaBusy(false);
+    }
+  };
+
+  const verifyMfa = async () => {
+    setTwoFaMsg("");
+    setTwoFaBusy(true);
+    try {
+      const res = await fetch("/api/me/2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(useRecoveryCode
+          ? { action: "verify", recovery_code: totpCode }
+          : { action: "verify", code: totpCode }),
+      });
+      if (!res.ok) {
+        setTwoFaMsg("認証コードが正しくありません。再度お試しください。");
+        return;
+      }
+      router.push("/");
       router.refresh();
     } finally {
       setTwoFaBusy(false);
@@ -174,7 +199,7 @@ export default function ProfileForm({
   const field = "w-full rounded border px-2 py-1.5 text-sm outline-none focus:border-blue-500";
   return (
     <div className="mt-4 space-y-6">
-      <section className="rounded-lg border p-4">
+      <section hidden={mfaPending} className="rounded-lg border p-4">
         <h2 className="font-semibold">プロフィール{isGuest ? "（ゲスト）" : ""}</h2>
         <div className="mt-3 flex items-center gap-3">
           <UserAvatar name={name} url={avatarUrl} className="h-14 w-14" textClassName="text-lg" />
@@ -219,7 +244,7 @@ export default function ProfileForm({
           プロフィールを保存
         </button>
       </section>
-      <section className="rounded-lg border p-4">
+      <section hidden={mfaPending} className="rounded-lg border p-4">
         <h2 className="font-semibold">パスワード変更</h2>
         <div className="mt-2 flex flex-col gap-2">
           <input
@@ -329,7 +354,32 @@ export default function ProfileForm({
           </div>
         )}
 
-        {totpEnabled && (
+        {mfaPending && totpEnabled && recoveryCodes.length === 0 && (
+          <form className="mt-3 space-y-2" onSubmit={(event) => { event.preventDefault(); void verifyMfa(); }}>
+            <label className="block text-xs text-neutral-600">
+              {useRecoveryCode ? "リカバリーコード" : "6桁の認証コード"}
+              <input
+                value={totpCode}
+                onChange={(event) => setTotpCode(event.target.value)}
+                inputMode={useRecoveryCode ? "text" : "numeric"}
+                autoComplete="one-time-code"
+                className={`${field} mt-1 w-48`}
+              />
+            </label>
+            <button type="submit" disabled={twoFaBusy || !totpCode.trim()} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+              確認
+            </button>
+            <button
+              type="button"
+              onClick={() => { setUseRecoveryCode(!useRecoveryCode); setTotpCode(""); }}
+              className="ml-2 text-sm text-blue-700"
+            >
+              {useRecoveryCode ? "認証アプリを使う" : "リカバリーコードを使う"}
+            </button>
+          </form>
+        )}
+
+        {totpEnabled && !mfaPending && (
           <div className="mt-3">
             <p className="text-xs text-neutral-500">
               二要素認証は有効です。無効化するには現在のパスワードを入力してください。
@@ -368,6 +418,15 @@ export default function ProfileForm({
             <p className="mt-2 text-[11px] text-emerald-800">
               安全な場所に保管してください。各コードは1回だけ使用できます。
             </p>
+            {mfaPending && (
+              <button
+                type="button"
+                onClick={() => { router.push("/"); router.refresh(); }}
+                className="mt-2 rounded bg-emerald-800 px-3 py-1.5 text-sm text-white"
+              >
+                ホームへ進む
+              </button>
+            )}
           </div>
         )}
 
@@ -375,7 +434,7 @@ export default function ProfileForm({
       </section>
 
       {msg && <p className="text-sm text-neutral-600">{msg}</p>}
-      <p className="text-xs text-neutral-400">ユーザーID: {userId}</p>
+      {!mfaPending && <p className="text-xs text-neutral-400">ユーザーID: {userId}</p>}
     </div>
   );
 }

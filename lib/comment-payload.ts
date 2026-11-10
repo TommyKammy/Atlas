@@ -2,6 +2,7 @@ import { docToMarkdown, docToText } from "./rich-text-markdown";
 import type { RichTextDoc } from "./rich-text-types";
 import { validateRichTextDoc } from "./rich-text-validation";
 import { normalizeMentionLabels, mentionedUserIds, mentionedUserIdsFromDoc } from "./mentions";
+import type { Queryable } from "./db";
 
 export type ParsedCommentPayload = {
   ok: true;
@@ -17,6 +18,7 @@ export type CommentPayloadError = { ok: false; error: string };
 export async function parseCommentPayload(
   projectId: number | null,
   payload: unknown,
+  q?: Queryable,
 ): Promise<ParsedCommentPayload | CommentPayloadError> {
   const body = (payload ?? null) as Record<string, unknown> | null;
   if (!body || typeof body !== "object") return { ok: false, error: "body is required" };
@@ -30,19 +32,19 @@ export async function parseCommentPayload(
     });
     if (!parsed.ok) return { ok: false, error: `invalid body_doc: ${parsed.error}` };
     if (parsed.text.trim() === "") return { ok: false, error: "body is required" };
-    const doc = await normalizeMentionLabels(parsed.doc, projectId);
+    const doc = await normalizeMentionLabels(parsed.doc, projectId, q);
     return {
       ok: true,
       text: docToText(doc),
       markdown: docToMarkdown(doc),
       doc,
-      mentionIds: await mentionedUserIdsFromDoc(projectId, doc),
+      mentionIds: await mentionedUserIdsFromDoc(projectId, doc, q),
     };
   }
 
   const text = typeof body.body === "string" ? body.body.trim() : "";
   if (text === "") return { ok: false, error: "body is required" };
   if (text.length > 10_000) return { ok: false, error: "body is too long" };
-  const mentionIds = await mentionedUserIds(projectId, text);
+  const mentionIds = await mentionedUserIds(projectId, text, q);
   return { ok: true, text, markdown: text, doc: null, mentionIds };
 }

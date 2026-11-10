@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # Atlas API/page regression suite (disposable local env only).
 # Creates its own fixtures and deletes them; seed data must remain intact.
-# Usage: ./tests/e2e.sh [base_url]   (default http://127.0.0.1:3000)
+# Provision an isolated target with: bash tests/run-e2e.sh
 set -u
-BASE="${1:-http://127.0.0.1:3000}"
+cd "$(dirname "$0")/.."
+source scripts/e2e-guard.sh
+BASE="${1:-}"
+[[ -n "$BASE" && "$BASE" == "${ATLAS_E2E_BASE:-}" ]] || e2e_abort 'run bash tests/run-e2e.sh'
+[[ "${ATLAS_E2E_WORKER_TOKEN:-}" =~ ^[a-f0-9]{64}$ ]] || e2e_abort 'a per-run automation token is required'
+require_e2e_target
+export NO_PROXY=127.0.0.1 no_proxy=127.0.0.1
 PASS=0; FAIL=0
 
 ok()   { PASS=$((PASS+1)); echo "ok   $1"; }
@@ -29,6 +35,13 @@ api() { # method path [data]
   [[ -n "${JAR:-}" && -f "$JAR" ]] && jar=(-b "$JAR")
   if [[ -z "$d" ]]; then curl -s -m 15 "${jar[@]}" -X "$m" "$BASE$p"
   else curl -s -m 15 "${jar[@]}" -X "$m" "$BASE$p" -H 'Content-Type: application/json' -d "$d"; fi
+}
+
+purge_task() {
+  local id="$1"
+  [[ "$id" =~ ^[0-9]+$ ]] || return 1
+  api DELETE "/api/tasks/$id" >/dev/null
+  api DELETE "/api/tasks/$id?force=1"
 }
 
 jget() { python3 -c "import json,sys; print(json.load(sys.stdin).get('$2',''))" <<<"$1"; }
@@ -63,17 +76,17 @@ C=$(curl -s -m 10 -b "$TMPD/jar-session" -X POST "$BASE/api/auth/logout" -o /dev
 C=$(curl -s -m 10 -H "Cookie: atlas_session=$STOKEN" -o /dev/null -w "%{http_code}" "$BASE/api/me")
 [[ "$C" != "200" ]] && ok "logout revokes server session ($C)" || bad "revoked session still accepted ($C)"
 SHASH=$(printf %s "$STOKEN" | shasum -a 256 | cut -d' ' -f1)
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM user_sessions WHERE token_hash='$SHASH';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM user_sessions WHERE token_hash='$SHASH';")
 [[ "$N" == "0" ]] && ok "revoked session row deleted" || bad "revoked session row remains ($N)"
 page "/login" "$TMPD/login.html"
 curl -s -m 10 -b "$JAR" "$BASE/" -o "$TMPD/home.html"
 grep -q 'さん、' "$TMPD/home.html" && grep -q 'マイタスク（担当' "$TMPD/home.html" && grep -q 'プロジェクト' "$TMPD/home.html" && ok "home summary" || bad "home summary"
 
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM project_view_states;"
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM search_history;"
+db_sql -q -c "DELETE FROM project_view_states;"
+db_sql -q -c "DELETE FROM search_history;"
 # Clean fixtures left by an interrupted prior run so assertions stay deterministic.
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM users WHERE email LIKE 'e2e-%@example.com'; DELETE FROM projects WHERE name LIKE 'E2E%'; DELETE FROM project_messages WHERE title LIKE '[自動]%'; DELETE FROM tasks WHERE project_id=1 AND (name LIKE 'E2E%' OR name LIKE 'フォローアップ: E2E%');"
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM sections WHERE project_id=1 AND name LIKE 'E2E%';"
+db_sql -q -c "DELETE FROM users WHERE email LIKE 'e2e-%@example.com'; DELETE FROM projects WHERE name LIKE 'E2E%'; DELETE FROM project_messages WHERE title LIKE '[自動]%'; DELETE FROM tasks WHERE project_id=1 AND (name LIKE 'E2E%' OR name LIKE 'フォローアップ: E2E%');"
+db_sql -q -c "DELETE FROM sections WHERE project_id=1 AND name LIKE 'E2E%';"
 echo "== pages =="
 page "/" "$TMPD/home.html"
 page "/my-tasks" "$TMPD/mt.html"
@@ -118,7 +131,7 @@ grep -q 'data-project-title="デモプロジェクト"' "$TMPD/header-restored.h
 
 echo "== board card parity =="
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=board" -o "$TMPD/board-card.html"
-grep -q 'data-board-card="2"' "$TMPD/board-card.html" && grep -q 'data-board-assignee="田中 太郎"' "$TMPD/board-card.html" && grep -q 'data-board-due="2026-11-06"' "$TMPD/board-card.html" && grep -q 'data-board-status="進行中"' "$TMPD/board-card.html" && ok "board card metadata" || bad "board card metadata"
+grep -q 'data-board-card="2"' "$TMPD/board-card.html" && grep -q 'data-board-assignee="田中 太郎"' "$TMPD/board-card.html" && grep -q 'data-board-due="2026-11-14"' "$TMPD/board-card.html" && grep -q 'data-board-status="進行中"' "$TMPD/board-card.html" && ok "board card metadata" || bad "board card metadata"
 grep -q 'data-board-subtask-count="2"' "$TMPD/board-card.html" && grep -q 'data-board-comment-count="1"' "$TMPD/board-card.html" && grep -q 'data-board-subtask-badge' "$TMPD/board-card.html" && grep -q 'data-board-comment-badge' "$TMPD/board-card.html" && ok "board card counts" || bad "board card counts"
 grep -q 'data-board-card="2"' "$TMPD/board-card.html" && grep -q 'draggable' "$TMPD/board-card.html" && ok "board drag guard markup" || bad "board drag guard markup"
 
@@ -133,13 +146,17 @@ PYEOF
 )
 [[ "$ORDER" == "ok" ]] && ok "list column order" || bad "list column order" "$ORDER"
 grep -Fq 'hover:bg-[#f3f3f3]' "$TMPD/p-list.html" && ok "field header hover style" || bad "field header hover style"
-HAS_DRAG=$(python3 - "$TMPD/p-list.html" <<'PYEOF'
+DRAG_FIELD=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E並べ替え列","field_type":"text"}')
+DRAG_FIELD_ID=$(jget "$DRAG_FIELD" id)
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/field-drag.html"
+HAS_DRAG=$(python3 - "$TMPD/field-drag.html" "$DRAG_FIELD_ID" <<'PYEOF'
 import re, sys
 h = open(sys.argv[1], encoding='utf-8').read()
-print("yes" if re.search(r'data-list-header="cf-\d+"[^>]*draggable="true"', h) else "no")
+print("yes" if sys.argv[2].isdigit() and re.search(r'data-list-header="cf-'+sys.argv[2]+r'"[^>]*draggable="true"', h) else "no")
 PYEOF
 )
 [[ "$HAS_DRAG" == "yes" ]] && ok "field header draggable markup" || bad "field header draggable markup"
+api DELETE "/api/custom-fields/$DRAG_FIELD_ID" >/dev/null
 grep -q 'minmax(220px,640px)' "$TMPD/p-list.html" && grep -q '119px 119px 119px 119px' "$TMPD/p-list.html" && ok "list column widths (640/119)" || bad "list column widths"
 grep -q 'data-list-section-header="' "$TMPD/p-list.html" && ! grep -q 'data-list-section-count' "$TMPD/p-list.html" && ok "section header count hidden" || bad "section header count hidden"
 HAS_SECTION_DRAG=$(python3 - "$TMPD/p-list.html" <<'PYEOF'
@@ -155,7 +172,7 @@ EMPTY=$(api POST /api/tasks '{"project_id":1,"section_id":2,"name":"E2E空欄ア
 EID=$(jget "$EMPTY" id)
 page "/projects/1?view=list" "$TMPD/empty-icons.html"
 grep -q 'stroke-dasharray="4 2"' "$TMPD/empty-icons.html" && grep -Fq '未割り当て — クリックで編集' "$TMPD/empty-icons.html" && grep -q 'aria-label="期日を設定"' "$TMPD/empty-icons.html" && ok "empty assignee/due icons" || bad "empty assignee/due icons"
-R=$(api DELETE "/api/tasks/$EID?force=1")
+R=$(purge_task "$EID")
 [[ "$(jget "$R" deleted)" == "$EID" ]] && ok "empty icon fixture cleaned" || bad "empty icon fixture cleaned" "$R"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list&group=assignee" -o "$TMPD/group-count.html"
 grep -q 'data-list-section-count=' "$TMPD/group-count.html" && ok "group header counts" || bad "group header counts"
@@ -223,7 +240,7 @@ R=$(api PATCH "/api/project-tabs/$LTID" '{"icon":"🚀"}')
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/tab-icon.html"
 grep -q '🚀' "$TMPD/tab-icon.html" && ok "view icon rendered" || bad "view icon rendered"
 api PATCH "/api/project-tabs/$LTID" '{"icon":null}' >/dev/null
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM task_likes WHERE task_id=2 AND user_id=1;"
+db_sql -q -c "DELETE FROM task_likes WHERE task_id=2 AND user_id=1;"
 LK=$(api POST /api/tasks/2/like)
 echo "$LK" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['count']==1 and d['liked'] is True, d" && ok "task like toggle on" || bad "task like toggle on" "$LK"
 LK=$(api GET /api/tasks/2/like)
@@ -242,15 +259,15 @@ echo "== tasks CRUD =="
 T=$(api POST /api/tasks '{"project_id":1,"section_id":3,"name":"E2E回帰タスク"}')
 TID=$(jget "$T" id)
 [[ -n "$TID" ]] && ok "task create ($TID)" || bad "task create" "$T"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE id=$TID AND created_by=1;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE id=$TID AND created_by=1;")
 [[ "$N" == "1" ]] && ok "task creator recorded" || bad "task creator ($N)"
 R=$(api PATCH /api/tasks/$TID '{"completed":true,"progress":100}')
 [[ "$(jget "$R" id)" == "$TID" ]] && ok "task patch" || bad "task patch" "$R"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE id=$TID AND completed_at IS NOT NULL;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE id=$TID AND completed_at IS NOT NULL;")
 [[ "$N" == "1" ]] && ok "completed_at recorded" || bad "completed_at ($N)"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/l.html"
 grep -q 'E2E回帰タスク' "$TMPD/l.html" && ok "task visible" || bad "task visible"
-R=$(api DELETE "/api/tasks/$TID?force=1")
+R=$(purge_task "$TID")
 [[ "$(jget "$R" deleted)" == "$TID" ]] && ok "task delete" || bad "task delete" "$R"
 
 echo "== task context menu =="
@@ -259,35 +276,35 @@ CMID=$(jget "$CM" id)
 [[ -n "$CMID" ]] && ok "context task create ($CMID)" || bad "context task create" "$CM"
 DU=$(api POST /api/tasks/$CMID/duplicate)
 DUID=$(jget "$DU" id)
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE id=$DUID AND name='E2E右クリック元' AND parent_task_id IS NULL AND section_id=2;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE id=$DUID AND name='E2E右クリック元' AND parent_task_id IS NULL AND section_id=2;")
 [[ "$N" == "1" ]] && ok "task duplicate" || bad "task duplicate" "$DU"
 FU=$(api POST /api/tasks/$CMID/follow-up)
 FUID=$(jget "$FU" id)
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE id=$FUID AND name='フォローアップ: E2E右クリック元' AND completed=false;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE id=$FUID AND name='フォローアップ: E2E右クリック元' AND completed=false;")
 [[ "$N" == "1" ]] && ok "task follow-up" || bad "task follow-up" "$FU"
 C=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -X POST "$BASE/api/tasks/$CMID/duplicate")
 [[ "$C" == "401" ]] && ok "task duplicate auth" || bad "task duplicate auth ($C)"
 C=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -X POST "$BASE/api/tasks/$CMID/follow-up")
 [[ "$C" == "401" ]] && ok "task follow-up auth" || bad "task follow-up auth ($C)"
-api DELETE "/api/tasks/$DUID?force=1" >/dev/null
-api DELETE "/api/tasks/$FUID?force=1" >/dev/null
-api DELETE "/api/tasks/$CMID?force=1" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE id IN ($CMID,$DUID,$FUID) AND deleted_at IS NULL;")
+purge_task "$DUID" >/dev/null
+purge_task "$FUID" >/dev/null
+purge_task "$CMID" >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE id IN ($CMID,$DUID,$FUID) AND deleted_at IS NULL;")
 [[ "$N" == "0" ]] && ok "task context menu cleanup" || bad "task context menu cleanup ($N)"
 
 echo "== milestones =="
 MT=$(api POST /api/tasks '{"project_id":1,"section_id":2,"name":"E2Eマイルストーン","due_on":"2026-11-20","is_milestone":true}')
 MTID=$(jget "$MT" id)
 [[ -n "$MTID" ]] && ok "milestone create ($MTID)" || bad "milestone create" "$MT"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT is_milestone::text||'/'||COALESCE(parent_task_id::text,'') FROM tasks WHERE id=$MTID;")
+D=$(db_sql -t -A -c "SELECT is_milestone::text||'/'||COALESCE(parent_task_id::text,'') FROM tasks WHERE id=$MTID;")
 [[ "$D" == "true/" ]] && ok "milestone stored" || bad "milestone stored ($D)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"name":"E2E文字列マイルストーン","is_milestone":"true"}')
 [[ "$C" == "400" ]] && ok "milestone create validation" || bad "milestone create validation ($C)"
 R=$(api PATCH /api/tasks/$MTID '{"is_milestone":false,"parent_task_id":null}')
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT is_milestone::text FROM tasks WHERE id=$MTID;")
+D=$(db_sql -t -A -c "SELECT is_milestone::text FROM tasks WHERE id=$MTID;")
 [[ "$(jget "$R" id)" == "$MTID" && "$D" == "false" ]] && ok "milestone revert" || bad "milestone revert" "$R/$D"
 R=$(api PATCH /api/tasks/$MTID '{"is_milestone":true}')
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT is_milestone::text||'/'||COALESCE(parent_task_id::text,'') FROM tasks WHERE id=$MTID;")
+D=$(db_sql -t -A -c "SELECT is_milestone::text||'/'||COALESCE(parent_task_id::text,'') FROM tasks WHERE id=$MTID;")
 [[ "$(jget "$R" id)" == "$MTID" && "$D" == "true/" ]] && ok "milestone convert" || bad "milestone convert" "$R/$D"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/milestone.html"
 grep -q 'E2Eマイルストーン' "$TMPD/milestone.html" && grep -q 'data-task-milestone' "$TMPD/milestone.html" && ok "milestone list marker" || bad "milestone list marker"
@@ -315,29 +332,29 @@ RID=$(jget "$RULE" id)
 [[ -n "$RID" ]] && ok "milestone rule create ($RID)" || bad "milestone rule create" "$RULE"
 api POST /api/projects/1/rules/$RID/run "{\"task_id\":$MTID}" >/dev/null
 sleep 1
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM comments WHERE task_id=$MTID AND body='E2Eマイルストーン一致';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM comments WHERE task_id=$MTID AND body='E2Eマイルストーン一致';")
 [[ "$N" == "1" ]] && ok "milestone rule condition matches" || bad "milestone rule condition matches ($N)"
 NT=$(api POST /api/tasks '{"project_id":1,"section_id":2,"name":"E2E通常タスク"}')
 NTID=$(jget "$NT" id)
 api POST /api/projects/1/rules/$RID/run "{\"task_id\":$NTID}" >/dev/null
 sleep 1
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM comments WHERE task_id=$NTID AND body='E2Eマイルストーン一致';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM comments WHERE task_id=$NTID AND body='E2Eマイルストーン一致';")
 [[ "$N" == "0" ]] && ok "milestone rule condition skips task" || bad "milestone rule condition skips task ($N)"
 TRIG=$(api POST /api/projects/1/rules '{"name":"E2Eマイルストーン変換トリガー","definition":{"version":1,"triggers":[{"event":"task.milestone_changed"}],"actions":[{"capability":"task.add_comment","params":{"body":"E2Eマイルストーン変換イベント"}}]}}')
 TRID=$(jget "$TRIG" id)
 [[ -n "$TRID" ]] && ok "milestone trigger rule create ($TRID)" || bad "milestone trigger rule create" "$TRIG"
 api PATCH /api/tasks/$MTID '{"is_milestone":false}' >/dev/null
-curl -s -m 10 -X POST "$BASE/api/automation/process?limit=20" -H 'x-automation-token: atlas-internal-automation' -o /dev/null
+curl -s -m 10 -X POST "$BASE/api/automation/process?limit=20" -H "x-automation-token: $ATLAS_E2E_WORKER_TOKEN" -o /dev/null
 sleep 1
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM comments WHERE task_id=$MTID AND body='E2Eマイルストーン変換イベント';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM comments WHERE task_id=$MTID AND body='E2Eマイルストーン変換イベント';")
 [[ "$N" == "1" ]] && ok "milestone trigger fires" || bad "milestone trigger fires ($N)"
 api DELETE /api/projects/1/rules/$RID >/dev/null
 api DELETE /api/projects/1/rules/$TRID >/dev/null
-api DELETE "/api/tasks/$MTID?force=1" >/dev/null
-api DELETE "/api/tasks/$NTID?force=1" >/dev/null
-api DELETE "/api/tasks/$SDID?force=1" >/dev/null
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM rule_runs WHERE rule_name IN ('E2Eマイルストーン条件','E2Eマイルストーン変換トリガー'); DELETE FROM domain_events WHERE subject_type='task' AND subject_id IN ($MTID,$NTID,$SDID);"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM project_rules WHERE id IN ($RID,$TRID))||'/'||(SELECT COUNT(*) FROM tasks WHERE id IN ($MTID,$NTID,$SDID))||'/'||(SELECT COUNT(*) FROM rule_runs WHERE rule_name IN ('E2Eマイルストーン条件','E2Eマイルストーン変換トリガー'));")
+purge_task "$MTID" >/dev/null
+purge_task "$NTID" >/dev/null
+purge_task "$SDID" >/dev/null
+db_sql -q -c "DELETE FROM rule_runs WHERE rule_name IN ('E2Eマイルストーン条件','E2Eマイルストーン変換トリガー'); DELETE FROM domain_events WHERE subject_type='task' AND subject_id IN ($MTID,$NTID,$SDID);"
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM project_rules WHERE id IN ($RID,$TRID))||'/'||(SELECT COUNT(*) FROM tasks WHERE id IN ($MTID,$NTID,$SDID))||'/'||(SELECT COUNT(*) FROM rule_runs WHERE rule_name IN ('E2Eマイルストーン条件','E2Eマイルストーン変換トリガー'));")
 [[ "$N" == "0/0/0" ]] && ok "milestone cleanup" || bad "milestone cleanup ($N)"
 
 echo "== timeline lanes =="
@@ -365,12 +382,12 @@ PY
 )
 [[ "$N" == "0 0 1 0" ]] && ok "timeline lane packing" || bad "timeline lane packing ($N)"
 grep -q "data-timeline-lane-spacer=\"$LSID-0\"" "$TMPD/lanes.html" && ok "timeline lane spacer" || bad "timeline lane spacer"
-api DELETE "/api/tasks/$LAID?force=1" >/dev/null
-api DELETE "/api/tasks/$LBID?force=1" >/dev/null
-api DELETE "/api/tasks/$LCID?force=1" >/dev/null
-api DELETE "/api/tasks/$LMID?force=1" >/dev/null
+purge_task "$LAID" >/dev/null
+purge_task "$LBID" >/dev/null
+purge_task "$LCID" >/dev/null
+purge_task "$LMID" >/dev/null
 api DELETE /api/sections/$LSID >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM sections WHERE id=$LSID)||'/'||(SELECT COUNT(*) FROM tasks WHERE id IN ($LAID,$LBID,$LCID,$LMID));")
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM sections WHERE id=$LSID)||'/'||(SELECT COUNT(*) FROM tasks WHERE id IN ($LAID,$LBID,$LCID,$LMID));")
 [[ "$N" == "0/0" ]] && ok "timeline lane cleanup" || bad "timeline lane cleanup ($N)"
 
 echo "== timeline manual rows =="
@@ -380,7 +397,7 @@ RT=$(api POST /api/tasks "{\"project_id\":1,\"section_id\":$RSID,\"name\":\"E2E�
 RTID=$(jget "$RT" id)
 R=$(api PUT /api/tasks/$RTID/timeline-row "{\"project_id\":1,\"row_index\":2}")
 [[ "$(jget "$R" row_index)" == "2" ]] && ok "timeline row pin" || bad "timeline row pin" "$R"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT row_index FROM task_timeline_rows WHERE task_id=$RTID AND project_id=1;")
+D=$(db_sql -t -A -c "SELECT row_index FROM task_timeline_rows WHERE task_id=$RTID AND project_id=1;")
 [[ "$D" == "2" ]] && ok "timeline row stored" || bad "timeline row stored ($D)"
 C=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -X PUT "$BASE/api/tasks/$RTID/timeline-row" -H 'Content-Type: application/json' -d "{\"project_id\":1,\"row_index\":1}")
 [[ "$C" == "401" ]] && ok "timeline row auth" || bad "timeline row auth ($C)"
@@ -402,20 +419,20 @@ PY
 [[ "$N" == "2" ]] && ok "timeline row pinned render" || bad "timeline row pinned render ($N)"
 grep -q "data-timeline-lane-spacer=\"$RSID-0\"" "$TMPD/rowpin.html" && grep -q "data-timeline-lane-spacer=\"$RSID-1\"" "$TMPD/rowpin.html" && ok "timeline row empty lane spacers" || bad "timeline row empty lane spacers"
 R=$(api PUT /api/tasks/$RTID/timeline-row "{\"project_id\":1,\"row_index\":null}")
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_timeline_rows WHERE task_id=$RTID AND project_id=1;")
+D=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_timeline_rows WHERE task_id=$RTID AND project_id=1;")
 [[ "$D" == "0" ]] && ok "timeline row auto reset" || bad "timeline row auto reset" "$R/$D"
 api PUT /api/tasks/$RTID/timeline-row "{\"project_id\":1,\"row_index\":2}" >/dev/null
 api PATCH /api/tasks/$RTID '{"section_id":2}' >/dev/null
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_timeline_rows WHERE task_id=$RTID AND project_id=1;")
+D=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_timeline_rows WHERE task_id=$RTID AND project_id=1;")
 [[ "$D" == "0" ]] && ok "timeline row cleared on section move" || bad "timeline row cleared on section move ($D)"
 api PATCH /api/tasks/$RTID "{\"section_id\":$RSID}" >/dev/null
 api PUT /api/tasks/$RTID/timeline-row "{\"project_id\":1,\"row_index\":2}" >/dev/null
 R=$(api DELETE /api/projects/1/timeline-rows "{\"section_id\":$RSID}")
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_timeline_rows WHERE task_id=$RTID AND project_id=1;")
+D=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_timeline_rows WHERE task_id=$RTID AND project_id=1;")
 [[ "$(jget "$R" deleted)" == "1" && "$D" == "0" ]] && ok "timeline section row reset" || bad "timeline section row reset" "$R/$D"
-api DELETE "/api/tasks/$RTID?force=1" >/dev/null
+purge_task "$RTID" >/dev/null
 api DELETE /api/sections/$RSID >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM sections WHERE id=$RSID)||'/'||(SELECT COUNT(*) FROM tasks WHERE id=$RTID)||'/'||(SELECT COUNT(*) FROM task_timeline_rows WHERE task_id=$RTID);")
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM sections WHERE id=$RSID)||'/'||(SELECT COUNT(*) FROM tasks WHERE id=$RTID)||'/'||(SELECT COUNT(*) FROM task_timeline_rows WHERE task_id=$RTID);")
 [[ "$N" == "0/0/0" ]] && ok "timeline row cleanup" || bad "timeline row cleanup ($N)"
 
 echo "== sections =="
@@ -428,15 +445,15 @@ C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/s
 [[ "$C" == "400" ]] && ok "section rename validation" || bad "section rename validation ($C)"
 R=$(api DELETE /api/sections/$SID)
 [[ "$(jget "$R" deleted)" == "$SID" ]] && ok "section delete" || bad "section delete" "$R"
-ORIG=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT string_agg(id::text, ',' ORDER BY position, id) FROM sections WHERE project_id=1;")
+ORIG=$(db_sql -t -A -c "SELECT string_agg(id::text, ',' ORDER BY position, id) FROM sections WHERE project_id=1;")
 REV=$(python3 -c "print(','.join(reversed('$ORIG'.split(','))))")
 R=$(api POST /api/sections/reorder "{\"project_id\":1,\"ids\":[$REV]}")
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT string_agg(id::text, ',' ORDER BY position, id) FROM sections WHERE project_id=1;")
+N=$(db_sql -t -A -c "SELECT string_agg(id::text, ',' ORDER BY position, id) FROM sections WHERE project_id=1;")
 [[ "$N" == "$REV" ]] && ok "section reorder" || bad "section reorder ($N)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/sections/reorder" -H 'Content-Type: application/json' -d '{"project_id":1,"ids":[1]}')
 [[ "$C" == "400" ]] && ok "section reorder validation" || bad "section reorder validation ($C)"
 api POST /api/sections/reorder "{\"project_id\":1,\"ids\":[$ORIG]}" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT string_agg(id::text, ',' ORDER BY position, id) FROM sections WHERE project_id=1;")
+N=$(db_sql -t -A -c "SELECT string_agg(id::text, ',' ORDER BY position, id) FROM sections WHERE project_id=1;")
 [[ "$N" == "$ORIG" ]] && ok "section order restored" || bad "section order restored ($N)"
 
 echo "== subtasks/comments/dependencies =="
@@ -446,7 +463,7 @@ STID=$(jget "$ST" id)
 C=$(api POST /api/comments '{"task_id":2,"body":"E2Eコメント @田中 太郎"}')
 CID=$(jget "$C" id)
 [[ -n "$CID" ]] && ok "comment create ($CID)" || bad "comment create" "$C"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM comment_mentions WHERE comment_id=$CID AND user_id=2;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM comment_mentions WHERE comment_id=$CID AND user_id=2;")
 [[ "$N" == "1" ]] && ok "comment mention stored" || bad "comment mention stored ($N)"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list&task=2" -o "$TMPD/comment-pane.html"
 grep -q "data-comment-id=\"$CID\"" "$TMPD/comment-pane.html" && grep -q 'data-comment-mention="田中 太郎"' "$TMPD/comment-pane.html" && grep -q "data-comment-edit=\"$CID\"" "$TMPD/comment-pane.html" && grep -q "data-comment-delete=\"$CID\"" "$TMPD/comment-pane.html" && ok "comment mention/edit markup" || bad "comment mention/edit markup"
@@ -455,33 +472,33 @@ grep -q 'data-task-subtasks' "$TMPD/comment-pane.html" && grep -q 'data-task-att
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list&task=3" -o "$TMPD/desc-empty.html"
 grep -q 'data-task-description' "$TMPD/desc-empty.html" && grep -q 'このタスクの内容を入力します' "$TMPD/desc-empty.html" && ok "task pane empty description" || bad "task pane empty description"
 R=$(api PATCH /api/tasks/3 '{"description_doc":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"E2Eリッチ","marks":[{"type":"bold"}]}]}]}}')
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT description||'|'||(description_doc->'content'->0->'content'->0->'marks'->0->>'type') FROM tasks WHERE id=3;")
+N=$(db_sql -t -A -c "SELECT description||'|'||(description_doc->'content'->0->'content'->0->'marks'->0->>'type') FROM tasks WHERE id=3;")
 [[ "$N" == "**E2Eリッチ**|bold" ]] && ok "rich description stored" || bad "rich description stored ($N)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/tasks/3" -H 'Content-Type: application/json' -d '{"description_doc":{"type":"doc","content":[{"type":"script"}]}}')
 [[ "$C" == "400" ]] && ok "rich description rejects unknown node" || bad "rich description rejects unknown node ($C)"
 R=$(api PATCH /api/tasks/3 '{"description_doc":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"safe","marks":[{"type":"link","attrs":{"href":"javascript:alert(1)"}}]}]}]}}')
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (description_doc::text NOT LIKE '%javascript%')::text FROM tasks WHERE id=3;")
+N=$(db_sql -t -A -c "SELECT (description_doc::text NOT LIKE '%javascript%')::text FROM tasks WHERE id=3;")
 [[ "$N" == "true" ]] && ok "rich description strips unsafe link" || bad "rich description strips unsafe link ($N)"
 api PATCH /api/tasks/3 '{"description_doc":{"type":"doc","content":[]}}' >/dev/null
 R=$(api POST /api/comments '{"task_id":2,"body_doc":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"E2Eリッチ","marks":[{"type":"bold"}]},{"type":"text","text":" "},{"type":"mention","attrs":{"id":"2","label":"偽名"}}]}]}}')
 RCID=$(jget "$R" id)
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT body||'|'||(body_doc->'content'->0->'content'->0->'marks'->0->>'type') FROM comments WHERE id=$RCID;")
+N=$(db_sql -t -A -c "SELECT body||'|'||(body_doc->'content'->0->'content'->0->'marks'->0->>'type') FROM comments WHERE id=$RCID;")
 [[ "$N" == "**E2Eリッチ** @田中 太郎|bold" ]] && ok "rich comment stored" || bad "rich comment stored ($N)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT body_doc->'content'->0->'content'->2->'attrs'->>'label' FROM comments WHERE id=$RCID;")
+N=$(db_sql -t -A -c "SELECT body_doc->'content'->0->'content'->2->'attrs'->>'label' FROM comments WHERE id=$RCID;")
 [[ "$N" == "田中 太郎" ]] && ok "rich mention label normalized" || bad "rich mention label normalized ($N)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT user_id FROM comment_mentions WHERE comment_id=$RCID;")
+N=$(db_sql -t -A -c "SELECT user_id FROM comment_mentions WHERE comment_id=$RCID;")
 [[ "$N" == "2" ]] && ok "rich comment mention stored" || bad "rich comment mention stored ($N)"
 R=$(api PATCH /api/comments/$RCID '{"body_doc":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"E2E編集","marks":[{"type":"italic"}]}]}]}}')
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT body||'|'||(body_doc->'content'->0->'content'->0->'marks'->0->>'type') FROM comments WHERE id=$RCID;")
+N=$(db_sql -t -A -c "SELECT body||'|'||(body_doc->'content'->0->'content'->0->'marks'->0->>'type') FROM comments WHERE id=$RCID;")
 [[ "$N" == "*E2E編集*|italic" ]] && ok "rich comment edit" || bad "rich comment edit ($N)"
 api DELETE /api/comments/$RCID >/dev/null
 curl -s -m 10 -b "$JAR" "$BASE/projects/1?view=list&task=2" -o "$TMPD/rich-pane.html"
 grep -q 'atlas-rich-text' "$TMPD/rich-pane.html" && grep -q 'data-comment-mention="田中 太郎"' "$TMPD/rich-pane.html" && ok "rich text SSR" || bad "rich text SSR"
 R=$(api PATCH /api/comments/$CID '{"body":"E2Eコメント編集済み @佐藤 花子"}')
 [[ -n "$(jget "$R" edited_at)" ]] && ok "comment edit" || bad "comment edit" "$R"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT body||'|'||(edited_at IS NOT NULL)::text FROM comments WHERE id=$CID;")
+N=$(db_sql -t -A -c "SELECT body||'|'||(edited_at IS NOT NULL)::text FROM comments WHERE id=$CID;")
 [[ "$N" == "E2Eコメント編集済み @佐藤 花子|true" ]] && ok "comment edit persisted" || bad "comment edit persisted ($N)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT string_agg(user_id::text, ',' ORDER BY user_id) FROM comment_mentions WHERE comment_id=$CID;")
+N=$(db_sql -t -A -c "SELECT string_agg(user_id::text, ',' ORDER BY user_id) FROM comment_mentions WHERE comment_id=$CID;")
 [[ "$N" == "3" ]] && ok "comment mentions replaced" || bad "comment mentions replaced ($N)"
 JARC="$TMPD/jar-comment-user"
 curl -s -m 10 -c "$JARC" -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' -d '{"email":"tanaka@example.com","password":"atlas-dev-2026"}' -o /dev/null
@@ -489,7 +506,7 @@ C=$(curl -s -m 10 -b "$JARC" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/
 [[ "$C" == "403" ]] && ok "comment edit author-only" || bad "comment edit author-only ($C)"
 R=$(api DELETE /api/comments/$CID)
 [[ "$(jget "$R" deleted)" == "$CID" ]] && ok "comment delete" || bad "comment delete" "$R"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM comments WHERE id=$CID)||'/'||(SELECT COUNT(*) FROM comment_mentions WHERE comment_id=$CID);")
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM comments WHERE id=$CID)||'/'||(SELECT COUNT(*) FROM comment_mentions WHERE comment_id=$CID);")
 [[ "$N" == "0/0" ]] && ok "comment delete cascade" || bad "comment delete cascade ($N)"
 D=$(api POST /api/dependencies '{"task_id":3,"depends_on_id":2}')
 [[ "$D" == *ok* ]] && ok "dependency add" || bad "dependency add" "$D"
@@ -498,17 +515,17 @@ C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/de
 api DELETE "/api/dependencies?task_id=3&depends_on_id=2" >/dev/null
 D=$(api POST /api/dependencies '{"task_id":2,"depends_on_id":3}')
 [[ "$D" == *ok* ]] && ok "dependency reverse direction" || bad "dependency reverse direction" "$D"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_dependencies WHERE task_id=2 AND depends_on_id=3;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_dependencies WHERE task_id=2 AND depends_on_id=3;")
 [[ "$N" == "1" ]] && ok "dependency reverse db" || bad "dependency reverse db ($N)"
 api DELETE "/api/dependencies?task_id=2&depends_on_id=3" >/dev/null
-api DELETE "/api/tasks/$STID?force=1" >/dev/null
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM comments WHERE id = $CID;" >/dev/null
+purge_task "$STID" >/dev/null
+db_sql -t -c "DELETE FROM comments WHERE id = $CID;" >/dev/null
 echo "subtask/dependency/comment cleaned"
 
 echo "== list subtask expand =="
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/list-expand.html"
 [[ "$(grep -c 'サブタスクを開く' "$TMPD/list-expand.html")" == "1" ]] && ok "expand chevron (seed task 2)" || bad "expand chevron"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE parent_task_id=2 AND deleted_at IS NULL;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE parent_task_id=2 AND deleted_at IS NULL;")
 [[ "$N" == "2" ]] && ok "seed subtask rows (2)" || bad "seed subtask rows ($N)"
 
 echo "== list header sort/due filter =="
@@ -536,38 +553,39 @@ h=open('$TMPD/hd-d.html',encoding='utf-8').read()
 a=h.find('>E2E過去見出し<'); b=h.find('>E2E今日見出し<')
 assert a!=-1 and b!=-1 and a>b, (a,b)
 " && ok "header sort desc order" || bad "header sort desc order"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$HA1?force=1" -o /dev/null
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$HB1?force=1" -o /dev/null
+purge_task "$HA1" >/dev/null
+purge_task "$HB1" >/dev/null
 
 echo "== status options =="
 R=$(curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_options":["未着手","進行中","レビュー中","完了"]}')
 [[ "$R" == *'"id":1'* ]] && ok "status options update" || bad "status options update ($R)"
 R=$(curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_options":[]}' -w " [%{http_code}]")
 [[ "$R" == *"[400]"* ]] && ok "status options validation" || bad "status options validation ($R)"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT status_options FROM projects WHERE id=1;")
+D=$(db_sql -t -A -c "SELECT status_options FROM projects WHERE id=1;")
 [[ "$D" == *レビュー中* ]] && ok "status options stored" || bad "status options stored ($D)"
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/3" -H 'Content-Type: application/json' -d '{"status":"レビュー中"}' -o /dev/null
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT status FROM tasks WHERE id=3;")
+D=$(db_sql -t -A -c "SELECT status FROM tasks WHERE id=3;")
 [[ "$D" == "レビュー中" ]] && ok "status set to new option" || bad "status set ($D)"
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/3" -H 'Content-Type: application/json' -d '{"status":"未着手"}' -o /dev/null
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_options":["未着手","進行中","完了"]}' -o /dev/null
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT status FROM tasks WHERE id=3; SELECT status_options FROM projects WHERE id=1;")
+D=$(db_sql -t -A -c "SELECT status FROM tasks WHERE id=3; SELECT status_options FROM projects WHERE id=1;")
 [[ "$D" == *未着手* && "$D" == *進行中* ]] && ok "status options restored" || bad "status restore ($D)"
 # Status field metadata and option-rename migration
 R=$(curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_field_name":"作業状態"}')
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT status_field_name FROM projects WHERE id=1;")
+D=$(db_sql -t -A -c "SELECT status_field_name FROM projects WHERE id=1;")
 [[ "$D" == "作業状態" ]] && ok "status field rename" || bad "status field rename ($D)"
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_field_name":"Status"}' -o /dev/null
 T=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":3,"name":"E2E状態移行"}')
 TID=$(echo "$T" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
-curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_options":["未着手","進行中","完了","E2E状態A"]}' -o /dev/null
+R=$(curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_options":["未着手","進行中","完了","E2E状態A"]}')
+STATUS_VERSION=$(jget "$R" status_options_version)
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$TID" -H 'Content-Type: application/json' -d '{"status":"E2E状態A"}' -o /dev/null
-curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_options":["未着手","進行中","完了","E2E状態B"],"status_renames":[{"from":"E2E状態A","to":"E2E状態B"}]}' -o /dev/null
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT status FROM tasks WHERE id=$TID;")
+curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_options":["未着手","進行中","完了","E2E状態B"],"status_renames":[{"from":"E2E状態A","to":"E2E状態B"}],"expected_status_options_version":'"${STATUS_VERSION:-null}"'}' -o /dev/null
+D=$(db_sql -t -A -c "SELECT status FROM tasks WHERE id=$TID;")
 [[ "$D" == "E2E状態B" ]] && ok "status option rename migrates tasks" || bad "status value migration ($D)"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$TID?force=1" -o /dev/null
+purge_task "$TID" >/dev/null
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_options":["未着手","進行中","完了"]}' -o /dev/null
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT status_field_name||'/'||status_field_enabled::text FROM projects WHERE id=1;")
+D=$(db_sql -t -A -c "SELECT status_field_name||'/'||status_field_enabled::text FROM projects WHERE id=1;")
 [[ "$D" == "Status/true" ]] && ok "status field metadata restored" || bad "status metadata restore ($D)"
 
 echo "== custom fields =="
@@ -576,7 +594,7 @@ FID=$(jget "$F" id)
 [[ -n "$FID" ]] && ok "field create" || bad "field create" "$F"
 V=$(api POST /api/task-values "{\"task_id\":2,\"field_id\":$FID,\"value\":\"高\"}")
 [[ "$V" == *ok* ]] && ok "value set" || bad "value set" "$V"
-curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&cf_$FID=%E9%AB%98" -o "$TMPD/cfcal.html"
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&month=2026-11&cf_$FID=%E9%AB%98" -o "$TMPD/cfcal.html"
 grep -q 'data-calendar-multiday="2"' "$TMPD/cfcal.html" && ! grep -q 'data-calendar-multiday="4"' "$TMPD/cfcal.html" && ok "calendar custom-field filter" || bad "calendar custom-field filter"
 V=$(api POST /api/task-values "{\"task_id\":2,\"field_id\":$FID,\"value\":\"未定義\"}")
 [[ "$V" == *ok* ]] && ok "free-text select value (v1: no option validation)" || bad "value set free-text" "$V"
@@ -584,7 +602,7 @@ R=$(api DELETE /api/custom-fields/$FID)
 [[ "$(jget "$R" deleted)" == "$FID" ]] && ok "field delete (cascade)" || bad "field delete" "$R"
 NF=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E数値列","field_type":"number","config":{"number_format":"currency","currency":"JPY","decimals":0,"column_function":"sum"}}')
 NFID=$(jget "$NF" id)
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT config->>'number_format'||'|'||(config->>'currency')||'|'||(config->>'column_function') FROM custom_fields WHERE id=$NFID;")
+N=$(db_sql -t -A -c "SELECT config->>'number_format'||'|'||(config->>'currency')||'|'||(config->>'column_function') FROM custom_fields WHERE id=$NFID;")
 [[ "$N" == "currency|JPY|sum" ]] && ok "number field config stored" || bad "number field config stored ($N)"
 api POST /api/task-values "{\"task_id\":1,\"field_id\":$NFID,\"value\":1000000}" >/dev/null
 api POST /api/task-values "{\"task_id\":2,\"field_id\":$NFID,\"value\":2500000}" >/dev/null
@@ -600,12 +618,12 @@ R=$(api DELETE /api/custom-fields/$NFID)
 MF=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E複数","field_type":"multi_select","options":["A","B","C"]}')
 MFID=$(jget "$MF" id)
 api POST /api/task-values "{\"task_id\":2,\"field_id\":$MFID,\"value\":[\"A\",\"B\"]}" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (value_json->>0)||'|'||(value_json->>1) FROM task_custom_values WHERE task_id=2 AND field_id=$MFID;")
+N=$(db_sql -t -A -c "SELECT (value_json->>0)||'|'||(value_json->>1) FROM task_custom_values WHERE task_id=2 AND field_id=$MFID;")
 [[ "$N" == "A|B" ]] && ok "multi-select value stored" || bad "multi-select value stored ($N)"
 DF=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E日付","field_type":"date"}')
 DFID=$(jget "$DF" id)
 api POST /api/task-values "{\"task_id\":2,\"field_id\":$DFID,\"value\":\"2026-11-08\"}" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT value_date::text FROM task_custom_values WHERE task_id=2 AND field_id=$DFID;")
+N=$(db_sql -t -A -c "SELECT value_date::text FROM task_custom_values WHERE task_id=2 AND field_id=$DFID;")
 [[ "$N" == "2026-11-08" ]] && ok "date value stored" || bad "date value stored ($N)"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/mdf.html"
 grep -q 'A, B' "$TMPD/mdf.html" && grep -q '2026/11/08' "$TMPD/mdf.html" && ok "multi-select/date rendered" || bad "multi-select/date rendered"
@@ -615,20 +633,20 @@ C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/ta
 [[ "$C" == "400" ]] && ok "date value validation" || bad "date value validation ($C)"
 api DELETE /api/custom-fields/$MFID >/dev/null
 api DELETE /api/custom-fields/$DFID >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM custom_fields WHERE project_id=1 AND deleted_at IS NULL AND (name LIKE 'E2E複数%' OR name LIKE 'E2E日付%');")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM custom_fields WHERE project_id=1 AND deleted_at IS NULL AND (name LIKE 'E2E複数%' OR name LIKE 'E2E日付%');")
 [[ "$N" == "0" ]] && ok "multi/date field cleanup" || bad "multi/date field cleanup ($N)"
 PF=$(api POST /api/custom-fields '{"project_id":1,"name":"E2Eメンバー","field_type":"people"}')
 PFID=$(jget "$PF" id)
 api POST /api/task-values "{\"task_id\":1,\"field_id\":$PFID,\"value\":[1,2]}" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (value_json->>0)||'|'||(value_json->>1) FROM task_custom_values WHERE task_id=1 AND field_id=$PFID;")
+N=$(db_sql -t -A -c "SELECT (value_json->>0)||'|'||(value_json->>1) FROM task_custom_values WHERE task_id=1 AND field_id=$PFID;")
 [[ "$N" == "1|2" ]] && ok "people value stored" || bad "people value stored ($N)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/task-values" -H 'Content-Type: application/json' -d "{\"task_id\":1,\"field_id\":$PFID,\"value\":[999999]}")
 [[ "$C" == "400" ]] && ok "invalid member rejected" || bad "invalid member rejected ($C)"
 AF=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E自動ID","field_type":"auto_id","config":{"prefix":"E2EID-"}}')
 AFID=$(jget "$AF" id)
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_custom_values WHERE field_id=$AFID AND value_text LIKE 'E2EID-%';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_custom_values WHERE field_id=$AFID AND value_text LIKE 'E2EID-%';")
 [[ "$N" -ge 1 ]] && ok "auto ID backfilled" || bad "auto ID backfilled ($N)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) = COUNT(DISTINCT value_number) FROM task_custom_values WHERE field_id=$AFID;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) = COUNT(DISTINCT value_number) FROM task_custom_values WHERE field_id=$AFID;")
 [[ "$N" == "t" ]] && ok "auto ID numbers unique" || bad "auto ID numbers unique ($N)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/task-values" -H 'Content-Type: application/json' -d "{\"task_id\":1,\"field_id\":$AFID,\"value\":\"x\"}")
 [[ "$C" == "400" ]] && ok "auto ID read-only" || bad "auto ID read-only ($C)"
@@ -655,12 +673,12 @@ api POST /api/task-values "{\"task_id\":7,\"field_id\":$W1ID,\"value\":4}" >/dev
 SU=$(api POST /api/custom-fields "{\"project_id\":1,\"name\":\"E2Eサブ集計\",\"field_type\":\"rollup\",\"config\":{\"rollup_source\":\"subtasks\",\"rollup_field_id\":$W1ID,\"rollup_function\":\"sum\"}}")
 SUID=$(jget "$SU" id)
 R=$(api PATCH /api/custom-fields/$UFID "{\"config\":{\"rollup_source\":\"reference\",\"reference_field_id\":$RFID,\"rollup_field_id\":$N1ID,\"rollup_function\":\"sum\",\"column_function\":\"average\"}}")
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT config->>'column_function' FROM custom_fields WHERE id=$UFID;")
+N=$(db_sql -t -A -c "SELECT config->>'column_function' FROM custom_fields WHERE id=$UFID;")
 [[ "$N" == "average" ]] && ok "rollup column function stored" || bad "rollup column function stored ($N)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/custom-fields" -H 'Content-Type: application/json' -d "{\"project_id\":1,\"name\":\"E2E不正参照\",\"field_type\":\"lookup\",\"config\":{\"reference_field_id\":$RFID,\"lookup_field_id\":$FFID}}")
 [[ "$C" == "400" ]] && ok "invalid lookup target rejected" || bad "invalid lookup target rejected ($C)"
 R=$(api PATCH /api/custom-fields/$AFID '{"config":{"prefix":"E2EIDX-"}}')
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_custom_values WHERE field_id=$AFID AND value_text LIKE 'E2EIDX-%';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_custom_values WHERE field_id=$AFID AND value_text LIKE 'E2EIDX-%';")
 [[ "$N" -ge 1 ]] && ok "auto ID prefix updates values" || bad "auto ID prefix updates values ($N)"
 rm -f "$TMPD/jar-t"
 curl -s -m 10 -c "$TMPD/jar-t" -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' -d '{"email":"tanaka@example.com","password":"atlas-dev-2026"}' -o /dev/null
@@ -695,7 +713,7 @@ grep -q '0 時間 00 分' "$TMPD/advanced-fields.html" && ok "timer/time trackin
 for fid in $PFID $AFID $VFID $N1ID $FFID $RFID $LFID $UFID $W1ID $SUID $TFID $TTID; do
   api DELETE /api/custom-fields/$fid >/dev/null
 done
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM custom_fields WHERE deleted_at IS NULL AND (name LIKE 'E2Eメンバー%' OR name LIKE 'E2E自動ID%' OR name LIKE 'E2E所属%' OR name LIKE 'E2E数値A%' OR name LIKE 'E2E数式%' OR name LIKE 'E2E参照%' OR name LIKE 'E2Eサブ%' OR name LIKE 'E2Eタイマー%' OR name LIKE 'E2E時間合計%');")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM custom_fields WHERE deleted_at IS NULL AND (name LIKE 'E2Eメンバー%' OR name LIKE 'E2E自動ID%' OR name LIKE 'E2E所属%' OR name LIKE 'E2E数値A%' OR name LIKE 'E2E数式%' OR name LIKE 'E2E参照%' OR name LIKE 'E2Eサブ%' OR name LIKE 'E2Eタイマー%' OR name LIKE 'E2E時間合計%');")
 [[ "$N" == "0" ]] && ok "advanced field cleanup" || bad "advanced field cleanup ($N)"
 SF=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E復元","field_type":"text"}')
 SFID=$(jget "$SF" id)
@@ -708,12 +726,12 @@ N=$(api GET '/api/custom-fields/deleted?project_id=1' | python3 -c "import json,
 [[ "$N" == "1" ]] && ok "deleted field listed" || bad "deleted field listed ($N)"
 R=$(api POST /api/custom-fields/$SFID/restore)
 [[ "$(jget "$R" restored)" == "$SFID" ]] && ok "field restore" || bad "field restore" "$R"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_custom_values WHERE field_id=$SFID AND value_text='復元値';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_custom_values WHERE field_id=$SFID AND value_text='復元値';")
 [[ "$N" == "1" ]] && ok "restored field keeps values" || bad "restored field keeps values ($N)"
 R=$(api DELETE /api/custom-fields/$SFID)
 PF2=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E権限","field_type":"text","access_level":"admins"}')
 PF2ID=$(jget "$PF2" id)
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT access_level FROM custom_fields WHERE id=$PF2ID;")
+N=$(db_sql -t -A -c "SELECT access_level FROM custom_fields WHERE id=$PF2ID;")
 [[ "$N" == "admins" ]] && ok "field access policy stored" || bad "field access policy stored ($N)"
 N=$(api GET '/api/custom-fields?project_id=1' | python3 -c "import json,sys; d=[f for f in json.load(sys.stdin) if f['name']=='E2E権限']; print(d[0]['access_level'] if d else 'missing')")
 [[ "$N" == "admins" ]] && ok "field access policy exposed" || bad "field access policy exposed ($N)"
@@ -725,7 +743,7 @@ N=$(api GET '/api/field-library?project_id=1' | python3 -c "import json,sys; pri
 [[ "$N" == "1" ]] && ok "field library listed" || bad "field library listed ($N)"
 R=$(api DELETE /api/field-library/$LID)
 [[ "$(jget "$R" deleted)" == "$LID" ]] && ok "field library delete" || bad "field library delete" "$R"
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM custom_fields WHERE deleted_at IS NOT NULL AND (name LIKE 'E2E%' OR name='E2E復元' OR name='E2E権限');"
+db_sql -q -c "DELETE FROM custom_fields WHERE deleted_at IS NOT NULL AND (name LIKE 'E2E%' OR name='E2E復元' OR name='E2E権限');"
 
 echo "== multi-homing =="
 P=$(api POST /api/projects '{"workspace_id":1,"name":"E2E一時PJ"}')
@@ -752,7 +770,7 @@ C=$(curl -s -m 10 -b "$TMPD/jar-mh" -o /dev/null -w "%{http_code}" -X PATCH "$BA
 [[ "$C" == "200" ]] && ok "multi-home editor patch ($C)" || bad "multi-home editor patch ($C)"
 C=$(curl -s -m 10 -b "$TMPD/jar-mh" -o /dev/null -w "%{http_code}" -X DELETE "$BASE/api/tasks/$MTID?force=1")
 [[ "$C" == "403" ]] && ok "multi-home delete requires primary ($C)" || bad "multi-home delete requires primary ($C)"
-api DELETE "/api/tasks/$MTID?force=1" >/dev/null
+purge_task "$MTID" >/dev/null
 api DELETE "/api/admin/users/$MHID" >/dev/null
 api DELETE "/api/memberships?task_id=2&project_id=$PID" >/dev/null
 R=$(api DELETE /api/projects/$PID)
@@ -769,7 +787,7 @@ AID=$(jget "$A" id)
 curl -s -m 15 -b "$JAR" "$BASE/api/attachments/$AID" -o "$TMPD/dl.txt"
 diff "$TMPD/up.txt" "$TMPD/dl.txt" >/dev/null && ok "attachment bytes" || bad "attachment bytes"
 api DELETE /api/attachments/$AID >/dev/null
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM project_messages WHERE id = $MID;" >/dev/null
+db_sql -t -c "DELETE FROM project_messages WHERE id = $MID;" >/dev/null
 echo "message/attachment cleaned"
 
 echo "== knowledge =="
@@ -784,7 +802,7 @@ curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=knowledge" -o "$TMPD/knowledge2.h
 grep -q 'E2E知識更新' "$TMPD/knowledge2.html" && ok "knowledge update visible" || bad "knowledge update visible"
 R=$(api DELETE /api/knowledge/$KID)
 [[ "$(jget "$R" deleted)" == "$KID" ]] && ok "knowledge delete" || bad "knowledge delete" "$R"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM project_knowledge WHERE id=$KID;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_knowledge WHERE id=$KID;")
 [[ "$N" == "0" ]] && ok "knowledge cleaned" || bad "knowledge cleaned ($N)"
 
 echo "== project email =="
@@ -800,13 +818,13 @@ R=$(api PATCH /api/projects/1/email '{"enabled":true}')
 MAIL=$(api POST /api/projects/1/email/intake '{"from":"e2e@example.com","subject":"E2Eメールタスク","body":"メール本文"}')
 ETID=$(jget "$MAIL" task_id)
 [[ -n "$ETID" ]] && ok "project email intake task ($ETID)" || bad "project email intake" "$MAIL"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT name||'/'||status||'/'||(description LIKE '%e2e@example.com%' AND description LIKE '%メール本文%') FROM tasks WHERE id=$ETID;")
+D=$(db_sql -t -A -c "SELECT name||'/'||status||'/'||(description LIKE '%e2e@example.com%' AND description LIKE '%メール本文%') FROM tasks WHERE id=$ETID;")
 [[ "$D" == "E2Eメールタスク/未着手/true" ]] && ok "project email task fields" || bad "project email task fields ($D)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM project_email_messages WHERE task_id=$ETID;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_email_messages WHERE task_id=$ETID;")
 [[ "$N" == "1" ]] && ok "project email message stored" || bad "project email message stored ($N)"
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM project_email_messages WHERE task_id=$ETID;" >/dev/null
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$ETID?force=1" -o /dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM project_email_messages WHERE task_id=$ETID;")
+db_sql -t -c "DELETE FROM project_email_messages WHERE task_id=$ETID;" >/dev/null
+purge_task "$ETID" >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_email_messages WHERE task_id=$ETID;")
 [[ "$N" == "0" ]] && ok "project email cleaned" || bad "project email cleaned ($N)"
 
 echo "== project apps =="
@@ -840,7 +858,7 @@ N=$(api GET '/api/bundles?project_id=1' | python3 -c "import json,sys; d=json.lo
 R=$(api POST /api/bundles/$BID/apply '{"project_id":1}')
 CREATED=$(jget "$R" created_fields)
 [[ "$CREATED" == "2" ]] && ok "bundle apply fields ($CREATED)" || bad "bundle apply" "$R"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM custom_fields WHERE project_id=1 AND deleted_at IS NULL AND name IN ('E2Eバンドル優先度','E2Eバンドル工数');")
+D=$(db_sql -t -A -c "SELECT COUNT(*) FROM custom_fields WHERE project_id=1 AND deleted_at IS NULL AND name IN ('E2Eバンドル優先度','E2Eバンドル工数');")
 [[ "$D" == "2" ]] && ok "bundle fields created" || bad "bundle fields created ($D)"
 N=$(api GET '/api/bundles?project_id=1' | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['applied'], d[0]['applied_count'])")
 [[ "$N" == "True 1" ]] && ok "bundle applied state" || bad "bundle applied state ($N)"
@@ -851,8 +869,8 @@ R=$(api PATCH /api/bundles/$BID '{"name":"E2Eバンドル改"}')
 [[ "$(jget "$R" id)" == "$BID" ]] && ok "bundle update" || bad "bundle update" "$R"
 R=$(api DELETE /api/bundles/$BID)
 [[ "$(jget "$R" deleted)" == "$BID" ]] && ok "bundle delete" || bad "bundle delete" "$R"
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM custom_fields WHERE project_id=1 AND name IN ('E2Eバンドル優先度','E2Eバンドル工数');" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM bundles)||'/'||(SELECT COUNT(*) FROM bundle_applications)||'/'||(SELECT COUNT(*) FROM custom_fields WHERE project_id=1 AND deleted_at IS NULL AND name LIKE 'E2Eバンドル%');")
+db_sql -t -c "DELETE FROM custom_fields WHERE project_id=1 AND name IN ('E2Eバンドル優先度','E2Eバンドル工数');" >/dev/null
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM bundles)||'/'||(SELECT COUNT(*) FROM bundle_applications)||'/'||(SELECT COUNT(*) FROM custom_fields WHERE project_id=1 AND deleted_at IS NULL AND name LIKE 'E2Eバンドル%');")
 [[ "$N" == "0/0/0" ]] && ok "bundle cleaned" || bad "bundle cleaned ($N)"
 
 echo "== automations =="
@@ -868,25 +886,25 @@ N=$(api GET /api/projects/1/automations | python3 -c "import json,sys; print(len
 [[ "$N" == "2" ]] && ok "automations stored" || bad "automations stored ($N)"
 AT=$(api POST /api/tasks '{"project_id":1,"section_id":2,"name":"E2E自動化タスク"}')
 ATID=$(jget "$AT" id)
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT status FROM tasks WHERE id=$ATID;")
+D=$(db_sql -t -A -c "SELECT status FROM tasks WHERE id=$ATID;")
 [[ "$D" == "進行中" ]] && ok "automation set status on create" || bad "automation create status ($D)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM automation_runs WHERE automation_id=$ARID AND task_id=$ATID;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM automation_runs WHERE automation_id=$ARID AND task_id=$ATID;")
 [[ "$N" == "1" ]] && ok "automation run recorded" || bad "automation run recorded ($N)"
 api PATCH /api/tasks/$ATID '{"completed":true}' >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM comments WHERE task_id=$ATID AND body='E2E完了おめでとう';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM comments WHERE task_id=$ATID AND body='E2E完了おめでとう';")
 [[ "$N" == "1" ]] && ok "automation comment on complete" || bad "automation completion comment ($N)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM automation_runs WHERE automation_id=$ACID AND task_id=$ATID;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM automation_runs WHERE automation_id=$ACID AND task_id=$ATID;")
 [[ "$N" == "1" ]] && ok "automation completion run" || bad "automation completion run ($N)"
 R=$(api PATCH /api/projects/1/automations/$ARID '{"name":"E2E新規進行中改","enabled":false}')
 [[ "$(jget "$R" id)" == "$ARID" ]] && ok "automation update" || bad "automation update" "$R"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT enabled::text FROM project_automations WHERE id=$ARID;")
+D=$(db_sql -t -A -c "SELECT enabled::text FROM project_automations WHERE id=$ARID;")
 [[ "$D" == "false" ]] && ok "automation disabled state" || bad "automation disabled state ($D)"
 R=$(api DELETE /api/projects/1/automations/$ARID)
 [[ "$(jget "$R" deleted)" == "$ARID" ]] && ok "automation status rule delete" || bad "automation status delete" "$R"
 R=$(api DELETE /api/projects/1/automations/$ACID)
 [[ "$(jget "$R" deleted)" == "$ACID" ]] && ok "automation comment rule delete" || bad "automation comment delete" "$R"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$ATID?force=1" -o /dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM project_automations)||'/'||(SELECT COUNT(*) FROM automation_runs);")
+purge_task "$ATID" >/dev/null
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM project_automations)||'/'||(SELECT COUNT(*) FROM automation_runs);")
 [[ "$N" == "0/0" ]] && ok "automations cleaned" || bad "automations cleaned ($N)"
 
 echo "== forms =="
@@ -900,18 +918,18 @@ R=$(api PATCH /api/forms/$FID '{"published":true}')
 SUB=$(api POST /api/forms/$FID/submit '{"answers":{"title":"E2Eフォーム回答","details":"詳細テスト","due_on":"2026-11-20"}}')
 FTID=$(jget "$SUB" task_id)
 [[ -n "$FTID" ]] && ok "form submit task ($FTID)" || bad "form submit" "$SUB"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT name||'/'||due_on::text||'/'||status FROM tasks WHERE id=$FTID;")
+D=$(db_sql -t -A -c "SELECT name||'/'||due_on::text||'/'||status FROM tasks WHERE id=$FTID;")
 [[ "$D" == "E2Eフォーム回答/2026-11-20/未着手" ]] && ok "form task fields" || bad "form task fields ($D)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM form_responses WHERE form_id=$FID;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM form_responses WHERE form_id=$FID;")
 [[ "$N" == "1" ]] && ok "form response stored" || bad "form response stored ($N)"
 N=$(api GET "/api/forms?project_id=1" | python3 -c "import json,sys; d=json.load(sys.stdin); print(next((x['response_count'] for x in d if x['id']==$FID), -1))")
 [[ "$N" == "1" ]] && ok "form response counted" || bad "form response counted ($N)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/forms/$FID/submit" -H 'Content-Type: application/json' -d '{"answers":{"title":""}}')
 [[ "$C" == "400" ]] && ok "form required validation" || bad "form required validation ($C)"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$FTID?force=1" -o /dev/null
+purge_task "$FTID" >/dev/null
 R=$(api DELETE /api/forms/$FID)
 [[ "$(jget "$R" deleted)" == "$FID" ]] && ok "form delete" || bad "form delete" "$R"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM project_forms WHERE id=$FID;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_forms WHERE id=$FID;")
 [[ "$N" == "0" ]] && ok "form cleaned" || bad "form cleaned ($N)"
 
 echo "== saved views =="
@@ -931,11 +949,11 @@ TID=$(jget "$T" id)
 curl -s -m 10 -b "$TMPD/jar" -X PATCH "$BASE/api/tasks/$TID" -H 'Content-Type: application/json' -d '{"completed":true}' -o /dev/null
 curl -s -m 10 -b "$JAR" "$BASE/inbox" -o "$TMPD/ibe.html"
 grep -q 'タスクを完了しました' "$TMPD/ibe.html" && ok "event in inbox" || bad "event in inbox"
-EID=$(docker exec atlas-db psql -U atlas -d atlas -t -c "SELECT id FROM task_events WHERE task_id = $TID AND kind = 'completed';")
+EID=$(db_sql -t -c "SELECT id FROM task_events WHERE task_id = $TID AND kind = 'completed';")
 R=$(api POST /api/inbox/read "{\"event_id\":$EID}")
 [[ "$R" == *ok* ]] && ok "event read" || bad "event read" "$R"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$TID?force=1" -o /dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_events WHERE task_id = $TID;")
+purge_task "$TID" >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_events WHERE task_id = $TID;")
 [[ "$N" == "0" ]] && ok "event cascade (hard delete)" || bad "event cascade ($N left)"
 
 echo "== advanced search =="
@@ -944,17 +962,20 @@ grep -q '>要件定義<' "$TMPD/adv.html" && grep -q '>設計レビュー<' "$TM
 DT=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":2,"name":"E2E期間内"}' | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 D0=$(python3 -c "import datetime; print((datetime.date.today()+datetime.timedelta(days=2)).isoformat())")
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$DT" -H 'Content-Type: application/json' -d "{\"due_on\":\"$D0\"}" -o /dev/null
+DOUT=$(api POST /api/tasks '{"project_id":1,"section_id":2,"name":"E2E期間外","due_on":"2000-01-01"}')
+DOUT_ID=$(jget "$DOUT" id)
 D1=$(python3 -c "import datetime; print((datetime.date.today()+datetime.timedelta(days=1)).isoformat())")
 D9=$(python3 -c "import datetime; print((datetime.date.today()+datetime.timedelta(days=9)).isoformat())")
 curl -s -m 15 -b "$JAR" "$BASE/search?from=$D1&to=$D9" -o "$TMPD/adv2.html"
-grep -q '>E2E期間内<' "$TMPD/adv2.html" && ! grep -q '>設計レビュー<' "$TMPD/adv2.html" && ok "due range filter" || bad "due range filter"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$DT?force=1" -o /dev/null
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM search_history;"
+grep -q '>E2E期間内<' "$TMPD/adv2.html" && ! grep -q '>E2E期間外<' "$TMPD/adv2.html" && ok "due range filter" || bad "due range filter"
+purge_task "$DT" >/dev/null
+purge_task "$DOUT_ID" >/dev/null
+db_sql -q -c "DELETE FROM search_history;"
 curl -s -m 15 -b "$JAR" "$BASE/search?completed=done" -o "$TMPD/adv3.html"
 grep -q '>キックオフ<' "$TMPD/adv3.html" && ! grep -q '>要件定義<' "$TMPD/adv3.html" && ok "completed filter" || bad "completed filter"
 
 echo "== advanced search filters =="
-CFID=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT id FROM custom_fields WHERE project_id=1 AND field_type='number' ORDER BY id LIMIT 1;")
+CFID=$(db_sql -t -A -c "SELECT id FROM custom_fields WHERE project_id=1 AND field_type='number' ORDER BY id LIMIT 1;")
 TODAY=$(python3 -c "import datetime; print(datetime.date.today().isoformat())")
 ST=$(api POST /api/tasks "{\"project_id\":1,\"section_id\":2,\"name\":\"E2E拡張検索\",\"start_on\":\"$TODAY\",\"due_on\":\"$TODAY\"}")
 STID=$(jget "$ST" id)
@@ -970,9 +991,9 @@ SSID=$(jget "$SS" id)
 curl -s -m 15 -b "$JAR" "$BASE/search?q=E2E%E6%8B%A1%E5%BC%B5%E6%A4%9C%E7%B4%A2&status=%E6%9C%AA%E7%9D%80%E6%89%8B&cf_$CFID=777" -o "$TMPD/adv6.html"
 grep -q 'E2E保存検索' "$TMPD/adv6.html" && ok "saved search visible" || bad "saved search visible"
 curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/saved-searches/$SSID" -o /dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM saved_searches WHERE id=$SSID;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM saved_searches WHERE id=$SSID;")
 [[ "$N" == "0" ]] && ok "saved search delete" || bad "saved search delete ($N)"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$STID?force=1" -o /dev/null
+purge_task "$STID" >/dev/null
 
 echo "== global search scope/ranking =="
 R1=$(api POST /api/tasks '{"project_id":1,"section_id":2,"name":"S01RankE2E"}')
@@ -991,7 +1012,7 @@ print("ok" if all(p>=0 for p in pos) and pos==sorted(pos) else "bad:"+",".join(m
 PYEOF
 )
 [[ "$ORDER" == "ok" ]] && ok "search ranking exact/prefix/contains/description" || bad "search ranking" "$ORDER"
-for id in $R1ID $R2ID $R3ID $R4ID; do curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$id?force=1" -o /dev/null; done
+for id in $R1ID $R2ID $R3ID $R4ID; do purge_task "$id" >/dev/null; done
 
 GP=$(api POST /api/projects '{"workspace_id":1,"name":"E2E-SCOPE-PJ"}')
 GPID=$(jget "$GP" id)
@@ -1002,7 +1023,7 @@ api DELETE /api/projects/$GPID >/dev/null
 GM=$(api POST /api/messages '{"project_id":1,"title":"E2E-SCOPE-MSG","body":"message scope body"}')
 curl -s -m 15 -b "$JAR" "$BASE/search?q=E2E-SCOPE-MSG" -o "$TMPD/scope-msg.html"
 grep -q 'data-search-section="messages"' "$TMPD/scope-msg.html" && grep -q 'E2E-SCOPE-MSG' "$TMPD/scope-msg.html" && ok "search scope messages" || bad "search scope messages"
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM project_messages WHERE title='E2E-SCOPE-MSG';"
+db_sql -q -c "DELETE FROM project_messages WHERE title='E2E-SCOPE-MSG';"
 
 GK=$(api POST /api/knowledge '{"project_id":1,"title":"E2E-SCOPE-NOTE","body":"knowledge scope body"}')
 GKID=$(jget "$GK" id)
@@ -1020,12 +1041,12 @@ api DELETE /api/attachments/$GAID >/dev/null
 GC=$(api POST /api/comments '{"task_id":2,"body":"E2E-SCOPE-COMMENT"}')
 curl -s -m 15 -b "$JAR" "$BASE/search?q=E2E-SCOPE-COMMENT" -o "$TMPD/scope-comment.html"
 grep -q 'data-search-section="tasks"' "$TMPD/scope-comment.html" && grep -q '>要件定義<' "$TMPD/scope-comment.html" && ok "search scope comments" || bad "search scope comments"
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM comments WHERE body='E2E-SCOPE-COMMENT';"
+db_sql -q -c "DELETE FROM comments WHERE body='E2E-SCOPE-COMMENT';"
 
 echo "== global search shell =="
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM search_history WHERE user_id=1;"
+db_sql -q -c "DELETE FROM search_history WHERE user_id=1;"
 curl -s -m 15 -b "$JAR" "$BASE/search?q=%E8%A6%81%E4%BB%B6%E5%AE%9A%E7%BE%A9" -o "$TMPD/gs-search.html"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM search_history WHERE user_id=1 AND query='要件定義';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM search_history WHERE user_id=1 AND query='要件定義';")
 [[ "$N" == "1" ]] && ok "search history recorded" || bad "search history recorded ($N)"
 curl -s -m 15 -b "$JAR" "$BASE/api/search/suggest?q=%E8%A6%81%E4%BB%B6%E5%AE%9A%E7%BE%A9" -o "$TMPD/gs-suggest.json"
 python3 -c "import json; d=json.load(open('$TMPD/gs-suggest.json')); assert any(t['id']==2 for t in d['groups']['tasks']), d" && ok "search suggest tasks" || bad "search suggest tasks"
@@ -1049,7 +1070,7 @@ K10=$(api POST /api/knowledge "{\"project_id\":$P10ID,\"title\":\"E2E_PRIVATE_S1
 K10ID=$(jget "$K10" id)
 F10=$(api POST /api/custom-fields "{\"project_id\":$P10ID,\"name\":\"S10秘密\",\"field_type\":\"select\",\"options\":\"A,B\"}")
 F10ID=$(jget "$F10" id)
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM users WHERE email IN ('e2e-s10-viewer@example.com','e2e-s10-guest@example.com');"
+db_sql -q -c "DELETE FROM users WHERE email IN ('e2e-s10-viewer@example.com','e2e-s10-guest@example.com');"
 V10=$(api POST /api/admin/users '{"name":"E2E S10 Viewer","email":"e2e-s10-viewer@example.com","password":"e2e-pass1","role":"member"}')
 V10ID=$(jget "$V10" id)
 G10=$(api POST /api/admin/users '{"name":"E2E S10 Guest","email":"e2e-s10-guest@example.com","password":"e2e-pass1","role":"guest"}')
@@ -1071,7 +1092,7 @@ grep -q "name=\"cf_$F10ID\"" "$TMPD/s10-after.html" && ok "viewer search sees gr
 api DELETE /api/projects/$P10ID >/dev/null
 api DELETE /api/admin/users/$V10ID >/dev/null
 api DELETE /api/admin/users/$G10ID >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM users WHERE email IN ('e2e-s10-viewer@example.com','e2e-s10-guest@example.com'))||'/'||(SELECT COUNT(*) FROM projects WHERE id=$P10ID);")
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM users WHERE email IN ('e2e-s10-viewer@example.com','e2e-s10-guest@example.com'))||'/'||(SELECT COUNT(*) FROM projects WHERE id=$P10ID);")
 [[ "$N" == "0/0" ]] && ok "search permission fixtures cleaned" || bad "search permission fixtures cleaned ($N)"
 
 echo "== logout =="
@@ -1091,7 +1112,7 @@ curl -s -m 10 -c "$TMPD/jart" -X POST "$BASE/api/auth/login" -H 'Content-Type: a
 curl -s -m 10 -b "$TMPD/jart" "$BASE/inbox" -o "$TMPD/iban.html"
 grep -q '担当者を田中 太郎に変更しました' "$TMPD/iban.html" && ok "assignee notified" || bad "assignee notified"
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/3" -H 'Content-Type: application/json' -d '{"assignee_id":3}' -o /dev/null
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM task_events WHERE task_id = 3;" >/dev/null
+db_sql -t -c "DELETE FROM task_events WHERE task_id = 3;" >/dev/null
 
 echo "== my-tasks buckets =="
 D1=$(python3 -c "import datetime; print((datetime.date.today()-datetime.timedelta(days=3)).isoformat())")
@@ -1104,8 +1125,8 @@ curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$A1" -H 'Content-Type: applica
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$B1" -H 'Content-Type: application/json' -d "{\"due_on\":\"$D0\",\"assignee_id\":1}" -o /dev/null
 curl -s -m 10 -b "$JAR" "$BASE/my-tasks" -o "$TMPD/mtb.html"
 grep -q '>E2E期限超過<' "$TMPD/mtb.html" && grep -q '>E2E今日<' "$TMPD/mtb.html" && ok "buckets show" || bad "buckets show"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$A1?force=1" -o /dev/null
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$B1?force=1" -o /dev/null
+purge_task "$A1" >/dev/null
+purge_task "$B1" >/dev/null
 
 echo "== my-tasks order =="
 MT1=$(api POST /api/tasks "{\"project_id\":1,\"section_id\":2,\"name\":\"E2E並びA\",\"assignee_id\":1,\"due_on\":\"$D0\"}")
@@ -1126,7 +1147,7 @@ print("ok" if len(pos)==3 and pos==sorted(pos) else "bad:"+",".join(rows))
 PYEOF
 )
 [[ "$ORDER" == "ok" ]] && ok "my-tasks order persisted" || bad "my-tasks order persisted" "$ORDER"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT string_agg(task_id::text,',' ORDER BY position) FROM my_task_orders WHERE user_id=1 AND task_id IN ($MT1ID,$MT2ID,$MT3ID);")
+D=$(db_sql -t -A -c "SELECT string_agg(task_id::text,',' ORDER BY position) FROM my_task_orders WHERE user_id=1 AND task_id IN ($MT1ID,$MT2ID,$MT3ID);")
 [[ "$D" == "$MT3ID,$MT2ID,$MT1ID" ]] && ok "my-tasks order db" || bad "my-tasks order db ($D)"
 R=$(api PUT /api/my-tasks "{\"items\":[{\"task_id\":$MT3ID,\"position\":1000,\"due_on\":null},{\"task_id\":$MT2ID,\"position\":2000,\"due_on\":\"$D0\"},{\"task_id\":$MT1ID,\"position\":3000,\"due_on\":\"$D0\"}]}")
 curl -s -m 15 -b "$JAR" "$BASE/my-tasks" -o "$TMPD/mto2.html"
@@ -1140,12 +1161,12 @@ print("ok" if sys.argv[2] in rows else "bad:"+",".join(rows[:10]))
 PYEOF
 )
 [[ "$IN_LATER" == "ok" ]] && ok "my-tasks cross bucket due change" || bad "my-tasks cross bucket due change" "$IN_LATER"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COALESCE(due_on::text,'null') FROM tasks WHERE id=$MT3ID;")
+D=$(db_sql -t -A -c "SELECT COALESCE(due_on::text,'null') FROM tasks WHERE id=$MT3ID;")
 [[ "$D" == "null" ]] && ok "my-tasks due cleared" || bad "my-tasks due cleared ($D)"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$MT1ID?force=1" -o /dev/null
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$MT2ID?force=1" -o /dev/null
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$MT3ID?force=1" -o /dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM my_task_orders WHERE task_id IN ($MT1ID,$MT2ID,$MT3ID);")
+purge_task "$MT1ID" >/dev/null
+purge_task "$MT2ID" >/dev/null
+purge_task "$MT3ID" >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM my_task_orders WHERE task_id IN ($MT1ID,$MT2ID,$MT3ID);")
 [[ "$N" == "0" ]] && ok "my-tasks fixtures cleaned" || bad "my-tasks fixtures cleaned ($N)"
 
 echo "== timeline move =="
@@ -1172,20 +1193,24 @@ grep -q 'data-timeline-zoom-level="日"' "$TMPD/tz-day.html" && grep -q 'data-ti
 api PUT /api/view-state '{"project_id":1,"view":"timeline","state":{"zoom":4}}' >/dev/null
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=timeline" -o "$TMPD/tz-quarter.html"
 grep -q 'data-timeline-zoom-level="四半期"' "$TMPD/tz-quarter.html" && grep -q 'data-timeline-zoom-preset="quarter"' "$TMPD/tz-quarter.html" && ok "timeline quarter preset" || bad "timeline quarter preset"
+COARSE_TASK=$(api POST /api/tasks '{"project_id":1,"section_id":2,"name":"E2Eズームラベル","start_on":"2026-11-04","due_on":"2026-11-04"}')
+COARSE_ID=$(jget "$COARSE_TASK" id)
 api PUT /api/view-state '{"project_id":1,"view":"timeline","state":{"zoom":6}}' >/dev/null
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=timeline" -o "$TMPD/tz-year.html"
-grep -q 'data-timeline-zoom-level="年"' "$TMPD/tz-year.html" && grep -q 'data-timeline-zoom-preset="year"' "$TMPD/tz-year.html" && grep -q 'data-timeline-bar-label=' "$TMPD/tz-year.html" && ok "timeline year preset" || bad "timeline year preset"
+grep -q 'data-timeline-zoom-level="年"' "$TMPD/tz-year.html" && grep -q 'data-timeline-zoom-preset="year"' "$TMPD/tz-year.html" && grep -q "data-timeline-bar-label=\"$COARSE_ID\"" "$TMPD/tz-year.html" && ok "timeline year preset" || bad "timeline year preset"
 api PUT /api/view-state '{"project_id":1,"view":"timeline","state":{"zoom":5}}' >/dev/null
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=timeline" -o "$TMPD/tz-half.html"
-python3 - "$TMPD/tz-half.html" <<'PYEOF'
+python3 - "$TMPD/tz-half.html" "$COARSE_ID" <<'PYEOF'
 import re,sys
 h=open(sys.argv[1],encoding='utf-8').read()
-labels=re.findall(r'<span[^>]*data-timeline-bar-label="[^"]*"[^>]*>',h)
+assert sys.argv[2].isdigit(), 'missing one-day test task'
+labels=re.findall(r'<span[^>]*data-timeline-bar-label="'+sys.argv[2]+r'"[^>]*>',h)
 assert labels, 'no outside labels'
 for tag in labels:
     assert 'bg-white' not in tag and 'shadow' not in tag and 'border' not in tag, tag
 PYEOF
 [[ $? == 0 ]] && ok "timeline half plain labels" || bad "timeline half plain labels"
+purge_task "$COARSE_ID" >/dev/null
 api PUT /api/view-state '{"project_id":1,"view":"timeline","state":{}}' >/dev/null
 grep -q 'data-timeline-group-line' "$TMPD/tlui.html" && grep -q 'data-timeline-weekend' "$TMPD/tlui.html" && grep -q 'data-timeline-filter-open' "$TMPD/tlui.html" && grep -q 'data-timeline-sort-open' "$TMPD/tlui.html" && grep -q 'data-timeline-options-open' "$TMPD/tlui.html" && grep -q 'data-view-options-drawer="タイムライン"' "$TMPD/tlui.html" && grep -q 'line-clamp-2' "$TMPD/tlui.html" && grep -q 'aria-expanded="true"' "$TMPD/tlui.html" && ok "timeline parity chrome" || bad "timeline parity chrome"
 grep -q 'data-timeline-section-row="1"' "$TMPD/tlui.html" && ok "timeline section header row" || bad "timeline section header row"
@@ -1193,18 +1218,18 @@ T=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: applicat
 TID=$(echo "$T" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$TID" -H 'Content-Type: application/json' -d '{"start_on":"2026-11-10","due_on":"2026-11-12"}' -o /dev/null
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$TID" -H 'Content-Type: application/json' -d '{"start_on":"2026-11-17","due_on":"2026-11-19"}' -o /dev/null
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT start_on::text||'/'||due_on::text FROM tasks WHERE id = $TID;")
+D=$(db_sql -t -A -c "SELECT start_on::text||'/'||due_on::text FROM tasks WHERE id = $TID;")
 [[ "$D" == "2026-11-17/2026-11-19" ]] && ok "dates shifted ($D)" || bad "dates shifted ($D)"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$TID?force=1" -o /dev/null
+purge_task "$TID" >/dev/null
 
 echo "== timeline resize =="
 T=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":2,"name":"E2E伸縮"}')
 TID=$(echo "$T" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$TID" -H 'Content-Type: application/json' -d '{"start_on":"2026-11-10","due_on":"2026-11-12"}' -o /dev/null
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$TID" -H 'Content-Type: application/json' -d '{"due_on":"2026-11-18"}' -o /dev/null
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT start_on::text||'/'||due_on::text FROM tasks WHERE id = $TID;")
+D=$(db_sql -t -A -c "SELECT start_on::text||'/'||due_on::text FROM tasks WHERE id = $TID;")
 [[ "$D" == "2026-11-10/2026-11-18" ]] && ok "resize end ($D)" || bad "resize end ($D)"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$TID?force=1" -o /dev/null
+purge_task "$TID" >/dev/null
 
 echo "== bulk ops =="
 B1=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":3,"name":"E2E一括A"}' | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
@@ -1223,31 +1248,31 @@ T=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: applicat
 TID=$(echo "$T" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$TID" -H 'Content-Type: application/json' -d '{"due_on":"2026-11-10","recurrence":"weekly"}' -o /dev/null
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/$TID" -H 'Content-Type: application/json' -d '{"completed":true}' -o /dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT due_on::text||'/'||completed::text||'/'||recurrence FROM tasks WHERE name = 'E2E繰返' AND id <> $TID;")
+N=$(db_sql -t -A -c "SELECT due_on::text||'/'||completed::text||'/'||recurrence FROM tasks WHERE name = 'E2E繰返' AND id <> $TID;")
 [[ "$N" == "2026-11-17/false/weekly" ]] && ok "weekly spawn ($N)" || bad "weekly spawn ($N)"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$TID?force=1" -o /dev/null
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM tasks WHERE name = 'E2E繰返';" >/dev/null
+purge_task "$TID" >/dev/null
+db_sql -t -c "DELETE FROM tasks WHERE name = 'E2E繰返';" >/dev/null
 
 echo "== task templates =="
 TP=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/task-templates" -H 'Content-Type: application/json' -d '{"project_id":1,"name":"E2E定型","title_template":"E2E定型作業","assignee_id":2,"due_offset_days":3,"section_id":2,"subtasks":[{"name":"手順1"},{"name":"手順2"}]}')
 TPID=$(echo "$TP" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 [[ -n "$TPID" ]] && ok "template create ($TPID)" || bad "template create ($TP)"
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/task-templates/$TPID" -H 'Content-Type: application/json' -d '{"name":"E2E定型改","due_offset_days":5}' -o /dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT name||'/'||due_offset_days FROM task_templates WHERE id=$TPID;")
+N=$(db_sql -t -A -c "SELECT name||'/'||due_offset_days FROM task_templates WHERE id=$TPID;")
 [[ "$N" == "E2E定型改/5" ]] && ok "template patch" || bad "template patch ($N)"
 TI=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/task-templates/$TPID" -H 'Content-Type: application/json' -d '{}')
 TID=$(echo "$TI" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE (id = $TID OR parent_task_id = $TID);")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE (id = $TID OR parent_task_id = $TID);")
 [[ "$N" == "3" ]] && ok "instantiate task+2subs" || bad "instantiate ($N)"
 curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/task-templates/$TPID" -o /dev/null
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM tasks WHERE name IN ('E2E定型作業','手順1','手順2');" >/dev/null
+db_sql -t -c "DELETE FROM tasks WHERE name IN ('E2E定型作業','手順1','手順2');" >/dev/null
 
 echo "== project templates =="
 PT=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/project-templates" -H 'Content-Type: application/json' -d '{"project_id":1,"name":"E2E雛形"}' | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 [[ -n "$PT" ]] && ok "snapshot ($PT)" || bad "snapshot"
 PI=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/project-templates/$PT" -H 'Content-Type: application/json' -d '{"name":"E2E複製PJ"}' | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
-SRC=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id = 1 AND parent_task_id IS NULL AND deleted_at IS NULL;")
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM sections WHERE project_id = $PI)::text||'/'||(SELECT COUNT(*) FROM tasks WHERE project_id = $PI)::text;")
+SRC=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id = 1 AND parent_task_id IS NULL AND deleted_at IS NULL;")
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM sections WHERE project_id = $PI)::text||'/'||(SELECT COUNT(*) FROM tasks WHERE project_id = $PI)::text;")
 [[ "$N" == "4/$SRC" ]] && ok "instantiate ($N)" || bad "instantiate ($N, expected 4/$SRC)"
 curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/projects/$PI" -o /dev/null
 curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/project-templates/$PT" -o /dev/null
@@ -1257,11 +1282,11 @@ T=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: applicat
 TID=$(echo "$T" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 curl -s -m 10 -b "$JAR" "$BASE/audit" -o "$TMPD/au.html"
 grep -q 'task.create' "$TMPD/au.html" && grep -q 'E2E監査' "$TMPD/au.html" && ok "audit row" || bad "audit row"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$TID?force=1" -o /dev/null
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM audit_log;" >/dev/null
+purge_task "$TID" >/dev/null
+db_sql -t -c "DELETE FROM audit_log;" >/dev/null
 
 echo "== export =="
-TCOUNT=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id = 1 AND deleted_at IS NULL;")
+TCOUNT=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id = 1 AND deleted_at IS NULL;")
 curl -s -m 15 -b "$JAR" "$BASE/api/projects/1/export?format=json" -o "$TMPD/ex.json"
 python3 -c "import json; d=json.load(open('$TMPD/ex.json')); assert len(d['tasks'])==$TCOUNT and len(d['sections'])==4, d" && ok "json export" || bad "json export"
 curl -s -m 15 -b "$JAR" "$BASE/api/projects/1/export?format=csv" -o "$TMPD/ex.csv"
@@ -1280,7 +1305,7 @@ echo "$R" | grep -q 'subtask without parent' && ok "orphan skipped" || bad "orph
 curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/projects/$P" -o /dev/null
 
 echo "== dashboard export =="
-MCOUNT=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id = 1 AND parent_task_id IS NULL AND deleted_at IS NULL;")
+MCOUNT=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id = 1 AND parent_task_id IS NULL AND deleted_at IS NULL;")
 curl -s -m 15 -b "$JAR" "$BASE/api/projects/1/dashboard/export?format=json&days=7" -o "$TMPD/dj.json"
 python3 -c "import json; d=json.load(open('$TMPD/dj.json')); assert d['totals']['total']==$MCOUNT and len(d['trend'])==7, d" && ok "dashboard json" || bad "dashboard json"
 curl -s -m 15 -b "$JAR" "$BASE/api/projects/1/dashboard/export?format=csv&days=7" -o "$TMPD/dc.csv"
@@ -1289,13 +1314,14 @@ python3 -c "import csv; rows=list(csv.reader(open('$TMPD/dc.csv', encoding='utf-
 echo "== dashboard status field lifecycle =="
 curl -s -m 15 -b "$JAR" "$BASE/api/projects/1/dashboard/export?format=json&days=7" -o "$TMPD/d05-before.json"
 python3 -c "import json; d=json.load(open('$TMPD/d05-before.json')); assert d['status_field_enabled'] is True and len(d['byStatus'])>0, d" && ok "dashboard status baseline" || bad "dashboard status baseline"
+BEFORE_STATUS=$(db_sql -qAtc 'SELECT status FROM tasks WHERE id IN (1,3) ORDER BY id')
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_field_enabled":false}' -o /dev/null
 curl -s -m 15 -b "$JAR" "$BASE/api/projects/1/dashboard/export?format=json&days=7" -o "$TMPD/d05-off.json"
 python3 -c "import json; d=json.load(open('$TMPD/d05-off.json')); assert d['status_field_enabled'] is False and d['byStatus']==[], d" && ok "dashboard hides status history" || bad "dashboard hides status history"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=dashboard" -o "$TMPD/d05-off.html"
 grep -q 'data-dashboard-status-disabled' "$TMPD/d05-off.html" && ! grep -q 'data-dashboard-widget-title="Status別タスク数"' "$TMPD/d05-off.html" && ok "dashboard status disabled state" || bad "dashboard status disabled state"
-D=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT status FROM tasks WHERE id=1; SELECT status FROM tasks WHERE id=3;")
-[[ "$D" == *完了* && "$D" == *未着手* ]] && ok "status values retained in db" || bad "status values retained ($D)"
+D=$(db_sql -qAtc 'SELECT status FROM tasks WHERE id IN (1,3) ORDER BY id')
+[[ -n "$BEFORE_STATUS" && "$D" == "$BEFORE_STATUS" ]] && ok "status values retained in db" || bad "status values retained ($D)"
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/projects/1" -H 'Content-Type: application/json' -d '{"status_field_enabled":true}' -o /dev/null
 curl -s -m 15 -b "$JAR" "$BASE/api/projects/1/dashboard/export?format=json&days=7" -o "$TMPD/d05-on.json"
 python3 -c "import json; d=json.load(open('$TMPD/d05-on.json')); assert d['status_field_enabled'] is True and len(d['byStatus'])>0, d" && ok "dashboard status restored" || bad "dashboard status restored"
@@ -1313,25 +1339,24 @@ curl -s -m 15 "$BASE/share/$TOK" -o "$TMPD/sh2.html"
 grep -q 'data-not-found' "$TMPD/sh2.html" && ok "revoke" || bad "revoke"
 SH=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/projects/1/share" -H 'Content-Type: application/json' -d '{"label":"E2E期限","expires_in_days":7}')
 TOK2=$(echo "$SH" | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])")
-docker exec atlas-db psql -U atlas -d atlas -t -c "UPDATE project_share_tokens SET expires_at = NOW() - interval '1 hour' WHERE token = '$TOK2';" >/dev/null
+db_sql -t -c "UPDATE project_share_tokens SET expires_at = NOW() - interval '1 hour' WHERE token = '$TOK2';" >/dev/null
 curl -s -m 15 "$BASE/share/$TOK2" -o "$TMPD/sh3.html"
 grep -q 'data-not-found' "$TMPD/sh3.html" && ok "expiry enforced" || bad "expiry enforced"
-./scripts/janitor.sh >/dev/null 2>&1
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM project_share_tokens WHERE token = '$TOK2';")
+bash scripts/janitor.sh >/dev/null || e2e_abort 'test janitor failed'
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_share_tokens WHERE token = '$TOK2';")
 [[ "$N" == "0" ]] && ok "expired purged" || bad "expired kept ($N)"
 
 echo "== weekly report =="
-export PATH="/opt/homebrew/opt/node@24/bin:$PATH"
-DATABASE_URL="postgres://atlas:atlas@127.0.0.1:5433/atlas" NODE_PATH="$PWD/node_modules" node scripts/weekly-report.cjs >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM project_messages WHERE project_id=1 AND title LIKE '[自動]%';")
+docker exec "$E2E_APP_ID" node scripts/weekly-report.cjs >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_messages WHERE project_id=1 AND title LIKE '[自動]%';")
 [[ "$N" == "1" ]] && ok "report posted" || bad "report posted ($N)"
-DATABASE_URL="postgres://atlas:atlas@127.0.0.1:5433/atlas" NODE_PATH="$PWD/node_modules" node scripts/weekly-report.cjs >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM project_messages WHERE project_id=1 AND title LIKE '[自動]%';")
+docker exec "$E2E_APP_ID" node scripts/weekly-report.cjs >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_messages WHERE project_id=1 AND title LIKE '[自動]%';")
 [[ "$N" == "1" ]] && ok "report idempotent" || bad "report dup ($N)"
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM project_messages WHERE title LIKE '[自動]%';" >/dev/null
+db_sql -t -c "DELETE FROM project_messages WHERE title LIKE '[自動]%';" >/dev/null
 
 echo "== row reorder =="
-ST=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT updated_at::text FROM tasks WHERE id = 3;")
+ST=$(db_sql -t -A -c "SELECT updated_at::text FROM tasks WHERE id = 3;")
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/3" -H 'Content-Type: application/json' -d "{\"position\":0,\"expected_updated_at\":\"$ST\"}" -o /dev/null
 curl -s -m 10 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/ro.html"
 python3 -c "
@@ -1340,7 +1365,7 @@ a=h.find('>設計レビュー<'); b=h.find('>要件定義<')
 assert a!=-1 and b!=-1 and a<b, (a,b)
 print('order flipped ok')
 " && ok "reorder" || bad "reorder"
-ST=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT updated_at::text FROM tasks WHERE id = 3;")
+ST=$(db_sql -t -A -c "SELECT updated_at::text FROM tasks WHERE id = 3;")
 curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/3" -H 'Content-Type: application/json' -d "{\"position\":2000,\"expected_updated_at\":\"$ST\"}" -o /dev/null
 
 echo "== markdown =="
@@ -1348,7 +1373,7 @@ C=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/comments" -H 'Content-Type: appli
 CID=$(echo "$C" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 curl -s -m 10 -b "$JAR" "$BASE/projects/1?view=list&task=2" -o "$TMPD/md.html"
 grep -q '<strong>E2E太字</strong>' "$TMPD/md.html" && ! grep -q '<script>x</script>' "$TMPD/md.html" && ok "md render+escape" || bad "md render"
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM comments WHERE id = $CID;" >/dev/null
+db_sql -t -c "DELETE FROM comments WHERE id = $CID;" >/dev/null
 
 echo "== attachment preview =="
 python3 -c "import base64; open('$TMPD/px.png','wb').write(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='))"
@@ -1365,23 +1390,24 @@ curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/attachments/$S" -o /dev/null
 echo "== calendar week =="
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=2026-11-04" -o "$TMPD/cw.html"
 grep -q '2026-11-01' "$TMPD/cw.html" && grep -q '>開発環境の準備<' "$TMPD/cw.html" && ok "week view" || bad "week view"
-grep -q 'data-calendar-multiday="2"' "$TMPD/cw.html" && grep -q 'data-calendar-continues="left"' "$TMPD/cw.html" && ok "calendar range bar" || bad "calendar range bar"
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=2026-11-08" -o "$TMPD/cw-next.html"
+grep -Eq 'data-calendar-multiday="2"[^>]*data-calendar-continues="right"' "$TMPD/cw.html" && grep -Eq 'data-calendar-multiday="2"[^>]*data-calendar-continues="left"' "$TMPD/cw-next.html" && ok "calendar range bar" || bad "calendar range bar"
 grep -q 'data-calendar-add' "$TMPD/cw.html" && grep -q 'data-calendar-zoom' "$TMPD/cw.html" && grep -q 'data-calendar-filter-open' "$TMPD/cw.html" && grep -q 'data-calendar-options-open' "$TMPD/cw.html" && grep -q 'data-view-options-drawer="カレンダー"' "$TMPD/cw.html" && grep -q 'フィルター' "$TMPD/cw.html" && ok "calendar toolbar" || bad "calendar toolbar"
-curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar" -o "$TMPD/cm.html"
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&month=2026-11" -o "$TMPD/cm.html"
 grep -q 'data-calendar-day="2026-11-30"' "$TMPD/cm.html" && grep -q 'data-calendar-multiday="3"' "$TMPD/cm.html" && ok "month grid + bars" || bad "month grid + bars"
-curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&hide=1" -o "$TMPD/cmh.html"
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&month=2026-11&hide=1" -o "$TMPD/cmh.html"
 grep -q 'data-calendar-multiday="2"' "$TMPD/cmh.html" && ! grep -q 'data-calendar-multiday="5"' "$TMPD/cmh.html" && ok "calendar hide completed" || bad "calendar hide completed"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=2026-11-01&weekends=0" -o "$TMPD/cwo.html"
 grep -q 'data-calendar-day="2026-11-02"' "$TMPD/cwo.html" && ! grep -q 'data-calendar-day="2026-11-01"' "$TMPD/cwo.html" && ok "calendar hide weekends" || bad "calendar hide weekends"
-curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=2026-11-01&multi=0" -o "$TMPD/cwm.html"
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=2026-11-08&multi=0" -o "$TMPD/cwm.html"
 grep -q 'data-calendar-single="2"' "$TMPD/cwm.html" && ! grep -q 'data-calendar-multiday="2"' "$TMPD/cwm.html" && ok "calendar multi-day off" || bad "calendar multi-day off"
-curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&start=1&weekends=0" -o "$TMPD/cm-ms.html"
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&month=2026-11&start=1&weekends=0" -o "$TMPD/cm-ms.html"
 grep -q 'data-calendar-day="2026-10-26"' "$TMPD/cm-ms.html" && ! grep -q 'data-calendar-day="2026-11-01"' "$TMPD/cm-ms.html" && ok "calendar monday start" || bad "calendar monday start"
 grep -q 'data-calendar-multi-grid' "$TMPD/p-calendar.html" && grep -q 'data-calendar-resize="start"' "$TMPD/p-calendar.html" && grep -q 'data-calendar-resize="end"' "$TMPD/p-calendar.html" && ok "calendar resize handles" || bad "calendar resize handles"
 grep -q 'touch-none' "$TMPD/p-calendar.html" && grep -q 'touch-pan-y' "$TMPD/p-calendar.html" && grep -q 'touch-none' "$TMPD/p-timeline.html" && ok "touch interaction classes" || bad "touch interaction classes"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=2026-11-01&completed=done" -o "$TMPD/cwc.html"
 grep -q 'data-calendar-multiday="5"' "$TMPD/cwc.html" && ! grep -q 'data-calendar-multiday="2"' "$TMPD/cwc.html" && ok "calendar quick completed" || bad "calendar quick completed"
-curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&status=%E6%9C%AA%E7%9D%80%E6%89%8B" -o "$TMPD/cms.html"
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&month=2026-11&status=%E6%9C%AA%E7%9D%80%E6%89%8B" -o "$TMPD/cms.html"
 grep -q 'data-calendar-multiday="3"' "$TMPD/cms.html" && ! grep -q 'data-calendar-multiday="2"' "$TMPD/cms.html" && ok "calendar status filter" || bad "calendar status filter"
 
 echo "== calendar color legend =="
@@ -1399,38 +1425,38 @@ grep -q 'data-calendar-color-key="赤" data-calendar-color-tone="set"' "$TMPD/ca
 api DELETE /api/custom-fields/$CFID >/dev/null
 
 echo "== calendar overflow =="
-CALIDS=""
+CALIDS=()
 for i in 1 2 3 4 5; do
   CT=$(api POST /api/tasks "{\"project_id\":1,\"section_id\":2,\"name\":\"E2Eカレンダー$i\",\"due_on\":\"2026-11-20\"}")
-  CALIDS="$CALIDS $(jget "$CT" id)"
+  CALIDS+=("$(jget "$CT" id)")
 done
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&month=2026-11" -o "$TMPD/cal-many.html"
 grep -q 'data-calendar-day-count="5"' "$TMPD/cal-many.html" && grep -q 'data-calendar-more="2026-11-20"' "$TMPD/cal-many.html" && ok "calendar +N overflow" || bad "calendar +N overflow"
 N=$(grep -o '>E2Eカレンダー[0-9]<' "$TMPD/cal-many.html" | wc -l | tr -d ' ')
 [[ "$N" == "3" ]] && ok "calendar shows 3 of 5" || bad "calendar shows 3 of 5 ($N)"
 python3 -c "import re; h=open('$TMPD/cal-many.html',encoding='utf-8').read(); t=re.sub('<[^>]+>','',h); assert '+2 件' in t" && ok "calendar +N label" || bad "calendar +N label"
-for id in ${=CALIDS}; do api DELETE "/api/tasks/$id?force=1" >/dev/null; done
+for id in "${CALIDS[@]}"; do purge_task "$id" >/dev/null; done
 TODAY=$(python3 -c "import datetime; print(datetime.date.today().isoformat())")
 START=$(python3 -c "import datetime; print((datetime.date.today()-datetime.timedelta(days=2)).isoformat())")
 DUE_TASK=$(api POST /api/tasks "{\"project_id\":1,\"section_id\":2,\"name\":\"E2E期日フィルタ\",\"start_on\":\"$START\",\"due_on\":\"$TODAY\"}")
 DUE_ID=$(jget "$DUE_TASK" id)
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=$TODAY&due=today" -o "$TMPD/cdue.html"
 grep -q "data-calendar-multiday=\"$DUE_ID\"" "$TMPD/cdue.html" && ! grep -q 'data-calendar-multiday="3"' "$TMPD/cdue.html" && ok "calendar due filter" || bad "calendar due filter"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$DUE_ID?force=1" -o /dev/null
-curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&completed_on=7" -o "$TMPD/ccom.html"
+purge_task "$DUE_ID" >/dev/null
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&month=2026-11&completed_on=7" -o "$TMPD/ccom.html"
 grep -q 'data-calendar-multiday="5"' "$TMPD/ccom.html" && ! grep -q 'data-calendar-multiday="2"' "$TMPD/ccom.html" && ok "calendar completion date" || bad "calendar completion date"
-curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&creator=none" -o "$TMPD/ccr.html"
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&month=2026-11&creator=none" -o "$TMPD/ccr.html"
 grep -q 'data-calendar-multiday="2"' "$TMPD/ccr.html" && ok "calendar creator filter" || bad "calendar creator filter"
 D10=$(python3 -c "import datetime; print((datetime.date.today()+datetime.timedelta(days=10)).isoformat())")
 CT1R=$(api POST /api/tasks "{\"project_id\":1,\"section_id\":2,\"name\":\"E2E作成日今日\",\"start_on\":\"$D10\",\"due_on\":\"$D10\"}")
 CT1=$(jget "$CT1R" id)
 CT2R=$(api POST /api/tasks "{\"project_id\":1,\"section_id\":2,\"name\":\"E2E作成日過去\",\"start_on\":\"$D10\",\"due_on\":\"$D10\"}")
 CT2=$(jget "$CT2R" id)
-docker exec atlas-db psql -U atlas -d atlas -q -c "UPDATE tasks SET created_at = now() - interval '10 days' WHERE id=$CT2;"
-curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&created=today" -o "$TMPD/ccreate.html"
+db_sql -q -c "UPDATE tasks SET created_at = now() - interval '10 days' WHERE id=$CT2;"
+curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&month=${D10:0:7}&created=today" -o "$TMPD/ccreate.html"
 grep -Eq "data-calendar-(multiday|single)=\"$CT1\"" "$TMPD/ccreate.html" && ! grep -Eq "data-calendar-(multiday|single)=\"$CT2\"" "$TMPD/ccreate.html" && ok "calendar created date" || bad "calendar created date"
-api DELETE "/api/tasks/$CT1?force=1" >/dev/null
-api DELETE "/api/tasks/$CT2?force=1" >/dev/null
+purge_task "$CT1" >/dev/null
+purge_task "$CT2" >/dev/null
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/sadd.html"
 grep -q 'data-sidebar-add-project' "$TMPD/sadd.html" && ok "sidebar add project" || bad "sidebar add project"
 grep -q 'data-sidebar-user-menu' "$TMPD/sadd.html" && grep -q 'data-sidebar-help' "$TMPD/sadd.html" && grep -q 'data-sidebar-invite' "$TMPD/sadd.html" && ok "sidebar footer controls" || bad "sidebar footer controls"
@@ -1445,7 +1471,7 @@ grep -q '2026年' "$TMPD/cw2.html" && ok "week fallback" || bad "week fallback"
 echo "== reactions =="
 R=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/comments/1/reactions" -H 'Content-Type: application/json' -d '{"emoji":"👍"}')
 echo "$R" | grep -q '"added":true' && ok "react on" || bad "react on ($R)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM comment_reactions WHERE comment_id=1 AND user_id=1 AND emoji='👍';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM comment_reactions WHERE comment_id=1 AND user_id=1 AND emoji='👍';")
 [[ "$N" == "1" ]] && ok "reaction stored" || bad "reaction stored ($N)"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list&task=2" -o "$TMPD/react-pane.html"
 grep -q 'data-comment-reaction="👍"' "$TMPD/react-pane.html" && grep -q 'aria-pressed="true"' "$TMPD/react-pane.html" && ok "reaction markup" || bad "reaction markup"
@@ -1463,25 +1489,25 @@ R=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/favorites" -H 'Content-Type: appl
 [[ "$R" == *'"starred":false'* ]] && ok "star off" || bad "star off ($R)"
 
 echo "== recents =="
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM user_recent_projects;" >/dev/null
+db_sql -t -c "DELETE FROM user_recent_projects;" >/dev/null
 curl -s -m 10 -b "$JAR" "$BASE/projects/1?view=list" -o /dev/null
 curl -s -m 10 -b "$JAR" "$BASE/" -o "$TMPD/rct.html"
 grep -q '最近開いた項目' "$TMPD/rct.html" && grep -q 'デモプロジェクト' "$TMPD/rct.html" && ok "recents shown" || bad "recents"
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM user_recent_projects;" >/dev/null
+db_sql -t -c "DELETE FROM user_recent_projects;" >/dev/null
 
 echo "== dashboard prefs =="
-curl -s -m 10 -b "$JAR" -X PUT "$BASE/api/dashboard-prefs" -H 'Content-Type: application/json' -d '{"project_id":1,"widgets":[{"key":"overdue","visible":true},{"key":"donut","visible":false}]}' -o /tmp/dbp.json
-python3 -c "import json; d=json.load(open('/tmp/dbp.json')); assert len(d['widgets'])==6 and d['widgets'][0]['key']=='overdue', d" && ok "prefs save+normalize" || bad "prefs save"
+curl -s -m 10 -b "$JAR" -X PUT "$BASE/api/dashboard-prefs" -H 'Content-Type: application/json' -d '{"project_id":1,"widgets":[{"key":"overdue","visible":true},{"key":"donut","visible":false}]}' -o "$TMPD/dbp.json"
+python3 -c "import json, sys; d=json.load(open(sys.argv[1])); assert len(d['widgets'])==6 and d['widgets'][0]['key']=='overdue', d" "$TMPD/dbp.json" && ok "prefs save+normalize" || bad "prefs save"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=dashboard" -o "$TMPD/dbp.html"
 python3 -c "
-import re
-h=open('/tmp/dbp.html').read()
+import re, sys
+h=open(sys.argv[1]).read()
 txt=re.sub(r'<!--.*?-->','',h)
 assert '期限超過' in txt and '進捗率' not in txt, 'order/visibility'
 print('prefs applied ok')
-" && ok "prefs applied" || bad "prefs applied"
+" "$TMPD/dbp.html" && ok "prefs applied" || bad "prefs applied"
 curl -s -m 10 -b "$JAR" -X PUT "$BASE/api/dashboard-prefs" -H 'Content-Type: application/json' -d '{"project_id":1,"widgets":[{"key":"donut","visible":true},{"key":"trend","visible":true},{"key":"sections","visible":true},{"key":"assignees","visible":true},{"key":"status","visible":true},{"key":"overdue","visible":true}]}' -o /dev/null
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM dashboard_prefs;" >/dev/null
+db_sql -t -c "DELETE FROM dashboard_prefs;" >/dev/null
 
 echo "== dashboard widgets =="
 R=$(api POST /api/projects/1/dashboard/widgets '{"title":"E2Eダッシュボード","widget_type":"chart","chart_type":"bar","group_by":"section","metric":"count","filters":{"completion":"open"},"options":{"data_labels":true}}')
@@ -1499,11 +1525,11 @@ TID=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print([w[
 curl -s -m 10 -b "$JAR" "$BASE/projects/1?view=dashboard" -o "$TMPD/dbwt.html"
 grep -q 'data-dashboard-widget-title="E2Eダッシュボードメモ"' "$TMPD/dbwt.html" && grep -q 'E2E本文' "$TMPD/dbwt.html" && ok "dashboard text rendered" || bad "dashboard text rendered"
 api DELETE /api/projects/1/dashboard/widgets/$TID >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM project_dashboard_widgets WHERE project_id=1 AND (title LIKE 'E2Eダッシュボード%');")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_dashboard_widgets WHERE project_id=1 AND (title LIKE 'E2Eダッシュボード%');")
 [[ "$N" == "0" ]] && ok "dashboard widgets cleaned" || bad "dashboard widgets cleaned ($N)"
 
 echo "== view state persistence =="
-EMPTY_EXPECTED=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id=1 AND parent_task_id IS NULL AND assignee_id IS NULL AND completed=false AND deleted_at IS NULL;")
+EMPTY_EXPECTED=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id=1 AND parent_task_id IS NULL AND assignee_id IS NULL AND completed=false AND deleted_at IS NULL;")
 api PUT /api/view-state '{"project_id":1,"view":"list","state":{"hide_completed":true,"assignee":"none","status":"","due":"","sort":"name","sortdir":"desc","group":"assignee"}}' >/dev/null
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/vs-list.html"
 grep -q 'data-list-group="assignee"' "$TMPD/vs-list.html" && grep -q 'data-list-assignee="none"' "$TMPD/vs-list.html" && grep -q 'data-list-hide-completed="true"' "$TMPD/vs-list.html" && [[ "$(grep -o 'data-list-row="[0-9]*"' "$TMPD/vs-list.html" | wc -l | tr -d ' ')" == "$EMPTY_EXPECTED" ]] && ok "view state list applied" || bad "view state list applied (expected $EMPTY_EXPECTED)"
@@ -1530,7 +1556,7 @@ R=$(api PATCH /api/me/out-of-office "{\"from\":\"$D0\",\"to\":\"$D2\",\"note\":\
 [[ "$(jget "$R" from)" == "$D0" ]] && ok "out-of-office save" || bad "out-of-office save" "$R"
 curl -s -m 15 -b "$JAR" "$BASE/" -o "$TMPD/ooo-home.html"
 grep -q "data-user-out-of-office=\"不在: $D0 〜 $D2\"" "$TMPD/ooo-home.html" && ok "out-of-office rendered" || bad "out-of-office rendered"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT out_of_office_from::text||'/'||out_of_office_to::text||'/'||out_of_office_note FROM users WHERE id=1;")
+N=$(db_sql -t -A -c "SELECT out_of_office_from::text||'/'||out_of_office_to::text||'/'||out_of_office_note FROM users WHERE id=1;")
 [[ "$N" == "$D0/$D2/E2E不在" ]] && ok "out-of-office db" || bad "out-of-office db ($N)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/me/out-of-office" -H 'Content-Type: application/json' -d "{\"from\":\"$D2\",\"to\":\"$D0\"}")
 [[ "$C" == "400" ]] && ok "out-of-office range validation" || bad "out-of-office range validation ($C)"
@@ -1591,8 +1617,8 @@ for f in "$TMPD/uni-list.html" "$TMPD/uni-board.html" "$TMPD/uni-timeline.html" 
 done
 [[ "$UNI" == "1" ]] && ok "unicode dir/title across views" || bad "unicode dir/title across views"
 grep -q 'line-clamp-2' "$TMPD/uni-board.html" && grep -q "title=\"$N1\"" "$TMPD/uni-board.html" && ok "long name wrap/tooltip" || bad "long name wrap/tooltip"
-for id in $U1ID $U2ID $U3ID; do api DELETE "/api/tasks/$id?force=1" >/dev/null; done
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE id IN ($U1ID,$U2ID,$U3ID);")
+for id in $U1ID $U2ID $U3ID; do purge_task "$id" >/dev/null; done
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE id IN ($U1ID,$U2ID,$U3ID);")
 [[ "$N" == "0" ]] && ok "unicode fixtures cleaned" || bad "unicode fixtures cleaned ($N)"
 
 echo "== profile =="
@@ -1619,7 +1645,7 @@ C=$(curl -s -m 10 -X POST "$BASE/api/auth/login" -H 'Content-Type: application/j
 C=$(curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/admin/users/1" -H 'Content-Type: application/json' -d '{"is_admin":false}' -o /dev/null -w "%{http_code}")
 [[ "$C" == "400" ]] && ok "self-demote guard" || bad "self-demote ($C)"
 curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/admin/users/$NUID" -o /dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM users;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM users;")
 [[ "$N" == "4" ]] && ok "user delete" || bad "user delete ($N)"
 
 echo "== admin console: workspace / teams / roles / SAML =="
@@ -1643,7 +1669,7 @@ R=$(api DELETE /api/admin/roles/$RRID)
 [[ "$R" != *'"error"'* ]] && ok "role delete" || bad "role delete" "$R"
 C=$(curl -s -m 10 -b "$JAR" -o "$TMPD/saml.xml" -w "%{http_code}" "$BASE/api/auth/saml/metadata")
 [[ "$C" == "200" ]] && grep -q 'EntityDescriptor' "$TMPD/saml.xml" && ok "saml metadata" || bad "saml metadata ($C)"
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM teams WHERE name LIKE 'E2E管理チーム%'; DELETE FROM workspace_roles WHERE name LIKE 'E2E管理ロール%'; UPDATE workspaces SET name='Atlas Demo' WHERE id=1;" >/dev/null
+db_sql -q -c "DELETE FROM teams WHERE name LIKE 'E2E管理チーム%'; DELETE FROM workspace_roles WHERE name LIKE 'E2E管理ロール%'; UPDATE workspaces SET name='Atlas Demo' WHERE id=1;" >/dev/null
 
 echo "== project members & roles =="
 MP=$(api POST /api/projects '{"workspace_id":1,"name":"E2Eメンバー管理"}')
@@ -1765,10 +1791,10 @@ R=$(api PATCH /api/admin/users/$MNUID '{"role":"guest"}')
 [[ "$R" == *'"is_guest":true'* ]] && ok "admin role guest" || bad "admin role guest" "$R"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/admin/users/$MNUID" -H 'Content-Type: application/json' -d '{"role":"bogus"}')
 [[ "$C" == "400" ]] && ok "invalid role guard" || bad "invalid role ($C)"
-api DELETE "/api/tasks/$MTID?force=1" >/dev/null
+purge_task "$MTID" >/dev/null
 api DELETE "/api/projects/$MPID" >/dev/null
 api DELETE "/api/admin/users/$MNUID" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM users WHERE email LIKE 'e2e-role%';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM users WHERE email LIKE 'e2e-role%';")
 [[ "$N" == "0" ]] && ok "role test cleanup" || bad "role test cleanup ($N)"
 
 echo "== invitations & deactivation =="
@@ -1783,7 +1809,7 @@ R=$(curl -s -m 10 "$BASE/api/invitations/$ITOK")
 R=$(curl -s -m 10 -X POST "$BASE/api/invitations/$ITOK" -H 'Content-Type: application/json' -d '{"name":"E2E招待","password":"e2e-pass1"}')
 IUID=$(echo "$R" | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))")
 [[ -n "$IUID" ]] && ok "invitation accept" || bad "invitation accept" "$R"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM users WHERE id=$IUID AND email='e2e-invite@example.com' AND is_guest AND NOT is_admin;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM users WHERE id=$IUID AND email='e2e-invite@example.com' AND is_guest AND NOT is_admin;")
 [[ "$N" == "1" ]] && ok "invited user role" || bad "invited user role ($N)"
 C=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' -d '{"email":"e2e-invite@example.com","password":"e2e-pass1"}')
 [[ "$C" == "200" ]] && ok "invited user login" || bad "invited user login ($C)"
@@ -1807,8 +1833,8 @@ C=$(curl -s -m 10 -o /dev/null -w "%{http_code}" -X POST "$BASE/api/auth/login" 
 [[ "$C" == "200" ]] && ok "reactivated login" || bad "reactivated login ($C)"
 api DELETE /api/admin/users/$IUID >/dev/null
 api DELETE /api/admin/users/$DNUID >/dev/null
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM invitations WHERE email='e2e-invite@example.com';" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM users WHERE email IN ('e2e-invite@example.com','e2e-deactivate@example.com');")
+db_sql -t -c "DELETE FROM invitations WHERE email='e2e-invite@example.com';" >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM users WHERE email IN ('e2e-invite@example.com','e2e-deactivate@example.com');")
 [[ "$N" == "0" ]] && ok "invite/deactivate cleanup" || bad "invite/deactivate cleanup ($N)"
 
 echo "== usage stats =="
@@ -1826,19 +1852,19 @@ curl -s -m 15 -b "$JAR" "$BASE/api/admin/audit/export?format=json" -o "$TMPD/ax.
 python3 -c "import json; d=json.load(open('$TMPD/ax.json')); assert any(r['action']=='task.create' for r in d['rows']), d" && ok "audit json" || bad "audit json"
 curl -s -m 15 -b "$JAR" "$BASE/api/admin/audit/export?format=csv" -o "$TMPD/ax.csv"
 python3 -c "import csv; rows=list(csv.reader(open('$TMPD/ax.csv', encoding='utf-8-sig'))); assert len(rows)>=2 and rows[0][0]=='id', rows[0]" && ok "audit csv" || bad "audit csv"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$TID?force=1" -o /dev/null
+purge_task "$TID" >/dev/null
 
 echo "== trash retention =="
 T=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":3,"name":"E2E古ゴミ"}')
 TID=$(echo "$T" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$TID" -o /dev/null
-docker exec atlas-db psql -U atlas -d atlas -t -c "UPDATE tasks SET deleted_at = NOW() - interval '31 days' WHERE id = $TID;" >/dev/null
-./scripts/janitor.sh 90 90 30 >/dev/null 2>&1
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE id = $TID;")
+db_sql -t -c "UPDATE tasks SET deleted_at = NOW() - interval '31 days' WHERE id = $TID;" >/dev/null
+bash scripts/janitor.sh 90 90 30 >/dev/null || e2e_abort 'test janitor failed'
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE id = $TID;")
 [[ "$N" == "0" ]] && ok "old trash purged" || bad "old trash kept ($N)"
 
 echo "== optimistic locking =="
-STAMP=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT updated_at::text FROM tasks WHERE id = 2;")
+STAMP=$(db_sql -t -A -c "SELECT updated_at::text FROM tasks WHERE id = 2;")
 C=$(curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/2" -H 'Content-Type: application/json' -d '{"progress":21,"expected_updated_at":"2000-01-01 00:00:00+00"}' -o /dev/null -w "%{http_code}")
 [[ "$C" == "409" ]] && ok "stale conflict 409" || bad "stale conflict ($C)"
 C=$(curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/2" -H 'Content-Type: application/json' -d "{\"progress\":21,\"expected_updated_at\":\"$STAMP\"}")
@@ -1851,11 +1877,12 @@ C=$(curl -s -m 10 -b "$JAR" -X PATCH "$BASE/api/tasks/2" -H 'Content-Type: appli
 api PATCH /api/tasks/2 '{"progress":20}' >/dev/null
 
 echo "== websocket live =="
-export PATH="/opt/homebrew/opt/node@24/bin:$PATH"
 node --input-type=module -e "
 const login = await (await fetch('$BASE/api/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email:'admin@example.com', password:'atlas-dev-2026'})}));
 const cookie = login.headers.get('set-cookie').split(';')[0];
-const ws = new WebSocket('ws://127.0.0.1:3000/api/ws?project=1', {headers: {Cookie: cookie}});
+const wsUrl = new URL('/api/ws?project=1', '$BASE');
+wsUrl.protocol = wsUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+const ws = new WebSocket(wsUrl, {headers: {Cookie: cookie, Origin: new URL('$BASE').origin}});
 const got = await new Promise((resolve, reject) => {
   const to = setTimeout(() => reject(new Error('timeout')), 15000);
   ws.onopen = async () => {
@@ -1868,10 +1895,12 @@ if (!got.includes('invalidate')) { console.error('unexpected:', got); process.ex
 console.log('invalidate pushed:', got);
 ws.close();
 " && ok "ws invalidate" || bad "ws invalidate"
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM tasks WHERE name='E2E WS用';" >/dev/null
+db_sql -t -c "DELETE FROM tasks WHERE name='E2E WS用';" >/dev/null
 node --input-type=module -e "
 const denied = await new Promise((resolve) => {
-  const ws = new WebSocket('ws://127.0.0.1:3000/api/ws?project=1');
+  const wsUrl = new URL('/api/ws?project=1', '$BASE');
+  wsUrl.protocol = wsUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(wsUrl);
   ws.onopen = () => resolve('open-unexpected');
   ws.onerror = () => resolve('denied');
   setTimeout(() => resolve('timeout'), 8000);
@@ -1891,8 +1920,8 @@ grep -q 'E2Eゴミ箱' "$TMPD/trash.html" && ok "trash lists" || bad "trash list
 curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks/$TID/restore" -o /dev/null
 curl -s -m 10 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/tr2.html"
 grep -q '>E2Eゴミ箱<' "$TMPD/tr2.html" && ok "restored visible" || bad "restored visible"
-curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/tasks/$TID?force=1" -o /dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE id = $TID;")
+purge_task "$TID" >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE id = $TID;")
 [[ "$N" == "0" ]] && ok "purged" || bad "purge ($N left)"
 
 echo "== large project rendering =="
@@ -1900,7 +1929,7 @@ LP=$(api POST /api/projects '{"workspace_id":1,"name":"E2E大量データ"}')
 LPID=$(jget "$LP" id)
 LS=$(api POST /api/sections "{\"project_id\":$LPID,\"name\":\"Bulk\"}")
 LSID=$(jget "$LS" id)
-docker exec atlas-db psql -U atlas -d atlas -q -c "INSERT INTO tasks (project_id, section_id, name, status, position, created_by) SELECT $LPID, $LSID, 'Bulk '||i, '未着手', i*1000, 1 FROM generate_series(1,150) i;"
+db_sql -q -c "INSERT INTO tasks (project_id, section_id, name, status, position, created_by) SELECT $LPID, $LSID, 'Bulk '||i, '未着手', i*1000, 1 FROM generate_series(1,150) i;"
 curl -s -m 15 -b "$JAR" "$BASE/projects/$LPID?view=list" -o "$TMPD/large-list.html"
 curl -s -m 15 -b "$JAR" "$BASE/projects/$LPID?view=board" -o "$TMPD/large-board.html"
 grep -q 'data-list-show-more' "$TMPD/large-list.html" && grep -q 'data-board-show-more' "$TMPD/large-board.html" && ok "large project pagination" || bad "large project pagination"
@@ -1959,9 +1988,9 @@ C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/p
 DUP=$(api POST "/api/projects/$APID/duplicate" '{"name":"E2Eアクション複製","include_tasks":true,"include_fields":true,"include_members":true}')
 DPID=$(jget "$DUP" id)
 [[ -n "$DPID" ]] && ok "project duplicate api" || bad "project duplicate api" "$DUP"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM sections WHERE project_id=$DPID AND name='アクションセクション')||'/'||(SELECT COUNT(*) FROM tasks WHERE project_id=$DPID AND name='アクション対象タスク')||'/'||(SELECT COUNT(*) FROM custom_fields WHERE project_id=$DPID AND name='アクションフィールド');")
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM sections WHERE project_id=$DPID AND name='アクションセクション')||'/'||(SELECT COUNT(*) FROM tasks WHERE project_id=$DPID AND name='アクション対象タスク')||'/'||(SELECT COUNT(*) FROM custom_fields WHERE project_id=$DPID AND name='アクションフィールド');")
 [[ "$N" == "1/1/1" ]] && ok "project duplicate copies structure" || bad "project duplicate copies structure ($N)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks t JOIN task_custom_values v ON v.task_id=t.id WHERE t.project_id=$DPID AND v.value_text='アクション値';")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks t JOIN task_custom_values v ON v.task_id=t.id WHERE t.project_id=$DPID AND v.value_text='アクション値';")
 [[ "$N" == "1" ]] && ok "project duplicate copies field values" || bad "project duplicate copies field values ($N)"
 
 TPL=$(api POST "/api/projects/$APID/template" '{"name":"E2Eアクションテンプレート","include_tasks":true,"include_completed":false,"include_custom_fields":true}')
@@ -1970,7 +1999,7 @@ TPLID=$(jget "$TPL" id)
 TP=$(api POST "/api/project-templates/$TPLID" '{"name":"E2Eテンプレート作成"}')
 TPID=$(jget "$TP" id)
 [[ -n "$TPID" ]] && ok "project template instantiate" || bad "project template instantiate" "$TP"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM tasks WHERE project_id=$TPID AND name='アクション対象タスク')||'/'||(SELECT COUNT(*) FROM tasks WHERE project_id=$TPID AND name='アクション未分類タスク')||'/'||(SELECT COUNT(*) FROM custom_fields WHERE project_id=$TPID AND name='アクションフィールド')||'/'||(SELECT COUNT(*) FROM sections WHERE project_id=$TPID AND name='未分類');")
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM tasks WHERE project_id=$TPID AND name='アクション対象タスク')||'/'||(SELECT COUNT(*) FROM tasks WHERE project_id=$TPID AND name='アクション未分類タスク')||'/'||(SELECT COUNT(*) FROM custom_fields WHERE project_id=$TPID AND name='アクションフィールド')||'/'||(SELECT COUNT(*) FROM sections WHERE project_id=$TPID AND name='未分類');")
 [[ "$N" == "1/1/1/1" ]] && ok "project template copies tasks, unsectioned tasks and fields" || bad "project template copies tasks, unsectioned tasks and fields ($N)"
 
 for fmt in csv xlsx json timecsv ical; do
@@ -2023,27 +2052,27 @@ MSTID=$(jget "$MST" id)
 api POST /api/memberships "{\"task_id\":$MTID,\"project_id\":$MBID,\"section_id\":$MSBID}" >/dev/null
 MDUP=$(api POST "/api/projects/$MBID/duplicate" '{"name":"E2E削除複製","include_tasks":true,"include_subtasks":true}')
 MDUPID=$(jget "$MDUP" id)
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id=$MDUPID AND name IN ('E2E削除マルチホーム','E2E削除サブタスク');")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id=$MDUPID AND name IN ('E2E削除マルチホーム','E2E削除サブタスク');")
 [[ "$N" == "2" ]] && ok "multi-homed duplicate keeps subtask tree" || bad "multi-homed duplicate keeps subtask tree ($N)"
 MTPL=$(api POST "/api/projects/$MBID/template" '{"name":"E2E削除テンプレート"}')
 MTPLID=$(jget "$MTPL" id)
 MTP=$(api POST "/api/project-templates/$MTPLID" '{"name":"E2E削除テンプレート先"}')
 MTPID=$(jget "$MTP" id)
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id=$MTPID AND name IN ('E2E削除マルチホーム','E2E削除サブタスク');")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE project_id=$MTPID AND name IN ('E2E削除マルチホーム','E2E削除サブタスク');")
 [[ "$N" == "2" ]] && ok "multi-homed template keeps subtask tree" || bad "multi-homed template keeps subtask tree ($N)"
 R=$(api POST "/api/projects/$MAID/trash")
 [[ "$(jget "$R" moved_tasks)" == "1" ]] && ok "project trash moves multi-homed tasks" || bad "project trash moves multi-homed tasks" "$R"
 page "/projects/$MBID?view=list" "$TMPD/mh-kept.html"
 grep -q 'E2E削除マルチホーム' "$TMPD/mh-kept.html" && ok "multi-homed task kept in other project" || bad "multi-homed task kept in other project"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT project_id FROM tasks WHERE id=$MTID;")
+N=$(db_sql -t -A -c "SELECT project_id FROM tasks WHERE id=$MTID;")
 [[ "$N" == "$MBID" ]] && ok "multi-homed task reparented" || bad "multi-homed task reparented ($N)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT project_id FROM tasks WHERE id=$MSTID;")
+N=$(db_sql -t -A -c "SELECT project_id FROM tasks WHERE id=$MSTID;")
 [[ "$N" == "$MBID" ]] && ok "multi-homed subtask follows parent" || bad "multi-homed subtask follows parent ($N)"
 api POST "/api/projects/$MAID/restore" >/dev/null
 
 # Cleanup all fixtures created above (hard delete keeps the suite self-cleaning).
 for pid in $APID $DPID $TPID $MAID $MBID $MDUPID $MTPID; do api DELETE "/api/projects/$pid" >/dev/null; done
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM project_templates WHERE id IN ($TPLID,$MTPLID);"
+db_sql -q -c "DELETE FROM project_templates WHERE id IN ($TPLID,$MTPLID);"
 
 echo "== theme =="
 curl -s -m 15 -b "$JAR" -b 'atlas_theme=dark' "$BASE/projects/1?view=list" -o "$TMPD/dark.html"
@@ -2064,12 +2093,12 @@ R=$(api PATCH "/api/projects/$PID" '{"name":"E2E右クリック改"}')
 curl -s -m 10 -b "$JAR" "$BASE/projects/$PID?view=list" -o "$TMPD/ctx.html"
 grep -q 'E2E右クリック改' "$TMPD/ctx.html" && ok "ctx rename" || bad "ctx rename"
 R=$(api PATCH "/api/projects/$PID" '{"color":"#8db8ff","icon":"target"}')
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT color||'/'||icon FROM projects WHERE id=$PID;")
+N=$(db_sql -t -A -c "SELECT color||'/'||icon FROM projects WHERE id=$PID;")
 [[ "$N" == "#8db8ff/target" ]] && ok "ctx color+icon" || bad "ctx color+icon ($N)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" "$BASE/api/projects/$PID" -X PATCH -H 'Content-Type: application/json' -d '{"color":"red"}')
 [[ "$C" == "400" ]] && ok "ctx invalid color 400" || bad "ctx invalid color ($C)"
 R=$(api PATCH "/api/projects/$PID" '{"archived":true}')
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM projects WHERE id=$PID AND archived_at IS NOT NULL;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM projects WHERE id=$PID AND archived_at IS NOT NULL;")
 [[ "$N" == "1" ]] && ok "ctx archive" || bad "ctx archive ($N)"
 curl -s -m 10 -b "$JAR" "$BASE/projects/$PID?view=list" -o "$TMPD/ctx-arch.html"
 grep -q 'E2E右クリック改' "$TMPD/ctx-arch.html" && ok "archived project still opens" || bad "archived project page"
@@ -2096,11 +2125,11 @@ api DELETE "/api/projects/$PID/share?token_id=$TOKID" >/dev/null
 BODY=$(curl -s -m 10 "$BASE/share/$TOKEN")
 [[ -n "$BODY" && "$BODY" == *"data-not-found"* ]] && ok "ctx share revoked" || bad "ctx share revoked"
 api DELETE "/api/projects/$PID" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM projects WHERE id=$PID;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM projects WHERE id=$PID;")
 [[ "$N" == "0" ]] && ok "ctx project cleaned" || bad "ctx cleanup ($N)"
 
 echo "== api authorization matrix =="
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM users WHERE email='e2e-matrix-viewer@example.com';"
+db_sql -q -c "DELETE FROM users WHERE email='e2e-matrix-viewer@example.com';"
 MXU=$(api POST /api/admin/users '{"name":"E2E Matrix Viewer","email":"e2e-matrix-viewer@example.com","password":"e2e-pass1","role":"member"}')
 MXUID=$(jget "$MXU" id)
 api POST /api/projects/1/members "{\"user_id\":$MXUID,\"role\":\"viewer\"}" >/dev/null
@@ -2169,7 +2198,7 @@ PTID=$(jget "$PT" id)
 [[ "$EM" == "1" ]] && ok "editor write matrix allowed" || bad "editor write matrix allowed"
 curl -s -m 10 -b "$JARE" -X POST "$BASE/api/favorites" -H 'Content-Type: application/json' -d '{"project_id":1}' -o /dev/null
 api DELETE /api/saved-views/$SVID >/dev/null
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM project_messages WHERE id=$MID; DELETE FROM dashboard_prefs WHERE user_id=2 AND project_id=1;"
+db_sql -q -c "DELETE FROM project_messages WHERE id=$MID; DELETE FROM dashboard_prefs WHERE user_id=2 AND project_id=1;"
 
 AUTHZ=1
 C=$(curl -s -m 10 -b "$JARE" -o /dev/null -w "%{http_code}" -X GET "$BASE/api/projects/1/share")
@@ -2194,54 +2223,52 @@ REST=1
 C=$(curl -s -m 10 -b "$JARE" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/tasks/$RTID/restore")
 [[ "$C" == "200" ]] || REST=0
 [[ "$REST" == "1" ]] && ok "restore requires edit role" || bad "restore requires edit role"
-api DELETE "/api/tasks/$RTID?force=1" >/dev/null
+purge_task "$RTID" >/dev/null
 
 api DELETE "/api/projects/1/members/$MXUID" >/dev/null
 api DELETE /api/admin/users/$MXUID >/dev/null
 api DELETE /api/projects/$NPID >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM users WHERE email='e2e-matrix-viewer@example.com')||'/'||(SELECT COUNT(*) FROM projects WHERE id=$NPID);")
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM users WHERE email='e2e-matrix-viewer@example.com')||'/'||(SELECT COUNT(*) FROM projects WHERE id=$NPID);")
 [[ "$N" == "0/0" ]] && ok "auth matrix cleaned" || bad "auth matrix cleaned ($N)"
 
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM project_view_states;"
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM search_history;"
+db_sql -q -c "DELETE FROM project_view_states;"
+db_sql -q -c "DELETE FROM search_history;"
 # Clean fixtures left by an interrupted prior run so assertions stay deterministic.
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM users WHERE email LIKE 'e2e-%@example.com'; DELETE FROM projects WHERE name LIKE 'E2E%'; DELETE FROM project_messages WHERE title LIKE '[自動]%'; DELETE FROM tasks WHERE project_id=1 AND (name LIKE 'E2E%' OR name LIKE 'フォローアップ: E2E%');"
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM sections WHERE project_id=1 AND name LIKE 'E2E%';"
-docker exec atlas-db psql -U atlas -d atlas -q -c "DELETE FROM custom_fields WHERE deleted_at IS NOT NULL AND name LIKE 'E2E%';"
+db_sql -q -c "DELETE FROM users WHERE email LIKE 'e2e-%@example.com'; DELETE FROM projects WHERE name LIKE 'E2E%'; DELETE FROM project_messages WHERE title LIKE '[自動]%'; DELETE FROM tasks WHERE project_id=1 AND (name LIKE 'E2E%' OR name LIKE 'フォローアップ: E2E%');"
+db_sql -q -c "DELETE FROM sections WHERE project_id=1 AND name LIKE 'E2E%';"
+db_sql -q -c "DELETE FROM custom_fields WHERE deleted_at IS NOT NULL AND name LIKE 'E2E%';"
 echo "== seed invariants =="
 # Allow legitimate user-added tasks; verify the core seed rows themselves and
 # that no E2E fixture rows leaked out of the suite.
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT (SELECT COUNT(*) FROM projects WHERE id=1)||'/'||(SELECT COUNT(*) FROM tasks WHERE id BETWEEN 1 AND 7 AND deleted_at IS NULL)||'/'||(SELECT COUNT(*) FROM comments WHERE id BETWEEN 1 AND 2)||'/'||(SELECT COUNT(*) FROM sections WHERE id BETWEEN 1 AND 4);")
+N=$(db_sql -t -A -c "SELECT (SELECT COUNT(*) FROM projects WHERE id=1)||'/'||(SELECT COUNT(*) FROM tasks WHERE id BETWEEN 1 AND 7 AND deleted_at IS NULL)||'/'||(SELECT COUNT(*) FROM comments WHERE id BETWEEN 1 AND 2)||'/'||(SELECT COUNT(*) FROM sections WHERE id BETWEEN 1 AND 4);")
 [[ "$N" == "1/7/2/4" ]] && ok "seed intact ($N core)" || bad "seed drift ($N)"
-F=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL AND (name LIKE 'E2E%' OR name = '新規タスク');")
+F=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL AND (name LIKE 'E2E%' OR name = '新規タスク');")
 [[ "$F" == "0" ]] && ok "no e2e fixtures" || bad "e2e fixtures remain ($F)"
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE deleted_at IS NOT NULL;")
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE deleted_at IS NOT NULL;")
 [[ "$N" == "0" ]] && ok "trash empty" || bad "trash residue ($N)"
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM audit_log;" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM audit_log;")
+db_sql -t -c "DELETE FROM audit_log;" >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM audit_log;")
 [[ "$N" == "0" ]] && ok "audit cleaned" || bad "audit residue ($N)"
-docker exec atlas-db psql -U atlas -d atlas -t -c "DELETE FROM task_events WHERE task_id NOT IN (SELECT id FROM tasks);" >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_events e LEFT JOIN tasks t ON t.id = e.task_id WHERE t.id IS NULL;")
+db_sql -t -c "DELETE FROM task_events WHERE task_id NOT IN (SELECT id FROM tasks);" >/dev/null
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_events e LEFT JOIN tasks t ON t.id = e.task_id WHERE t.id IS NULL;")
 [[ "$N" == "0" ]] && ok "orphan events cleaned" || bad "orphan events ($N)"
 
 echo "== log retention =="
-docker exec atlas-db psql -U atlas -d atlas -t -c "INSERT INTO task_events (task_id, actor_id, kind, summary, created_at) VALUES (2, 1, 'completed', 'E2E古', NOW() - interval '100 days');" >/dev/null
-./scripts/janitor.sh 90 90 >/dev/null
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM task_events WHERE summary='E2E古';")
+db_sql -t -c "INSERT INTO task_events (task_id, actor_id, kind, summary, created_at) VALUES (2, 1, 'completed', 'E2E古', NOW() - interval '100 days');" >/dev/null
+bash scripts/janitor.sh 90 90 >/dev/null || e2e_abort 'test janitor failed'
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_events WHERE summary='E2E古';")
 [[ "$N" == "0" ]] && ok "old purged" || bad "old kept ($N)"
 
 echo "== backup/restore =="
-./scripts/backup.sh ./backups/e2e-tmp >/dev/null
+bash scripts/backup.sh "$TMPD/backup" >/dev/null || e2e_abort 'test backup failed'
 curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":3,"name":"E2E消去予定"}' -o /dev/null
-./scripts/restore.sh ./backups/e2e-tmp >/dev/null 2>&1
-sleep 4
-N=$(docker exec atlas-db psql -U atlas -d atlas -t -A -c "SELECT COUNT(*) FROM tasks WHERE name='E2E消去予定';")
+bash scripts/restore.sh "$TMPD/backup" >/dev/null || e2e_abort 'test restore failed'
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM tasks WHERE name='E2E消去予定';")
 [[ "$N" == "0" ]] && ok "restore drops mutation" || bad "restore ($N left)"
 rm -f "$TMPD/jar4"
 curl -s -m 10 -c "$TMPD/jar4" -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' -d '{"email":"admin@example.com","password":"atlas-dev-2026"}' -o /dev/null
 C=$(curl -s -m 10 -b "$TMPD/jar4" -o /dev/null -w "%{http_code}" "$BASE/projects/1?view=list")
 [[ "$C" == "200" ]] && ok "post-restore serving" || bad "post-restore ($C)"
-rm -rf ./backups/e2e-tmp
 
 echo "---- PASS=$PASS FAIL=$FAIL ----"
 [[ "$FAIL" == "0" ]]

@@ -6,4 +6,4 @@ import { createFollowUpTask } from "@/lib/services/task-copy";
 export const POST = withTask("edit", async (_req, { taskId, uid, projectId }) => {
   const created = await createFollowUpTask({ taskId, uid, projectId });
   return NextResponse.json(created, { status: 201 });
-});
+}, { taskScope: "primary" });

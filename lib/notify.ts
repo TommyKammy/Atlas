@@ -1,27 +1,48 @@
-import { createClient, type RedisClientType } from "redis";
+import { createClient } from "redis";
 
 // Live fan-out through Redis pub/sub (works across app replicas; a lone
 // instance receives its own publishes back). Best-effort: failures never
 // fail the mutation itself.
 const CHANNEL = "atlas:live";
-let client: RedisClientType | null = null;
-let connecting: Promise<RedisClientType> | null = null;
+const REDIS_WAIT_MS = 500;
+let publisher: ReturnType<typeof startPublisher> | null = null;
 
-async function getClient(): Promise<RedisClientType | null> {
-  if (client?.isOpen) return client;
-  if (!connecting) {
-    connecting = (async () => {
-      const c = createClient({ url: process.env.REDIS_URL || "redis://localhost:6379" });
-      c.on("error", () => undefined);
-      await c.connect();
-      client = c as RedisClientType;
-      return client;
-    })().catch(() => {
-      connecting = null;
-      return null as unknown as RedisClientType;
-    });
+async function waitForRedis(operation: Promise<unknown>): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      operation,
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, REDIS_WAIT_MS);
+        timer.unref();
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
   }
-  return connecting;
+}
+
+function startPublisher() {
+  const client = createClient({
+    url: process.env.REDIS_URL || "redis://localhost:6379",
+    disableOfflineQueue: true,
+    commandsQueueMaxLength: 256,
+    socket: {
+      connectTimeout: 1000,
+      socketTimeout: 10000,
+      // Keep retrying even after an established socket stops responding.
+      reconnectStrategy: (retries) => Math.min(50 * 2 ** retries, 2000) + Math.floor(Math.random() * 200),
+    },
+    pingInterval: 5000,
+  });
+  client.on("error", () => undefined);
+  // Give a healthy cold connection a chance to publish the first notification.
+  // During an outage the shared wait expires while the client keeps retrying.
+  const initialConnection = waitForRedis(client.connect().catch(() => {
+    publisher = null;
+    client.destroy();
+  }));
+  return { client, initialConnection };
 }
 
 export async function notifyProject(
@@ -30,12 +51,14 @@ export async function notifyProject(
 ) {
   if (projectId === null || projectId === undefined) return;
   try {
-    const c = await getClient();
-    if (!c) return;
-    await c.publish(
+    const { client, initialConnection } = (publisher ??= startPublisher());
+    if (!client.isReady) await initialConnection;
+    if (!client.isReady) return;
+    // A sent command can stall even while the socket is marked ready.
+    await waitForRedis(client.publish(
       CHANNEL,
       JSON.stringify({ projectId: Number(projectId), message: message ?? { type: "invalidate" } }),
-    );
+    ));
   } catch {
     // advisory only
   }

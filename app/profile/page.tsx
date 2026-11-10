@@ -1,5 +1,5 @@
 import { getUsers } from "@/lib/data";
-import { getCurrentUserId } from "@/lib/current-user";
+import { getMfaServerSession } from "@/lib/api/session";
 import { redirect } from "next/navigation";
 import ProfileForm from "@/components/ProfileForm";
 import { getSecuritySettings } from "@/lib/admin-data";
@@ -8,11 +8,10 @@ import { passwordPolicySummary } from "@/lib/password-policy";
 export const instant = false;
 
 export default async function ProfilePage() {
-  const uid = await getCurrentUserId();
-  if (!uid) redirect("/login");
-  const users = await getUsers();
-  const me = users.find((u) => u.id === uid) ?? null;
-  if (!me) {
+  const access = await getMfaServerSession();
+  if (!access) redirect("/login");
+  const me = access.mfaPending ? null : (await getUsers()).find((u) => u.id === access.user.id);
+  if (!me && !access.mfaPending) {
     return (
       <div className="p-8">
         <p className="text-sm text-neutral-500">ユーザーがありません。</p>
@@ -25,13 +24,14 @@ export default async function ProfilePage() {
       <h1 className="text-lg font-bold">プロフィール</h1>
       <div id="settings">
       <ProfileForm
-        userId={me.id}
-        initialName={me.name}
-        initialEmail={me.email ?? ""}
-        initialTitle={me.title ?? ""}
-        initialAvatarUrl={me.avatar_url ?? ""}
-        isGuest={me.is_guest}
-        initialTotpEnabled={me.totp_enabled === true}
+        userId={access.user.id}
+        initialName={me?.name ?? ""}
+        initialEmail={me?.email ?? ""}
+        initialTitle={me?.title ?? ""}
+        initialAvatarUrl={me?.avatar_url ?? ""}
+        isGuest={access.user.isGuest}
+        initialTotpEnabled={access.mfaEnabled}
+        mfaPending={access.mfaPending}
         twoFactorPolicy={security.two_factor_policy}
         passwordMinLength={security.password_min_length}
         passwordPolicyText={passwordPolicySummary({

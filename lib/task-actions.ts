@@ -33,7 +33,7 @@ export async function resetTimelineRow(
   await api(`/api/tasks/${taskId}/timeline-row`, "PUT", {
     project_id: projectId,
     row_index: null,
-    ...(expectedUpdatedAt ? { expected_updated_at: expectedUpdatedAt } : {}),
+    expected_updated_at: expectedUpdatedAt,
   });
 }
 

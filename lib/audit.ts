@@ -1,29 +1,32 @@
-import { db } from "./db";
+import { db, type Queryable } from "./db";
 
 // Workspace audit trail (best-effort; never fails the mutation itself).
 export async function audit(
   actorId: number,
   action: string,
   opts: { entity: string; entityId?: number | string | null; projectId?: number | string | null; summary?: string },
+  q?: Queryable,
 ) {
+  const writer = q ?? db;
   try {
     let workspaceId: number | null = null;
     let projectId: number | null =
       opts.projectId === undefined || opts.projectId === null ? null : Number(opts.projectId);
     if (projectId === null && opts.entity === "task" && opts.entityId != null) {
-      const r = await db.query("SELECT project_id FROM tasks WHERE id = $1::bigint", [opts.entityId]);
+      const r = await writer.query("SELECT project_id FROM tasks WHERE id = $1::bigint", [opts.entityId]);
       projectId = r.rows[0]?.project_id ?? null;
     }
     if (projectId !== null) {
-      const r = await db.query("SELECT workspace_id FROM projects WHERE id = $1", [projectId]);
+      const r = await writer.query("SELECT workspace_id FROM projects WHERE id = $1", [projectId]);
       workspaceId = r.rows[0]?.workspace_id ?? null;
     }
-    await db.query(
+    await writer.query(
       `INSERT INTO audit_log (workspace_id, actor_id, action, entity, entity_id, project_id, summary)
        VALUES ($1, $2, $3, $4, $5::bigint, $6, $7)`,
       [workspaceId, actorId, action, opts.entity, opts.entityId ?? null, projectId, opts.summary ?? ""],
     );
-  } catch {
+  } catch (error) {
+    if (q) throw error;
     // advisory only
   }
 }

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db, withTransaction } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
-import { COOKIE_NAME } from "@/lib/current-user";
+import { createSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
+import { getSecuritySettings, requiresSaml } from "@/lib/admin-data";
 import { validatePassword } from "@/lib/password-policy";
 import { getRoleByKey } from "@/lib/permissions";
 
@@ -58,7 +59,13 @@ export async function POST(
   if (passwordError) {
     return NextResponse.json({ error: passwordError }, { status: 400 });
   }
-  let outcome: Response | Record<string, unknown>;
+  const security = await getSecuritySettings();
+  let outcome: Response | {
+    user: Record<string, unknown>;
+    sessionToken: string | null;
+    mfaPending: boolean;
+    samlRequired: boolean;
+  };
   try {
     outcome = await withTransaction(async (q) => {
       const inv = await q.query(
@@ -93,7 +100,13 @@ export async function POST(
         [name, row.email, role.isGuest, role.isAdmin, role.id, hashPassword(password)],
       );
       await q.query("UPDATE invitations SET accepted_at = now() WHERE id = $1", [row.id]);
-      return user.rows[0] as Record<string, unknown>;
+      const samlRequired = requiresSaml(security.saml_mode, user.rows[0]);
+      const mfaPending = !samlRequired && security.two_factor_policy === "required";
+      const sessionToken = samlRequired ? null : await createSession(Number(user.rows[0].id), {
+        userAgent: req.headers.get("user-agent"),
+        mfaPending,
+      }, q);
+      return { user: user.rows[0], sessionToken, mfaPending, samlRequired };
     });
   } catch (e) {
     if ((e as { code?: string }).code === "23505") {
@@ -103,12 +116,11 @@ export async function POST(
   }
 
   if (outcome instanceof Response) return outcome;
-  const res = NextResponse.json(outcome, { status: 201 });
-  res.cookies.set(COOKIE_NAME, String(outcome.id), {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  const res = NextResponse.json({
+    ...outcome.user,
+    two_factor_setup_required: outcome.mfaPending,
+    saml_required: outcome.samlRequired,
+  }, { status: 201 });
+  if (outcome.sessionToken) res.cookies.set(SESSION_COOKIE, outcome.sessionToken, sessionCookieOptions());
   return res;
 }

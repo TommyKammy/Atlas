@@ -1,7 +1,11 @@
-import { db, withTransaction } from "../db";
+import { db, withTransaction, type Queryable } from "../db";
 import type { Portfolio, PortfolioProject, PortfolioRule } from "../portfolios";
 import { RULE_LIMITS, type RuleDefinition } from "../automation/types";
 import type { ProjectRule } from "../automation/types";
+import { assignWebhookActionIds, redactWebhookDefinition, redactWebhookRun } from "../automation/webhook-credentials";
+import { canEditProject } from "../project-roles";
+import { getProjectAccess } from "./projects";
+import { historyRuleEvaluation, type RuleEvaluationTrace } from "../automation/evaluation";
 
 function toRule(row: Record<string, unknown>): PortfolioRule {
   return {
@@ -147,18 +151,41 @@ export async function getPortfolioProjects(
   }));
 }
 
+// Serialize changes to portfolio membership with the rules replicated to those projects.
+async function lockPortfolio(q: Queryable, portfolioId: number): Promise<void> {
+  await q.query("SELECT id FROM portfolios WHERE id = $1 FOR NO KEY UPDATE", [portfolioId]);
+}
+
 export async function addPortfolioProject(
   portfolioId: number,
   projectId: number,
-): Promise<void> {
-  await withTransaction(async (q) => {
+  actorId: number,
+): Promise<boolean> {
+  return withTransaction(async (q) => {
+    await lockPortfolio(q, portfolioId);
+    const { role } = await getProjectAccess(actorId, projectId, q);
+    if (!role) return false;
     const p = await q.query(
-      `SELECT p.id, p.workspace_id FROM projects p
+      `SELECT p.id FROM projects p
        JOIN portfolios po ON po.workspace_id = p.workspace_id
        WHERE p.id = $1::bigint AND po.id = $2::bigint AND p.deleted_at IS NULL`,
       [projectId, portfolioId],
     );
     if (p.rowCount === 0) throw new Error("project not found in portfolio workspace");
+    if (!canEditProject(role)) {
+      const { rows: [state] } = await q.query(
+        `SELECT
+           EXISTS (SELECT 1 FROM portfolio_items WHERE portfolio_id = $1 AND project_id = $2) AS already_added,
+           EXISTS (
+             SELECT 1 FROM portfolio_rules
+             WHERE portfolio_id = $1 AND enabled AND owner_id <> $3
+           ) AS installs_other_owners_rules`,
+        [portfolioId, projectId, actorId],
+      );
+      // A read-only retry can retain the portfolio item without reinstalling any rule.
+      if (state.already_added) return true;
+      if (state.installs_other_owners_rules) return false;
+    }
     await q.query(
       `INSERT INTO portfolio_items (portfolio_id, project_id)
        VALUES ($1::bigint, $2::bigint) ON CONFLICT DO NOTHING`,
@@ -176,6 +203,7 @@ export async function addPortfolioProject(
        ON CONFLICT DO NOTHING`,
       [portfolioId, projectId],
     );
+    return true;
   });
 }
 
@@ -184,6 +212,7 @@ export async function removePortfolioProject(
   projectId: number,
 ): Promise<void> {
   await withTransaction(async (q) => {
+    await lockPortfolio(q, portfolioId);
     await q.query(
       "DELETE FROM portfolio_items WHERE portfolio_id = $1::bigint AND project_id = $2::bigint",
       [portfolioId, projectId],
@@ -198,7 +227,7 @@ export async function removePortfolioProject(
   });
 }
 
-export async function getPortfolioRules(portfolioId: number): Promise<PortfolioRule[]> {
+export async function getPortfolioRules(portfolioId: number, viewerId: number): Promise<PortfolioRule[]> {
   const r = await db.query(
     `SELECT pr.id, pr.workspace_id, pr.portfolio_id, pr.name, pr.description,
        pr.definition, pr.owner_id, u.name AS owner_name, pr.enabled, pr.version,
@@ -218,7 +247,11 @@ export async function getPortfolioRules(portfolioId: number): Promise<PortfolioR
      ORDER BY pr.id`,
     [portfolioId],
   );
-  return r.rows.map(toRule);
+  return r.rows.map(toRule).map((rule) => ({
+    ...rule,
+    definition: redactWebhookDefinition(rule.definition,
+      rule.owner_id === viewerId ? `portfolio:${rule.id}:${rule.version}` : undefined),
+  }));
 }
 
 export async function getPortfolioRule(
@@ -245,27 +278,31 @@ export async function createPortfolioRule(input: {
   description: string;
   definition: RuleDefinition;
   ownerId: number;
+  enabled?: boolean;
 }): Promise<number> {
-  const count = await db.query(
-    "SELECT COUNT(*)::int AS n FROM portfolio_rules WHERE portfolio_id = $1::bigint",
-    [input.portfolioId],
-  );
-  if (Number(count.rows[0].n) >= RULE_LIMITS.rulesPerProject) {
-    throw new Error(`ポートフォリオあたり${RULE_LIMITS.rulesPerProject}件までです`);
-  }
   return withTransaction(async (q) => {
+    await lockPortfolio(q, input.portfolioId);
+    const count = await q.query(
+      "SELECT COUNT(*)::int AS n FROM portfolio_rules WHERE portfolio_id = $1::bigint",
+      [input.portfolioId],
+    );
+    if (Number(count.rows[0].n) >= RULE_LIMITS.rulesPerProject) {
+      throw new Error(`ポートフォリオあたり${RULE_LIMITS.rulesPerProject}件までです`);
+    }
+    const definition = JSON.stringify(assignWebhookActionIds(input.definition));
     const inserted = await q.query(
       `INSERT INTO portfolio_rules (
-         workspace_id, portfolio_id, name, description, definition, owner_id
-       ) VALUES ($1::bigint, $2::bigint, $3, $4, $5::jsonb, $6::bigint)
+         workspace_id, portfolio_id, name, description, definition, owner_id, enabled
+       ) VALUES ($1::bigint, $2::bigint, $3, $4, $5::jsonb, $6::bigint, $7::boolean)
        RETURNING id`,
       [
         input.workspaceId,
         input.portfolioId,
         input.name.slice(0, 120),
         input.description.slice(0, 1000),
-        JSON.stringify(input.definition),
+        definition,
         input.ownerId,
+        input.enabled ?? true,
       ],
     );
     const ruleId = Number(inserted.rows[0].id);
@@ -274,7 +311,7 @@ export async function createPortfolioRule(input: {
          workspace_id, project_id, name, description, definition, owner_id, enabled, version,
          portfolio_rule_id
        )
-       SELECT $1::bigint, i.project_id, $2, $3, $4::jsonb, $5::bigint, TRUE, 1, $6::bigint
+       SELECT $1::bigint, i.project_id, $2, $3, $4::jsonb, $5::bigint, $8::boolean, 1, $6::bigint
        FROM portfolio_items i
        WHERE i.portfolio_id = $7::bigint
        ON CONFLICT DO NOTHING`,
@@ -282,10 +319,11 @@ export async function createPortfolioRule(input: {
         input.workspaceId,
         input.name.slice(0, 120),
         input.description.slice(0, 1000),
-        JSON.stringify(input.definition),
+        definition,
         input.ownerId,
         ruleId,
         input.portfolioId,
+        input.enabled ?? true,
       ],
     );
     return ruleId;
@@ -301,8 +339,10 @@ export async function updatePortfolioRule(
     definition?: RuleDefinition;
     enabled?: boolean;
   },
-): Promise<void> {
-  await withTransaction(async (q) => {
+  expectedVersion?: number,
+  expectedUpdatedAt?: string,
+): Promise<boolean> {
+  return withTransaction(async (q) => {
     const sets: string[] = [];
     const values: unknown[] = [];
     if (patch.name !== undefined) {
@@ -316,26 +356,32 @@ export async function updatePortfolioRule(
     if (patch.definition !== undefined) {
       values.push(JSON.stringify(patch.definition));
       sets.push(`definition = $${values.length}::jsonb`);
-      sets.push("version = version + 1");
+      sets.push(`version = version + CASE WHEN definition IS DISTINCT FROM $${values.length}::jsonb THEN 1 ELSE 0 END`);
     }
     if (patch.enabled !== undefined) {
       values.push(patch.enabled);
       sets.push(`enabled = $${values.length}`);
     }
-    if (sets.length === 0) return;
-    values.push(ruleId, portfolioId);
+    if (sets.length === 0) return true;
+    await lockPortfolio(q, portfolioId);
+    const ruleParam = values.length + 1;
+    values.push(ruleId, portfolioId, expectedVersion ?? null, expectedUpdatedAt ?? null);
     const updated = await q.query(
-      `UPDATE portfolio_rules SET ${sets.join(", ")}, updated_at = now()
-       WHERE id = $${values.length - 1}::bigint AND portfolio_id = $${values.length}::bigint
+      `UPDATE portfolio_rules SET ${sets.join(", ")},
+         updated_at = GREATEST(clock_timestamp(), updated_at + interval '1 microsecond')
+       WHERE id = $${ruleParam}::bigint AND portfolio_id = $${ruleParam + 1}::bigint
+         AND ($${ruleParam + 2}::integer IS NULL OR version = $${ruleParam + 2}::integer)
+         AND ($${ruleParam + 3}::text IS NULL OR updated_at::text = $${ruleParam + 3}::text)
        RETURNING name, description, definition, enabled, version`,
       values,
     );
-    if (updated.rowCount === 0) return;
+    if (updated.rowCount === 0) return false;
     const rule = updated.rows[0];
     await q.query(
       `UPDATE project_rules SET
          name = $2, description = $3, definition = $4::jsonb,
-         enabled = $5, version = $6, updated_at = now()
+         enabled = $5, version = $6,
+         updated_at = GREATEST(clock_timestamp(), updated_at + interval '1 microsecond')
        WHERE portfolio_rule_id = $1::bigint`,
       [
         ruleId,
@@ -346,6 +392,7 @@ export async function updatePortfolioRule(
         rule.version,
       ],
     );
+    return true;
   });
 }
 
@@ -353,10 +400,13 @@ export async function deletePortfolioRule(
   ruleId: number,
   portfolioId: number,
 ): Promise<void> {
-  await db.query(
-    "DELETE FROM portfolio_rules WHERE id = $1::bigint AND portfolio_id = $2::bigint",
-    [ruleId, portfolioId],
-  );
+  await withTransaction(async (q) => {
+    await lockPortfolio(q, portfolioId);
+    await q.query(
+      "DELETE FROM portfolio_rules WHERE id = $1::bigint AND portfolio_id = $2::bigint",
+      [ruleId, portfolioId],
+    );
+  });
 }
 
 export async function getPortfolioRuleRuns(
@@ -369,7 +419,7 @@ export async function getPortfolioRuleRuns(
     `SELECT rr.id, rr.rule_id, rr.event_id, rr.rule_name, rr.rule_version,
        rr.owner_id, u.name AS owner_name, rr.source, rr.status,
        rr.actions_total, rr.actions_succeeded, rr.actions_failed, rr.error,
-       rr.details, rr.started_at::text AS started_at, rr.finished_at::text AS finished_at,
+       rr.details, rr.started_at::text AS started_at, rr.finished_at::text AS finished_at, rr.evaluation,
        rp.project_id, p.name AS project_name
      FROM rule_runs rr
      JOIN project_rules rp ON rp.id = rr.rule_id
@@ -385,7 +435,7 @@ export async function getPortfolioRuleRuns(
     [portfolioId, ruleId ?? null, Math.min(200, Math.max(1, limit)), viewerId],
   );
   return r.rows.map((row) => ({
-    ...row,
+    ...redactWebhookRun(row),
     id: Number(row.id),
     rule_id: row.rule_id === null ? null : Number(row.rule_id),
     event_id: row.event_id === null ? null : Number(row.event_id),
@@ -395,7 +445,8 @@ export async function getPortfolioRuleRuns(
     actions_succeeded: Number(row.actions_succeeded),
     actions_failed: Number(row.actions_failed),
     project_id: Number(row.project_id),
-    details: Array.isArray(row.details) ? row.details : [],
+    evaluation: row.evaluation ? historyRuleEvaluation(row.evaluation as RuleEvaluationTrace) : undefined,
+    ...(Array.isArray(row.details) ? {} : { details: [] }),
   }));
 }
 

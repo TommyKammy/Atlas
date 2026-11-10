@@ -3,6 +3,8 @@ import { withUser } from "@/lib/api/route";
 import { getWorkspace } from "@/lib/data";
 import { audit } from "@/lib/audit";
 import { validateRuleDefinition } from "@/lib/automation/validate";
+import { validateRuleConditionScope } from "@/lib/automation/condition-validation";
+import { validateRuleCustomFieldActions } from "@/lib/automation/custom-field-actions";
 import {
   createPortfolioRule,
   getPortfolio,
@@ -24,7 +26,7 @@ export const GET = withUser(async (_req, { uid, params }) => {
   const id = Number(params.id);
   const loaded = await loadPortfolio(id, uid);
   if (loaded.error) return loaded.error;
-  return NextResponse.json({ rules: await getPortfolioRules(id) });
+  return NextResponse.json({ rules: await getPortfolioRules(id, uid) });
 });
 
 export const POST = withUser(async (req, { uid, params }) => {
@@ -38,13 +40,21 @@ export const POST = withUser(async (req, { uid, params }) => {
     name?: unknown;
     description?: unknown;
     definition?: unknown;
+    enabled?: unknown;
   } | null;
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   if (name === "") return NextResponse.json({ error: "name is required" }, { status: 400 });
+  if (body?.enabled !== undefined && typeof body.enabled !== "boolean") {
+    return NextResponse.json({ error: "enabled must be a boolean" }, { status: 400 });
+  }
   const validated = validateRuleDefinition(body?.definition);
   if (!validated.ok) {
     return NextResponse.json({ error: validated.error }, { status: 400 });
   }
+  const conditions = await validateRuleConditionScope(validated.definition, { portfolioId: id }, uid);
+  if (!conditions.ok) return NextResponse.json({ error: conditions.error }, { status: 400 });
+  const customFields = await validateRuleCustomFieldActions(validated.definition, uid);
+  if (!customFields.ok) return NextResponse.json({ error: customFields.error }, { status: customFields.status });
   try {
     const ruleId = await createPortfolioRule({
       workspaceId: loaded.workspaceId!,
@@ -53,6 +63,7 @@ export const POST = withUser(async (req, { uid, params }) => {
       description: typeof body?.description === "string" ? body.description.trim() : "",
       definition: validated.definition,
       ownerId: uid,
+      enabled: body?.enabled as boolean | undefined,
     });
     await audit(uid, "portfolio_rule.create", {
       entity: "portfolio_rule",

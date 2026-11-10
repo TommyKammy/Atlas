@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, type Queryable } from "./db";
 import { mentionIdsFromDoc } from "./rich-text-validation";
 import type { RichTextDoc, RichTextNode } from "./rich-text-types";
 
@@ -10,8 +10,9 @@ function escapeRegExp(value: string): string {
 export async function mentionedUserIds(
   projectId: number | null,
   text: string,
+  q: Queryable = db,
 ): Promise<number[]> {
-  const r = await db.query(
+  const r = await q.query(
     `SELECT u.id, u.name FROM users u
      WHERE u.deactivated_at IS NULL
        AND ($1::bigint IS NULL
@@ -33,10 +34,11 @@ export async function mentionedUserIds(
 export async function replaceCommentMentions(
   commentId: number,
   userIds: number[],
+  q: Queryable = db,
 ): Promise<void> {
-  await db.query("DELETE FROM comment_mentions WHERE comment_id = $1::bigint", [commentId]);
+  await q.query("DELETE FROM comment_mentions WHERE comment_id = $1::bigint", [commentId]);
   if (userIds.length === 0) return;
-  await db.query(
+  await q.query(
     `INSERT INTO comment_mentions (comment_id, user_id)
      SELECT $1::bigint, unnest($2::bigint[]) ON CONFLICT DO NOTHING`,
     [commentId, userIds],
@@ -48,10 +50,11 @@ export async function replaceCommentMentions(
 export async function mentionedUserIdsFromDoc(
   projectId: number | null,
   doc: RichTextDoc,
+  q: Queryable = db,
 ): Promise<number[]> {
   const ids = mentionIdsFromDoc(doc);
   if (ids.length === 0) return [];
-  const r = await db.query(
+  const r = await q.query(
     `SELECT u.id FROM users u
      WHERE u.deactivated_at IS NULL
        AND u.id = ANY($2::bigint[])
@@ -67,10 +70,11 @@ export async function mentionedUserIdsFromDoc(
 export async function normalizeMentionLabels(
   doc: RichTextDoc,
   projectId: number | null,
+  q: Queryable = db,
 ): Promise<RichTextDoc> {
   const ids = mentionIdsFromDoc(doc);
   if (ids.length === 0) return doc;
-  const r = await db.query(
+  const r = await q.query(
     `SELECT u.id, u.name FROM users u
      WHERE u.deactivated_at IS NULL
        AND u.id = ANY($2::bigint[])

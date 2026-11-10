@@ -106,7 +106,8 @@ try {
   );
 } finally {
   if (projectId !== null) {
-    await pool.query("DELETE FROM projects WHERE id = $1::bigint", [projectId]).catch(() => undefined);
+    // Use the normal deletion transaction and its automation coordination gate.
+    await page.request.delete(`/api/projects/${projectId}`).catch(() => undefined);
   }
   await browser.close();
   await pool.end();

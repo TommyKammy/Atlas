@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { withUser } from "@/lib/api/route";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
@@ -49,13 +49,23 @@ export const PATCH = withUser(async (req, { uid, params }) => {
   const parsed = await parseCommentPayload(comment.project_id, body);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-  const r = await db.query(
-    `UPDATE comments SET body = $2, body_doc = $3::jsonb, edited_at = now()
-     WHERE id = $1::bigint
-     RETURNING id, body, body_doc, edited_at::text AS edited_at`,
-    [commentId, parsed.markdown, parsed.doc ? JSON.stringify(parsed.doc) : null],
-  );
-  await replaceCommentMentions(commentId, parsed.mentionIds);
+  const updated = await withTransaction(async (q) => {
+    const r = await q.query(
+      `UPDATE comments SET body = $2, body_doc = $3::jsonb, edited_at = now()
+       WHERE id = $1::bigint
+       RETURNING id, body, body_doc, edited_at::text AS edited_at`,
+      [commentId, parsed.markdown, parsed.doc ? JSON.stringify(parsed.doc) : null],
+    );
+    await replaceCommentMentions(commentId, parsed.mentionIds, q);
+    await emitTaskEvent({
+      projectId: comment.project_id,
+      taskId: comment.task_id,
+      actorId: uid,
+      type: "comment.updated",
+      data: { comment_id: commentId, body: parsed.text.slice(0, 500) },
+    }, q);
+    return r.rows[0];
+  });
   await notifyTask(comment.task_id);
   await audit(uid, "comment.update", {
     entity: "comment",
@@ -63,16 +73,7 @@ export const PATCH = withUser(async (req, { uid, params }) => {
     projectId: comment.project_id,
     summary: parsed.text.slice(0, 120),
   });
-  if (comment.project_id !== null) {
-    await emitTaskEvent({
-      projectId: Number(comment.project_id),
-      taskId: comment.task_id,
-      actorId: uid,
-      type: "comment.updated",
-      data: { comment_id: commentId, body: parsed.text.slice(0, 500) },
-    }).catch(() => undefined);
-  }
-  return NextResponse.json(r.rows[0]);
+  return NextResponse.json(updated);
 });
 
 export const DELETE = withUser(async (req, { uid, params }) => {

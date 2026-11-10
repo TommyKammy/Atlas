@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { db } from "../db";
+import { db, type Queryable } from "../db";
 import { normalizeProjectRole, type ProjectRole } from "../project-roles";
 import { normalizeCustomFieldConfig } from "../custom-fields";
 import type { FormField, ProjectForm } from "../forms";
@@ -11,11 +11,13 @@ import type { Attachment, User } from "../data";
 import type { RichTextDoc } from "../rich-text-types";
 import type { ProjectTemplateSummary } from "../project-templates";
 import type { BundleRule } from "../bundles";
+import { redactWebhookDefinition } from "../automation/webhook-credentials";
 import {
   DEFAULT_PROJECT_TEMPLATES,
   defaultProjectTemplatePayload,
 } from "../default-project-templates";
 import { projectTaskScope } from "./scope";
+import type { TaskApprovalSummary } from "../task-approval";
 
 export type Project = {
   id: number;
@@ -60,6 +62,7 @@ export type TaskRow = {
   progress: number;
   status: string;
   is_milestone: boolean;
+  approval?: TaskApprovalSummary | null;
   position: number;
   created_at: string;
   updated_at: string;
@@ -96,8 +99,9 @@ export const getProjectsForUser = cache(async (workspaceId: number, userId: numb
 export async function getProjectAccess(
   userId: number,
   projectId: number,
+  q: Queryable = db,
 ): Promise<{ workspaceAdmin: boolean; role: ProjectRole | null }> {
-  const r = await db.query(
+  const r = await q.query(
     `SELECT u.is_admin, u.deactivated_at, m.role
      FROM users u
      LEFT JOIN project_members m ON m.project_id = $2 AND m.user_id = u.id
@@ -117,14 +121,14 @@ export async function getProjectAccess(
 export async function getProject(projectId: number) {
   const r = await db.query(
     `SELECT id, workspace_id, name, description, status, status_color,
-       COALESCE(status_options, '[]'::jsonb) AS status_options, status_field_name,
+       COALESCE(status_options, '[]'::jsonb) AS status_options, status_options_version, status_field_name,
        status_field_enabled, color, icon, email_address, email_enabled,
        owner_id, team_id, due_on::text AS due_on, settings,
        archived_at::text AS archived_at, deleted_at::text AS deleted_at
      FROM projects WHERE id = $1`,
     [projectId],
   );
-  return r.rows[0] as Project | undefined;
+  return r.rows[0] as (Project & { status_options_version: number }) | undefined;
 }
 
 export async function getSections(projectId: number): Promise<Section[]> {
@@ -268,7 +272,10 @@ export async function getBundlesForProject(projectId: number): Promise<Bundle[]>
   return r.rows.map((row) => ({
     ...row,
     fields: (row.fields ?? []) as BundleField[],
-    rules: (row.rules ?? []) as BundleRule[],
+    rules: (Array.isArray(row.rules) ? row.rules as BundleRule[] : []).map((rule) => ({
+      ...rule,
+      definition: redactWebhookDefinition(rule.definition),
+    })),
     applied: row.applied === true,
     applied_count: Number(row.applied_count ?? 0),
   }));

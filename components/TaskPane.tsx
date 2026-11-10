@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
 import {
@@ -30,6 +30,8 @@ import AssigneePicker from "./fields/AssigneePicker";
 import EmptyCellIcon from "./fields/EmptyCellIcon";
 import TaskAvatar from "./task/TaskAvatar";
 import TaskStatusChip from "./task/TaskStatusChip";
+import TaskApprovalSection from "./task/TaskApprovalSection";
+import type { TaskApprovalSummary } from "@/lib/task-approval";
 import { QUICK_REACTIONS, useTaskPane } from "@/lib/use-task-pane";
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
@@ -116,7 +118,7 @@ export default function TaskPane({
     feedTab,
     setFeedTab,
     addingProject,
-    setAddingProject,
+    closeAddProject,
     assigneeEditing,
     setAssigneeEditing,
     allProjects,
@@ -160,6 +162,9 @@ export default function TaskPane({
 
   const paneRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [approvalOverride, setApprovalOverride] = useState<{ taskId: number; stamp: string; approval: TaskApprovalSummary | null } | null>(null);
+  const [approvalOpenSignal, setApprovalOpenSignal] = useState(0);
+  const approval = approvalOverride?.taskId === task.id && approvalOverride.stamp === task.updated_at ? approvalOverride.approval : task.approval;
   useFocusTrap(paneRef, true, () => router.push(closeHref));
 
   const renderCustomEditor = (field: CustomField) => {
@@ -354,7 +359,7 @@ export default function TaskPane({
       }`}
     >
       <TaskPaneHeader
-        task={task}
+        task={{ ...task, approval }}
         collaborators={collaboratorList}
         showTitle={showTitle}
         closeHref={closeHref}
@@ -364,6 +369,7 @@ export default function TaskPane({
         onShare={() => void shareTask()}
         onCopyLink={() => void copyTaskLink()}
         onToggleFullscreen={() => setMaximized((value) => !value)}
+        onOpenApproval={() => setApprovalOpenSignal((value) => value + 1)}
       />
 
       <div
@@ -431,6 +437,9 @@ export default function TaskPane({
               マイルストーン
             </div>
           )}
+
+          <TaskApprovalSection key={task.id} task={task} viewerId={viewerId} canEdit={canEdit}
+            openSignal={approvalOpenSignal} onSummaryChange={(value) => setApprovalOverride({ taskId: task.id, stamp: task.updated_at, approval: value })} onChanged={refresh} />
 
           <div className="mt-2 space-y-0.5" data-task-fields>
             <FieldRow label="担当者">
@@ -570,7 +579,7 @@ export default function TaskPane({
                     )}
                     <button
                       type="button"
-                      onClick={() => setAddingProject(false)}
+                      onClick={closeAddProject}
                       className="self-start rounded px-1 py-0.5 text-[11px] text-neutral-500 hover:bg-neutral-100"
                     >
                       キャンセル

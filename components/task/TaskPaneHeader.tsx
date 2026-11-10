@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { TaskRow } from "@/lib/data";
 import UserAvatar from "../UserAvatar";
 import TaskMilestoneIcon from "./TaskMilestoneIcon";
+import { TASK_APPROVAL_STATUS_LABELS } from "@/lib/task-approval";
 
 /** Top action bar of the task pane, aligned with Asana's task header. */
 export default function TaskPaneHeader({
@@ -19,6 +20,7 @@ export default function TaskPaneHeader({
   onShare,
   onCopyLink,
   onToggleFullscreen,
+  onOpenApproval,
 }: {
   task: TaskRow;
   collaborators: { id: number; name: string; avatar_url?: string | null }[];
@@ -30,6 +32,7 @@ export default function TaskPaneHeader({
   onShare: () => void;
   onCopyLink: () => void;
   onToggleFullscreen: () => void;
+  onOpenApproval: () => void;
 }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(task.like_count ?? 0);
@@ -69,7 +72,8 @@ export default function TaskPaneHeader({
     <div className="flex h-12 shrink-0 items-center gap-1.5 border-b border-neutral-200 px-2.5">
       <button
         type="button"
-        onClick={onToggle}
+        onClick={task.approval ? onOpenApproval : onToggle}
+        aria-label={task.approval ? "承認の操作を開く" : undefined}
         className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium ${
           task.completed
             ? "border-green-700 bg-green-700 text-white hover:bg-green-800"
@@ -87,7 +91,7 @@ export default function TaskPaneHeader({
             {task.completed ? "✓" : ""}
           </span>
         )}
-        {task.completed ? "完了" : "完了にする"}
+        {task.approval ? TASK_APPROVAL_STATUS_LABELS[task.approval.status] : task.completed ? "完了" : "完了にする"}
       </button>
 
       {showTitle ? (

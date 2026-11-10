@@ -4,12 +4,14 @@ import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { ApiError, api } from "@/lib/api-client";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Section, TaskRow, User } from "@/lib/data";
+import type { Section, User } from "@/lib/data";
+import { decodeTimelineTask, type TaskTimelineRow, type TimelineTaskPayload } from "@/lib/timeline-task-payload";
 import { shiftDate } from "@/lib/timeline-dnd";
 import { formatDay } from "@/lib/calendar";
 import EmptyState from "./EmptyState";
+import ProjectTaskContextMenu from "./task/ProjectTaskContextMenu";
 import TaskAvatar from "./task/TaskAvatar";
 import TimelineBar from "./timeline/TimelineBar";
 import TimelineAxis from "./timeline/TimelineAxis";
@@ -17,31 +19,50 @@ import TimelineCanvas from "./timeline/TimelineCanvas";
 import TimelineDependencyLayer from "./timeline/TimelineDependencyLayer";
 import TimelineToolbar from "./timeline/TimelineToolbar";
 import { usePersistedViewState } from "@/lib/view-state-client";
-import { dayOrNull } from "@/lib/task-dates";
-import { isSingleDayTimelineTask, usesTimelineExternalLabel } from "@/lib/timeline-marker";
-import { timelineBarDragStyle } from "@/lib/timeline-drag-style";
+import { timelineInterval } from "@/lib/timeline-lanes";
+import { clampTimelineDay } from "@/lib/timeline-axis";
 import { useTimelineFilters } from "@/lib/use-timeline-filters";
 import { useTimelineDependencies } from "@/lib/use-timeline-dependencies";
 import { useTimelineDrag } from "@/lib/use-timeline-drag";
 import { useTimelineDraft } from "@/lib/use-timeline-draft";
 import { useTimelineHover } from "@/lib/use-timeline-hover";
 import { useTimelineLayout } from "@/lib/use-timeline-layout";
+import { isTimelineBarInWindow, useTimelineRenderWindow } from "@/lib/use-timeline-render-window";
 import { useTimelineViewport, ZOOM_PRESETS } from "@/lib/use-timeline-viewport";
 import {
   TIMELINE_AXIS_HEIGHT as AXIS_H,
   TIMELINE_BAR_HEIGHT as BAR_H,
-  TIMELINE_EDGE_HIT as EDGE_HIT,
   TIMELINE_ROW_PITCH as ROW_PITCH,
 } from "@/lib/timeline-metrics";
 
-const toDay = dayOrNull;
+const WINDOWED_TIMELINE_TASKS = 2_000;
 
-
+// Keep the task's place in tab order while its visual bar is outside the window.
+const TimelineBarPlaceholder = memo(function TimelineBarPlaceholder({
+  id, name, left, top, onFocus,
+}: {
+  id: number;
+  name: string;
+  left: string;
+  top: number;
+  onFocus: (id: number) => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-timeline-focus-placeholder={id}
+      aria-label={name}
+      className="pointer-events-none absolute h-px w-px opacity-0"
+      style={{ left, top }}
+      onFocus={() => onFocus(id)}
+    />
+  );
+});
 
 export default function TimelineView({
   projectId,
   sections,
-  tasks,
+  taskPayload,
   deps,
   startOverride,
   initialState,
@@ -57,7 +78,7 @@ export default function TimelineView({
 }: {
   projectId: number;
   sections: Section[];
-  tasks: TaskRow[];
+  taskPayload: TimelineTaskPayload[];
   deps: { task_id: number; depends_on_id: number }[];
   startOverride: number | null;
   initialState?: Record<string, string | number | boolean | null>;
@@ -71,12 +92,15 @@ export default function TimelineView({
   statusFieldEnabled: boolean;
   statusOptions: string[];
 }) {
+  const tasks = useMemo(() => taskPayload.map(decodeTimelineTask), [taskPayload]);
   const router = useRouter();
-  const refresh = () => router.refresh();
+  const refresh = useCallback(() => router.refresh(), [router]);
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const suppressCanvasClick = useRef(false);
-  const revealBarId = useRef<number | null>(null);
+  const [revealBarId, setRevealBarId] = useState<number | null>(null);
+  const [focusedBarId, setFocusedBarId] = useState<number | null>(null);
+  const pendingBarFocus = useRef<number | null>(null);
   const {
     depLink,
     depTargetId,
@@ -84,6 +108,7 @@ export default function TimelineView({
     beginDependency,
     moveDependency,
     endDependency,
+    cancelDependency,
     removeDependency,
     showDepHover,
     scheduleDepHoverClear,
@@ -132,8 +157,10 @@ export default function TimelineView({
     max,
     span,
     dayPct,
+    navigationDays,
     pct,
     changeZoom,
+    anchorDay,
     todayDay,
     showToday,
     weekendDays,
@@ -147,6 +174,28 @@ export default function TimelineView({
     scrollRef,
     contentRef,
   });
+  const renderWindow = useTimelineRenderWindow({
+    enabled: dated.length > WINDOWED_TIMELINE_TASKS,
+    scrollRef,
+    contentRef,
+    min,
+    span,
+    dayWidth,
+    anchorDay,
+  });
+  const focusPlaceholder = useCallback((id: number) => {
+    pendingBarFocus.current = id;
+    setFocusedBarId(id);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (focusedBarId === null || pendingBarFocus.current !== focusedBarId) return;
+    const bar = contentRef.current?.querySelector<HTMLElement>(`[data-timeline-bar="${focusedBarId}"]`);
+    if (!bar) return;
+    pendingBarFocus.current = null;
+    bar.focus({ preventScroll: true });
+    bar.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [focusedBarId]);
 
   const [undatedOpen, setUndatedOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
@@ -155,13 +204,14 @@ export default function TimelineView({
   const [showWeekends, setShowWeekends] = useState(stored.weekends !== false);
   const [showDependencies, setShowDependencies] = useState(stored.dependencies !== false);
   const [showCritical, setShowCritical] = useState(stored.critical !== false);
-  usePersistedViewState(projectId, "timeline", {
+  const viewState = useMemo(() => ({
     zoom,
     ...persistedState,
     weekends: showWeekends,
     dependencies: showDependencies,
     critical: showCritical,
-  });
+  }), [zoom, persistedState, showWeekends, showDependencies, showCritical]);
+  usePersistedViewState(projectId, "timeline", viewState);
   const [canvasWidth, setCanvasWidth] = useState(0);
   const {
     draft,
@@ -181,9 +231,7 @@ export default function TimelineView({
         return next;
       });
     },
-    onCreated: (taskId) => {
-      revealBarId.current = taskId;
-    },
+    onCreated: setRevealBarId,
   });
 
   const openDraft = (sectionId: number | null, day: number) => {
@@ -192,14 +240,15 @@ export default function TimelineView({
   };
 
   useEffect(() => {
-    const id = revealBarId.current;
-    if (id === null) return;
-    const el = document.querySelector<HTMLElement>(`[data-timeline-bar="${id}"]`);
+    if (revealBarId === null) return;
+    const el = contentRef.current?.querySelector<HTMLElement>(`[data-timeline-bar="${revealBarId}"]`);
     if (el) {
       el.scrollIntoView({ block: "nearest", inline: "nearest" });
-      revealBarId.current = null;
+      // Clear the temporary render priority once the new bar is on screen.
+      const frame = window.requestAnimationFrame(() => setRevealBarId(null));
+      return () => window.cancelAnimationFrame(frame);
     }
-  }, [tasks]);
+  }, [revealBarId, tasks]);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -237,8 +286,13 @@ export default function TimelineView({
     }
   }, [collapsed, collapsedHydrated, projectId]);
 
+  const windowedTasks = useMemo(() => dated.filter((task) => {
+    const days = timelineInterval(task);
+    return days !== null && days.start <= max && days.end >= min;
+  }), [dated, min, max]);
+
   const { groups, pos, dependencyShapes, milestoneLines, critical } = useTimelineLayout({
-    dated,
+    dated: windowedTasks,
     sections,
     sortBy,
     collapsed,
@@ -252,8 +306,8 @@ export default function TimelineView({
     max,
     showCritical,
   });
-  const commitChange = async (
-    t: TaskRow,
+  const commitChange = useCallback(async (
+    t: TaskTimelineRow,
     delta: number,
     mode: "move" | "start" | "end",
     extra: Record<string, unknown> = {},
@@ -297,9 +351,16 @@ export default function TimelineView({
       }
     }
     refresh();
-  };
+  }, [refresh]);
 
-  const toggleComplete = async (t: TaskRow) => {
+  const toggleComplete = useCallback(async (t: TaskTimelineRow) => {
+    if (t.approval) {
+      const q = new URLSearchParams(window.location.search);
+      q.set("task", String(t.id));
+      q.set("approval", "1");
+      router.push(`/projects/${projectId}?${q.toString()}`);
+      return;
+    }
     try {
       await patchTask(
         t.id,
@@ -311,15 +372,15 @@ export default function TimelineView({
       else toastMessage(`更新に失敗しました: ${error instanceof ApiError ? error.status : ""}`);
     }
     refresh();
-  };
+  }, [projectId, refresh, router]);
 
-  const linkDay = (d: number) => formatDay(d);
+  const linkDay = (d: number) => formatDay(clampTimelineDay(d));
 
-  const openTask = (id: number) => {
+  const openTask = useCallback((id: number) => {
     const q = new URLSearchParams(window.location.search);
     q.set("task", String(id));
     router.push(`/projects/${projectId}?${q.toString()}`);
-  };
+  }, [projectId, router]);
 
   const addToday = () => {
     if (sections.length === 0) {
@@ -400,66 +461,7 @@ export default function TimelineView({
     );
   };
 
-  const barFace = (t: TaskRow) => {
-    if (t.is_milestone) return "bg-white text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]";
-    if (t.completed) return "bg-[#aaaaaa] text-[#050505]";
-    if (showCritical && critical.has(t.id)) return "bg-red-200 text-neutral-900";
-    return "bg-white text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]";
-  };
-
-  const barPxFor = (t: TaskRow) => {
-    if (t.is_milestone) return dayWidth;
-    const startDay = toDay(t.start_on) ?? toDay(t.due_on)!;
-    const endDay = toDay(t.due_on) ?? toDay(t.start_on)!;
-    return (endDay - startDay + 1) * dayWidth;
-  };
-
-  // Leave a usable centre grip even on one- or two-day bars. Desktop Asana uses
-  // 10px handles, but Atlas clamps them on short bars so vertical reorder still
-  // has a draggable centre.
-  const edgeHitFor = (width: number) => Math.min(EDGE_HIT, Math.max(4, width / 4));
-
-  const barStyle = (t: TaskRow): React.CSSProperties => {
-    const p = pos.get(t.id)!;
-    const d = drag && drag.id === t.id ? drag : null;
-    const style: React.CSSProperties = {
-      height: BAR_H,
-      left: p.x1,
-      width: `calc(${p.x2} - ${p.x1})`,
-    };
-    if (!d) return style;
-    return {
-      ...style,
-      ...timelineBarDragStyle({
-        mode: d.mode,
-        axis: d.axis,
-        dx: d.dx,
-        dy: d.dy,
-        x1: p.x1,
-        x2: p.x2,
-        canReorder,
-      }),
-    };
-  };
-
-  const handleStyle = (t: TaskRow, edge: "start" | "end"): React.CSSProperties => {
-    const p = pos.get(t.id)!;
-    const d = drag && drag.id === t.id ? drag : null;
-    const sameDay = isSingleDayTimelineTask(t);
-    const hit = edgeHitFor(sameDay && barHoverId !== t.id ? 8 : barPxFor(t));
-    let left = edge === "start" ? p.x1 : p.x2;
-    if (d?.mode === "start") left = `calc(${p.x1} + ${d.dx}px)`;
-    else if (d?.mode === "end") left = `calc(${p.x2} + ${d.dx}px)`;
-    else if (d?.mode === "move") left = `calc(${edge === "start" ? p.x1 : p.x2} + ${d.dx}px)`;
-    return {
-      height: BAR_H,
-      width: hit,
-      left,
-      marginLeft: edge === "end" ? -hit : 0,
-    };
-  };
-
-  const setTimelineRow = async (t: TaskRow, rowIndex: number) => {
+  const setTimelineRow = useCallback(async (t: TaskTimelineRow, rowIndex: number) => {
     if (!canEdit) return;
     const current = t.timeline_row ?? null;
     if (current === rowIndex) return;
@@ -467,9 +469,7 @@ export default function TimelineView({
       await api(`/api/tasks/${t.id}/timeline-row`, "PUT", {
         project_id: projectId,
         row_index: rowIndex,
-        ...(t.timeline_row_updated_at
-          ? { expected_updated_at: t.timeline_row_updated_at }
-          : {}),
+        expected_updated_at: t.timeline_row_updated_at ?? null,
       });
       toastMessage("行を移動しました");
       refresh();
@@ -481,7 +481,12 @@ export default function TimelineView({
         toastMessage(error instanceof Error ? error.message : "行の移動に失敗しました");
       }
     }
-  };
+  }, [canEdit, projectId, refresh]);
+
+  const onDragStart = useCallback(() => {
+    setHover(null);
+    clearBarHover();
+  }, [clearBarHover, setHover]);
 
   const {
     drag,
@@ -490,7 +495,7 @@ export default function TimelineView({
     beginBarDrag,
     onBarMove,
     onBarUp,
-    dragDelta,
+    onBarCancel,
   } = useTimelineDrag({
     contentRef,
     scrollRef,
@@ -498,85 +503,57 @@ export default function TimelineView({
     tasks,
     span,
     canEdit,
-    onDragStart: () => {
-      setHover(null);
-      clearBarHover();
-    },
+    onDragStart,
     onCommit: commitChange,
     onRowDrop: setTimelineRow,
   });
 
-  const moveTimelineRow = (t: TaskRow, delta: number) => {
+  const moveTimelineRow = useCallback((t: TaskTimelineRow, delta: number) => {
     if (!canEdit) return;
     const group = groups.find((entry) => entry.tasks.some((task) => task.id === t.id));
     const current = t.timeline_row ?? group?.laneById.get(t.id) ?? 0;
     const next = Math.max(0, Math.min(200, current + delta));
     void setTimelineRow(t, next);
-  };
+  }, [canEdit, groups, setTimelineRow]);
 
-  const renderBar = (t: TaskRow, lane: number, overlapping: boolean) => {
-    const dx = dragDelta(t.id);
-    const active = drag?.id === t.id;
-    const barPx = barPxFor(t);
-    const showAvatar = Boolean(t.assignee_name) && barPx >= 140;
-    const showSubtasks = t.subtask_count > 0 && barPx >= 160;
+  const onBarClick = useCallback((event: React.MouseEvent<HTMLDivElement>, id: number) => {
+    event.stopPropagation();
+    if (!moved.current) openTask(id);
+  }, [moved, openTask]);
+
+  const renderBar = (t: TaskTimelineRow, lane: number, overlapping: boolean) => {
     const p = pos.get(t.id)!;
-    const leftPct = parseFloat(p.x1);
-    const sameDay = isSingleDayTimelineTask(t);
-    const skinny = barPx < 52;
-    const externalLabel = usesTimelineExternalLabel(t, barPx, dayWidth);
-    const labelOnLeft = leftPct > 72;
-    const barInfo = `${t.name}（${t.start_on ?? "?"} 〜 ${t.due_on ?? "?"}・進捗${t.progress}%${t.assignee_name ? `・担当${t.assignee_name}` : ""}${t.timeline_row !== null && t.timeline_row !== undefined ? "・行固定" : ""}）${!t.completed && showCritical && critical.has(t.id) ? "【クリティカルパス】" : ""} — 左右で日付移動、上下で行移動、左右端で期間変更、Alt+上下で行移動`;
     return (
       <TimelineBar
         key={t.id}
         task={t}
         lane={lane}
-        rowLocked={t.timeline_row !== null && t.timeline_row !== undefined}
         overlapping={overlapping}
-        externalLabel={externalLabel}
-        onMoveRow={(delta) => moveTimelineRow(t, delta)}
+        onMoveRow={moveTimelineRow}
         x1={p.x1}
         x2={p.x2}
-        skinny={skinny}
-        sameDay={sameDay}
-        labelOnLeft={labelOnLeft}
-        active={active}
-        dragMode={drag?.mode ?? null}
-        dx={dx}
+        min={min}
+        max={max}
+        dayWidth={dayWidth}
+        critical={showCritical && critical.has(t.id)}
+        drag={drag?.id === t.id ? drag : null}
+        canReorder={canReorder}
         hovered={barHoverId === t.id}
         overflow={barOverflowId === t.id}
         dependencyTarget={depTargetId === t.id}
-        showAvatar={showAvatar}
-        showSubtasks={showSubtasks}
-        barFaceClass={barFace(t)}
-        barStyle={barStyle(t)}
-        startHandleStyle={handleStyle(t, "start")}
-        endHandleStyle={handleStyle(t, "end")}
-        activeGuideLeft={
-          active && drag?.mode !== "move"
-            ? handleStyle(t, drag.mode === "start" ? "start" : "end").left
-            : undefined
-        }
-        barInfo={barInfo}
-        onBarPointerDown={(event) => beginBarDrag(event, t)}
+        onBarPointerDown={beginBarDrag}
+        onResizeStart={beginDrag}
         onBarPointerMove={onBarMove}
         onBarPointerUp={onBarUp}
-        onBarClick={(event) => {
-          event.stopPropagation();
-          if (!moved.current) openTask(t.id);
-        }}
-        onBarEnter={() => showBarHover(t.id)}
+        onBarPointerCancel={onBarCancel}
+        onBarClick={onBarClick}
+        onBarEnter={showBarHover}
         onBarLeave={scheduleBarHoverClear}
-        onStartDrag={(event) => beginDrag(event, t, "start")}
-        onEndDrag={(event) => beginDrag(event, t, "end")}
-        onStartDependency={(event) => beginDependency(event, t, "start")}
-        onEndDependency={(event) => beginDependency(event, t, "end")}
-        onDependencyUp={(event) => void endDependency(event)}
+        onDependencyStart={beginDependency}
+        onDependencyUp={endDependency}
         onDependencyMove={moveDependency}
-        onDependencyEnter={() => showBarHover(t.id)}
-        onDependencyLeave={scheduleBarHoverClear}
-        onToggleComplete={() => toggleComplete(t)}
+        onDependencyCancel={cancelDependency}
+        onToggleComplete={toggleComplete}
       />
     );
   };
@@ -585,6 +562,18 @@ export default function TimelineView({
     <div
       className="pb-16 text-sm"
       data-timeline
+      data-timeline-windowed={renderWindow ? "true" : undefined}
+      onFocusCapture={renderWindow ? (event) => {
+        const row = (event.target as HTMLElement).closest("[data-timeline-row]");
+        if (row) setFocusedBarId(Number(row.getAttribute("data-timeline-row")));
+      } : undefined}
+      onBlurCapture={renderWindow ? (event) => {
+        if (pendingBarFocus.current !== null) return;
+        const next = event.relatedTarget;
+        if (!(next instanceof Element) || !next.closest("[data-timeline-row], [data-task-context-menu]")) {
+          setFocusedBarId(null);
+        }
+      } : undefined}
       data-timeline-zoom={zoom}
       data-timeline-zoom-level={zoomPreset.label}
       data-timeline-zoom-preset={zoomPreset.key}
@@ -607,6 +596,7 @@ export default function TimelineView({
       <TimelineToolbar
         projectId={projectId}
         min={min}
+        navigationDays={navigationDays}
         linkDay={linkDay}
         addToday={addToday}
         undatedCount={undated.length}
@@ -757,11 +747,28 @@ export default function TimelineView({
                 {!group.collapsed &&
                   group.tasks.map((t) => {
                     const lane = group.laneById.get(t.id) ?? 0;
+                    const top = lane * ROW_PITCH;
+                    const position = pos.get(t.id)!;
+                    const keepMounted = t.id === focusedBarId || t.id === revealBarId ||
+                      t.id === drag?.id || t.id === depLink?.fromId || t.id === depTargetId;
+                    if (renderWindow && !keepMounted &&
+                        !isTimelineBarInWindow(renderWindow, position, group.top + top, ROW_PITCH)) {
+                      return (
+                        <TimelineBarPlaceholder
+                          key={t.id}
+                          id={t.id}
+                          name={t.name}
+                          left={position.x1}
+                          top={top + 3}
+                          onFocus={focusPlaceholder}
+                        />
+                      );
+                    }
                     return (
                       <div
                         key={t.id}
                         className="absolute inset-x-0"
-                        style={{ top: lane * ROW_PITCH, height: ROW_PITCH }}
+                        style={{ top, height: ROW_PITCH }}
                       >
                         {renderBar(t, lane, group.overlappingIds.has(t.id))}
                       </div>
@@ -895,6 +902,7 @@ export default function TimelineView({
           </aside>
         )}
       </div>
+      <ProjectTaskContextMenu projectId={projectId} tasks={tasks} canEdit={canEdit} />
     </div>
   );
 }

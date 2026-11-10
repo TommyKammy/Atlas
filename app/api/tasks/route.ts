@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { logEvent } from "@/lib/data";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
@@ -64,28 +64,31 @@ export const POST = withUser(async (req, { uid }) => {
   const dateOrNull = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
   const start = dateOrNull(start_on);
   const due = dateOrNull(due_on);
-  const r = await db.query(
-    `INSERT INTO tasks (project_id, section_id, parent_task_id, name, position, start_on, due_on, assignee_id, created_by, is_milestone)
-     VALUES ($1, $2, $3, $4,
-       COALESCE((SELECT MAX(position) FROM tasks
-                 WHERE COALESCE(project_id,-1) = COALESCE($1::bigint,-1)
-                   AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1)
-                   AND COALESCE(parent_task_id,-1) = COALESCE($3::bigint,-1)), 0) + 1000,
-       $5, $6, $7, $8, $9)
-     RETURNING id`,
-    [projectId, sectionId, parentId, name.trim(), start, due, assigneeId, uid, isMilestone],
-  );
-  const id = r.rows[0].id as number;
+  const id = await withTransaction(async (q) => {
+    const r = await q.query(
+      `INSERT INTO tasks (project_id, section_id, parent_task_id, name, position, start_on, due_on, assignee_id, created_by, is_milestone)
+       VALUES ($1, $2, $3, $4,
+         COALESCE((SELECT MAX(position) FROM tasks
+                   WHERE COALESCE(project_id,-1) = COALESCE($1::bigint,-1)
+                     AND COALESCE(section_id,-1) = COALESCE($2::bigint,-1)
+                     AND COALESCE(parent_task_id,-1) = COALESCE($3::bigint,-1)), 0) + 1000,
+         $5, $6, $7, $8, $9)
+       RETURNING id`,
+      [projectId, sectionId, parentId, name.trim(), start, due, assigneeId, uid, isMilestone],
+    );
+    const taskId = Number(r.rows[0].id);
+    await emitTaskEvent({
+      projectId,
+      taskId,
+      actorId: uid,
+      type: "task.created",
+      data: { name: name.trim(), section_id: sectionId, assignee_id: assigneeId, parent_task_id: parentId, is_milestone: isMilestone },
+    }, q);
+    return taskId;
+  });
   await notifyProject(projectId);
   await audit(uid, "task.create", { entity: "task", entityId: id, projectId, summary: name });
   await logEvent(id, uid, "created", "タスクを作成しました").catch(() => undefined);
   await runAutomations(projectId, Number(id), "task_created").catch(() => undefined);
-  await emitTaskEvent({
-    projectId,
-    taskId: Number(id),
-    actorId: uid,
-    type: "task.created",
-    data: { name: name.trim(), section_id: sectionId, assignee_id: assigneeId, parent_task_id: parentId, is_milestone: isMilestone },
-  }).catch(() => undefined);
   return NextResponse.json({ id }, { status: 201 });
 });

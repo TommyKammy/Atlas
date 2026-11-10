@@ -27,6 +27,7 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
         missing_response: "SAML レスポンスがありません。",
         invalid_response: "SAML レスポンスが無効です。",
         invalid_signature: "SAML レスポンスの署名を検証できませんでした。",
+        invalid_state: "SAML ログインを開始したブラウザで、もう一度ログインしてください。",
         missing_email: "SAML レスポンスにメールアドレスが含まれていません。",
         deactivated: "このアカウントは無効化されています。",
         user_not_found: "SAML ユーザーが見つかりません。管理者に連絡してください。",

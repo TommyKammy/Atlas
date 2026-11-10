@@ -128,7 +128,6 @@ export default async function ProjectPage(props: {
       return [...map.values()];
     }
     if (boardData) return boardData.tasks;
-    if (timelineData) return timelineData.tasks;
     if (calendarData) return calendarData.tasks;
     return [];
   })();
@@ -209,6 +208,7 @@ export default async function ProjectPage(props: {
             initialColor={project.color ?? null}
             initialIcon={project.icon ?? null}
             initialStatusOptions={project.status_options ?? []}
+            initialStatusOptionsVersion={project.status_options_version}
             initialStatusFieldName={project.status_field_name ?? "Status"}
             initialStatusFieldEnabled={project.status_field_enabled !== false}
             initialFields={customFields}
@@ -307,7 +307,7 @@ export default async function ProjectPage(props: {
             key={`timeline-${projectId}`}
             projectId={projectId}
             sections={sections}
-            tasks={timelineData.tasks}
+            taskPayload={timelineData.tasks}
             deps={timelineData.deps}
             startOverride={fromDay}
             initialState={viewStates.timeline}
@@ -359,11 +359,13 @@ export default async function ProjectPage(props: {
         </div>
       </div>
       <Shortcuts projectId={projectId} />
-      <ProjectTaskContextMenu
-        projectId={projectId}
-        tasks={contextTasks}
-        canEdit={access.role === "admin" || access.role === "editor"}
-      />
+      {view !== "timeline" && (
+        <ProjectTaskContextMenu
+          projectId={projectId}
+          tasks={contextTasks}
+          canEdit={access.role === "admin" || access.role === "editor"}
+        />
+      )}
       {task && paneData && (
         <LazyTaskPane
           key={`task-${task.id}`}

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth";
 import { createSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
-import { consumeRecoveryCode, verifyTotp } from "@/lib/totp";
-import { getSecuritySettings } from "@/lib/admin-data";
+import { consumeRecoveryCodeForUser } from "@/lib/api/mfa";
+import { verifyTotp } from "@/lib/totp";
+import { getSecuritySettings, requiresSaml } from "@/lib/admin-data";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   }
   const r = await db.query(
     `SELECT id, name, password_hash, deactivated_at, is_admin, is_guest,
-       totp_enabled, totp_secret, totp_recovery_codes
+       totp_enabled, totp_secret
      FROM users WHERE email = $1`,
     [email],
   );
@@ -30,7 +31,6 @@ export async function POST(req: Request) {
         is_guest: boolean;
         totp_enabled: boolean;
         totp_secret: string | null;
-        totp_recovery_codes: string[] | null;
       }
     | undefined;
   if (row?.deactivated_at) {
@@ -42,10 +42,7 @@ export async function POST(req: Request) {
   }
 
   const security = await getSecuritySettings();
-  const samlRequired =
-    security.saml_mode === "required" ||
-    (security.saml_mode === "members_only" && !row.is_guest);
-  if (samlRequired && !row.is_admin) {
+  if (requiresSaml(security.saml_mode, row)) {
     return NextResponse.json(
       {
         error: "SAML SSO is required for this workspace",
@@ -56,6 +53,10 @@ export async function POST(req: Request) {
     );
   }
 
+  const mfaPending = security.two_factor_policy === "required" && !row.totp_enabled;
+  const sessionOptions = { userAgent: req.headers.get("user-agent"), mfaPending };
+  const invalidCode = () => NextResponse.json({ error: "invalid two-factor code" }, { status: 401 });
+  let token: string | null;
   if (row.totp_enabled) {
     if (!totp && !recoveryCode) {
       return NextResponse.json(
@@ -63,30 +64,25 @@ export async function POST(req: Request) {
         { status: 401 },
       );
     }
-    let verified = false;
     if (totp) {
-      verified = row.totp_secret ? verifyTotp(row.totp_secret, totp) : false;
-    } else if (recoveryCode) {
-      const consumed = consumeRecoveryCode(recoveryCode, row.totp_recovery_codes);
-      if (consumed.ok) {
-        verified = true;
-        await db.query("UPDATE users SET totp_recovery_codes = $2 WHERE id = $1", [
-          row.id,
-          consumed.remaining,
-        ]);
-      }
+      if (!row.totp_secret || !verifyTotp(row.totp_secret, totp)) return invalidCode();
+      token = await createSession(row.id, sessionOptions);
+    } else {
+      token = await withTransaction(async (q) => {
+        if (!(await consumeRecoveryCodeForUser(q, row.id, recoveryCode))) return null;
+        return createSession(row.id, sessionOptions, q);
+      });
     }
-    if (!verified) {
-      return NextResponse.json({ error: "invalid two-factor code" }, { status: 401 });
-    }
+  } else {
+    token = await createSession(row.id, sessionOptions);
   }
+  if (!token) return invalidCode();
 
   const res = NextResponse.json({
     id: row.id,
     name: row.name,
-    two_factor_setup_required: security.two_factor_policy === "required" && !row.totp_enabled,
+    two_factor_setup_required: mfaPending,
   });
-  const token = await createSession(Number(row.id), req.headers.get("user-agent"));
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   // Remove the legacy numeric demo cookie if it is still present.
   res.cookies.set("atlas_uid", "", { path: "/", maxAge: 0 });

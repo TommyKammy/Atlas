@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
-import type { TaskRow } from "./data";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import type { TaskTimelineRow } from "./timeline-task-payload";
 import { toast } from "./ui-feedback";
 
 export type TimelineDependencyLink = {
@@ -27,6 +27,11 @@ export function useTimelineDependencies({
   const [depTargetId, setDepTargetId] = useState<number | null>(null);
   const [hoveredDep, setHoveredDep] = useState<string | null>(null);
   const depHoverTimer = useRef<number | null>(null);
+  const activeLink = useRef<{ pointerId: number; fromId: number; edge: "start" | "end" } | null>(null);
+
+  useEffect(() => () => {
+    if (depHoverTimer.current !== null) window.clearTimeout(depHoverTimer.current);
+  }, []);
 
   const showDepHover = (key: string) => {
     if (depHoverTimer.current) {
@@ -44,28 +49,31 @@ export function useTimelineDependencies({
     }, 180);
   };
 
-  const beginDependency = (
+  const beginDependency = useCallback((
     e: ReactPointerEvent,
-    t: TaskRow,
+    t: TaskTimelineRow,
     edge: "start" | "end",
   ) => {
+    if (e.button !== 0 || !e.isPrimary || activeLink.current) return;
     e.preventDefault();
     e.stopPropagation();
     const content = contentRef.current;
-    const bar = document.querySelector<HTMLElement>(`[data-timeline-bar="${t.id}"]`);
+    const bar = content?.querySelector<HTMLElement>(`[data-timeline-bar="${t.id}"]`);
     if (!content || !bar) return;
     const contentRect = content.getBoundingClientRect();
     const barRect = bar.getBoundingClientRect();
     const x = (edge === "start" ? barRect.left : barRect.right) - contentRect.left;
     const y = barRect.top + barRect.height / 2 - contentRect.top;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    activeLink.current = { pointerId: e.pointerId, fromId: t.id, edge };
     setDepTargetId(null);
     setDepLink({ fromId: t.id, edge, x1: x, y1: y, x2: x, y2: y });
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
+  }, [contentRef]);
 
-  const moveDependency = (e: ReactPointerEvent) => {
+  const moveDependency = useCallback((e: ReactPointerEvent) => {
     const content = contentRef.current;
-    if (!content || !depLink) return;
+    const link = activeLink.current;
+    if (!content || link?.pointerId !== e.pointerId) return;
     const scroller = scrollRef.current;
     if (scroller) {
       const sr = scroller.getBoundingClientRect();
@@ -78,22 +86,29 @@ export function useTimelineDependencies({
       ?.closest<HTMLElement>("[data-timeline-bar]");
     const targetId = Number(target?.getAttribute("data-timeline-bar"));
     setDepTargetId(
-      target && Number.isInteger(targetId) && targetId !== depLink.fromId ? targetId : null,
+      target && Number.isInteger(targetId) && targetId !== link.fromId ? targetId : null,
     );
     setDepLink((link) =>
       link ? { ...link, x2: e.clientX - rect.left, y2: e.clientY - rect.top } : link,
     );
-  };
+  }, [contentRef, scrollRef]);
 
-  const endDependency = async (e: ReactPointerEvent) => {
-    if (!depLink) return;
+  const cancelDependency = useCallback((e: ReactPointerEvent) => {
+    if (activeLink.current?.pointerId !== e.pointerId) return;
+    activeLink.current = null;
+    setDepLink(null);
+    setDepTargetId(null);
+  }, []);
+
+  const endDependency = useCallback(async (e: ReactPointerEvent) => {
+    const link = activeLink.current;
+    if (link?.pointerId !== e.pointerId) return;
     const target = document
       .elementFromPoint(e.clientX, e.clientY)
       ?.closest<HTMLElement>("[data-timeline-bar]");
     const targetId = Number(target?.getAttribute("data-timeline-bar"));
-    const { fromId, edge } = depLink;
-    setDepLink(null);
-    setDepTargetId(null);
+    const { fromId, edge } = link;
+    cancelDependency(e);
     if (!targetId || Number.isNaN(targetId) || targetId === fromId) return;
     const payload =
       edge === "start"
@@ -109,7 +124,7 @@ export function useTimelineDependencies({
       return;
     }
     refresh();
-  };
+  }, [cancelDependency, refresh]);
 
   const removeDependency = async (dep: { task_id: number; depends_on_id: number }) => {
     const res = await fetch(
@@ -128,6 +143,7 @@ export function useTimelineDependencies({
     beginDependency,
     moveDependency,
     endDependency,
+    cancelDependency,
     removeDependency,
     showDepHover,
     scheduleDepHoverClear,

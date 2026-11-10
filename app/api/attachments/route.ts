@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
-import { mkdir, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdir, rename } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { db } from "@/lib/db";
+import { pipeline } from "node:stream/promises";
+import { db, withTransaction } from "@/lib/db";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { requireProjectPermission, requireTaskPermission } from "@/lib/api-project-auth";
 import { withUser } from "@/lib/api/route";
+import { ApiError, badRequest } from "@/lib/api/errors";
+import { receiveMultipart } from "@/lib/api/multipart";
+import { lockAttachmentFile, pruneUnreferencedAttachment, unlinkIfPresent, UPLOAD_DIR } from "@/lib/attachment-files.mjs";
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "/app/uploads";
 const MAX_BYTES = 25 * 1024 * 1024;
 
 function safeExt(name: string): string {
@@ -51,30 +55,70 @@ export const GET = withUser(async (req) => {
 });
 
 export const POST = withUser(async (req, { uid }) => {
-  const form = await req.formData().catch(() => null);
-  const taskId = form?.get("task_id");
-  const file = form?.get("file");
-  if (typeof taskId !== "string" || !(file instanceof File)) {
-    return NextResponse.json({ error: "task_id and file are required" }, { status: 400 });
-  }
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "file exceeds 25MB" }, { status: 413 });
-  }
-  const auth = await requireTaskPermission(req, Number(taskId), "edit");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const authorizeTask = async (taskId: number) => {
+    const auth = await requireTaskPermission(req, taskId, "edit");
+    if (!auth.ok) throw new ApiError(auth.status, auth.error);
+  };
+  const fileId = randomUUID();
+  const temporary = path.join(UPLOAD_DIR, `.upload-${fileId}.part`);
+  let staged = false;
+  try {
+    const { file } = await receiveMultipart(req, MAX_BYTES, "file exceeds 25MB", async (stream, info, fields) => {
+      const taskField = fields.get("task_id");
+      if (taskField === undefined) throw badRequest("task_id must precede file");
+      const taskId = Number(taskField);
+      if (!/^\d+$/.test(taskField.trim()) || !Number.isSafeInteger(taskId) || taskId <= 0) {
+        throw badRequest("invalid task_id");
+      }
+      await authorizeTask(taskId);
+      if (req.signal.aborted || stream.destroyed) throw badRequest("upload interrupted");
+      await mkdir(UPLOAD_DIR, { recursive: true });
+      if (req.signal.aborted || stream.destroyed) throw badRequest("upload interrupted");
+      const writer = createWriteStream(temporary, { flags: "wx", mode: 0o600 });
+      writer.once("open", () => { staged = true; });
+      await pipeline(stream, writer, { signal: req.signal });
+      return {
+        taskId,
+        original: info.filename?.slice(0, 255) || "unnamed",
+        mimeType: info.mimeType || "application/octet-stream",
+        size: writer.bytesWritten,
+      };
+    });
+    if (!file) {
+      return NextResponse.json({ error: "task_id and file are required" }, { status: 400 });
+    }
 
-  const original = file.name.slice(0, 255) || "unnamed";
-  const stored = `${randomUUID()}${safeExt(original)}`;
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(UPLOAD_DIR, stored), bytes);
-
-  const r = await db.query(
-    `INSERT INTO task_attachments (task_id, file_name, stored_name, mime_type, size_bytes, uploaded_by)
-     VALUES ($1::bigint, $2, $3, $4, $5, $6) RETURNING id`,
-    [taskId, original, stored, file.type || "application/octet-stream", file.size, uid],
-  );
-  await notifyTask(taskId);
-  await audit(auth.uid, "attachment.create", { entity: "attachment", entityId: r.rows[0].id, summary: original });
-  return NextResponse.json({ id: r.rows[0].id }, { status: 201 });
+    const { taskId } = file;
+    // A long upload can outlast membership or task placement changes.
+    await authorizeTask(taskId);
+    const stored = `${fileId}${safeExt(file.original)}`;
+    let published = false;
+    let id: number;
+    try {
+      id = await withTransaction(async (client) => {
+        await lockAttachmentFile(client, stored);
+        const result = await client.query<{ id: number }>(
+          `INSERT INTO task_attachments (task_id, file_name, stored_name, mime_type, size_bytes, uploaded_by)
+           VALUES ($1::bigint, $2, $3, $4, $5, $6) RETURNING id`,
+          [taskId, file.original, stored, file.mimeType, file.size, uid],
+        );
+        await rename(temporary, path.join(UPLOAD_DIR, stored));
+        published = true;
+        return result.rows[0].id;
+      });
+    } catch (error) {
+      // COMMIT can fail on the client after succeeding on the server. Consult
+      // PostgreSQL under the file lock before removing a published file.
+      if (published) {
+        await withTransaction((client) => pruneUnreferencedAttachment(client, stored))
+          .catch((cleanupError) => console.error("attachment rollback cleanup failed", cleanupError));
+      }
+      throw error;
+    }
+    await notifyTask(taskId);
+    await audit(uid, "attachment.create", { entity: "attachment", entityId: id, summary: file.original });
+    return NextResponse.json({ id }, { status: 201 });
+  } finally {
+    if (staged) await unlinkIfPresent(temporary).catch((error) => console.error("attachment staging cleanup failed", error));
+  }
 });

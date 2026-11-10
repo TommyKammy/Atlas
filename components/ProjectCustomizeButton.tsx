@@ -31,6 +31,7 @@ export default function ProjectCustomizeButton({
   initialColor,
   initialIcon,
   initialStatusOptions,
+  initialStatusOptionsVersion,
   initialStatusFieldName,
   initialStatusFieldEnabled,
   initialFields,
@@ -48,6 +49,7 @@ export default function ProjectCustomizeButton({
   initialColor: string | null;
   initialIcon: string | null;
   initialStatusOptions: string[];
+  initialStatusOptionsVersion: number;
   initialStatusFieldName: string;
   initialStatusFieldEnabled: boolean;
   initialFields: CustomField[];
@@ -118,6 +120,7 @@ export default function ProjectCustomizeButton({
     initialColor,
     initialIcon,
     initialStatusOptions,
+    initialStatusOptionsVersion,
     initialStatusFieldName,
     initialStatusFieldEnabled,
     initialFields,

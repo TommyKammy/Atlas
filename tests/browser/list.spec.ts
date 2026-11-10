@@ -88,6 +88,7 @@ test("milestone icons replace the completion check and use Asana green", async (
     expect(completedInfo.fill).toBe("rgb(70, 167, 90)");
     expect(completedInfo.checkStroke).toBe("rgb(255, 255, 255)");
   } finally {
+    await page.request.delete(`/api/tasks/${id}`);
     await page.request.delete(`/api/tasks/${id}?force=1`);
   }
 });

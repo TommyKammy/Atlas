@@ -1,19 +1,36 @@
 import type { TaskRow } from "../data";
+import { compatibleTaskParent, projectTaskScope } from "./scope";
+
+function taskApprovalSummary(): string {
+  return `(SELECT jsonb_build_object('status', a.status, 'approver_id', a.approver_id,
+    'approver_name', approver.name, 'version', a.version, 'round', a.round)
+    FROM task_approvals a LEFT JOIN users approver ON approver.id = a.approver_id
+    WHERE a.task_id = t.id) AS approval`;
+}
+
+function subtaskCount(project?: string): string {
+  const sameTree = compatibleTaskParent("s", "t");
+  const visible = project ? `(${sameTree} OR ${projectTaskScope("s", project)})` : sameTree;
+  return `(SELECT COUNT(*)::int FROM tasks s
+    WHERE s.parent_task_id = t.id AND s.deleted_at IS NULL AND ${visible}) AS subtask_count`;
+}
 
 /**
  * Shared task projection. Keep this list in sync with `TaskRow`; every task
  * query must return the full row so UI code never sees partial shapes.
  */
-export const TASK_SELECT_COLS = `
+export function taskSelectColumns(project?: string): string {
+  return `
   t.id, t.project_id, t.section_id, t.parent_task_id, t.name, t.description, t.description_doc,
   t.assignee_id, u.name AS assignee_name, t.created_by, cu.name AS creator_name, t.completed,
   t.completed_at::text AS completed_at,
   t.start_on::text, t.due_on::text, t.progress, t.status, t.is_milestone, t.position,
   t.created_at::text AS created_at, t.updated_at::text AS updated_at, t.recurrence,
   p.name AS project_name,
+  ${taskApprovalSummary()},
   (SELECT COUNT(*)::int FROM task_likes tl WHERE tl.task_id = t.id) AS like_count,
   (SELECT COUNT(*)::int FROM comments c WHERE c.task_id = t.id) AS comment_count,
-  (SELECT COUNT(*)::int FROM tasks s WHERE s.parent_task_id = t.id AND s.deleted_at IS NULL) AS subtask_count,
+  ${subtaskCount(project)},
   (SELECT COUNT(*)::int FROM task_attachments ta WHERE ta.task_id = t.id) AS attachment_count,
   (SELECT COUNT(*)::int FROM task_dependencies td WHERE td.task_id = t.id) AS blocked_by_count,
   (SELECT COUNT(*)::int FROM task_dependencies td WHERE td.depends_on_id = t.id) AS blocking_count,
@@ -31,6 +48,9 @@ export const TASK_SELECT_COLS = `
     WHERE c.id IS NOT NULL
   ) AS collaborators
 `;
+}
+
+export const TASK_SELECT_COLS = taskSelectColumns();
 
 export const TASK_FROM = `
   FROM tasks t
@@ -40,17 +60,22 @@ export const TASK_FROM = `
 `;
 
 /**
- * Timeline needs dates, lane/marker metadata and subtask counts only.
- * Avoids the five other correlated counts and the collaborator aggregate.
+ * Timeline uses dates, filter inputs, lane metadata and subtask counts.
+ * Full descriptions and list aggregates belong to their respective views.
  */
-export const TASK_TIMELINE_COLS = `
-  t.id, t.project_id, t.section_id, t.parent_task_id, t.name, t.description, t.description_doc,
-  t.assignee_id, u.name AS assignee_name, t.created_by, cu.name AS creator_name, t.completed,
+export function taskTimelineColumns(project?: string): string {
+  return `
+  t.id, t.project_id, t.section_id, t.name,
+  t.assignee_id, u.name AS assignee_name, t.created_by, t.completed,
   t.completed_at::text AS completed_at,
   t.start_on::text, t.due_on::text, t.progress, t.status, t.is_milestone, t.position,
-  t.created_at::text AS created_at, t.updated_at::text AS updated_at, t.recurrence,
-  (SELECT COUNT(*)::int FROM tasks s WHERE s.parent_task_id = t.id AND s.deleted_at IS NULL) AS subtask_count
+  t.created_at::text AS created_at, t.updated_at::text AS updated_at,
+  ${subtaskCount(project)},
+  ${taskApprovalSummary()}
 `;
+}
+
+export const TASK_TIMELINE_COLS = taskTimelineColumns();
 
 /** Normalize a DB task row into the public `TaskRow` shape. */
 export function toTaskRow(row: TaskRow): TaskRow {
@@ -64,6 +89,12 @@ export function toTaskRow(row: TaskRow): TaskRow {
     created_by: row.created_by === null ? null : Number(row.created_by),
     progress: Number(row.progress),
     is_milestone: row.is_milestone === true,
+    approval: row.approval ? {
+      ...row.approval,
+      approver_id: row.approval.approver_id === null ? null : Number(row.approval.approver_id),
+      version: Number(row.approval.version),
+      round: Number(row.approval.round),
+    } : null,
     timeline_row:
       row.timeline_row === null || row.timeline_row === undefined
         ? null

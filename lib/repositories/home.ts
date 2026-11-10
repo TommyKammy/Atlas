@@ -1,4 +1,4 @@
-import { db, withTransaction } from "../db";
+import { db, withTransaction, type Queryable } from "../db";
 import {
   DEFAULT_HOME_WIDGETS,
   type HomeCommentDraft,
@@ -448,19 +448,21 @@ export async function createProjectStatusUpdate(
   body: string,
   status: string | null,
   statusColor: string,
+  q?: Queryable,
 ): Promise<number> {
-  return withTransaction(async (q) => {
-    const inserted = await q.query(
+  const create = async (writer: Queryable) => {
+    const inserted = await writer.query(
       `INSERT INTO project_status_updates (project_id, author_id, body, status, status_color)
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [projectId, authorId, body, status, statusColor],
     );
     if (status !== null) {
-      await q.query(
+      await writer.query(
         "UPDATE projects SET status = $2, status_color = $3 WHERE id = $1",
         [projectId, status, statusColor],
       );
     }
     return Number(inserted.rows[0].id);
-  });
+  };
+  return q ? create(q) : withTransaction(create);
 }

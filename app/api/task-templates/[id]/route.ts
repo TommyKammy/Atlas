@@ -107,16 +107,16 @@ export const POST = withResourceProject("edit", "task_templates", async (_req, {
         [projectId, overrideSection, id, st.name.trim().slice(0, 255)],
       );
     }
+    await emitTaskEvent({
+      projectId,
+      taskId: id,
+      actorId: uid,
+      type: "task.created",
+      data: { from_task_template: Number(params.id), section_id: overrideSection },
+    }, q);
     return id;
   });
   await logEvent(taskId, uid, "created", "タスクをテンプレートから作成しました").catch(() => undefined);
   await notifyProject(projectId);
-  await emitTaskEvent({
-    projectId,
-    taskId,
-    actorId: uid,
-    type: "task.created",
-    data: { from_task_template: Number(id), section_id: overrideSection },
-  }).catch(() => undefined);
   return NextResponse.json({ id: taskId }, { status: 201 });
 }, { body: true });

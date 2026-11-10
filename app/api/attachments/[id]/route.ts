@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { unlink } from "node:fs/promises";
+import { open } from "node:fs/promises";
+import { Readable } from "node:stream";
 import path from "node:path";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { notifyTask } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { withAttachmentTask } from "@/lib/api/route";
-
-const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "/app/uploads";
+import { pruneUnreferencedAttachment, UPLOAD_DIR } from "@/lib/attachment-files.mjs";
 
 const INLINE_TYPES = new Set([
   "image/png",
@@ -29,13 +29,14 @@ export const GET = withAttachmentTask("view", async (req, { params }) => {
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const row = r.rows[0];
   const full = path.join(UPLOAD_DIR, path.basename(row.stored_name));
-  let data: Buffer;
+  let file;
   try {
-    data = await import("node:fs/promises").then((fs) => fs.readFile(full));
+    file = await open(full, "r");
   } catch {
     return NextResponse.json({ error: "file missing on disk" }, { status: 410 });
   }
-  const body = new Uint8Array(data);
+  // The adapter counts chunks by default, so explicitly bound its queue.
+  const body = Readable.toWeb(file.createReadStream(), { strategy: { highWaterMark: 1 } }) as ReadableStream<Uint8Array>;
   // SVG/HTML stay attachments (scriptable). Only allowlisted types render inline.
   const canInline = inline && INLINE_TYPES.has(row.mime_type);
   return new NextResponse(body, {
@@ -56,8 +57,8 @@ export const DELETE = withAttachmentTask("edit", async (_req, { uid, taskId, par
     [id],
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const full = path.join(UPLOAD_DIR, path.basename(r.rows[0].stored_name));
-  await unlink(full).catch(() => undefined);
+  await withTransaction((client) => pruneUnreferencedAttachment(client, r.rows[0].stored_name))
+    .catch((error) => console.error("attachment delete cleanup failed", error));
   await notifyTask(taskId);
   await audit(uid, "attachment.delete", { entity: "attachment", entityId: id });
   return NextResponse.json({ deleted: Number(id) });

@@ -499,12 +499,12 @@ export default function BoardView({
     } else if (g.assigneeId !== undefined) {
       const fields: Record<string, unknown> = {};
       if ((moved.assignee_id ?? null) !== (g.assigneeId ?? null)) fields.assignee_id = g.assigneeId;
-      if (position !== undefined) fields.position = position;
+      if (position !== undefined && moved.project_id === projectId) fields.position = position;
       if (Object.keys(fields).length > 0) await patchTask(taskId, fields);
     } else if (g.status !== undefined) {
       const fields: Record<string, unknown> = {};
       if (moved.status !== g.status) fields.status = g.status;
-      if (position !== undefined) fields.position = position;
+      if (position !== undefined && moved.project_id === projectId) fields.position = position;
       if (Object.keys(fields).length > 0) await patchTask(taskId, fields);
     }
   };

@@ -18,7 +18,10 @@ export function register() {
     `http://127.0.0.1:${port}`;
   const token = process.env.AUTOMATION_WORKER_TOKEN || "atlas-internal-automation";
 
+  let inFlight = false;
   const tick = async () => {
+    if (inFlight) return;
+    inFlight = true;
     try {
       await fetch(`${base}/api/automation/process?limit=20`, {
         method: "POST",
@@ -27,6 +30,8 @@ export function register() {
       });
     } catch {
       // The app may still be starting; the next tick retries.
+    } finally {
+      inFlight = false;
     }
   };
 

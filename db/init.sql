@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   expires_at   TIMESTAMPTZ NOT NULL,
-  user_agent   TEXT
+  user_agent   TEXT,
+  mfa_enrollment_only BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at);
@@ -624,6 +625,15 @@ CREATE TABLE IF NOT EXISTS workspace_security (
   password_require_symbol BOOLEAN NOT NULL DEFAULT FALSE,
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS saml_cache (
+  workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  cache_key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (workspace_id, cache_key)
+);
+CREATE INDEX IF NOT EXISTS idx_saml_cache_expiry ON saml_cache(expires_at);
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_pending_secret TEXT;

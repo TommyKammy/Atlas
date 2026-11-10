@@ -1,5 +1,6 @@
-import { db } from "../db";
+import { db, type Queryable } from "../db";
 import type { Attachment, TaskRow } from "../data";
+import type { TimelineTaskPayload } from "../timeline-task-payload";
 import {
   customValueToIdArray,
   formatCustomValue,
@@ -8,23 +9,22 @@ import {
   type CustomField,
   type CustomValue,
 } from "../custom-fields";
-import { projectTaskScope } from "./scope";
-import { TASK_FROM, TASK_SELECT_COLS, toTaskRow } from "./task-select";
+import { compatibleTaskParent, projectTaskReadScope, projectTaskScope } from "./scope";
+import { TASK_FROM, TASK_SELECT_COLS, taskSelectColumns, toTaskRow } from "./task-select";
 import {
   taskProjection,
   toTaskDetail,
   toTaskSummary,
-  toTaskTimelineRow,
+  toTimelineTaskPayload,
   type TaskDetail,
   type TaskSummary,
-  type TaskTimelineRow,
 } from "./task-projection";
 import { ensureAutoIdValues } from "../auto-id";
 
 export async function getProjectTasks(projectId: number): Promise<TaskSummary[]> {
   const r = await db.query(
-    `SELECT ${taskProjection("summary")},
-       COALESCE(m.section_id, t.section_id) AS eff_section_id,
+    `SELECT ${taskProjection("summary", "$1")},
+       CASE WHEN t.project_id = $1 THEN t.section_id ELSE m.section_id END AS eff_section_id,
        tr.row_index AS timeline_row,
        tr.updated_at::text AS timeline_row_updated_at
      ${TASK_FROM}
@@ -39,13 +39,13 @@ export async function getProjectTasks(projectId: number): Promise<TaskSummary[]>
 }
 
 /** Lighter projection for the timeline view. */
-export async function getTimelineTasks(projectId: number): Promise<TaskTimelineRow[]> {
+export async function getTimelineTasks(projectId: number): Promise<TimelineTaskPayload[]> {
   const r = await db.query(
-    `SELECT ${taskProjection("timeline")},
-       COALESCE(m.section_id, t.section_id) AS eff_section_id,
+    `SELECT ${taskProjection("timeline", "$1")},
+       CASE WHEN t.project_id = $1 THEN t.section_id ELSE m.section_id END AS eff_section_id,
        tr.row_index AS timeline_row,
        tr.updated_at::text AS timeline_row_updated_at
-     ${TASK_FROM}
+     FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
      LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1
      LEFT JOIN task_timeline_rows tr ON tr.task_id = t.id AND tr.project_id = $1
      WHERE t.parent_task_id IS NULL AND t.deleted_at IS NULL
@@ -53,7 +53,7 @@ export async function getTimelineTasks(projectId: number): Promise<TaskTimelineR
      ORDER BY t.position, t.id`,
     [projectId],
   );
-  return r.rows.map(toTaskTimelineRow);
+  return r.rows.map(toTimelineTaskPayload);
 }
 
 /** Task scoped to a project the caller can already see (primary, multi-home, or subtask). */
@@ -62,39 +62,28 @@ export async function getTaskForProject(
   projectId: number,
 ): Promise<TaskDetail | undefined> {
   const r = await db.query(
-    `SELECT ${taskProjection("detail")}, tr.row_index AS timeline_row, tr.updated_at::text AS timeline_row_updated_at
+    `SELECT ${taskProjection("detail", "$2")},
+       CASE WHEN t.project_id = $2 THEN t.section_id ELSE m.section_id END AS eff_section_id,
+       tr.row_index AS timeline_row, tr.updated_at::text AS timeline_row_updated_at
      ${TASK_FROM}
+     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $2
      LEFT JOIN task_timeline_rows tr ON tr.task_id = t.id AND tr.project_id = $2
      WHERE t.id = $1 AND t.deleted_at IS NULL
-       AND (
-         t.project_id = $2
-         OR EXISTS (
-           SELECT 1 FROM task_project_memberships m
-           WHERE m.task_id = t.id AND m.project_id = $2
-         )
-         OR EXISTS (
-           SELECT 1 FROM tasks parent
-           WHERE parent.id = t.parent_task_id
-             AND (
-               parent.project_id = $2
-               OR EXISTS (
-                 SELECT 1 FROM task_project_memberships pm
-                 WHERE pm.task_id = parent.id AND pm.project_id = $2
-               )
-             )
-         )
-       )`,
+       AND ${projectTaskReadScope("t", "$2")}`,
     [taskId, projectId],
   );
   return r.rows[0] ? toTaskDetail(r.rows[0] as TaskRow) : undefined;
 }
 
-export async function getSubtasks(taskId: number): Promise<TaskRow[]> {
+export async function getSubtasks(taskId: number, projectId: number): Promise<TaskRow[]> {
   const r = await db.query(
-    `SELECT ${TASK_SELECT_COLS} ${TASK_FROM}
+    `SELECT ${taskSelectColumns("$2")} ${TASK_FROM}
+     JOIN tasks parent_task ON parent_task.id = t.parent_task_id
      WHERE t.parent_task_id = $1 AND t.deleted_at IS NULL
+       AND ${projectTaskReadScope("parent_task", "$2")}
+       AND (${projectTaskScope("t", "$2")} OR ${compatibleTaskParent("t", "parent_task")})
      ORDER BY t.position, t.id`,
-    [taskId],
+    [taskId, projectId],
   );
   return r.rows.map(toTaskRow);
 }
@@ -149,17 +138,10 @@ export async function getTaskEvents(taskId: number): Promise<TaskEventRow[]> {
 
 export async function getSubtasksBulk(projectId: number): Promise<Record<number, TaskRow[]>> {
   const r = await db.query(
-    `SELECT ${TASK_SELECT_COLS}
+    `SELECT ${taskSelectColumns("$1")}
      ${TASK_FROM}
      WHERE t.parent_task_id IS NOT NULL AND t.deleted_at IS NULL
-       AND (
-         t.project_id = $1
-         OR EXISTS (
-           SELECT 1 FROM tasks p
-           JOIN task_project_memberships m ON m.task_id = p.id AND m.project_id = $1
-           WHERE p.id = t.parent_task_id
-         )
-       )
+       AND ${projectTaskReadScope("t")}
      ORDER BY t.position, t.id`,
     [projectId],
   );
@@ -198,8 +180,10 @@ export async function getTaskProjects(taskId: number) {
   return r.rows as { id: number; name: string; section_name: string | null }[];
 }
 
-export async function logEvent(taskId: number, actorId: number, kind: string, summary: string) {
-  await db.query(
+export async function logEvent(
+  taskId: number, actorId: number, kind: string, summary: string, q: Queryable = db,
+) {
+  await q.query(
     "INSERT INTO task_events (task_id, actor_id, kind, summary) VALUES ($1, $2, $3, $4)",
     [taskId, actorId, kind, summary],
   );
@@ -214,7 +198,9 @@ export async function getTaskCustomValues(
       `SELECT v.task_id, v.field_id, v.value_text, v.value_number,
          v.value_date::text AS value_date, v.value_json
        FROM task_custom_values v JOIN custom_fields f ON f.id = v.field_id
-       WHERE f.project_id = $1::bigint AND f.deleted_at IS NULL`,
+       JOIN tasks t ON t.id = v.task_id
+       WHERE f.project_id = $1::bigint AND f.deleted_at IS NULL
+         AND t.deleted_at IS NULL AND ${projectTaskReadScope("t")}`,
       [projectId],
     ),
     db.query(
@@ -325,9 +311,10 @@ export async function getTaskCustomValues(
     const mapping = new Map<number, number[]>();
     if (source === "subtasks") {
       const children = await db.query(
-        `SELECT id, parent_task_id FROM tasks
-         WHERE parent_task_id = ANY($1::bigint[]) AND deleted_at IS NULL`,
-        [taskIds],
+        `SELECT t.id, t.parent_task_id FROM tasks t
+         WHERE t.parent_task_id = ANY($1::bigint[]) AND t.deleted_at IS NULL
+           AND ${projectTaskReadScope("t", "$2")}`,
+        [taskIds, projectId],
       );
       for (const row of children.rows) {
         const parentId = Number(row.parent_task_id);

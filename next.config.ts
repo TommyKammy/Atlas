@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { STATIC_SECURITY_HEADERS } from "./lib/security-headers";
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -8,6 +9,14 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   cacheComponents: true,
   partialPrefetching: true,
+  async headers() {
+    // The Proxy excludes these authenticated JSON routes to keep uploads streaming.
+    const headers = Object.entries({
+      ...STATIC_SECURITY_HEADERS,
+      "Content-Security-Policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+    }).map(([key, value]) => ({ key, value }));
+    return ["/api/attachments", "/api/projects/:id/import"].map((source) => ({ source, headers }));
+  },
   turbopack: {
     rules: {
       "*.css": {

@@ -1,30 +1,28 @@
-name: atlas-ci
+name: ${ATLAS_E2E_STACK:?Run bash tests/run-e2e.sh}
 
 services:
   db:
     image: pgvector/pgvector:pg18
-    container_name: atlas-db
+    labels:
+      io.atlas.e2e-marker: ${ATLAS_E2E_MARKER:?Run bash tests/run-e2e.sh}
     environment:
       POSTGRES_USER: atlas
       POSTGRES_PASSWORD: atlas
-      POSTGRES_DB: atlas
+      POSTGRES_DB: atlas_e2e
       TZ: Asia/Tokyo
     command: ["postgres", "-c", "timezone=Asia/Tokyo"]
-    ports:
-      - "127.0.0.1:5433:5432"
-    volumes:
-      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    tmpfs:
+      - /var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U atlas -d atlas"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U atlas -d atlas_e2e"]
       interval: 5s
       timeout: 3s
       retries: 20
 
   redis:
     image: redis:8-alpine
-    container_name: atlas-redis
-    ports:
-      - "127.0.0.1:6380:6379"
+    labels:
+      io.atlas.e2e-marker: ${ATLAS_E2E_MARKER:?Run bash tests/run-e2e.sh}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -33,12 +31,15 @@ services:
 
   app:
     build: .
-    container_name: atlas-app
+    labels:
+      io.atlas.e2e-marker: ${ATLAS_E2E_MARKER:?Run bash tests/run-e2e.sh}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${ATLAS_E2E_PORT:?Run bash tests/run-e2e.sh}:3000"
     environment:
-      DATABASE_URL: postgres://atlas:atlas@db:5432/atlas
+      DATABASE_URL: postgres://atlas:atlas@db:5432/atlas_e2e
       REDIS_URL: redis://redis:6379
+      WS_ALLOWED_ORIGINS: ${ATLAS_E2E_BASE:?Run bash tests/run-e2e.sh}
+      AUTOMATION_WORKER_TOKEN: ${ATLAS_E2E_WORKER_TOKEN:?Run bash tests/run-e2e.sh}
       TZ: Asia/Tokyo
     volumes:
       - atlas-uploads:/app/uploads

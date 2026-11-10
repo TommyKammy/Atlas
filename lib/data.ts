@@ -243,6 +243,9 @@ export async function getInbox(userId: number, workspaceId: number): Promise<Inb
        LEFT JOIN users u ON u.id = e.actor_id
        LEFT JOIN inbox_reads r ON r.event_id = e.id AND r.user_id = $1
        WHERE p.workspace_id = $2
+          AND (e.kind NOT LIKE 'approval_%' OR EXISTS (
+            SELECT 1 FROM task_event_recipients recipient WHERE recipient.event_id = e.id AND recipient.user_id = $1
+          ))
          AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $1 AND ux.is_admin)
            OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $1))
      ) feed ORDER BY created_at DESC LIMIT 100`,
@@ -266,6 +269,9 @@ export async function getUnreadCount(userId: number, workspaceId: number): Promi
         JOIN projects p ON p.id = t.project_id
         LEFT JOIN inbox_reads r ON r.event_id = e.id AND r.user_id = $1
         WHERE p.workspace_id = $2 AND r.event_id IS NULL
+          AND (e.kind NOT LIKE 'approval_%' OR EXISTS (
+            SELECT 1 FROM task_event_recipients recipient WHERE recipient.event_id = e.id AND recipient.user_id = $1
+          ))
           AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $1 AND ux.is_admin)
             OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $1))
           AND (e.actor_id IS NULL OR e.actor_id <> $1))

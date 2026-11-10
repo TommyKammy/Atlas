@@ -1,3 +1,5 @@
+import { taskSectionId } from "./task-section";
+
 export type BoardGroup<T> = {
   key: string;
   label: string;
@@ -32,7 +34,7 @@ export function groupBoardTasks<T extends GroupableTask>(
     const byId = new Map(groups.map((g) => [g.sectionId, g]));
     let loose: BoardGroup<T> | null = null;
     for (const t of tasks) {
-      const k = t.eff_section_id ?? t.section_id;
+      const k = taskSectionId(t);
       const g = k === null ? undefined : byId.get(k);
       if (g) g.items.push(t);
       else {

@@ -27,6 +27,16 @@ export const conflict = (message = "conflict", details?: unknown) =>
   new ApiError(409, message, "conflict", details);
 
 export function jsonError(error: unknown): Response {
+  const dbError = error as { code?: string; constraint?: string } | null;
+  if (dbError?.code === "23514" && dbError.constraint === "task_project_cascade_guard") {
+    return NextResponse.json({ error: "task hierarchy crosses projects", code: "conflict" }, { status: 409 });
+  }
+  if (dbError?.code === "23503" && (
+    dbError.constraint === "tasks_section_project_fkey" ||
+    dbError.constraint === "task_memberships_section_project_fkey"
+  )) {
+    return NextResponse.json({ error: "section does not belong to project", code: "bad_request" }, { status: 400 });
+  }
   if (error instanceof ApiError) {
     const body: Record<string, unknown> = { error: error.message, code: error.code };
     if (error.details !== undefined) body.details = error.details;

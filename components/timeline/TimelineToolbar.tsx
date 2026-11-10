@@ -25,6 +25,7 @@ const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutra
 export default function TimelineToolbar({
   projectId,
   min,
+  navigationDays,
   linkDay,
   addToday,
   undatedCount,
@@ -60,6 +61,7 @@ export default function TimelineToolbar({
 }: {
   projectId: number;
   min: number;
+  navigationDays: number;
   linkDay: (day: number) => string;
   addToday: () => void;
   undatedCount: number;
@@ -185,7 +187,7 @@ export default function TimelineToolbar({
           <span className="text-[15px] leading-none">＋</span> タスクを追加
         </button>
         <a
-          href={`/projects/${projectId}?view=timeline&from=${linkDay(min - 30)}`}
+          href={`/projects/${projectId}?view=timeline&from=${linkDay(min - navigationDays)}`}
           aria-label="前の期間"
           title="前の期間"
           className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-neutral-600 hover:bg-neutral-100"
@@ -196,7 +198,7 @@ export default function TimelineToolbar({
           今日
         </a>
         <a
-          href={`/projects/${projectId}?view=timeline&from=${linkDay(min + 30)}`}
+          href={`/projects/${projectId}?view=timeline&from=${linkDay(min + navigationDays)}`}
           aria-label="次の期間"
           title="次の期間"
           className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-neutral-600 hover:bg-neutral-100"

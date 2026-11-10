@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { TASK_SELECT_COLS, TASK_TIMELINE_COLS } from "./repositories/task-select";
 import { TASK_RULE_SNAPSHOT_SQL } from "./repositories/task-rule-snapshot";
+import { decodeTimelineTask } from "./timeline-task-payload";
 import {
   TASK_PROJECTIONS,
   taskProjection,
   toTaskDetail,
   toTaskSummary,
-  toTaskTimelineRow,
+  toTimelineTaskPayload,
 } from "./repositories/task-projection";
 import type { TaskRow } from "./repositories/projects";
 
@@ -19,6 +20,9 @@ test("timeline projection keeps the fields the timeline renders", () => {
     "t.progress",
     "t.is_milestone",
     "t.assignee_id",
+    "t.created_by",
+    "t.created_at::text",
+    "t.completed_at::text",
     "t.updated_at::text",
     "subtask_count",
   ]) {
@@ -26,7 +30,7 @@ test("timeline projection keeps the fields the timeline renders", () => {
   }
 });
 
-test("timeline projection drops list-only aggregates", () => {
+test("timeline projection drops fields used only in the task pane or other views", () => {
   for (const column of [
     "like_count",
     "comment_count",
@@ -35,6 +39,9 @@ test("timeline projection drops list-only aggregates", () => {
     "blocking_count",
     "collaborators",
     "project_name",
+    "t.description",
+    "t.recurrence",
+    "creator_name",
   ]) {
     assert.equal(TASK_TIMELINE_COLS.includes(column), false, column);
   }
@@ -116,10 +123,54 @@ test("summary mapping normalizes counts and collaborators", () => {
   assert.deepEqual(summary.collaborators, []);
 });
 
-test("timeline and detail mappings preserve the lighter/full read models", () => {
-  const timeline = toTaskTimelineRow(row);
-  assert.equal(timeline.id, 7);
-  assert.equal(timeline.subtask_count, 0);
-  const detail = toTaskDetail(row);
-  assert.equal(detail.name, "投影テスト");
+test("timeline transport keeps filter inputs, primary/effective sections and exact update versions", () => {
+  const detailRow = {
+    ...row,
+    project_id: 2,
+    section_id: 3,
+    eff_section_id: 4,
+    assignee_id: 5,
+    assignee_name: "担当者",
+    completed: true,
+    completed_at: "2026-11-10 10:10:10.123456+09",
+    progress: 75,
+    subtask_count: 2,
+    updated_at: "2026-11-10 10:20:10.123456+09",
+    timeline_row: 0,
+    timeline_row_updated_at: "2026-11-10 10:20:10.654321+09",
+    description: "task-pane details",
+    description_doc: { type: "doc", content: [] },
+  } as TaskRow & { eff_section_id: number; timeline_row: number; timeline_row_updated_at: string };
+  const payload = toTimelineTaskPayload(detailRow);
+  assert.doesNotMatch(JSON.stringify(payload), /task-pane details|description|comment_count/);
+  assert.deepEqual(decodeTimelineTask(payload), {
+    id: 7, project_id: 2, section_id: 3, eff_section_id: 4, parent_task_id: null,
+    name: "投影テスト", assignee_id: 5, assignee_name: "担当者", created_by: 1,
+    completed: true, completed_at: detailRow.completed_at, start_on: "2026-11-09", due_on: "2026-11-10",
+    progress: 75, status: "inbox", is_milestone: false, position: 1000, subtask_count: 2,
+    created_at: "2026-11-09", updated_at: detailRow.updated_at,
+    timeline_row: 0, timeline_row_updated_at: detailRow.timeline_row_updated_at,
+  });
+  const detail = toTaskDetail(detailRow);
+  assert.equal(detail.description, detailRow.description);
+  assert.deepEqual(detail.description_doc, detailRow.description_doc);
+
+  const unpinned = decodeTimelineTask(toTimelineTaskPayload({
+    ...detailRow, eff_section_id: null, timeline_row: null, timeline_row_updated_at: null,
+  }));
+  assert.equal(unpinned.eff_section_id, null);
+  assert.equal(unpinned.timeline_row, null);
+  assert.equal(unpinned.timeline_row_updated_at, null);
+});
+
+test("timeline preserves approval state and decision version without enlarging ordinary rows", () => {
+  const task = { ...row, id: 9, project_id: 1, eff_section_id: null, timeline_row: null,
+    timeline_row_updated_at: null } as TaskRow & { eff_section_id: null; timeline_row: null; timeline_row_updated_at: null };
+  const ordinary = toTimelineTaskPayload(task);
+  assert.equal(ordinary.length, 21);
+  const approval = { status: "changes_requested" as const, approver_id: 2, approver_name: "承認者", version: 4, round: 2 };
+  const payload = toTimelineTaskPayload({ ...task, approval });
+  assert.equal(payload.length, 22);
+  assert.deepEqual(decodeTimelineTask(payload).approval, approval);
+  assert.equal(decodeTimelineTask(ordinary).approval, undefined);
 });
