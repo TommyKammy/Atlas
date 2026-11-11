@@ -160,7 +160,8 @@ test("internal navigation flushes a just-edited draft before the autosave delay"
   await page.goto(f.path);
   await page.getByRole("textbox", { name: "ルール名", exact: true }).fill("Navigated immediately");
   await page.locator("[data-rule-workflow-editor] header").getByRole("link").first().click();
-  await expect(page).toHaveURL(new RegExp(`/projects/${f.projectId}$`));
+  await expect(page).toHaveURL((url) => url.pathname === `/projects/${f.projectId}` && url.searchParams.get("view") === "list" && url.searchParams.get("list_state") === "1" && !url.searchParams.has("task") && !url.searchParams.has("dashboard"));
+  await expect(page.locator("[data-list-view]")).toBeVisible();
   await expect.poll(async () => (await savedDraft(page, f.base, f.ruleId))?.name).toBe("Navigated immediately");
 });
 
@@ -250,7 +251,8 @@ test("discarding a draft keeps the published rule and does not recreate the disc
   await page.getByRole("button", { name: "設定", exact: true }).click();
   await page.getByRole("button", { name: "下書きを破棄", exact: true }).click();
   await page.locator("[data-confirm-ok]").click();
-  await expect(page).toHaveURL(new RegExp(`/projects/${f.projectId}$`));
+  await expect(page).toHaveURL((url) => url.pathname === `/projects/${f.projectId}` && url.searchParams.get("view") === "list" && url.searchParams.get("list_state") === "1" && !url.searchParams.has("task") && !url.searchParams.has("dashboard"));
+  await expect(page.locator("[data-list-view]")).toBeVisible();
   await expect.poll(async () => await savedDraft(page, f.base, f.ruleId)).toBeNull();
   expect((await source(page, f.projectId, f.ruleId)).name).toBe("Workflow original");
 });

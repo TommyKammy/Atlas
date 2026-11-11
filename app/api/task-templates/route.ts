@@ -16,7 +16,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
   return NextResponse.json(r.rows);
 });
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const { name, title_template, description, assignee_id, due_offset_days, section_id, subtasks } = (body ?? {}) as {
     name?: string;
     title_template?: string;

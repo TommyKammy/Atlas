@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -562,6 +564,7 @@ export default function ProjectTaskContextMenu({
               value={subtaskName}
               onChange={(event) => setSubtaskName(event.target.value)}
               onKeyDown={(event) => {
+                if (isImeComposing(event)) return;
                 if (event.key === "Enter") void createSubtask();
               }}
               placeholder="サブタスク名"

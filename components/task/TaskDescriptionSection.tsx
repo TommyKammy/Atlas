@@ -17,16 +17,19 @@ export default function TaskDescriptionSection({
   legacy,
   mentionUsers,
   onSave,
+  canEdit = true,
 }: {
   doc: RichTextDoc | null;
   legacy: string;
   mentionUsers: MentionUser[];
   onSave: (doc: RichTextDoc) => void | Promise<void>;
+  canEdit?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const initial = doc ?? markdownToDoc(legacy, mentionUsers);
   const draftRef = useRef<RichTextDoc>(initial);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saving = useRef(false);
   const hasText = docToText(initial).length > 0;
 
   const clearBlurTimer = () => {
@@ -39,17 +42,25 @@ export default function TaskDescriptionSection({
   useEffect(() => clearBlurTimer, []);
 
   const start = () => {
+    if (!canEdit) return;
     draftRef.current = doc ?? markdownToDoc(legacy, mentionUsers);
     setEditing(true);
   };
 
   const save = async () => {
     clearBlurTimer();
+    if (!canEdit || saving.current) return;
+    saving.current = true;
+    const submitted = draftRef.current;
     try {
-      await onSave(draftRef.current);
-      setEditing(false);
+      await onSave(submitted);
+      // The request only acknowledges its submitted document. Keep any typing
+      // that happened while it was in flight visible in the editor.
+      if (draftRef.current === submitted) setEditing(false);
     } catch (error) {
       toast(`説明の保存に失敗しました: ${error instanceof Error ? error.message : error}`);
+    } finally {
+      saving.current = false;
     }
   };
 
@@ -64,6 +75,7 @@ export default function TaskDescriptionSection({
    * so wait a tick and only save when focus really left the section.
    */
   const scheduleBlurSave = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.relatedTarget instanceof Element && event.relatedTarget.closest("[data-task-save-control], [data-task-conflict-discard]")) return;
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
     const section = event.currentTarget;
     clearBlurTimer();
@@ -81,7 +93,7 @@ export default function TaskDescriptionSection({
     <section className="mt-5" data-task-description>
       <div className="mb-1 flex min-h-8 items-center gap-2">
         <h3 className="text-[12px] font-semibold text-neutral-700">説明</h3>
-        {!editing && hasText && (
+        {canEdit && !editing && hasText && (
           <button
             type="button"
             onClick={start}
@@ -92,7 +104,7 @@ export default function TaskDescriptionSection({
         )}
       </div>
 
-      {editing ? (
+      {canEdit && editing ? (
         <div
           onBlur={scheduleBlurSave}
           onFocus={clearBlurTimer}
@@ -136,12 +148,12 @@ export default function TaskDescriptionSection({
             if ((event.target as Element).closest("a")) return;
             start();
           }}
-          title="クリックして編集"
-          className="min-h-[96px] cursor-text rounded-lg px-2 py-2 hover:bg-neutral-50"
+          title={canEdit ? "クリックして編集" : undefined}
+          className={`min-h-[96px] rounded-lg px-2 py-2 ${canEdit ? "cursor-text hover:bg-neutral-50" : ""}`}
         >
           <RichTextView doc={doc} legacy={legacy} mentionUsers={mentionUsers} />
         </div>
-      ) : (
+      ) : canEdit ? (
         <button
           type="button"
           onClick={start}
@@ -149,7 +161,7 @@ export default function TaskDescriptionSection({
         >
           このタスクの内容を入力します
         </button>
-      )}
+      ) : <p className="min-h-12 px-2 py-2 text-[13px] text-neutral-500">説明はありません</p>}
     </section>
   );
 }

@@ -10,7 +10,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
   return NextResponse.json(await getProjectAutomations(projectId));
 });
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const payload = (body ?? {}) as { name?: unknown; trigger?: unknown; action_type?: unknown; action_value?: unknown };
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
   const trigger = payload.trigger;

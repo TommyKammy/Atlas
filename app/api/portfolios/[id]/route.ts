@@ -52,7 +52,7 @@ export const DELETE = withUser(async (_req, { uid, params }) => {
   const portfolio = Number.isInteger(id) ? await getPortfolio(id, ws.id, uid) : null;
   if (!portfolio) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (!portfolio.can_edit) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  await deletePortfolio(id);
+  await deletePortfolio(id, uid);
   await audit(uid, "portfolio.delete", { entity: "portfolio", entityId: id });
   return NextResponse.json({ deleted: id });
 });

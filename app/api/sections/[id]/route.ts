@@ -4,7 +4,7 @@ import { notifySection } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { withResourceProject } from "@/lib/api/route";
 
-export const PATCH = withResourceProject("edit", "sections", async (_req, { uid, params, body }) => {
+export const PATCH = withResourceProject("configure", "sections", async (_req, { uid, params, body }) => {
   const id = params.id;
   const { name } = (body ?? {}) as { name?: unknown };
   const trimmed = typeof name === "string" ? name.trim() : "";
@@ -19,7 +19,7 @@ export const PATCH = withResourceProject("edit", "sections", async (_req, { uid,
   return NextResponse.json({ id: Number(r.rows[0].id), name: r.rows[0].name });
 }, { body: true });
 
-export const DELETE = withResourceProject("edit", "sections", async (_req, { uid, params }) => {
+export const DELETE = withResourceProject("configure", "sections", async (_req, { uid, params }) => {
   const id = params.id;
   const r = await db.query("DELETE FROM sections WHERE id = $1::bigint", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });

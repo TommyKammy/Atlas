@@ -184,7 +184,7 @@ export default function ProjectPermissionsDialog({
 
           <ProjectMembersManager projectId={projectId} />
           <p className="mt-3 text-[11px] text-neutral-400">
-            ワークフロー/共有ポリシーは保存され、今後の権限チェックで段階的に適用されます。現在の設定変更とメンバー管理はプロジェクト管理者に限定されています。
+            ワークフロー・ステータス・外観などの構成変更と共有操作に適用されます。権限設定の変更と管理者の追加・変更は、プロジェクト管理者に限定されます。タスクやコメントの編集権限は変わりません。
           </p>
           {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
         </div>

@@ -23,4 +23,4 @@ COPY --from=build /app/lib ./lib
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/db ./db
 EXPOSE 3000
-CMD ["sh", "-c", "npm run db:migrate && node server.js"]
+CMD ["sh", "-c", "npm run db:migrate && exec node server.js"]

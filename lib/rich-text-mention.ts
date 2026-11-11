@@ -1,3 +1,4 @@
+import { isImeComposing } from "./ime-keyboard";
 import type { MentionNodeAttrs } from "@tiptap/extension-mention";
 import type { SuggestionKeyDownProps, SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import type { MentionUser } from "./rich-text-types";
@@ -93,6 +94,7 @@ export function createMentionSuggestion(getUsers: () => MentionUser[]): MentionS
           draw();
         },
         onKeyDown({ event }: SuggestionKeyDownProps) {
+          if (isImeComposing(event)) return false;
           if (!props) return false;
           if (event.key === "ArrowDown") {
             selected = Math.min(selected + 1, props.items.length - 1);

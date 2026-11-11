@@ -205,81 +205,8 @@ export async function isFavorite(userId: number | null, projectId: number): Prom
 
 
 
-export type InboxItem = {
-  entry: "comment" | "event";
-  id: number;
-  body: string;
-  created_at: string;
-  author_name: string | null;
-  author_id: number | null;
-  task_id: number;
-  task_name: string;
-  project_id: number;
-  project_name: string;
-  is_read: boolean;
-};
-
-export async function getInbox(userId: number, workspaceId: number): Promise<InboxItem[]> {
-  const r = await db.query(
-    `SELECT * FROM (
-       SELECT 'comment' AS entry, c.id, c.body, c.created_at::text AS created_at,
-         u.name AS author_name, c.author_id,
-         t.id AS task_id, t.name AS task_name, p.id AS project_id, p.name AS project_name,
-         (r.comment_id IS NOT NULL) AS is_read
-       FROM comments c JOIN tasks t ON t.id = c.task_id AND t.deleted_at IS NULL
-       JOIN projects p ON p.id = t.project_id
-       LEFT JOIN users u ON u.id = c.author_id
-       LEFT JOIN inbox_reads r ON r.comment_id = c.id AND r.user_id = $1
-       WHERE p.workspace_id = $2
-         AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $1 AND ux.is_admin)
-           OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $1))
-       UNION ALL
-       SELECT 'event' AS entry, e.id, e.summary AS body, e.created_at::text AS created_at,
-         u.name AS author_name, e.actor_id AS author_id,
-         t.id AS task_id, t.name AS task_name, p.id AS project_id, p.name AS project_name,
-         (r.event_id IS NOT NULL) AS is_read
-       FROM task_events e JOIN tasks t ON t.id = e.task_id AND t.deleted_at IS NULL
-       JOIN projects p ON p.id = t.project_id
-       LEFT JOIN users u ON u.id = e.actor_id
-       LEFT JOIN inbox_reads r ON r.event_id = e.id AND r.user_id = $1
-       WHERE p.workspace_id = $2
-          AND (e.kind NOT LIKE 'approval_%' OR EXISTS (
-            SELECT 1 FROM task_event_recipients recipient WHERE recipient.event_id = e.id AND recipient.user_id = $1
-          ))
-         AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $1 AND ux.is_admin)
-           OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $1))
-     ) feed ORDER BY created_at DESC LIMIT 100`,
-    [userId, workspaceId],
-  );
-  return r.rows;
-}
-
-export async function getUnreadCount(userId: number, workspaceId: number): Promise<number> {
-  const r = await db.query(
-    `SELECT
-       (SELECT COUNT(*)::int FROM comments c JOIN tasks t ON t.id = c.task_id AND t.deleted_at IS NULL
-        JOIN projects p ON p.id = t.project_id
-        LEFT JOIN inbox_reads r ON r.comment_id = c.id AND r.user_id = $1
-        WHERE p.workspace_id = $2 AND r.comment_id IS NULL
-          AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $1 AND ux.is_admin)
-            OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $1))
-          AND (c.author_id IS NULL OR c.author_id <> $1))
-       +
-       (SELECT COUNT(*)::int FROM task_events e JOIN tasks t ON t.id = e.task_id AND t.deleted_at IS NULL
-        JOIN projects p ON p.id = t.project_id
-        LEFT JOIN inbox_reads r ON r.event_id = e.id AND r.user_id = $1
-        WHERE p.workspace_id = $2 AND r.event_id IS NULL
-          AND (e.kind NOT LIKE 'approval_%' OR EXISTS (
-            SELECT 1 FROM task_event_recipients recipient WHERE recipient.event_id = e.id AND recipient.user_id = $1
-          ))
-          AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $1 AND ux.is_admin)
-            OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $1))
-          AND (e.actor_id IS NULL OR e.actor_id <> $1))
-       AS n`,
-    [userId, workspaceId],
-  );
-  return r.rows[0].n as number;
-}
+export { getInbox, getInboxPage, getUnreadCount } from "./notification-feed";
+export type { InboxItem, InboxPage } from "./notification-feed";
 
 
 export type ViewState = Record<string, string | number | boolean | null>;

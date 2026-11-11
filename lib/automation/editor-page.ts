@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCurrentUserId } from "../current-user";
 import { getProject, getProjectAccess } from "../data";
-import { canEditProject } from "../project-roles";
+import { canConfigureProject } from "../project-policy";
 import { getRuleDescriptors } from "./descriptors";
 import { getRuleEditorDraft } from "./editor-drafts";
 import { getProjectRules } from "./repository";
@@ -18,7 +18,7 @@ export async function loadRuleEditor(projectId: number, ruleId?: number, draftId
   if (!project || project.deleted_at) notFound();
   const initialRule = ruleId === undefined ? null : (await getProjectRules(projectId, viewerId)).find((rule) => rule.id === ruleId) ?? null;
   if (ruleId !== undefined && !initialRule) notFound();
-  const canEdit = canEditProject(access.role) && (!initialRule || initialRule.owner_id === viewerId);
+  const canEdit = canConfigureProject(access.role, project.settings) && (!initialRule || initialRule.owner_id === viewerId);
   if (ruleId === undefined && !canEdit) notFound();
   const initialDraft = canEdit ? await getRuleEditorDraft(projectId, viewerId, draftId ? { draftId } : ruleId ? { ruleId } : {}) : null;
   if (draftId && !initialDraft) notFound();

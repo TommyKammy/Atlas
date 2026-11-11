@@ -55,6 +55,9 @@ export type ListViewProps = {
   viewTabId: number | null;
   canEdit: boolean;
   canAdmin: boolean;
+  persistViewState?: boolean;
+  emptyState?: "project" | "filtered";
+  canSaveView?: boolean;
   initial: {
     hide_completed?: boolean;
     completed_only?: boolean;
@@ -97,6 +100,9 @@ export function useListView({
   viewTabId,
   canEdit,
   canAdmin,
+  persistViewState = true,
+  emptyState = "project",
+  canSaveView = true,
 }: ListViewProps): ListViewContentProps {
   const refresh = useApiRefresh();
   const router = useRouter();
@@ -186,7 +192,7 @@ export function useListView({
     await api(`/api/custom-fields/${f.id}`, "DELETE");
     refresh();
   };
-  const listFilters = useListFilters({ projectId, initial, statusFieldEnabled });
+  const listFilters = useListFilters({ projectId, initial, statusFieldEnabled, persistViewState, activeSavedId });
   const {
     hideCompleted,
     completedOnly,
@@ -251,6 +257,7 @@ export function useListView({
     router,
     refresh,
     canEdit,
+    canSaveView,
     viewTabId,
     viewName,
     viewIcon,
@@ -750,7 +757,8 @@ export function useListView({
       onCloseMenu: () => setMenuCol(null),
       editingDue: editing?.field === "due",
       onCancelEdit: cancelEdit,
-      tasksEmpty: tasks.length === 0,
+      tasksEmpty: emptyState === "filtered" ? visible.length === 0 : tasks.length === 0,
+      emptyState,
       focusAdd: focusAdd,
   };
   return content;

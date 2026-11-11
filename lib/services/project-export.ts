@@ -4,7 +4,8 @@ import { badRequest } from "@/lib/api/errors";
 import { csvResponse, toCsv } from "@/lib/csv";
 import { buildXlsx } from "@/lib/xlsx";
 import { shiftDate } from "@/lib/timeline-dnd";
-import { TASK_CUSTOM_VALUE_PAIRS, type TaskCustomValuePairs } from "@/lib/repositories/task-custom-value-pairs";
+import { taskCustomValuePairs, type TaskCustomValuePairs } from "@/lib/repositories/task-custom-value-pairs";
+import { projectTaskReadScope } from "@/lib/repositories/scope";
 
 type ExportTask = {
   id: number;
@@ -65,13 +66,23 @@ export async function exportProject(
     [projectId],
   );
   const tasks = await db.query(
-    `SELECT t.id, t.section_id, t.parent_task_id, t.name, t.description, u.name AS assignee,
+    `SELECT t.id,
+       CASE WHEN t.project_id = $1 THEN t.section_id
+         WHEN m.task_id IS NOT NULL THEN m.section_id
+         WHEN parent.project_id = $1 THEN parent.section_id
+         ELSE parent_membership.section_id END AS section_id,
+       t.parent_task_id, t.name, t.description, u.name AS assignee,
        t.completed, t.start_on::text AS start_on, t.due_on::text AS due_on,
        t.progress, t.status, t.recurrence,
        (SELECT string_agg(c.body, E'\\n---\\n' ORDER BY c.id) FROM comments c WHERE c.task_id = t.id) AS comments,
-       ${TASK_CUSTOM_VALUE_PAIRS}
+       ${taskCustomValuePairs("$1")}
      FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
-     WHERE t.project_id = $1::bigint AND t.deleted_at IS NULL ORDER BY t.position, t.id`,
+     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1
+     LEFT JOIN tasks parent ON parent.id = t.parent_task_id AND parent.deleted_at IS NULL
+     LEFT JOIN task_project_memberships parent_membership
+       ON parent_membership.task_id = parent.id AND parent_membership.project_id = $1
+     WHERE ${projectTaskReadScope("t")} AND t.deleted_at IS NULL
+     ORDER BY t.position, t.id`,
     [projectId],
   );
 

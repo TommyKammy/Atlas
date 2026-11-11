@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { Fragment, useRef, useState } from "react";
 import type { CustomField, CustomValue } from "@/lib/custom-fields";
 import { dueSegs } from "@/lib/dates";
@@ -234,6 +236,7 @@ export default function TaskListRow({
       role="listitem"
       aria-label={`タスク: ${t.name}`}
       onKeyDown={(e) => {
+        if (isImeComposing(e)) return;
         if ((e.target as HTMLElement).closest("input,select,textarea,button,a,summary")) return;
         if (e.key === "Enter") {
           e.preventDefault();
@@ -337,6 +340,7 @@ export default function TaskListRow({
               e.target.select();
             }}
             onKeyDown={(e) => {
+              if (isImeComposing(e)) return;
               if (e.key === "Escape") {
                 e.preventDefault();
                 e.stopPropagation();
@@ -474,6 +478,7 @@ export default function TaskListRow({
           onBlur={(e) => commitEdit(t, "progress", (e.target as HTMLInputElement).value)}
           onFocus={(e) => (e.target as HTMLInputElement).select()}
           onKeyDown={(e) => {
+            if (isImeComposing(e)) return;
             if (e.key === "Escape") {
               e.preventDefault();
               e.stopPropagation();
@@ -512,6 +517,7 @@ export default function TaskListRow({
             onChange={(e) => commitEdit(t, "status", e.target.value)}
             onBlur={cancelEdit}
             onKeyDown={(e) => {
+              if (isImeComposing(e)) return;
               if (e.key === "Escape") cancelEdit();
             }}
             onClick={(e) => e.stopPropagation()}
@@ -653,6 +659,7 @@ export default function TaskListRow({
               onChange={(e) => setEditVal(e.target.value)}
               onBlur={(e) => commitEdit(t, fieldKey, (e.target as HTMLInputElement).value)}
               onKeyDown={(e) => {
+                if (isImeComposing(e)) return;
                 if (e.key === "Escape") cancelEdit();
                 if (e.key === "Enter") (e.target as HTMLInputElement).blur();
               }}
@@ -671,6 +678,7 @@ export default function TaskListRow({
               onChange={(e) => commitEdit(t, fieldKey, e.target.value)}
               onBlur={cancelEdit}
               onKeyDown={(e) => {
+                if (isImeComposing(e)) return;
                 if (e.key === "Escape") cancelEdit();
               }}
               onClick={(e) => e.stopPropagation()}
@@ -696,6 +704,7 @@ export default function TaskListRow({
             onBlur={(e) => commitEdit(t, fieldKey, (e.target as HTMLInputElement).value)}
             onFocus={(e) => (e.target as HTMLInputElement).select()}
             onKeyDown={(e) => {
+              if (isImeComposing(e)) return;
               if (e.key === "Escape") cancelEdit();
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
@@ -726,6 +735,7 @@ export default function TaskListRow({
             value={subDraft}
             onChange={(e) => setSubDraft(e.target.value)}
             onKeyDown={(e) => {
+              if (isImeComposing(e)) return;
               if (e.key === "Enter") addSubtask(t);
               if (e.key === "Escape") setSubAdding(null);
             }}

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ApiError } from "@/lib/api/errors";
 import { withUser } from "@/lib/api/route";
 import { getWorkspace } from "@/lib/data";
 import { audit } from "@/lib/audit";
@@ -36,6 +37,7 @@ export const POST = withUser(async (req, { uid, params }) => {
       return NextResponse.json({ error: "project access denied" }, { status: 403 });
     }
   } catch (caught) {
+    if (caught instanceof ApiError) throw caught;
     return NextResponse.json(
       { error: caught instanceof Error ? caught.message : "project add failed" },
       { status: 400 },
@@ -58,7 +60,7 @@ export const DELETE = withUser(async (req, { uid, params }) => {
   if (!Number.isInteger(projectId) || projectId <= 0) {
     return NextResponse.json({ error: "project_id is required" }, { status: 400 });
   }
-  await removePortfolioProject(id, projectId);
+  await removePortfolioProject(id, projectId, uid);
   await audit(uid, "portfolio.project_remove", {
     entity: "portfolio",
     entityId: id,

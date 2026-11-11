@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -116,6 +118,7 @@ export default function InviteAcceptForm({ token }: { token: string }) {
                 autoComplete="new-password"
                 className={field}
                 onKeyDown={(e) => {
+                  if (isImeComposing(e)) return;
                   if (e.key === "Enter") accept();
                 }}
               />

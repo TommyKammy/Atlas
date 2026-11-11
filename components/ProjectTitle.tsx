@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { useRouter } from "next/navigation";
@@ -56,6 +58,7 @@ export default function ProjectTitle({
         onChange={(e) => setValue(e.target.value)}
         onBlur={() => void save()}
         onKeyDown={(e) => {
+          if (isImeComposing(e)) return;
           if (e.key === "Enter") {
             e.preventDefault();
             e.currentTarget.blur();

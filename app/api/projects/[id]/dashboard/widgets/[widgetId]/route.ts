@@ -6,7 +6,7 @@ import { getDashboardWidgets } from "@/lib/dashboard";
 import { parseWidgetPayload } from "@/lib/dashboard-validation";
 
 export const PATCH = withProject(
-  "edit",
+  "configure",
   async (_req, { uid, projectId, params, body }) => {
     const id = Number(params.widgetId);
     if (!Number.isInteger(id) || id <= 0) {
@@ -52,7 +52,7 @@ export const PATCH = withProject(
   { body: true },
 );
 
-export const DELETE = withProject("edit", async (_req, { uid, projectId, params }) => {
+export const DELETE = withProject("configure", async (_req, { uid, projectId, params }) => {
   const id = Number(params.widgetId);
   if (!Number.isInteger(id) || id <= 0) {
     return NextResponse.json({ error: "invalid widget id" }, { status: 400 });

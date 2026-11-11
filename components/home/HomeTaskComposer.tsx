@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import Dialog from "../ui/Dialog";
@@ -67,7 +69,7 @@ export default function HomeTaskComposer({
             data-home-composer-name
             value={name}
             onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => event.key === "Enter" && void create()}
+            onKeyDown={(event) => !isImeComposing(event) && event.key === "Enter" && void create()}
             placeholder="タスク名"
             autoFocus
             className="w-full rounded border border-neutral-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500"

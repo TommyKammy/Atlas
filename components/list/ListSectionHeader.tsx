@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import type { ListGroupBy } from "@/lib/list-view";
 
 export type ListSectionHeaderProps = {
@@ -96,6 +98,7 @@ export default function ListSectionHeader({
               value={sectionEditName}
               onChange={(event) => onEditNameChange(event.target.value)}
               onKeyDown={(event) => {
+                if (isImeComposing(event)) return;
                 if (event.key === "Enter" && !event.nativeEvent.isComposing) {
                   event.preventDefault();
                   onSaveName(sectionId);

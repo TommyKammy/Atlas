@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "./ime-keyboard";
+
 import { useEffect, useRef, type RefObject } from "react";
 
 const FOCUSABLE =
@@ -34,6 +36,7 @@ export function useFocusTrap(
     (first ?? container).focus({ preventScroll: true });
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isImeComposing(event)) return;
       if (event.key === "Escape" && escapeRef.current) {
         const target = event.target as HTMLElement | null;
         if (

@@ -947,7 +947,7 @@ curl -s -m 10 -c "$TMPD/jar2" -X POST "$BASE/api/auth/login" -H 'Content-Type: a
 T=$(curl -s -m 10 -b "$TMPD/jar2" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":2,"name":"E2Eイベント用"}')
 TID=$(jget "$T" id)
 curl -s -m 10 -b "$TMPD/jar" -X PATCH "$BASE/api/tasks/$TID" -H 'Content-Type: application/json' -d '{"completed":true}' -o /dev/null
-curl -s -m 10 -b "$JAR" "$BASE/inbox" -o "$TMPD/ibe.html"
+curl -s -m 10 -b "$JAR" "$BASE/inbox?filter=all" -o "$TMPD/ibe.html"
 grep -q 'タスクを完了しました' "$TMPD/ibe.html" && ok "event in inbox" || bad "event in inbox"
 EID=$(db_sql -t -c "SELECT id FROM task_events WHERE task_id = $TID AND kind = 'completed';")
 R=$(api POST /api/inbox/read "{\"event_id\":$EID}")
@@ -1149,6 +1149,9 @@ PYEOF
 [[ "$ORDER" == "ok" ]] && ok "my-tasks order persisted" || bad "my-tasks order persisted" "$ORDER"
 D=$(db_sql -t -A -c "SELECT string_agg(task_id::text,',' ORDER BY position) FROM my_task_orders WHERE user_id=1 AND task_id IN ($MT1ID,$MT2ID,$MT3ID);")
 [[ "$D" == "$MT3ID,$MT2ID,$MT1ID" ]] && ok "my-tasks order db" || bad "my-tasks order db ($D)"
+MT3STAMP=$(db_sql -t -A -c "SELECT updated_at::text FROM tasks WHERE id=$MT3ID;")
+R=$(api PATCH "/api/tasks/$MT3ID" "{\"due_on\":null,\"expected_updated_at\":\"$MT3STAMP\"}")
+[[ "$(jget "$R" id)" == "$MT3ID" ]] && ok "my-tasks bucket date uses versioned task update" || bad "my-tasks bucket date uses versioned task update" "$R"
 R=$(api PUT /api/my-tasks "{\"items\":[{\"task_id\":$MT3ID,\"position\":1000,\"due_on\":null},{\"task_id\":$MT2ID,\"position\":2000,\"due_on\":\"$D0\"},{\"task_id\":$MT1ID,\"position\":3000,\"due_on\":\"$D0\"}]}")
 curl -s -m 15 -b "$JAR" "$BASE/my-tasks" -o "$TMPD/mto2.html"
 grep -q 'data-my-task-bucket="later"[\s\S]*' "$TMPD/mto2.html" || true
@@ -1774,7 +1777,17 @@ R=$(api PATCH /api/projects/$MPID/members/$MNUID '{"role":"editor"}')
 C=$(curl -s -m 10 -b "$JARV" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d "{\"project_id\":$MPID,\"name\":\"E2E editor task\"}")
 [[ "$C" == "201" ]] && ok "editor can create task" || bad "editor create task ($C)"
 C=$(curl -s -m 10 -b "$JARV" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/projects/$MPID" -H 'Content-Type: application/json' -d '{"name":"x"}')
-[[ "$C" == "403" ]] && ok "editor cannot change project" || bad "editor project patch ($C)"
+[[ "$C" == "200" ]] && ok "editor can configure project by default" || bad "editor default project patch ($C)"
+C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/projects/$MPID" -H 'Content-Type: application/json' -d '{"settings":{"who_can_edit":"admins"}}')
+[[ "$C" == "200" ]] && ok "admin restricts project configuration" || bad "admin restrict project configuration ($C)"
+C=$(curl -s -m 10 -b "$JARV" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/projects/$MPID" -H 'Content-Type: application/json' -d '{"name":"x"}')
+[[ "$C" == "403" ]] && ok "editor cannot configure admins-only project" || bad "editor admins-only project patch ($C)"
+C=$(curl -s -m 10 -b "$JARV" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/projects/$MPID" -H 'Content-Type: application/json' -d '{"settings":{"who_can_edit":"editors"}}')
+[[ "$C" == "403" ]] && ok "editor cannot unlock project permissions" || bad "editor unlock project permissions ($C)"
+C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/projects/$MPID" -H 'Content-Type: application/json' -d '{"settings":{"who_can_edit":"editors"}}')
+[[ "$C" == "200" ]] && ok "admin restores editor configuration policy" || bad "admin restore editor configuration policy ($C)"
+C=$(curl -s -m 10 -b "$JARV" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/projects/$MPID" -H 'Content-Type: application/json' -d '{"name":"x"}')
+[[ "$C" == "200" ]] && ok "editor can configure after policy restoration" || bad "editor restored project patch ($C)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X DELETE "$BASE/api/projects/$MPID/members/1")
 [[ "$C" == "400" ]] && ok "last admin guard" || bad "last admin guard ($C)"
 R=$(api DELETE /api/projects/$MPID/members/$MNUID)

@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import Link from "next/link";
 import NavPending from "./NavPending";
 import { useRouter } from "next/navigation";
@@ -338,6 +340,7 @@ export default function ProjectTabs({
               }}
               onContextMenu={(event) => openMenu(event, tab)}
               onKeyDown={(event) => {
+                if (isImeComposing(event)) return;
                 if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
                   event.preventDefault();
                   const rect = event.currentTarget.getBoundingClientRect();
@@ -357,6 +360,7 @@ export default function ProjectTabs({
                     if (!renameCancelledRef.current) void saveRename(tab);
                   }}
                   onKeyDown={(event) => {
+                    if (isImeComposing(event)) return;
                     if (event.key === "Enter") {
                       event.preventDefault();
                       renameCancelledRef.current = false;

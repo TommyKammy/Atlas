@@ -92,14 +92,19 @@ function startLiveSubscriber(bus) {
 app.prepare().then(async () => {
   const { createLiveRooms } = await import("./lib/bus.mjs");
   const { reconcileAttachmentFiles } = await import("./lib/attachment-files.mjs");
+  const { startNotificationEmailWorker } = await import("./lib/notification-email-worker.mjs");
+  const { installServerShutdown } = await import("./lib/server-shutdown.mjs");
   const bus = createLiveRooms(loadLiveAccess);
+  const notificationWorker = startNotificationEmailWorker(dbPool);
 
   const server = createServer((req, res) => {
     const u = new URL(req.url, "http://internal");
     handle(req, res, { pathname: u.pathname, query: Object.fromEntries(u.searchParams) });
   });
+  server.on("close", () => { void notificationWorker.stop(); });
 
   const wss = new WebSocketServer({ noServer: true });
+  installServerShutdown({ server, sockets: wss, worker: notificationWorker, pool: dbPool });
 
   server.on("upgrade", async (req, socket, head) => {
     const onSocketError = () => socket.destroy();

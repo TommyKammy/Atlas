@@ -1,3 +1,4 @@
+import { canConfigureProject } from "@/lib/project-policy";
 import { notFound, redirect } from "next/navigation";
 import type { TaskRow } from "@/lib/data";
 import {
@@ -25,6 +26,9 @@ import {
 import ProjectTabs from "@/components/ProjectTabs";
 import ProjectIcon from "@/components/ProjectIcon";
 import ListView from "@/components/ListView";
+import DashboardDrilldownContext from "@/components/dashboard/DashboardDrilldownContext";
+import { getDashboardTasks } from "@/lib/dashboard";
+import { parseDashboardDrilldown, selectDashboardDrilldownTasks } from "@/lib/dashboard-drilldown";
 import {
   LazyBoardView,
   LazyTimelineView,
@@ -107,7 +111,22 @@ export default async function ProjectPage(props: {
     }
   }
 
-  const listData = view === "list" ? await getListViewData(projectId) : null;
+  const hasDashboardSelection = view === "list" && searchParams.dashboard !== undefined;
+  const dashboardSelection = hasDashboardSelection ? parseDashboardDrilldown(qstr("dashboard")) : null;
+  const [listData, dashboardSelectionTasks] = view === "list"
+    ? await Promise.all([
+        getListViewData(projectId),
+        dashboardSelection ? getDashboardTasks(projectId) : Promise.resolve(null),
+      ])
+    : [null, null];
+  const dashboardTaskIds = dashboardSelection && dashboardSelectionTasks
+    ? new Set(selectDashboardDrilldownTasks(dashboardSelectionTasks, dashboardSelection).map((task) => task.id))
+    : new Set<number>();
+  // Reuse the dashboard's project-local section/date projection. URL values can
+  // only narrow tasks that the normal authorized list loader already returned.
+  const listTasks = !listData ? [] : hasDashboardSelection
+    ? listData.tasks.filter((task) => dashboardTaskIds.has(task.id))
+    : listData.tasks;
   const boardData = view === "board" ? await getBoardViewData(projectId) : null;
   const timelineData = view === "timeline" ? await getTimelineViewData(projectId) : null;
   const calendarData = view === "calendar" ? await getCalendarViewData(projectId) : null;
@@ -132,7 +151,7 @@ export default async function ProjectPage(props: {
     return [];
   })();
 
-  const savedView = view === "list" && savedId ? await getSavedView(savedId) : undefined;
+  const savedView = view === "list" && savedId && !hasDashboardSelection ? await getSavedView(savedId) : undefined;
   const activeSaved =
     savedView && savedView.project_id === projectId && savedView.view_type === "list" ? savedView : undefined;
 
@@ -152,10 +171,13 @@ export default async function ProjectPage(props: {
   const activeCalendarTab = activeTabFor("calendar");
   const listInitial = buildListInitial({
     searchParams,
-    stored: viewStates.list,
+    stored: hasDashboardSelection ? undefined : viewStates.list,
     saved: activeSaved,
     statusFieldEnabled: project.status_field_enabled !== false,
   });
+  // Dashboard counts cover main tasks; users may explicitly expand their
+  // subtasks later without changing the selected aggregate's meaning.
+  if (hasDashboardSelection && qstr("subtasks") === "") listInitial.subtasks_collapsed = true;
   const boardInitial = buildBoardInitial({ searchParams, stored: viewStates.board });
   const boardInitialGroup = buildBoardInitialGroup({
     searchParams,
@@ -163,6 +185,8 @@ export default async function ProjectPage(props: {
     statusFieldEnabled: project.status_field_enabled !== false,
   });
   const calendarInitial = buildCalendarInitial({ searchParams, stored: viewStates.calendar });
+
+  const canConfigure = canConfigureProject(access.role, project.settings);
 
   return (
     <div className="flex min-h-full flex-col md:flex-row">
@@ -175,7 +199,7 @@ export default async function ProjectPage(props: {
             icon={project.icon}
             className="h-7 w-7 text-sm"
           />
-          <ProjectTitle projectId={projectId} name={project.name} canEdit={access.role === "admin"} />
+          <ProjectTitle projectId={projectId} name={project.name} canEdit={canConfigure} />
           <ProjectActionsButton
             project={{
               id: project.id,
@@ -185,6 +209,7 @@ export default async function ProjectPage(props: {
               icon: project.icon ?? null,
             }}
             role={access.role}
+            projectSettings={project.settings}
             customFields={customFields}
           />
           <StarButton projectId={projectId} initial={favorite} />
@@ -192,7 +217,7 @@ export default async function ProjectPage(props: {
             projectId={projectId}
             initialStatus={project.status}
             initialColor={project.status_color ?? "none"}
-            canEdit={access.role === "admin"}
+            canEdit={canConfigure}
           />
           <span className="flex-1" />
           <ProjectMemberFacepile
@@ -220,6 +245,7 @@ export default async function ProjectPage(props: {
             sections={sections}
             users={users}
             role={access.role}
+            projectSettings={project.settings}
           />
         </div>
         <ProjectTabs
@@ -228,7 +254,7 @@ export default async function ProjectPage(props: {
           activeTabKey={projectTabs.find((tab) => tab.tab_key === qstr("tab"))?.tab_key ?? null}
           tabs={projectTabs}
           defaultTabKey={typeof viewStates.tabs?.default === "string" ? viewStates.tabs.default : null}
-          canEdit={access.role === "admin" || access.role === "editor"}
+          canEdit={canConfigure}
         />
         <div data-project-view={view}>
         {view === "overview" && overviewData && (
@@ -241,7 +267,7 @@ export default async function ProjectPage(props: {
             projectName={project.name}
             description={project.description ?? ""}
             activity={overviewData.activity}
-            canEdit={access.role === "admin" || access.role === "editor"}
+            canEdit={canConfigure}
           />
         )}
         {view === "dashboard" && dashboardData && (
@@ -255,15 +281,32 @@ export default async function ProjectPage(props: {
             statusOptions={project.status_options ?? []}
             statusFieldName={project.status_field_name ?? "Status"}
             statusFieldEnabled={project.status_field_enabled !== false}
-            canEdit={access.role === "admin" || access.role === "editor"}
+            canEdit={canConfigure}
           />
         )}
         {view === "list" && listData && (
+          <>
+          {hasDashboardSelection && (
+            <DashboardDrilldownContext
+              projectId={projectId}
+              selection={dashboardSelection}
+              count={listTasks.length}
+              meta={{
+                sections: sections.map((section) => ({ id: section.id, name: section.name })),
+                users: users.map((user) => ({ id: user.id, name: user.name })),
+                statusOptions: project.status_options ?? [],
+                statusFieldName: project.status_field_name ?? "Status",
+                statusFieldEnabled: project.status_field_enabled !== false,
+              }}
+            />
+          )}
           <ListView
-            key={`list-${projectId}`}
+            key={hasDashboardSelection
+              ? `list-${projectId}-dashboard-${dashboardSelection ? JSON.stringify(dashboardSelection) : "invalid"}-${JSON.stringify(listInitial)}`
+              : `list-${projectId}`}
             projectId={projectId}
             sections={sections}
-            tasks={listData.tasks}
+            tasks={listTasks}
             users={users}
             customFields={customFields}
             customValues={listData.customValues}
@@ -281,7 +324,11 @@ export default async function ProjectPage(props: {
             canEdit={access.role === "admin" || access.role === "editor"}
             canAdmin={access.role === "admin"}
             initial={listInitial}
+            persistViewState={!hasDashboardSelection}
+            canSaveView={!hasDashboardSelection}
+            emptyState={hasDashboardSelection ? "filtered" : "project"}
           />
+          </>
         )}
         {view === "board" && boardData && (
           <LazyBoardView
@@ -329,7 +376,7 @@ export default async function ProjectPage(props: {
           <LazyKnowledgeView projectId={projectId} initial={knowledgeData.knowledge} />
         )}
         {view === "forms" && formsData && (
-          <LazyFormsView projectId={projectId} initial={formsData.forms} />
+          <LazyFormsView canConfigure={canConfigure} projectId={projectId} initial={formsData.forms} />
         )}
         {view === "files" && filesData && (
           <LazyFilesView projectId={projectId} attachments={filesData.attachments} />

@@ -1,5 +1,7 @@
 "use client";
 
+import { searchCriteria } from "@/lib/search-pagination";
+
 import { confirmAction } from "@/lib/ui-feedback";
 
 import { useRouter } from "next/navigation";
@@ -9,7 +11,7 @@ type SavedSearch = { id: number; name: string; params: Record<string, string> };
 
 function queryFrom(params: Record<string, string>) {
   return new URLSearchParams(
-    Object.entries(params).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== ""),
+    Object.entries(searchCriteria(params)).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1] !== ""),
   ).toString();
 }
 
@@ -28,7 +30,7 @@ export default function SavedSearchBar({
     if (!name || name.trim() === "" || busy) return;
     setBusy(true);
     try {
-      const params = Object.fromEntries(new URLSearchParams(window.location.search));
+      const params = searchCriteria(Object.fromEntries(new URLSearchParams(window.location.search)));
       const res = await fetch("/api/saved-searches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

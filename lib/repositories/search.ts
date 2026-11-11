@@ -1,5 +1,53 @@
 import { db } from "../db";
 import type { User } from "../data";
+import { compatibleTaskParent } from "./scope";
+import { emptySearchPage, searchPageRequest, type SearchPage, type SearchPageRequest } from "../search-pagination";
+
+/** Count and page share one statement/snapshot, including an empty or out-of-range page. */
+async function searchRows<T>(sql: string, params: unknown[], order: string, limit: number, request?: SearchPageRequest): Promise<T[] | SearchPage<T>> {
+  if (!request) {
+    const result = await db.query(`SELECT * FROM (${sql}) hits ORDER BY ${order} LIMIT ${limit}`, params);
+    return result.rows as T[];
+  }
+  const { page, pageSize } = searchPageRequest(request.page, request.pageSize);
+  const sizeParam = params.length + 1;
+  const pageParam = params.length + 2;
+  const result = await db.query(
+    `WITH hits AS MATERIALIZED (${sql}),
+      counted AS (SELECT count(*) AS total FROM hits),
+      bounds AS (SELECT total, GREATEST(1, CEIL(total::numeric / $${sizeParam}::integer)) AS page_count FROM counted),
+      paging AS (SELECT *, LEAST($${pageParam}::bigint, page_count) AS page FROM bounds)
+     SELECT total::text, page::text, page_count::text,
+       COALESCE((SELECT jsonb_agg(row) FROM (
+         SELECT * FROM hits ORDER BY ${order}
+         LIMIT $${sizeParam}::integer OFFSET ((paging.page - 1) * $${sizeParam}::integer)
+       ) row), '[]'::jsonb) AS items FROM paging`,
+    [...params, pageSize, page],
+  );
+  const row = result.rows[0];
+  return { items: row.items as T[], total: Number(row.total), page: Number(row.page), pageCount: Number(row.page_count), pageSize };
+}
+
+
+// A task is searchable through its own homes and a compatible parent's homes.
+// UNION removes duplicates; result queries choose one authorized return home.
+const TASK_SEARCH_HOMES = `
+  JOIN LATERAL (
+    SELECT t.project_id AS project_id WHERE t.project_id IS NOT NULL
+    UNION
+    SELECT membership.project_id FROM task_project_memberships membership
+    WHERE membership.task_id = t.id
+    UNION
+    SELECT inherited_parent.project_id FROM tasks inherited_parent
+    WHERE inherited_parent.id = t.parent_task_id AND inherited_parent.project_id IS NOT NULL
+      AND ${compatibleTaskParent("t", "inherited_parent")}
+    UNION
+    SELECT inherited_membership.project_id FROM tasks inherited_parent
+    JOIN task_project_memberships inherited_membership ON inherited_membership.task_id = inherited_parent.id
+    WHERE inherited_parent.id = t.parent_task_id
+      AND ${compatibleTaskParent("t", "inherited_parent")}
+  ) task_home ON TRUE
+  JOIN projects p ON p.id = task_home.project_id`;
 
 export async function getSearchUsers(workspaceId: number, viewerUserId: number): Promise<User[]> {
   const r = await db.query(
@@ -49,15 +97,18 @@ export type AdvancedTaskHit = {
   project_name: string;
 };
 
+export function searchTasksAdvanced(workspaceId: number, f: AdvancedSearchFilters, viewerUserId?: number): Promise<AdvancedTaskHit[]>;
+export function searchTasksAdvanced(workspaceId: number, f: AdvancedSearchFilters, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<AdvancedTaskHit>>;
 export async function searchTasksAdvanced(
   workspaceId: number,
   f: AdvancedSearchFilters,
   viewerUserId?: number,
+  pagination?: SearchPageRequest,
 ) {
   const escaped = f.q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const like = `%${escaped}%`;
   const hasQuery = f.q !== "";
-  const conds: string[] = ["p.workspace_id = $1", "p.archived_at IS NULL", "t.deleted_at IS NULL"];
+  const conds: string[] = ["p.workspace_id = $1", "p.archived_at IS NULL", "p.deleted_at IS NULL", "t.deleted_at IS NULL"];
   const params: unknown[] = [workspaceId];
   let likeParam = 0;
   let exactParam = 0;
@@ -79,7 +130,7 @@ export async function searchTasksAdvanced(
   }
   if (f.projectId !== null) {
     params.push(f.projectId);
-    conds.push(`t.project_id = $${params.length}`);
+    conds.push(`p.id = $${params.length}`);
   }
   if (f.assigneeId === "none") conds.push("t.assignee_id IS NULL");
   else if (f.assigneeId !== null) {
@@ -117,16 +168,24 @@ export async function searchTasksAdvanced(
     conds.push(`t.completed_at::date <= $${params.length}`);
   }
   for (const filter of f.custom) {
+    if (filter.type === "number" && (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(filter.value) || !Number.isFinite(Number(filter.value)))) {
+      conds.push("FALSE");
+      continue;
+    }
     params.push(filter.fieldId);
     const fieldParam = params.length;
     params.push(filter.value);
     const valueParam = params.length;
+    const valueScope = `SELECT 1 FROM task_custom_values v
+      JOIN custom_fields cf ON cf.id = v.field_id
+      WHERE v.task_id = t.id AND v.field_id = $${fieldParam}
+        AND cf.project_id = p.id AND cf.deleted_at IS NULL`;
     if (filter.type === "number") {
-      conds.push(`EXISTS (SELECT 1 FROM task_custom_values v WHERE v.task_id = t.id AND v.field_id = $${fieldParam} AND v.value_number = $${valueParam}::double precision)`);
+      conds.push(`EXISTS (${valueScope} AND v.value_number = $${valueParam}::double precision)`);
     } else if (filter.type === "multi_select") {
-      conds.push(`EXISTS (SELECT 1 FROM task_custom_values v WHERE v.task_id = t.id AND v.field_id = $${fieldParam} AND v.value_json @> to_jsonb($${valueParam}::text))`);
+      conds.push(`EXISTS (${valueScope} AND v.value_json @> to_jsonb($${valueParam}::text))`);
     } else {
-      conds.push(`EXISTS (SELECT 1 FROM task_custom_values v WHERE v.task_id = t.id AND v.field_id = $${fieldParam} AND v.value_text = $${valueParam})`);
+      conds.push(`EXISTS (${valueScope} AND v.value_text = $${valueParam})`);
     }
   }
   const rankSql = hasQuery
@@ -138,16 +197,16 @@ export async function searchTasksAdvanced(
          ELSE 4
        END`
     : "0";
-  const r = await db.query(
-    `SELECT t.id, t.name, t.completed, t.due_on::text AS due_on, u.name AS assignee_name,
-       p.id AS project_id, p.name AS project_name, ${rankSql} AS match_rank
-     FROM tasks t JOIN projects p ON p.id = t.project_id
+  return searchRows<AdvancedTaskHit>(
+    `SELECT DISTINCT ON (t.id) t.id, t.name, t.completed, t.due_on::text AS due_on,
+       u.name AS assignee_name, p.id AS project_id, p.name AS project_name,
+       ${rankSql} AS match_rank, t.updated_at
+     FROM tasks t ${TASK_SEARCH_HOMES}
      LEFT JOIN users u ON u.id = t.assignee_id
      WHERE ${conds.join(" AND ")}
-     ORDER BY match_rank, t.due_on NULLS LAST, t.updated_at DESC LIMIT 100`,
-    params,
+     ORDER BY t.id, (p.id = t.project_id) DESC NULLS LAST, p.id`,
+    params, "match_rank, due_on NULLS LAST, updated_at DESC, id", 100, pagination,
   );
-  return r.rows as AdvancedTaskHit[];
 }
 
 function searchAccessClause(viewerUserId: number | undefined, paramIndex: number): string {
@@ -193,12 +252,15 @@ export type GlobalFileHit = {
 };
 
 /** Projects whose name matches the keyword, exact/prefix/contains first. */
+export function searchProjectsGlobal(workspaceId: number, q: string, viewerUserId?: number): Promise<GlobalProjectHit[]>;
+export function searchProjectsGlobal(workspaceId: number, q: string, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<GlobalProjectHit>>;
 export async function searchProjectsGlobal(
   workspaceId: number,
   q: string,
   viewerUserId?: number,
-): Promise<GlobalProjectHit[]> {
-  if (q.trim() === "") return [];
+  pagination?: SearchPageRequest,
+): Promise<GlobalProjectHit[] | SearchPage<GlobalProjectHit>> {
+  if (q.trim() === "") return pagination ? emptySearchPage(20) : [];
   const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
   let access = "";
@@ -206,27 +268,27 @@ export async function searchProjectsGlobal(
     params.push(viewerUserId);
     access = searchAccessClause(viewerUserId, params.length);
   }
-  const r = await db.query(
-    `SELECT p.id, p.name, p.color, p.icon
+  return searchRows<GlobalProjectHit>(
+    `SELECT p.id, p.name, p.color, p.icon,
+       CASE WHEN lower(p.name) = lower($3) THEN 0 WHEN p.name ILIKE $4 THEN 1 ELSE 2 END AS match_rank,
+       p.created_at
      FROM projects p
-     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND p.name ILIKE $2${access}
-     ORDER BY CASE
-       WHEN lower(p.name) = lower($3) THEN 0
-       WHEN p.name ILIKE $4 THEN 1
-       ELSE 2 END, p.created_at DESC
-     LIMIT 20`,
-    params,
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND p.deleted_at IS NULL AND p.name ILIKE $2${access}
+`,
+    params, "match_rank, created_at DESC, id", 20, pagination,
   );
-  return r.rows as GlobalProjectHit[];
 }
 
 /** Project messages (title/body) within the workspace. */
+export function searchMessagesGlobal(workspaceId: number, q: string, viewerUserId?: number): Promise<GlobalMessageHit[]>;
+export function searchMessagesGlobal(workspaceId: number, q: string, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<GlobalMessageHit>>;
 export async function searchMessagesGlobal(
   workspaceId: number,
   q: string,
   viewerUserId?: number,
-): Promise<GlobalMessageHit[]> {
-  if (q.trim() === "") return [];
+  pagination?: SearchPageRequest,
+): Promise<GlobalMessageHit[] | SearchPage<GlobalMessageHit>> {
+  if (q.trim() === "") return pagination ? emptySearchPage(20) : [];
   const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
   let access = "";
@@ -234,30 +296,30 @@ export async function searchMessagesGlobal(
     params.push(viewerUserId);
     access = searchAccessClause(viewerUserId, params.length);
   }
-  const r = await db.query(
+  return searchRows<GlobalMessageHit>(
     `SELECT m.id, m.title, m.body, m.created_at::text AS created_at,
-       p.id AS project_id, p.name AS project_name
+       p.id AS project_id, p.name AS project_name,
+       CASE WHEN lower(m.title) = lower($3) THEN 0 WHEN m.title ILIKE $4 THEN 1
+         WHEN m.title ILIKE $2 THEN 2 ELSE 3 END AS match_rank,
+       m.created_at AS sort_timestamp
      FROM project_messages m JOIN projects p ON p.id = m.project_id
-     WHERE p.workspace_id = $1 AND p.archived_at IS NULL
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND p.deleted_at IS NULL
        AND (m.title ILIKE $2 OR m.body ILIKE $2)${access}
-     ORDER BY CASE
-       WHEN lower(m.title) = lower($3) THEN 0
-       WHEN m.title ILIKE $4 THEN 1
-       WHEN m.title ILIKE $2 THEN 2
-       ELSE 3 END, m.created_at DESC
-     LIMIT 20`,
-    params,
+`,
+    params, "match_rank, sort_timestamp DESC, id", 20, pagination,
   );
-  return r.rows as GlobalMessageHit[];
 }
 
 /** Knowledge notes (title/body) within the workspace. */
+export function searchKnowledgeGlobal(workspaceId: number, q: string, viewerUserId?: number): Promise<GlobalKnowledgeHit[]>;
+export function searchKnowledgeGlobal(workspaceId: number, q: string, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<GlobalKnowledgeHit>>;
 export async function searchKnowledgeGlobal(
   workspaceId: number,
   q: string,
   viewerUserId?: number,
-): Promise<GlobalKnowledgeHit[]> {
-  if (q.trim() === "") return [];
+  pagination?: SearchPageRequest,
+): Promise<GlobalKnowledgeHit[] | SearchPage<GlobalKnowledgeHit>> {
+  if (q.trim() === "") return pagination ? emptySearchPage(20) : [];
   const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
   let access = "";
@@ -265,30 +327,30 @@ export async function searchKnowledgeGlobal(
     params.push(viewerUserId);
     access = searchAccessClause(viewerUserId, params.length);
   }
-  const r = await db.query(
+  return searchRows<GlobalKnowledgeHit>(
     `SELECT k.id, k.title, k.body, k.updated_at::text AS updated_at,
-       p.id AS project_id, p.name AS project_name
+       p.id AS project_id, p.name AS project_name,
+       CASE WHEN lower(k.title) = lower($3) THEN 0 WHEN k.title ILIKE $4 THEN 1
+         WHEN k.title ILIKE $2 THEN 2 ELSE 3 END AS match_rank,
+       k.updated_at AS sort_timestamp
      FROM project_knowledge k JOIN projects p ON p.id = k.project_id
-     WHERE p.workspace_id = $1 AND p.archived_at IS NULL
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND p.deleted_at IS NULL
        AND (k.title ILIKE $2 OR k.body ILIKE $2)${access}
-     ORDER BY CASE
-       WHEN lower(k.title) = lower($3) THEN 0
-       WHEN k.title ILIKE $4 THEN 1
-       WHEN k.title ILIKE $2 THEN 2
-       ELSE 3 END, k.updated_at DESC
-     LIMIT 20`,
-    params,
+`,
+    params, "match_rank, sort_timestamp DESC, id", 20, pagination,
   );
-  return r.rows as GlobalKnowledgeHit[];
 }
 
 /** Attachment file names within the workspace. */
+export function searchFilesGlobal(workspaceId: number, q: string, viewerUserId?: number): Promise<GlobalFileHit[]>;
+export function searchFilesGlobal(workspaceId: number, q: string, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<GlobalFileHit>>;
 export async function searchFilesGlobal(
   workspaceId: number,
   q: string,
   viewerUserId?: number,
-): Promise<GlobalFileHit[]> {
-  if (q.trim() === "") return [];
+  pagination?: SearchPageRequest,
+): Promise<GlobalFileHit[] | SearchPage<GlobalFileHit>> {
+  if (q.trim() === "") return pagination ? emptySearchPage(20) : [];
   const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
   let access = "";
@@ -296,21 +358,24 @@ export async function searchFilesGlobal(
     params.push(viewerUserId);
     access = searchAccessClause(viewerUserId, params.length);
   }
-  const r = await db.query(
-    `SELECT a.id, a.file_name, a.mime_type, a.created_at::text AS created_at,
-       t.id AS task_id, t.name AS task_name, p.id AS project_id, p.name AS project_name
-     FROM task_attachments a
-     JOIN tasks t ON t.id = a.task_id AND t.deleted_at IS NULL
-     JOIN projects p ON p.id = t.project_id
-     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND a.file_name ILIKE $2${access}
-     ORDER BY CASE
-       WHEN lower(a.file_name) = lower($3) THEN 0
-       WHEN a.file_name ILIKE $4 THEN 1
-       ELSE 2 END, a.created_at DESC
-     LIMIT 20`,
-    params,
+  return searchRows<GlobalFileHit>(
+    `SELECT id, file_name, mime_type, created_at, task_id, task_name, project_id, project_name, match_rank, created_timestamp
+     FROM (
+       SELECT DISTINCT ON (a.id) a.id, a.file_name, a.mime_type, a.created_at::text AS created_at,
+         a.created_at AS created_timestamp, t.id AS task_id, t.name AS task_name,
+         p.id AS project_id, p.name AS project_name,
+         CASE WHEN lower(a.file_name) = lower($3) THEN 0
+           WHEN a.file_name ILIKE $4 THEN 1 ELSE 2 END AS match_rank
+       FROM task_attachments a
+       JOIN tasks t ON t.id = a.task_id AND t.deleted_at IS NULL
+       ${TASK_SEARCH_HOMES}
+       WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND p.deleted_at IS NULL
+         AND a.file_name ILIKE $2${access}
+       ORDER BY a.id, (p.id = t.project_id) DESC NULLS LAST, p.id
+     ) hits
+`,
+    params, "match_rank, created_timestamp DESC, id", 20, pagination,
   );
-  return r.rows as GlobalFileHit[];
 }
 
 export type SearchCustomField = {
@@ -365,7 +430,7 @@ export async function getSearchCustomFields(
   const r = await db.query(
     `SELECT f.id, f.name, f.field_type, f.options, p.name AS project_name
      FROM custom_fields f JOIN projects p ON p.id = f.project_id
-     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND f.deleted_at IS NULL${access}
+     WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND p.deleted_at IS NULL AND f.deleted_at IS NULL${access}
      ORDER BY p.id, f.position, f.id`,
     params,
   );

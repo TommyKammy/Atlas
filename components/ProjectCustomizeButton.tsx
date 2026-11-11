@@ -43,6 +43,7 @@ export default function ProjectCustomizeButton({
   sections,
   users,
   role,
+  projectSettings,
 }: {
   projectId: number;
   projectName: string;
@@ -61,6 +62,7 @@ export default function ProjectCustomizeButton({
   sections: Section[];
   users: User[];
   role: ProjectRole;
+  projectSettings?: unknown;
 }) {
   const {
     open,
@@ -93,6 +95,7 @@ export default function ProjectCustomizeButton({
     toast,
     scrollRef,
     canEdit,
+    canConfigure,
     canAdmin,
     statusValues,
     notify,
@@ -129,6 +132,7 @@ export default function ProjectCustomizeButton({
     initialBundles,
     initialRules,
     role,
+    projectSettings,
   });
 
   const panelTitle: Record<"home" | "appearance" | "status" | "fields" | "templates" | "email" | "apps" | "bundles" | "automations", string> = {
@@ -232,7 +236,7 @@ export default function ProjectCustomizeButton({
                 projectName={projectName}
                 color={color}
                 icon={icon}
-                canAdmin={canAdmin}
+                canAdmin={canConfigure}
                 busy={busy}
                 onSave={(patch) => void saveAppearance(patch)}
               />
@@ -240,7 +244,7 @@ export default function ProjectCustomizeButton({
 
             {panel === "status" && (
               <CustomizeStatusPanel
-                canAdmin={canAdmin}
+                canAdmin={canConfigure}
                 statusFieldName={statusFieldName}
                 onStatusFieldName={setStatusFieldName}
                 drafts={statusDrafts}
@@ -268,7 +272,7 @@ export default function ProjectCustomizeButton({
                 address={emailAddress}
                 copied={emailCopied}
                 enabled={emailEnabled}
-                canEdit={canEdit}
+                canEdit={canConfigure}
                 busy={busy}
                 onCopy={() => void copyEmail()}
                 onToggle={(enabled) => void updateEmail({ enabled })}
@@ -284,7 +288,7 @@ export default function ProjectCustomizeButton({
             {panel === "apps" && (
               <CustomizeAppsPanel
                 apps={initialApps}
-                canEdit={canEdit}
+                canEdit={canConfigure}
                 onAdd={() => {
                   const available = APP_CATALOG.find(
                     (app) => !initialApps.some((installed) => installed.app_key === app.key),
@@ -304,7 +308,7 @@ export default function ProjectCustomizeButton({
             {panel === "bundles" && (
               <CustomizeBundlesPanel
                 bundles={initialBundles}
-                canEdit={canEdit}
+                canEdit={canConfigure}
                 canAdmin={canAdmin}
                 busy={busy}
                 onAdd={() =>
@@ -325,7 +329,7 @@ export default function ProjectCustomizeButton({
               <AutomationRulesPanel
                 projectId={projectId}
                 initialRules={initialRules}
-                canEdit={canEdit}
+                canEdit={canConfigure}
               />
             )}
 
@@ -335,8 +339,8 @@ export default function ProjectCustomizeButton({
                 statusFieldEnabled={statusFieldEnabled}
                 statusFieldName={statusFieldName}
                 statusValues={statusValues}
-                canEdit={canEdit}
-                canAdmin={canAdmin}
+                canEdit={canConfigure}
+                canAdmin={canConfigure}
                 busy={busy}
                 onAdd={() => setFieldDraft({ id: null, name: "", field_type: "text", options: "" })}
                 onEditField={(field) =>
@@ -358,9 +362,10 @@ export default function ProjectCustomizeButton({
 
             {panel === "templates" && (
               <CustomizeTemplatesPanel
+                canUse={canEdit}
                 templates={templates}
                 sections={sections}
-                canEdit={canEdit}
+                canEdit={canConfigure}
                 onAdd={(defaultSection) =>
                   setTemplateDraft({
                     id: null,

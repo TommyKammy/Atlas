@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Section, User } from "@/lib/data";
 import { useFocusTrap } from "@/lib/use-focus-trap";
@@ -65,6 +67,7 @@ export default function ListOptionsDrawer({
   saveName,
   setSaveName,
   saveView,
+  canSaveView = true,
   autoRefresh,
   setAutoRefresh,
   lastRefresh,
@@ -96,6 +99,7 @@ export default function ListOptionsDrawer({
   saveName: string;
   setSaveName: (value: string) => void;
   saveView: () => void;
+  canSaveView?: boolean;
   autoRefresh: boolean;
   setAutoRefresh: (value: boolean) => void;
   lastRefresh: string | null;
@@ -255,6 +259,7 @@ export default function ListOptionsDrawer({
                 onChange={(event) => setNameDraft(event.target.value)}
                 onBlur={() => void commitName()}
                 onKeyDown={(event) => {
+                  if (isImeComposing(event)) return;
                   if (event.key === "Enter") {
                     event.preventDefault();
                     void commitName();
@@ -355,12 +360,13 @@ export default function ListOptionsDrawer({
 
           <div className={sectionTitle}>ビューの保存</div>
           <div className="px-2">
-            {saving ? (
+            {saving && canSaveView ? (
               <div className="flex items-center gap-1">
                 <input
                   value={saveName}
                   onChange={(event) => setSaveName(event.target.value)}
                   onKeyDown={(event) => {
+                    if (isImeComposing(event)) return;
                     if (event.key === "Enter") saveView();
                   }}
                   placeholder="ビュー名"
@@ -379,11 +385,14 @@ export default function ListOptionsDrawer({
               <button
                 onClick={() => setSaving(true)}
                 aria-label="現在のビューを保存"
-                className="text-[13px] text-neutral-600 hover:text-black"
+                disabled={!canSaveView}
+                title={!canSaveView ? "この集計条件から開いたリストは保存できません。通常のリストに戻って保存してください。" : undefined}
+                className="text-[13px] text-neutral-600 hover:text-black disabled:cursor-not-allowed disabled:text-neutral-400"
               >
                 ビューを保存
               </button>
             )}
+            {!canSaveView && <p className="mt-1 text-[11px] leading-4 text-neutral-500">この集計条件から開いたリストは保存できません。通常のリストに戻って保存してください。</p>}
             <label className="mt-2 flex items-center gap-2 text-[13px] text-neutral-600" title="20秒ごとに自動更新（表示中のみ）">
               <input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} />
               自動更新{lastRefresh ? `（${lastRefresh}）` : ""}

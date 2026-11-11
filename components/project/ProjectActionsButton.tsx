@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { toast } from "@/lib/ui-feedback";
+import { canShareProject } from "@/lib/project-policy";
 import type { ProjectRole } from "@/lib/project-roles";
 import type { CustomField } from "@/lib/custom-fields";
 import type { ProjectActionKey } from "@/lib/project-actions";
@@ -43,10 +44,12 @@ type DialogKey =
 export default function ProjectActionsButton({
   project,
   role,
+  projectSettings,
   customFields,
 }: {
   project: ActionProject;
   role: ProjectRole;
+  projectSettings?: unknown;
   customFields: CustomField[];
 }) {
   const router = useRouter();
@@ -80,8 +83,8 @@ export default function ProjectActionsButton({
   };
 
   const createPublicLink = async () => {
-    if (role !== "admin") {
-      toast("公開リンクの作成はプロジェクト管理者のみ可能です");
+    if (!canShareProject(role, projectSettings)) {
+      toast("公開リンクを作成する権限がありません");
       return;
     }
     setBusyAction("public-link");
@@ -196,6 +199,7 @@ export default function ProjectActionsButton({
         <ProjectActionsMenu
           pos={menuPos}
           role={role}
+          projectSettings={projectSettings}
           onClose={() => setMenuPos(null)}
           onSelect={onSelect}
         />

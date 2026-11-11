@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 /** Add-section footer shown below all list groups. */
 export default function ListSectionAdd({
   adding,
@@ -24,7 +26,7 @@ export default function ListSectionAdd({
             value={name}
             onChange={(event) => onNameChange(event.target.value)}
             data-add-section-input
-            onKeyDown={(event) => event.key === "Enter" && onCreate()}
+            onKeyDown={(event) => !isImeComposing(event) && event.key === "Enter" && onCreate()}
             placeholder="セクション名"
             autoFocus
             className="rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"

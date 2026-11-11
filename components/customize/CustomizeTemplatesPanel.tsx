@@ -7,6 +7,7 @@ export default function CustomizeTemplatesPanel({
   templates,
   sections,
   canEdit,
+  canUse = canEdit,
   onAdd,
   onEdit,
   onUse,
@@ -16,6 +17,7 @@ export default function CustomizeTemplatesPanel({
   templates: TaskTemplate[];
   sections: { id: number; name: string }[];
   canEdit: boolean;
+  canUse?: boolean;
   onAdd: (defaultSection: string) => void;
   onEdit: (template: TaskTemplate) => void;
   onUse: (template: TaskTemplate) => void;
@@ -63,9 +65,9 @@ export default function CustomizeTemplatesPanel({
                     {template.subtasks.length > 0 && <span>サブタスク: {template.subtasks.length}件</span>}
                   </div>
                 </div>
-                {canEdit && (
+                {(canEdit || canUse) && (
                   <div className="flex shrink-0 items-center gap-1">
-                    <button
+                    {canEdit && <button
                       type="button"
                       data-customize-template-edit={template.id}
                       aria-label={`${template.name}を編集`}
@@ -75,16 +77,16 @@ export default function CustomizeTemplatesPanel({
                       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                         <path d="m10.5 2.5 3 3L6 13H3v-3z" />
                       </svg>
-                    </button>
-                    <button
+                    </button>}
+                    {canUse && <button
                       type="button"
                       data-customize-template-use={template.id}
                       onClick={() => onUse(template)}
                       className="h-7 rounded-md bg-[#eff4fd] px-2 text-[12px] font-medium text-[#2c60b8] hover:bg-[#e1ecfc]"
                     >
                       使用
-                    </button>
-                    <button
+                    </button>}
+                    {canEdit && <button
                       type="button"
                       data-customize-template-delete={template.id}
                       aria-label={`${template.name}を削除`}
@@ -94,7 +96,7 @@ export default function CustomizeTemplatesPanel({
                       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                         <path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.6 8h5.8l.6-8M6.5 7v3M9.5 7v3" />
                       </svg>
-                    </button>
+                    </button>}
                   </div>
                 )}
               </div>

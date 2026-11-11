@@ -6,7 +6,7 @@ import { LIST_GROUP_OPTIONS, LIST_SORT_OPTIONS } from "@/lib/list-view";
 
 const SORTS = new Set<string>(["position", ...LIST_SORT_OPTIONS]);
 const GROUPS = new Set<string>(["section", ...LIST_GROUP_OPTIONS]);
-const FILTER_TEXT_KEYS = ["assignee", "status", "due", "start", "creator", "created", "updated", "completed_on", "group2", "groupdir"] as const;
+const FILTER_TEXT_KEYS = ["assignee", "status", "due", "start", "creator", "created", "updated", "completed_on", "group2", "groupdir", "sortdir"] as const;
 
 export const GET = withProject("view", async (_req, { projectId }) => {
   const r = await db.query(

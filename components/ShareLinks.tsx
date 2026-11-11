@@ -12,12 +12,14 @@ export default function ShareLinks({ projectId }: { projectId: number }) {
   const [tokens, setTokens] = useState<
     { id: number; label: string; created_at: string; expires_at: string | null }[]
   >([]);
+  const [canManage, setCanManage] = useState(false);
   const [label, setLabel] = useState("");
   const [expiry, setExpiry] = useState("");
 
   const load = async () => {
     const res = await fetch(`/api/projects/${projectId}/share`);
-    if (res.ok) setTokens(await res.json());
+    setCanManage(res.ok);
+    setTokens(res.ok ? await res.json() : []);
   };
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -47,7 +49,8 @@ export default function ShareLinks({ projectId }: { projectId: number }) {
   return (
     <div className="mt-6">
       <h2 className="font-semibold">共有リンク（読み取り専用）</h2>
-      {tokens.length === 0 && (
+      {!canManage && <p className="mt-1 text-sm text-neutral-500">共有リンクの管理には共有権限が必要です。</p>}
+      {canManage && tokens.length === 0 && (
         <p className="mt-1 text-sm text-neutral-500">発行済みリンクはありません。</p>
       )}
       {tokens.map((t) => (
@@ -61,7 +64,7 @@ export default function ShareLinks({ projectId }: { projectId: number }) {
           </button>
         </div>
       ))}
-      <div className="mt-2 flex gap-2">
+      {canManage && <div className="mt-2 flex gap-2">
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
@@ -76,7 +79,7 @@ export default function ShareLinks({ projectId }: { projectId: number }) {
         <button onClick={create} className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700">
           発行＋コピー
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

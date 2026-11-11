@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { withProject } from "@/lib/api/route";
 import { audit } from "@/lib/audit";
 
-export const DELETE = withProject("edit", async (_req, { uid, projectId, params }) => {
+export const DELETE = withProject("configure", async (_req, { uid, projectId, params }) => {
   const id = Number(params.endpointId);
   if (!Number.isInteger(id) || id <= 0) {
     return NextResponse.json({ error: "invalid endpoint id" }, { status: 400 });

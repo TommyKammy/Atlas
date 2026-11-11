@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -31,6 +33,7 @@ export default function Shortcuts({ projectId }: { projectId: number }) {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const onKey = (e: KeyboardEvent) => {
+      if (isImeComposing(e)) return;
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName ?? "";
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.metaKey || e.ctrlKey || e.altKey) {

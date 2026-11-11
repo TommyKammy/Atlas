@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withProject } from "@/lib/api/route";
 import { audit } from "@/lib/audit";
-import { canEditProject } from "@/lib/project-roles";
+import { getProjectPolicyAccess } from "@/lib/project-policy-access";
 
 type EndpointRow = {
   id: number;
@@ -15,8 +15,8 @@ type EndpointRow = {
   created_at: string;
 };
 
-export const GET = withProject("view", async (_req, { projectId, role }) => {
-  const includeToken = canEditProject(role);
+export const GET = withProject("view", async (_req, { projectId, uid }) => {
+  const includeToken = (await getProjectPolicyAccess(uid, projectId)).canConfigure;
   const r = await db.query(
     `SELECT id, project_id, name, CASE WHEN $2::boolean THEN token END AS token, enabled,
        (btrim(secret) <> '') AS has_secret, created_at::text AS created_at
@@ -31,7 +31,7 @@ export const GET = withProject("view", async (_req, { projectId, role }) => {
   return NextResponse.json({ endpoints });
 });
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const payload = (body ?? {}) as { name?: unknown; secret?: unknown };
   const name = typeof payload.name === "string" ? payload.name.trim() : "";
   if (name === "") return NextResponse.json({ error: "name is required" }, { status: 400 });

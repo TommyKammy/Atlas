@@ -8,7 +8,7 @@ import {
   type ProjectActionKey,
   type ProjectMenuItem,
 } from "@/lib/project-actions";
-import type { ProjectRole } from "@/lib/project-roles";
+import { PROJECT_ROLES, type ProjectRole } from "@/lib/project-roles";
 import ProjectMenuIcon from "./ProjectMenuIcon";
 
 const MENU_WIDTH = 264;
@@ -17,11 +17,13 @@ const SUBMENU_WIDTH = 300;
 export default function ProjectActionsMenu({
   pos,
   role,
+  projectSettings,
   onClose,
   onSelect,
 }: {
   pos: { x: number; y: number };
   role: ProjectRole;
+  projectSettings?: unknown;
   onClose: () => void;
   onSelect: (action: ProjectActionKey) => void;
 }) {
@@ -35,9 +37,9 @@ export default function ProjectActionsMenu({
     () =>
       PROJECT_MENU_GROUPS.map((group) => ({
         ...group,
-        items: group.items.filter((item) => canUseProjectAction(role, item)),
+        items: group.items.filter((item) => canUseProjectAction(role, item, projectSettings)),
       })).filter((group) => group.items.length > 0),
-    [role],
+    [role, projectSettings],
   );
 
   useEffect(() => {
@@ -244,7 +246,7 @@ export default function ProjectActionsMenu({
           }}
         >
           {submenu.submenu
-            ?.filter((sub) => !sub.roles || sub.roles.includes(role))
+            ?.filter((sub) => canUseProjectAction(role, { key: sub.key, roles: sub.roles ?? PROJECT_ROLES }, projectSettings))
             .map((sub, index) => (
             <button
               key={`${sub.key}-${index}`}

@@ -5,7 +5,7 @@ import { isAutomationAction, isAutomationTrigger } from "@/lib/automations";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 
-export const PATCH = withProject("edit", async (_req, { uid, projectId, params, body }) => {
+export const PATCH = withProject("configure", async (_req, { uid, projectId, params, body }) => {
   const automationId = params.automationId;
   const owned = await db.query(
     "SELECT id FROM project_automations WHERE id = $1::bigint AND project_id = $2::bigint",
@@ -56,7 +56,7 @@ export const PATCH = withProject("edit", async (_req, { uid, projectId, params, 
   return NextResponse.json({ id: Number(automationId) });
 }, { body: true });
 
-export const DELETE = withProject("edit", async (_req, { uid, projectId, params }) => {
+export const DELETE = withProject("configure", async (_req, { uid, projectId, params }) => {
   const automationId = params.automationId;
   const owned = await db.query(
     "SELECT id FROM project_automations WHERE id = $1::bigint AND project_id = $2::bigint",

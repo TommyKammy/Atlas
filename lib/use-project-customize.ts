@@ -10,6 +10,7 @@ import type { CustomField } from "./custom-fields";
 import { APP_CATALOG, type ProjectApp } from "./integrations";
 import type { Bundle, BundleField } from "./bundles";
 import type { ProjectRule } from "./automation/types";
+import { canConfigureProject } from "./project-policy";
 import { canEditProject, canManageProject, type ProjectRole } from "./project-roles";
 import type { FieldDraft } from "../components/customize/CustomizeFieldModal";
 import type { TemplateDraft } from "../components/customize/CustomizeTemplateModal";
@@ -64,6 +65,7 @@ export function useProjectCustomize({
   initialBundles,
   initialRules,
   role,
+  projectSettings,
 }: {
   projectId: number;
   initialColor: string | null;
@@ -78,6 +80,7 @@ export function useProjectCustomize({
   initialBundles: Bundle[];
   initialRules: ProjectRule[];
   role: ProjectRole;
+  projectSettings?: unknown;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -112,6 +115,7 @@ export function useProjectCustomize({
   const toastTimer = useRef<number | null>(null);
 
   const canEdit = canEditProject(role);
+  const canConfigure = canConfigureProject(role, projectSettings);
   const canAdmin = canManageProject(role);
   const statusValues = statusDrafts.map((draft) => draft.value.trim()).filter(Boolean);
 
@@ -202,7 +206,7 @@ export function useProjectCustomize({
   );
 
   const saveAppearance = async (patch: { color?: string | null; icon?: string | null }) => {
-    if (!canAdmin || busy) return;
+    if (!canConfigure || busy) return;
     setBusy(true);
     try {
       await api(`/api/projects/${projectId}`, "PATCH", patch);
@@ -218,7 +222,7 @@ export function useProjectCustomize({
   };
 
   const saveStatusOptions = async () => {
-    if (!canAdmin || busy) return;
+    if (!canConfigure || busy) return;
     const name = statusFieldName.trim() || "Status";
     const options = statusValues;
     if (options.length === 0) {
@@ -266,7 +270,7 @@ export function useProjectCustomize({
   };
 
   const deleteStatusField = async () => {
-    if (!canAdmin) return;
+    if (!canConfigure) return;
     if (!await confirmAction(`「${statusFieldName}」フィールドを削除しますか？タスクの値は保持されます。`)) return;
     try {
       await api(`/api/projects/${projectId}`, "PATCH", { status_field_enabled: false });
@@ -280,7 +284,7 @@ export function useProjectCustomize({
   };
 
   const restoreStatusField = async () => {
-    if (!canAdmin) return;
+    if (!canConfigure) return;
     try {
       await api(`/api/projects/${projectId}`, "PATCH", { status_field_enabled: true });
       setStatusFieldEnabled(true);
@@ -293,7 +297,7 @@ export function useProjectCustomize({
 
   const saveField = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!fieldDraft || !canEdit) return;
+    if (!fieldDraft || !canConfigure) return;
     const name = fieldDraft.name.trim();
     if (!name) {
       notify("フィールド名を入力してください");
@@ -328,7 +332,7 @@ export function useProjectCustomize({
   };
 
   const removeField = async (field: CustomField) => {
-    if (!canEdit) return;
+    if (!canConfigure) return;
     if (!await confirmAction(`フィールド「${field.name}」を削除しますか？（削除済みフィールドから復元できます）`)) return;
     try {
       await api(`/api/custom-fields/${field.id}`, "DELETE");
@@ -341,7 +345,7 @@ export function useProjectCustomize({
   };
 
   const addLibraryField = async (preset: (typeof FIELD_LIBRARY)[number]) => {
-    if (!canEdit || busy) return;
+    if (!canConfigure || busy) return;
     if (fields.some((field) => field.name === preset.name)) {
       notify("このフィールドはすでに追加されています");
       return;
@@ -366,7 +370,7 @@ export function useProjectCustomize({
 
   const saveTemplate = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!templateDraft || !canEdit) return;
+    if (!templateDraft || !canConfigure) return;
     if (!templateDraft.name.trim() || !templateDraft.title.trim()) {
       notify("テンプレート名とタスク名を入力してください");
       return;
@@ -413,7 +417,7 @@ export function useProjectCustomize({
   };
 
   const removeTemplate = async (template: TaskTemplate) => {
-    if (!canEdit) return;
+    if (!canConfigure) return;
     if (!await confirmAction(`テンプレート「${template.name}」を削除しますか？`)) return;
     try {
       await api(`/api/task-templates/${template.id}`, "DELETE");
@@ -425,7 +429,7 @@ export function useProjectCustomize({
   };
 
   const applyBundle = async (bundle: Bundle) => {
-    if (!canEdit) return;
+    if (!canConfigure) return;
     setBusy(true);
     try {
       const result = await api<{ created_fields: number }>(`/api/bundles/${bundle.id}/apply`, "POST", { project_id: projectId });
@@ -488,7 +492,7 @@ export function useProjectCustomize({
 
   const installApp = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!appDraft || !canEdit) return;
+    if (!appDraft || !canConfigure) return;
     const definition = APP_CATALOG.find((app) => app.key === appDraft.app_key);
     if (!definition) return;
     const missing = definition.fields.find(
@@ -512,7 +516,7 @@ export function useProjectCustomize({
   };
 
   const toggleApp = async (app: ProjectApp) => {
-    if (!canEdit) return;
+    if (!canConfigure) return;
     try {
       await api(`/api/projects/${projectId}/apps/${app.id}`, "PATCH", { enabled: !app.enabled });
       router.refresh();
@@ -522,7 +526,7 @@ export function useProjectCustomize({
   };
 
   const removeApp = async (app: ProjectApp) => {
-    if (!canEdit || !await confirmAction("このアプリ連携を削除しますか？")) return;
+    if (!canConfigure || !await confirmAction("このアプリ連携を削除しますか？")) return;
     try {
       await api(`/api/projects/${projectId}/apps/${app.id}`, "DELETE");
       router.refresh();
@@ -533,7 +537,7 @@ export function useProjectCustomize({
   };
 
   const updateEmail = async (patch: { enabled?: boolean; regenerate?: boolean }) => {
-    if (!canEdit) return;
+    if (!canConfigure) return;
     setBusy(true);
     try {
       const next = await api<{ address?: string | null; enabled?: boolean }>(`/api/projects/${projectId}/email`, "PATCH", patch);
@@ -599,6 +603,7 @@ export function useProjectCustomize({
     toast,
     scrollRef,
     canEdit,
+    canConfigure,
     canAdmin,
     statusValues,
     notify,

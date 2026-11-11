@@ -1,6 +1,7 @@
 import { db, type Queryable } from "./db";
 import { getRequestSession } from "./api/session";
 import { getProjectAccess } from "./data";
+import { getProjectPolicyAccess } from "./project-policy-access";
 import {
   canCommentOnProject,
   canEditProject,
@@ -9,7 +10,7 @@ import {
   type ProjectRole,
 } from "./project-roles";
 
-export type ProjectPermission = "view" | "comment" | "edit" | "admin";
+export type ProjectPermission = "view" | "comment" | "edit" | "admin" | "configure" | "share";
 
 export type ProjectAuth =
   | { ok: true; uid: number; role: ProjectRole; workspaceAdmin: boolean }
@@ -23,16 +24,21 @@ export async function requireProjectPermission(
 ): Promise<ProjectAuth> {
   const session = await getRequestSession(req);
   if (!session) return { ok: false, status: 403, error: "unauthenticated" };
-  const access = await getProjectAccess(session.id, projectId);
+  const access = level === "configure" || level === "share"
+    ? await getProjectPolicyAccess(session.id, projectId)
+    : await getProjectAccess(session.id, projectId);
   if (!access.role) return { ok: false, status: 403, error: "project access denied" };
-  const allowed =
-    level === "view"
-      ? canViewProject(access.role)
-      : level === "comment"
-        ? canCommentOnProject(access.role)
-        : level === "edit"
-          ? canEditProject(access.role)
-          : canManageProject(access.role);
+  const allowed = level === "configure"
+    ? "canConfigure" in access && access.canConfigure
+    : level === "share"
+      ? "canShare" in access && access.canShare
+      : level === "view"
+        ? canViewProject(access.role)
+        : level === "comment"
+          ? canCommentOnProject(access.role)
+          : level === "edit"
+            ? canEditProject(access.role)
+            : canManageProject(access.role);
   if (!allowed) return { ok: false, status: 403, error: "insufficient project role" };
   return { ok: true, uid: session.id, role: access.role, workspaceAdmin: access.workspaceAdmin };
 }

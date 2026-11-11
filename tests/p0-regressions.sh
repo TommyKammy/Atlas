@@ -79,7 +79,7 @@ redis_id=$(docker run -d --name "$prefix-redis" --network "$network_id" --networ
 app_id=$(docker run -d --name "$prefix-app" --network "$network_id" \
   --mount "source=$uploads_volume,target=/app/uploads" \
   -e DATABASE_URL=postgres://atlas:atlas@db:5432/atlas_p0 \
-  -e REDIS_URL=redis://redis:6379 -e AUTOMATION_WORKER_DISABLED=1 \
+  -e REDIS_URL=redis://redis:6379 -e AUTOMATION_WORKER_DISABLED=1 -e NOTIFICATION_WORKER_DISABLED=1 \
   -e AUTOMATION_WORKER_TOKEN=atlas-regression-worker "$image")
 docker exec "$app_id" mkdir -p /app/tests
 docker cp tests/regression-fixtures.mjs "$app_id:/app/tests/"
@@ -134,12 +134,18 @@ if [[ "$suite" == approval || "$suite" == all || "$suite" == integrity ]]; then
   docker cp tests/task-approval-regressions.mjs "$app_id:/app/tests/"
   docker exec "$app_id" node --import tsx --test /app/tests/task-approval-regressions.mjs || status=1
 fi
+if [[ "$suite" == p1 || "$suite" == all || "$suite" == integrity ]]; then
+  for file in ev01 ev03 ev04-ev05; do
+    docker cp "tests/$file-regressions.mjs" "$app_id:/app/tests/"
+    docker exec "$app_id" node --import tsx --test "/app/tests/$file-regressions.mjs" || status=1
+  done
+fi
 if [[ "$suite" == p2 || "$suite" == all ]]; then
   replica_id=$(docker run -d --name "$prefix-attachment-replica" --network "$network_id" \
     --network-alias attachment-replica --mount "source=$uploads_volume,target=/app/uploads" \
     -e DATABASE_URL=postgres://atlas:atlas@db:5432/atlas_p0 \
-    -e REDIS_URL=redis://redis:6379 -e AUTOMATION_WORKER_DISABLED=1 "$image")
-  for file in p2-migration p2-data p2-automation p2-attachments p2-timeline-pins; do
+    -e REDIS_URL=redis://redis:6379 -e AUTOMATION_WORKER_DISABLED=1 -e NOTIFICATION_WORKER_DISABLED=1 "$image")
+  for file in p2-migration p2-data p2-automation p2-attachments p2-timeline-pins ev09 ev10; do
     docker cp "tests/$file-regressions.mjs" "$app_id:/app/tests/"
     docker exec -e ATLAS_ATTACHMENT_REPLICA=http://attachment-replica:3000 \
       "$app_id" node --import tsx --test "/app/tests/$file-regressions.mjs" || status=1

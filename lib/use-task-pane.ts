@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { confirmAction, toast as toastMessage } from "./ui-feedback";
 import { ApiError, api } from "./api-client";
 import { patchTask, TaskConflictError } from "./task-client";
@@ -11,6 +11,9 @@ import type { RichTextDoc } from "./rich-text-types";
 import { todayISO } from "./dates";
 import { canEditCustomField, type CustomField } from "./custom-fields";
 import { useApiRefresh } from "./use-api-refresh";
+import { taskPaneCloseHref } from "./task-pane-navigation";
+import type { TaskInputRecovery } from "./task-input-draft";
+import { taskSaveErrorMessage, updateTaskSaveState, type TaskSaveState } from "./task-save-state";
 
 export const QUICK_REACTIONS = ["👍", "🎉", "❤️", "😄", "😮"];
 
@@ -40,8 +43,9 @@ export function useTaskPane({
   statusFieldName: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const refresh = useApiRefresh();
-  const closeHref = `/projects/${projectId}?view=${view}`;
+  const closeHref = taskPaneCloseHref(projectId, view, searchParams.toString());
   const todayStr = todayISO();
   const isOverdue = !task.completed && task.due_on !== null && task.due_on < todayStr;
 
@@ -53,6 +57,15 @@ export function useTaskPane({
     attempted: Record<string, unknown>;
     stamp: string;
   } | null>(null);
+  const [inputRecovery, setInputRecovery] = useState<TaskInputRecovery | null>(null);
+  const [saveStates, setSaveStates] = useState<Record<string, TaskSaveState>>({});
+  const [reloadRevision, setReloadRevision] = useState(0);
+  const [reloading, startReload] = useTransition();
+  const requestId = useRef(0);
+  const saveGeneration = useRef(0);
+  const latestRequest = useRef<Record<string, number>>({});
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const [uploading, setUploading] = useState(false);
   const [referenceOpen, setReferenceOpen] = useState<number | null>(null);
   const [maximized, setMaximized] = useState(false);
@@ -70,7 +83,7 @@ export function useTaskPane({
   useEffect(() => () => memberSectionsRequest.current?.abort(), [task.id]);
 
   const canEditField = (field: CustomField) =>
-    canEditCustomField(field, { viewerId, canEdit, canAdmin });
+    !reloading && canEditCustomField(field, { viewerId, canEdit, canAdmin });
 
   const userName = (id: number | null) =>
     id === null ? "–" : (users.find((user) => user.id === id)?.name ?? `ID:${id}`);
@@ -108,11 +121,27 @@ export function useTaskPane({
     setReactionMap((map) => ({ ...map, [commentId]: data.reactions }));
   };
 
-  const patch = async (fields: Record<string, unknown>) => {
+  const savePatch = async (fields: Record<string, unknown>, expectedUpdatedAt = task.updated_at): Promise<boolean> => {
+    const key = Object.keys(fields).sort().join(",");
+    const id = ++requestId.current;
+    const generation = saveGeneration.current;
+    latestRequest.current[key] = id;
+    const current = () => alive.current && generation === saveGeneration.current && latestRequest.current[key] === id;
+    const label = Object.keys(fields).map((field) => FIELD_LABELS[field] ?? "タスク").join("・");
+    const saveState = (state: Partial<TaskSaveState>) => {
+      if (current()) setSaveStates((previous) => updateTaskSaveState(previous, { id, key, label, phase: "saving", ...state }));
+    };
+    if (!canEdit) {
+      saveState({ phase: "failed", message: taskSaveErrorMessage(403) });
+      return false;
+    }
+    saveState({ phase: "saving" });
     try {
-      await patchTask(task.id, fields, task.updated_at);
+      await patchTask(task.id, fields, expectedUpdatedAt);
     } catch (error) {
+      if (!current()) return false;
       if (error instanceof TaskConflictError) {
+        saveState({ phase: "conflict" });
         if (error.current && error.updatedAt) {
           const keys = Object.keys(fields).filter((key) => key in FIELD_LABELS);
           setConflict({
@@ -121,40 +150,104 @@ export function useTaskPane({
             stamp: error.updatedAt,
           });
           if (keys.length === 0) refresh();
-          return;
+          return false;
         }
         toastMessage("他のユーザーが先に更新しました。最新を表示します。");
         refresh();
-        return;
+        return false;
       }
-      if (error instanceof ApiError) throw new Error(`PATCH /api/tasks/${task.id}: ${error.status}`);
-      throw error;
+      const status = error instanceof ApiError ? error.status : null;
+      saveState({ phase: "failed", message: taskSaveErrorMessage(status),
+        ...(status !== 401 && status !== 403 && status !== 404 ? { retry: async () => { await savePatch(fields, expectedUpdatedAt); } } : {}),
+      });
+      return false;
     }
+    if (!current()) return false;
+    saveState({ phase: "saved" });
+    refresh();
+    return true;
+  };
+
+  const patch = async (fields: Record<string, unknown>, expectedUpdatedAt = task.updated_at) => {
+    await savePatch(fields, expectedUpdatedAt);
+  };
+
+  const patchChecked = async (fields: Record<string, unknown>) => {
+    if (!await savePatch(fields)) throw new Error("保存が完了していません。入力内容を確認してください。");
+  };
+
+  const reloadTask = () => {
+    saveGeneration.current++;
+    latestRequest.current = {};
+    setSubtaskDraft("");
+    setAddingSubtask(false);
+    setDepDraft("");
+    setAssigneeEditing(false);
+    closeAddProject();
+    setReloadRevision((revision) => revision + 1);
+    setInputRecovery((previous) => ({ taskId: task.id, revision: (previous?.revision ?? 0) + 1,
+      updatedAt: task.updated_at, values: { name: task.name, progress: task.progress } }));
+    setSaveStates({});
+    setConflict(null);
+    startReload(() => router.refresh());
+  };
+
+  const discardConflict = () => {
+    if (!conflict) return;
+    latestRequest.current[Object.keys(conflict.attempted).sort().join(",")] = ++requestId.current;
+    // The conflict snapshot is usable before the refreshed RSC response arrives.
+    // Reset both the visible draft and its lock stamp, not just the warning.
+    setInputRecovery((previous) => ({
+      taskId: task.id,
+      revision: (previous?.revision ?? 0) + 1,
+      values: conflict.current,
+      updatedAt: conflict.stamp,
+    }));
+    setConflict(null);
+    setSaveStates((previous) => Object.fromEntries(Object.entries(previous).filter(([, state]) => state.phase !== "conflict")));
     refresh();
   };
 
   const retryOverwrite = async () => {
     if (!conflict) return;
-    try {
-      await patchTask(task.id, conflict.attempted, conflict.stamp);
-    } catch (error) {
-      if (error instanceof TaskConflictError) {
-        toastMessage("再度競合しました。最新を表示します。");
-      } else {
-        toastMessage(`保存に失敗しました: ${error instanceof ApiError ? error.status : ""}`);
-      }
-    } finally {
-      setConflict(null);
-      refresh();
-    }
+    if (await savePatch(conflict.attempted, conflict.stamp)) setConflict((current) => current === conflict ? null : current);
   };
 
   const toggle = () => patch({ completed: !task.completed });
 
+  // Creates/uploads/deletes are not automatically retried: a lost response can
+  // mean the mutation committed. Show the failure and let the user reload first.
+  const mutate = async (key: string, label: string, action: () => Promise<unknown>) => {
+    const id = ++requestId.current;
+    const generation = saveGeneration.current;
+    latestRequest.current[key] = id;
+    const current = () => alive.current && generation === saveGeneration.current && latestRequest.current[key] === id;
+    const mark = (state: Partial<TaskSaveState>) => {
+      if (current()) setSaveStates((previous) => updateTaskSaveState(previous, { id, key, label, phase: "saving", ...state }));
+    };
+    if (!canEdit) {
+      mark({ phase: "failed", message: taskSaveErrorMessage(403) });
+      return false;
+    }
+    mark({ phase: "saving" });
+    try {
+      await action();
+      if (!current()) return false;
+      mark({ phase: "saved" });
+      refresh();
+      return true;
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : null;
+      mark({ phase: "failed", message: status === 401 || status === 403 || status === 404
+        ? taskSaveErrorMessage(status)
+        : "操作の結果を確認できませんでした。最新の状態を読み込み、反映されているか確認してください。" });
+      return false;
+    }
+  };
+
   const remove = async () => {
     if (!(await confirmAction(`「${task.name}」を削除しますか？`))) return;
-    await deleteTask(task.id);
-    router.push(closeHref);
+    if (await mutate("delete", "タスクの削除", () => deleteTask(task.id))) router.push(closeHref);
   };
 
   const copyTaskLink = async () => {
@@ -200,21 +293,23 @@ export function useTaskPane({
 
   const addSubtask = async () => {
     if (!subtaskDraft.trim()) return;
-    await api("/api/tasks", "POST", {
+    const saved = await mutate("subtask:create", "サブタスク", () => api("/api/tasks", "POST", {
       project_id: task.project_id ?? projectId,
       section_id: task.section_id,
       parent_task_id: task.id,
       name: subtaskDraft,
-    });
-    setSubtaskDraft("");
-    refresh();
+    }));
+    if (saved && alive.current) setSubtaskDraft("");
   };
 
   const addDependency = async () => {
     if (!depDraft) return;
-    await api("/api/dependencies", "POST", { task_id: task.id, depends_on_id: Number(depDraft) });
-    setDepDraft("");
-    refresh();
+    const saved = await mutate("dependency:create", "依存関係", () => api("/api/dependencies", "POST", { task_id: task.id, depends_on_id: Number(depDraft) }));
+    if (saved && alive.current) setDepDraft("");
+  };
+
+  const removeDependency = async (dependencyId: number) => {
+    await mutate(`dependency:${dependencyId}`, "依存関係の削除", () => api(`/api/dependencies?task_id=${task.id}&depends_on_id=${dependencyId}`, "DELETE"));
   };
 
   const openAddProject = async () => {
@@ -255,26 +350,23 @@ export function useTaskPane({
 
   const addMembership = async () => {
     if (!newMemberProject) return;
-    await api("/api/memberships", "POST", {
+    const saved = await mutate("membership:create", "所属プロジェクト", () => api("/api/memberships", "POST", {
       task_id: task.id,
       project_id: Number(newMemberProject),
       section_id: newMemberSection === "" ? null : Number(newMemberSection),
-    });
-    closeAddProject();
-    refresh();
+    }));
+    if (saved && alive.current) closeAddProject();
   };
 
   const removeMembership = async (projectIdValue: number) => {
-    await fetch(`/api/memberships?task_id=${task.id}&project_id=${projectIdValue}`, { method: "DELETE" });
-    refresh();
+    await mutate(`membership:${projectIdValue}`, "所属プロジェクトの削除", () => api(`/api/memberships?task_id=${task.id}&project_id=${projectIdValue}`, "DELETE"));
   };
 
   const setCustomValue = async (
     fieldId: number,
     value: string | number | string[] | number[] | null,
   ) => {
-    await api("/api/task-values", "POST", { task_id: task.id, field_id: fieldId, value });
-    refresh();
+    await mutate(`custom:${fieldId}`, "カスタムフィールド", () => api("/api/task-values", "POST", { task_id: task.id, field_id: fieldId, value }));
   };
 
   const uploadFile = async (file: File) => {
@@ -283,29 +375,27 @@ export function useTaskPane({
       const form = new FormData();
       form.set("task_id", String(task.id));
       form.set("file", file);
-      const res = await fetch("/api/attachments", { method: "POST", body: form });
-      if (!res.ok) throw new Error(`upload: ${res.status}`);
-      refresh();
+      await mutate("attachment:create", "添付ファイル", async () => {
+        const res = await fetch("/api/attachments", { method: "POST", body: form });
+        if (!res.ok) throw new ApiError(res.status, `upload: ${res.status}`);
+      });
     } finally {
-      setUploading(false);
+      if (alive.current) setUploading(false);
     }
   };
 
   const removeAttachment = async (attachmentId: number) => {
     if (!(await confirmAction("添付を削除しますか？"))) return;
-    await fetch(`/api/attachments/${attachmentId}`, { method: "DELETE" });
-    refresh();
+    await mutate(`attachment:${attachmentId}`, "添付ファイルの削除", () => api(`/api/attachments/${attachmentId}`, "DELETE"));
   };
 
   const toggleSubtaskCompletion = async (subtask: TaskRow) => {
-    await api(`/api/tasks/${subtask.id}`, "PATCH", { completed: !subtask.completed });
-    refresh();
+    await mutate(`subtask:${subtask.id}`, "サブタスクの完了状態", () => api(`/api/tasks/${subtask.id}`, "PATCH", { completed: !subtask.completed }));
   };
 
   const deleteSubtask = async (subtask: TaskRow) => {
     if (!(await confirmAction(`サブタスク「${subtask.name}」を削除しますか？`))) return;
-    await api(`/api/tasks/${subtask.id}`, "DELETE");
-    refresh();
+    await mutate(`subtask:${subtask.id}`, "サブタスクの削除", () => api(`/api/tasks/${subtask.id}`, "DELETE"));
   };
 
   return {
@@ -325,7 +415,8 @@ export function useTaskPane({
     depDraft,
     setDepDraft,
     conflict,
-    setConflict,
+    discardConflict,
+    inputRecovery,
     uploading,
     referenceOpen,
     setReferenceOpen,
@@ -347,6 +438,11 @@ export function useTaskPane({
     setNewMemberSection,
     toggleReaction,
     patch,
+    patchChecked,
+    saveStates,
+    reloading,
+    reloadRevision,
+    reloadTask,
     retryOverwrite,
     toggle,
     remove,
@@ -358,6 +454,7 @@ export function useTaskPane({
     deleteComment,
     addSubtask,
     addDependency,
+    removeDependency,
     openAddProject,
     onPickMemberProject,
     addMembership,

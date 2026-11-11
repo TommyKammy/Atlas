@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { ApiError, api } from "@/lib/api-client";
@@ -801,6 +803,7 @@ export default function TimelineView({
                         placeholder="タスク名を入力"
                         aria-label="新しいタスク名"
                         onKeyDown={(e) => {
+                          if (isImeComposing(e)) return;
                           e.stopPropagation();
                           if (e.key === "Enter") {
                             e.preventDefault();

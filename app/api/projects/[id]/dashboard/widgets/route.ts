@@ -10,7 +10,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
 });
 
 export const POST = withProject(
-  "edit",
+  "configure",
   async (_req, { uid, projectId, body }) => {
     const parsed = parseWidgetPayload(body);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
@@ -53,7 +53,7 @@ export const POST = withProject(
 );
 
 export const PATCH = withProject(
-  "edit",
+  "configure",
   async (_req, { projectId, body }) => {
     const raw = body as { order?: unknown } | null;
     if (!raw || !Array.isArray(raw.order)) {

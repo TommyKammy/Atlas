@@ -10,7 +10,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
   return NextResponse.json(await getProjectForms(projectId));
 });
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const { name, description, fields } = (body ?? {}) as { name?: string; description?: string; fields?: unknown };
   const normalized = normalizeFormFields(fields);
   if (!name || String(name).trim() === "" || !normalized) {

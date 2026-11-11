@@ -21,6 +21,7 @@ export default function TaskPaneHeader({
   onCopyLink,
   onToggleFullscreen,
   onOpenApproval,
+  canEdit,
 }: {
   task: TaskRow;
   collaborators: { id: number; name: string; avatar_url?: string | null }[];
@@ -33,6 +34,7 @@ export default function TaskPaneHeader({
   onCopyLink: () => void;
   onToggleFullscreen: () => void;
   onOpenApproval: () => void;
+  canEdit: boolean;
 }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(task.like_count ?? 0);
@@ -73,6 +75,8 @@ export default function TaskPaneHeader({
       <button
         type="button"
         onClick={task.approval ? onOpenApproval : onToggle}
+        disabled={!task.approval && !canEdit}
+        title={!task.approval && !canEdit ? "変更には編集権限が必要です" : undefined}
         aria-label={task.approval ? "承認の操作を開く" : undefined}
         className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium ${
           task.completed
@@ -211,6 +215,7 @@ export default function TaskPaneHeader({
           <div className="my-1 border-t border-neutral-100" />
           <button
             type="button"
+            disabled={!canEdit}
             onClick={(event) => {
               closeMenu(event);
               onRemove();

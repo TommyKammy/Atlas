@@ -4,7 +4,7 @@ import { withResourceProject } from "@/lib/api/route";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 
-export const PATCH = withResourceProject("edit", "project_tabs", async (_req, { uid, projectId, params, body }) => {
+export const PATCH = withResourceProject("configure", "project_tabs", async (_req, { uid, projectId, params, body }) => {
   const id = params.id;
   const owner = await db.query("SELECT id FROM project_tabs WHERE id = $1::bigint", [id]);
   if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -47,7 +47,7 @@ export const PATCH = withResourceProject("edit", "project_tabs", async (_req, { 
   return NextResponse.json({ id: Number(id), name: name ?? null, icon: icon ?? null });
 }, { body: true });
 
-export const DELETE = withResourceProject("edit", "project_tabs", async (_req, { uid, projectId, params }) => {
+export const DELETE = withResourceProject("configure", "project_tabs", async (_req, { uid, projectId, params }) => {
   const id = params.id;
   const owner = await db.query("SELECT id FROM project_tabs WHERE id = $1::bigint", [id]);
   if (owner.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });

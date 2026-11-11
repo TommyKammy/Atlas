@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import type { Section, TaskRow } from "@/lib/data";
 import type { ListGroupBy } from "@/lib/list-view";
@@ -198,6 +200,7 @@ export default function ListGroups({ groups, render, composer, dnd }: ListGroups
                               }))
                             }
                             onKeyDown={(event) => {
+                              if (isImeComposing(event)) return;
                               if (event.key === "Enter" && !event.nativeEvent.isComposing) {
                                 event.preventDefault();
                                 void commitSectionTask(section.id);

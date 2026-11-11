@@ -19,6 +19,7 @@ type Member = {
   title: string | null;
   avatar_url: string | null;
   is_guest: boolean;
+  is_admin?: boolean;
   deactivated_at: string | null;
   role: ProjectRole;
 };
@@ -30,6 +31,7 @@ type DirectoryUser = {
   title: string | null;
   avatar_url: string | null;
   is_guest: boolean;
+  is_admin?: boolean;
 };
 
 
@@ -42,6 +44,7 @@ export default function ProjectMembersManager({
 }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [users, setUsers] = useState<DirectoryUser[]>([]);
+  const [canManageAdmins, setCanManageAdmins] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [addUserId, setAddUserId] = useState("");
@@ -55,9 +58,10 @@ export default function ProjectMembersManager({
   }, [autoFocusAdd, canManage]);
 
   const load = async () => {
-    const data = await api<{ members: Member[]; can_manage: boolean; current_user_id: number }>(`/api/projects/${projectId}/members`);
+    const data = await api<{ members: Member[]; can_manage: boolean; can_manage_admins: boolean; current_user_id: number }>(`/api/projects/${projectId}/members`);
     setMembers(Array.isArray(data?.members) ? data.members : []);
     setCanManage(data?.can_manage === true);
+    setCanManageAdmins(data?.can_manage_admins === true);
     setCurrentUserId(typeof data?.current_user_id === "number" ? data.current_user_id : null);
     if (data?.can_manage) {
       const directory = await api<{ users: DirectoryUser[] }>("/api/users");
@@ -115,7 +119,7 @@ export default function ProjectMembersManager({
   };
 
   const memberIds = new Set(members.map((m) => m.id));
-  const candidates = users.filter((u) => !memberIds.has(u.id));
+  const candidates = users.filter((u) => !memberIds.has(u.id) && (canManageAdmins || !u.is_admin));
 
   return (
     <section className="mt-5">
@@ -147,7 +151,7 @@ export default function ProjectMembersManager({
             className="h-8 rounded-md border border-neutral-200 bg-white px-2 text-xs"
             title={PROJECT_ROLE_DESCRIPTIONS[addRole]}
           >
-            {PROJECT_ROLES.map((r) => (
+            {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (
               <option key={r} value={r}>
                 {PROJECT_ROLE_LABELS[r]}
               </option>
@@ -189,7 +193,7 @@ export default function ProjectMembersManager({
                 {m.email ?? ""}
               </div>
             </div>
-            {canManage ? (
+            {canManage && (canManageAdmins || m.role !== "admin" && !m.is_admin && m.id !== currentUserId) ? (
               <>
                 <select
                   value={m.role}
@@ -198,7 +202,7 @@ export default function ProjectMembersManager({
                   className="h-7 rounded border border-neutral-200 bg-white px-1 text-xs"
                   title={PROJECT_ROLE_DESCRIPTIONS[m.role]}
                 >
-                  {PROJECT_ROLES.map((r) => (
+                  {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (
                     <option key={r} value={r}>
                       {PROJECT_ROLE_LABELS[r]}
                     </option>

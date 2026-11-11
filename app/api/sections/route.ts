@@ -4,7 +4,7 @@ import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { withProject } from "@/lib/api/route";
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const { name } = (body ?? {}) as { name?: string };
   if (!name || String(name).trim() === "") {
     return NextResponse.json({ error: "project_id and name are required" }, { status: 400 });

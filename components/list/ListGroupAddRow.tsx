@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import type { Section } from "@/lib/data";
 
 /** Inline composer used when adding a task to a non-section group. */
@@ -32,6 +34,7 @@ export default function ListGroupAddRow({
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={(event) => {
+          if (isImeComposing(event)) return;
           if (event.key === "Enter" && !event.nativeEvent.isComposing) {
             event.preventDefault();
             onCommit();
@@ -49,6 +52,7 @@ export default function ListGroupAddRow({
         onChange={(event) => onSectionChange(event.target.value === "" ? null : Number(event.target.value))}
         onBlur={commitOnBlur}
         onKeyDown={(event) => {
+          if (isImeComposing(event)) return;
           if (event.key === "Enter") {
             event.preventDefault();
             onCommit();

@@ -1,18 +1,25 @@
 import { todayISO } from "./dates";
 import type {
   DashboardChartType,
+  DashboardDrilldown,
+  DashboardDrilldownCategory,
+  DashboardDrilldownSeries,
   DashboardFilter,
   DashboardMeta,
-  DashboardMetric,
   DashboardTask,
   DashboardWidget,
   DashboardWidgetOptions,
 } from "./dashboard-types";
 import { isMultiSeriesChart, isTimeChart } from "./dashboard-types";
+import { addDaysISO, filterDashboardTasks, metricValue, selectDashboardDrilldownTasks } from "./dashboard-drilldown";
+
+export { addDaysISO, filterDashboardTasks, metricValue } from "./dashboard-drilldown";
 
 export type DashboardCategory = {
+  key: string;
   label: string;
   values: number[];
+  drilldowns: DashboardDrilldown[];
 };
 
 export type DashboardWidgetData = {
@@ -23,14 +30,8 @@ export type DashboardWidgetData = {
   matched: number;
   benchmark?: number | null;
   dataLabels: boolean;
+  drilldown?: DashboardDrilldown;
 };
-
-export function addDaysISO(date: string, days: number): string {
-  const [y, m, d] = date.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1));
-  dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString().slice(0, 10);
-}
 
 export function monthLabel(day: string): string {
   const [y, m] = day.split("-");
@@ -40,51 +41,6 @@ export function monthLabel(day: string): string {
 function dayLabel(day: string): string {
   const [, m, d] = day.split("-");
   return `${Number(m)}/${Number(d)}`;
-}
-
-export function filterDashboardTasks(
-  tasks: DashboardTask[],
-  filters: DashboardFilter,
-  today = todayISO(),
-): DashboardTask[] {
-  const completion = filters.completion ?? "all";
-  const due = filters.due ?? "";
-  const weekEnd = addDaysISO(today, 7);
-  const monthEnd = addDaysISO(today, 30);
-  return tasks.filter((task) => {
-    if (completion === "open" && task.completed) return false;
-    if (completion === "done" && !task.completed) return false;
-    if (filters.assignee === "none" && task.assignee_id !== null) return false;
-    if (typeof filters.assignee === "number" && task.assignee_id !== filters.assignee) return false;
-    if (filters.status && task.status !== filters.status) return false;
-    if (typeof filters.section === "number" && task.section_id !== filters.section) return false;
-    if (due === "overdue" && (task.completed || !task.due_on || task.due_on >= today)) return false;
-    if (due === "today" && task.due_on !== today) return false;
-    if (due === "week" && (!task.due_on || task.due_on < today || task.due_on > weekEnd)) return false;
-    if (due === "month" && (!task.due_on || task.due_on < today || task.due_on > monthEnd)) return false;
-    return true;
-  });
-}
-
-export function metricValue(tasks: DashboardTask[], metric: DashboardMetric, today = todayISO()): number {
-  switch (metric) {
-    case "count":
-      return tasks.length;
-    case "completed":
-      return tasks.filter((t) => t.completed).length;
-    case "incomplete":
-      return tasks.filter((t) => !t.completed).length;
-    case "overdue":
-      return tasks.filter((t) => !t.completed && t.due_on !== null && t.due_on < today).length;
-    case "progress_avg":
-      return tasks.length === 0
-        ? 0
-        : Math.round(tasks.reduce((sum, t) => sum + (Number(t.progress) || 0), 0) / tasks.length);
-    case "progress_sum":
-      return tasks.reduce((sum, t) => sum + (Number(t.progress) || 0), 0);
-    default:
-      return 0;
-  }
 }
 
 export function activeFilterCount(filters: DashboardFilter): number {
@@ -97,7 +53,31 @@ export function activeFilterCount(filters: DashboardFilter): number {
   return n;
 }
 
-type GroupDescriptor = { label: string; order: number };
+type GroupDescriptor = { key: string; category: DashboardDrilldownCategory; label: string; order: number };
+
+function group(category: DashboardDrilldownCategory, label: string, order: number): GroupDescriptor {
+  return { key: JSON.stringify(category), category, label, order };
+}
+
+function drilldown(
+  widget: DashboardWidget,
+  today: string,
+  category?: DashboardDrilldownCategory,
+  seriesKey: DashboardDrilldownSeries = "all",
+  label?: string,
+): DashboardDrilldown {
+  return {
+    v: 1,
+    title: (label ? `${widget.title} / ${label}` : widget.title).slice(0, 360),
+    filters: { ...widget.filters },
+    metric: widget.metric,
+    chartType: widget.chart_type,
+    groupBy: widget.group_by,
+    asOfDay: today,
+    ...(category ? { category } : {}),
+    seriesKey,
+  };
+}
 
 function groupDescriptor(
   task: DashboardTask,
@@ -106,29 +86,28 @@ function groupDescriptor(
 ): GroupDescriptor {
   if (groupBy === "section") {
     const idx = meta.sections.findIndex((s) => s.id === task.section_id);
-    if (idx >= 0) return { label: meta.sections[idx].name, order: idx };
-    return { label: "セクションなし", order: 100000 };
+    return group({ kind: "section", id: task.section_id }, idx >= 0 ? meta.sections[idx].name : "セクションなし", idx >= 0 ? idx : 100000);
   }
   if (groupBy === "assignee") {
     if (task.assignee_id !== null) {
       const idx = meta.users.findIndex((u) => u.id === task.assignee_id);
-      return { label: task.assignee_name ?? `ユーザー${task.assignee_id}`, order: idx >= 0 ? idx : 90000 };
+      return group({ kind: "assignee", id: task.assignee_id }, task.assignee_name ?? `ユーザー${task.assignee_id}`, idx >= 0 ? idx : 90000);
     }
-    return { label: "未割り当て", order: 100000 };
+    return group({ kind: "assignee", id: null }, "未割り当て", 100000);
   }
   if (groupBy === "status") {
-    if (!task.status) return { label: "未設定", order: 100000 };
+    if (!task.status) return group({ kind: "status", value: "" }, "未設定", 100000);
     const idx = meta.statusOptions.indexOf(task.status);
-    return { label: task.status, order: idx >= 0 ? idx : 50000 };
+    return group({ kind: "status", value: task.status }, task.status, idx >= 0 ? idx : 50000);
   }
   if (groupBy === "completion") {
-    return task.completed ? { label: "完了", order: 1 } : { label: "未完了", order: 0 };
+    return group({ kind: "completion", completed: task.completed }, task.completed ? "完了" : "未完了", task.completed ? 1 : 0);
   }
   if (groupBy === "due_month") {
-    if (!task.due_on) return { label: "期限なし", order: 100000 };
-    return { label: monthLabel(task.due_on), order: Number(task.due_on.slice(0, 7).replace("-", "")) };
+    if (!task.due_on) return group({ kind: "due_month", month: null }, "期限なし", 100000);
+    return group({ kind: "due_month", month: task.due_on.slice(0, 7) }, monthLabel(task.due_on), Number(task.due_on.slice(0, 7).replace("-", "")));
   }
-  return { label: monthLabel(task.created_on), order: Number(task.created_on.slice(0, 7).replace("-", "")) };
+  return group({ kind: "created_month", month: task.created_on.slice(0, 7) }, monthLabel(task.created_on), Number(task.created_on.slice(0, 7).replace("-", "")));
 }
 
 function compareCategory(
@@ -152,21 +131,16 @@ function categoricalData(
 ): DashboardWidgetData {
   const groups = new Map<
     string,
-    { label: string; order: number; all: DashboardTask[]; open: DashboardTask[]; done: DashboardTask[] }
+    GroupDescriptor & { all: DashboardTask[] }
   >();
   for (const task of tasks) {
     const desc = groupDescriptor(task, widget.group_by, meta);
-    const group = groups.get(desc.label) ?? {
-      label: desc.label,
-      order: desc.order,
+    const group = groups.get(desc.key) ?? {
+      ...desc,
       all: [],
-      open: [],
-      done: [],
     };
     group.all.push(task);
-    if (task.completed) group.done.push(task);
-    else group.open.push(task);
-    groups.set(desc.label, group);
+    groups.set(desc.key, group);
   }
 
   const multi = isMultiSeriesChart(widget.chart_type);
@@ -179,12 +153,21 @@ function categoricalData(
         { label: b.label, order: b.order, total: b.all.length },
       ),
     )
-    .map((group) => ({
-      label: group.label,
-      values: multi
-        ? [group.open.length, group.done.length]
-        : [metricValue(group.all, widget.metric, today)],
-    }));
+    .map((group) => {
+      const drilldowns = multi
+        ? [drilldown(widget, today, group.category, "open", `${group.label} / 未完了`),
+          drilldown(widget, today, group.category, "done", `${group.label} / 完了`)]
+        : [drilldown(widget, today, group.category, "all", group.label)];
+      return {
+        key: group.key,
+        label: group.label,
+        values: drilldowns.map((selection) => {
+          const selected = selectDashboardDrilldownTasks(group.all, selection);
+          return multi ? selected.length : metricValue(selected, widget.metric, today);
+        }),
+        drilldowns,
+      };
+    });
 
   return {
     kind: "chart",
@@ -193,6 +176,7 @@ function categoricalData(
     matched: tasks.length,
     benchmark: widget.options.benchmark ?? null,
     dataLabels: widget.options.data_labels !== false,
+    drilldown: drilldown(widget, today),
   };
 }
 
@@ -201,22 +185,25 @@ function timeData(widget: DashboardWidget, tasks: DashboardTask[], today: string
   const days = [7, 14, 30, 90].includes(requested) ? requested : 30;
   const start = addDaysISO(today, -(days - 1));
   const labels: string[] = [];
-  for (let i = 0; i < days; i += 1) labels.push(addDaysISO(start, i));
+  for (let i = 0; i < days; i += 1) {
+    const day = addDaysISO(start, i);
+    if (day > today || labels.at(-1) === day) break;
+    labels.push(day);
+  }
 
   const chartType: DashboardChartType = widget.chart_type;
-  const cumulativeTotal = labels.map((day) => tasks.filter((t) => t.created_on <= day).length);
-  const cumulativeDone = labels.map(
-    (day) => tasks.filter((t) => t.completed_on !== null && t.completed_on <= day).length,
-  );
   const series =
     chartType === "burndown" ? ["残り"] : ["合計", "完了"];
-  const categories = labels.map((day, index) => ({
-    label: dayLabel(day),
-    values:
-      chartType === "burndown"
-        ? [Math.max(0, cumulativeTotal[index] - cumulativeDone[index])]
-        : [cumulativeTotal[index], cumulativeDone[index]],
-  }));
+  const categories = labels.map((day) => {
+    const seriesKeys: DashboardDrilldownSeries[] = chartType === "burndown" ? ["remaining"] : ["total", "done"];
+    const drilldowns = seriesKeys.map((key, index) => drilldown(widget, today, { kind: "day", day }, key, `${day} / ${series[index]}`));
+    return {
+      key: day,
+      label: dayLabel(day),
+      values: drilldowns.map((selection) => selectDashboardDrilldownTasks(tasks, selection).length),
+      drilldowns,
+    };
+  });
 
   return {
     kind: "chart",
@@ -225,6 +212,7 @@ function timeData(widget: DashboardWidget, tasks: DashboardTask[], today: string
     matched: tasks.length,
     benchmark: widget.options.benchmark ?? null,
     dataLabels: widget.options.data_labels === true,
+    drilldown: drilldown(widget, today),
   };
 }
 
@@ -243,13 +231,15 @@ export function computeDashboardWidget(
 
   const filtered = filterDashboardTasks(tasks, widget.filters, today);
   if (widget.chart_type === "number") {
+    const selection = drilldown(widget, today);
     return {
       kind: "number",
       categories: [],
       series: [],
-      value: metricValue(filtered, widget.metric, today),
+      value: metricValue(selectDashboardDrilldownTasks(filtered, selection), widget.metric, today),
       matched: filtered.length,
       dataLabels: false,
+      drilldown: selection,
     };
   }
   if (isTimeChart(widget.chart_type)) {

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getInbox, getUsers, getWorkspace } from "@/lib/data";
+import { getInboxPage, getUsers, getWorkspace } from "@/lib/data";
+import { inboxFilter, parseInboxCursor } from "@/lib/inbox-pagination";
 import { getCurrentUserId } from "@/lib/current-user";
 import { redirect } from "next/navigation";
 import { MarkAllReadButton, MarkReadButton } from "@/components/InboxButtons";
@@ -7,21 +8,26 @@ import InboxLive from "@/components/InboxLive";
 
 export const instant = false;
 
-export default async function InboxPage() {
+export default async function InboxPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
+  const filter = inboxFilter(params.filter);
+  let cursor = null;
+  let invalidCursor = false;
+  try { cursor = parseInboxCursor(params.cursor); } catch { invalidCursor = true; }
   const uid = await getCurrentUserId();
   if (!uid) redirect("/login");
   const ws = await getWorkspace();
   const users = await getUsers();
   const me = users.find((u) => u.id === uid) ?? null;
-  const items = ws && me ? await getInbox(me.id, ws.id) : [];
-  const unread = items.filter((c) => !c.is_read && c.author_id !== me?.id);
-  const rest = items.filter((c) => !(!c.is_read && c.author_id !== me?.id));
+  const page = ws && me ? await getInboxPage(me.id, ws.id, { filter, cursor })
+    : { items: [], total: 0, unread: 0, read: 0, all: 0, nextCursor: null };
+  const { items } = page;
 
   const row = (c: (typeof items)[number], showButton: boolean) => {
     const mentioned =
       c.entry === "comment" && me != null && c.body.includes(`@${me.name}`);
     return (
-      <div key={`${c.entry}-${c.id}`} className="border-b py-3 text-sm hover:bg-neutral-50">
+      <div key={`${c.entry}-${c.id}`} data-inbox-entry={`${c.entry}-${c.id}`} className="border-b py-3 text-sm hover:bg-neutral-50">
         <div className="flex items-center gap-2 text-xs text-neutral-500">
           <span>{c.entry === "event" ? "⚡" : "💬"}</span>
           <span>{c.author_name ?? "–"}</span>
@@ -58,11 +64,19 @@ export default async function InboxPage() {
         {ws && <MarkAllReadButton workspaceId={ws.id} />}
         <InboxLive />
       </div>
-      <h2 className="mt-4 font-semibold">未読（{unread.length}）</h2>
-      {unread.length === 0 && <p className="mt-1 text-sm text-neutral-500">未読はありません。</p>}
-      <div className="max-w-4xl">{unread.map((c) => row(c, true))}</div>
-      <h2 className="mt-6 font-semibold text-neutral-500">既読・自分の投稿（{rest.length}）</h2>
-      <div className="max-w-4xl opacity-75">{rest.map((c) => row(c, false))}</div>
+      <nav aria-label="通知の表示" className="mt-4 flex flex-wrap gap-2 text-sm">
+        {[["unread", `未読（${page.unread}）`], ["read", `既読・自分の投稿（${page.read}）`], ["all", `すべて（${page.all}）`]].map(([key, label]) =>
+          <Link key={key} href={`/inbox?filter=${key}`} aria-current={filter === key ? "page" : undefined}
+            data-inbox-filter={key} className={`rounded border px-3 py-1 ${filter === key ? "border-blue-300 bg-blue-50 text-blue-800" : "text-neutral-600"}`}>{label}</Link>)}
+      </nav>
+      {invalidCursor && <p role="alert" className="mt-3 text-sm text-rose-700">通知の表示位置を読み込めなかったため、先頭から表示しています。</p>}
+      <h2 data-inbox-total={page.total} className="mt-4 font-semibold">対象の通知：{page.total}件</h2>
+      {items.length === 0 && <p className="mt-1 text-sm text-neutral-500">{filter === "unread" && page.total === 0 ? "未読はありません。" : "この位置に通知はありません。"}</p>}
+      <div className="max-w-4xl">{items.map((item) => row(item, !item.is_read && item.author_id !== me?.id))}</div>
+      <nav aria-label="通知のページ" className="mt-4 flex gap-4 text-sm text-blue-700">
+        {cursor && <Link href={`/inbox?filter=${filter}`} data-inbox-first>先頭へ戻る</Link>}
+        {page.nextCursor && <Link href={`/inbox?filter=${filter}&cursor=${encodeURIComponent(page.nextCursor)}`} data-inbox-next>次の通知を表示</Link>}
+      </nav>
     </div>
   );
 }

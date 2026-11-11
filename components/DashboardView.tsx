@@ -7,6 +7,8 @@ import {
   activeFilterCount,
   computeDashboardWidget,
 } from "@/lib/dashboard-compute";
+import { dashboardDrilldownHref } from "@/lib/dashboard-drilldown";
+import { todayISO } from "@/lib/dates";
 import type {
   DashboardMeta,
   DashboardTask,
@@ -19,21 +21,6 @@ import WidgetDialog from "./dashboard/WidgetDialog";
 type DialogState =
   | { mode: "create"; kind: "chart" | "text"; widget: null }
   | { mode: "edit"; kind: "chart" | "text"; widget: DashboardWidget };
-
-function listHref(projectId: number, widget: DashboardWidget): string {
-  const params = new URLSearchParams({ view: "list" });
-  const completion = widget.filters.completion;
-  if (completion === "open") params.set("hide", "1");
-  if (completion === "done") params.set("completed", "done");
-  if (typeof widget.filters.assignee === "number") {
-    params.set("assignee", String(widget.filters.assignee));
-  } else if (widget.filters.assignee === "none") {
-    params.set("assignee", "none");
-  }
-  if (widget.filters.status) params.set("status", widget.filters.status);
-  if (widget.filters.due) params.set("due", widget.filters.due);
-  return `/projects/${projectId}?${params.toString()}`;
-}
 
 function AddMenu({ onPick }: { onPick: (kind: "chart" | "text") => void }) {
   return (
@@ -118,6 +105,11 @@ export default function DashboardView({
   const meta: DashboardMeta = useMemo(
     () => ({ sections, users, statusOptions, statusFieldName, statusFieldEnabled }),
     [sections, users, statusOptions, statusFieldName, statusFieldEnabled],
+  );
+  const asOfDay = todayISO();
+  const widgetData = useMemo(
+    () => widgets.map((widget) => ({ widget, data: computeDashboardWidget(widget, tasks, meta, asOfDay) })),
+    [widgets, tasks, meta, asOfDay],
   );
 
   const saveOrder = async (next: DashboardWidget[]) => {
@@ -216,8 +208,6 @@ export default function DashboardView({
     setDialog({ mode: "edit", kind: widget.widget_type, widget });
   };
 
-  const metaForWidget = (widget: DashboardWidget) => computeDashboardWidget(widget, tasks, meta);
-
   return (
     <div className="px-4 pb-16" data-dashboard-view>
       <div className="flex flex-wrap items-center gap-2 py-3">
@@ -281,8 +271,7 @@ export default function DashboardView({
       )}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
-        {widgets.map((widget) => {
-          const data = metaForWidget(widget);
+        {widgetData.map(({ widget, data }) => {
           const filtersCount = activeFilterCount(widget.filters);
           const disabledStatus = widget.group_by === "status" && !statusFieldEnabled;
           const displayTitle = disabledStatus ? "Statusフィールド" : widget.title;
@@ -428,7 +417,12 @@ export default function DashboardView({
                   </div>
                 ) : (
                   <div className="w-full">
-                    <ChartRenderer data={data} chartType={widget.chart_type} />
+                    <ChartRenderer
+                      data={data}
+                      chartType={widget.chart_type}
+                      title={displayTitle}
+                      hrefFor={(selection) => dashboardDrilldownHref(projectId, selection)}
+                    />
                   </div>
                 )}
               </div>
@@ -447,8 +441,12 @@ export default function DashboardView({
                     </svg>
                     {filtersCount > 0 ? `${filtersCount} 個のフィルター` : "フィルターなし"}
                   </button>
-                  {!isNumber && !disabledStatus && (
-                    <a href={listHref(projectId, widget)} className="ml-auto rounded border border-neutral-200 px-2 py-0.5 hover:bg-neutral-50">
+                  {!isNumber && !disabledStatus && data.drilldown && (
+                    <a
+                      href={dashboardDrilldownHref(projectId, data.drilldown)}
+                      data-dashboard-show-all
+                      className="ml-auto rounded border border-neutral-200 px-2 py-0.5 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+                    >
                       すべて表示
                     </a>
                   )}

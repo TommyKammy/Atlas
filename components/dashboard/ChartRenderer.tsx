@@ -1,9 +1,99 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import type { DashboardWidgetData } from "@/lib/dashboard-compute";
-import type { DashboardChartType } from "@/lib/dashboard-types";
+import type { DashboardChartType, DashboardDrilldown } from "@/lib/dashboard-types";
 
 const COLORS = ["#9b8cff", "#37b97c", "#5b9cf8", "#f0a44b", "#e879a8"];
+type HrefFor = (selection: DashboardDrilldown) => string;
+type ChartProps = { data: DashboardWidgetData; title?: string; hrefFor?: HrefFor };
+
+function datumLabel(title: string | undefined, category: string, series: string, value: number): string {
+  return [title, category, series !== title ? series : "", String(value), "対象のタスクをリストで表示"]
+    .filter(Boolean).join("、");
+}
+
+function SvgDatumLink({
+  children, href, label, categoryKey, seriesIndex, kind = "cell",
+}: {
+  children: ReactNode;
+  href?: string;
+  label: string;
+  categoryKey?: string;
+  seriesIndex?: number;
+  kind?: "cell" | "total";
+}) {
+  if (!href) return <>{children}</>;
+  return (
+    <a
+      href={href}
+      aria-label={label}
+      data-dashboard-chart-link={kind}
+      data-dashboard-chart-category={categoryKey}
+      data-dashboard-chart-series={seriesIndex}
+      className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+    >
+      {children}
+    </a>
+  );
+}
+
+/** A keyboard alternative for zero-height bars and coincident chart points. */
+function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
+  const [open, setOpen] = useState(false);
+  if (!hrefFor || data.categories.length === 0) return null;
+  return (
+    <details data-dashboard-chart-data onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-1 text-[11px] text-neutral-600">
+      <summary
+        aria-label={`${title ?? "チャート"}のデータを表示`}
+        className="w-fit cursor-pointer rounded px-1 py-1 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+      >
+        データを表示
+      </summary>
+      {open && (
+        <div className="max-h-56 overflow-auto border-t border-neutral-100">
+          <table className="w-full text-left text-[12px]">
+            <caption className="sr-only">{title ?? "チャート"}の対象タスク</caption>
+            <thead>
+              <tr>
+                <th scope="col" className="px-2 py-2 font-medium">分類</th>
+                {data.series.map((series, index) => (
+                  <th key={`${series}-${index}`} scope="col" className="px-2 py-2 text-right font-medium">{series}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.categories.map((category, categoryIndex) => (
+                <tr key={category.key ?? categoryIndex} className="border-t border-neutral-100">
+                  <th scope="row" className="px-2 py-1.5 font-normal">{category.label}</th>
+                  {category.values.map((value, seriesIndex) => {
+                    const selection = category.drilldowns?.[seriesIndex];
+                    return (
+                      <td key={seriesIndex} className="px-2 py-1.5 text-right tabular-nums">
+                        {selection ? (
+                          <a
+                            href={hrefFor(selection)}
+                            aria-label={datumLabel(title, category.label, data.series[seriesIndex] ?? "", value)}
+                            data-dashboard-chart-link="table"
+                            data-dashboard-chart-category={category.key}
+                            data-dashboard-chart-series={seriesIndex}
+                            className="inline-block rounded px-1 py-0.5 text-blue-700 underline underline-offset-2 hover:text-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+                          >
+                            {value}
+                          </a>
+                        ) : value}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </details>
+  );
+}
 
 function truncate(value: string, max = 14): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
@@ -37,15 +127,19 @@ function EmptyChart() {
 function ChartFrame({
   children,
   height = 250,
+  title,
+  interactive = false,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   height?: number;
+  title?: string;
+  interactive?: boolean;
 }) {
   return (
     <svg
       viewBox={`0 0 640 ${height}`}
-      role="img"
-      aria-label="チャート"
+      role={interactive ? "group" : "img"}
+      aria-label={title ?? "チャート"}
       className="h-auto w-full overflow-visible"
     >
       {children}
@@ -92,7 +186,7 @@ function GridAndAxes({
   );
 }
 
-function CategoricalChart({ data, chartType }: { data: DashboardWidgetData; chartType: DashboardChartType }) {
+function CategoricalChart({ data, chartType, title, hrefFor }: ChartProps & { chartType: DashboardChartType }) {
   const categories = data.categories;
   if (categories.length === 0) return <EmptyChart />;
   const width = 640;
@@ -104,8 +198,12 @@ function CategoricalChart({ data, chartType }: { data: DashboardWidgetData; char
   const plotW = width - left - right;
   const plotH = height - top - bottom;
   const seriesCount = Math.max(1, data.series.length);
+  const stacked = chartType === "stacked_bar";
+  const categoryMaximum = stacked
+    ? Math.max(0, ...categories.map((category) => category.values.reduce((sum, value) => sum + value, 0)))
+    : Math.max(0, ...categories.flatMap((category) => category.values));
   const scale = niceTicks(
-    Math.max(1, ...categories.flatMap((c) => c.values), data.benchmark ?? 0),
+    Math.max(1, categoryMaximum, data.benchmark ?? 0),
   );
   const maxValue = scale.max;
   const band = plotW / categories.length;
@@ -114,10 +212,9 @@ function CategoricalChart({ data, chartType }: { data: DashboardWidgetData; char
   const rotateLabels = categories.length > 6;
   const showLabels = data.dataLabels && categories.length <= 12;
   const multi = seriesCount > 1;
-  const stacked = chartType === "stacked_bar";
 
   return (
-    <ChartFrame height={height}>
+    <ChartFrame height={height} title={title} interactive={Boolean(hrefFor)}>
       <GridAndAxes width={width} height={height} max={maxValue} ticks={scale.values} />
       {data.benchmark !== null && data.benchmark !== undefined && (
         <line
@@ -134,7 +231,7 @@ function CategoricalChart({ data, chartType }: { data: DashboardWidgetData; char
         const center = left + band * ci + band / 2;
         let stackedBase = 0;
         return (
-          <g key={`${category.label}-${ci}`}>
+          <g key={category.key ?? `${category.label}-${ci}`}>
             {category.values.map((value, si) => {
               const h = maxValue === 0 ? 0 : (value / maxValue) * plotH;
               let x: number;
@@ -150,8 +247,15 @@ function CategoricalChart({ data, chartType }: { data: DashboardWidgetData; char
                 x = center - barWidth / 2;
                 y = top + plotH - h;
               }
+              const selection = category.drilldowns?.[si];
               return (
                 <g key={si}>
+                  <SvgDatumLink
+                    href={hrefFor && selection ? hrefFor(selection) : undefined}
+                    label={datumLabel(title, category.label, data.series[si] ?? "", value)}
+                    categoryKey={category.key}
+                    seriesIndex={si}
+                  >
                   {chartType === "lollipop" ? (
                     <>
                       <line
@@ -172,6 +276,9 @@ function CategoricalChart({ data, chartType }: { data: DashboardWidgetData; char
                       >
                         <title>{`${category.label} / ${data.series[si] ?? ""}: ${value}`}</title>
                       </circle>
+                      {hrefFor && selection && (
+                        <circle cx={x + barWidth / 2} cy={y} r="9" fill="transparent" />
+                      )}
                     </>
                   ) : (
                     <rect
@@ -198,6 +305,7 @@ function CategoricalChart({ data, chartType }: { data: DashboardWidgetData; char
                       {value}
                     </text>
                   )}
+                  </SvgDatumLink>
                 </g>
               );
             })}
@@ -219,28 +327,38 @@ function CategoricalChart({ data, chartType }: { data: DashboardWidgetData; char
   );
 }
 
-function DonutChart({ data }: { data: DashboardWidgetData }) {
+function DonutChart({ data, title, hrefFor }: ChartProps) {
   const slices = data.categories
-    .map((category) => ({ label: category.label, value: category.values[0] ?? 0 }))
+    .map((category, categoryIndex) => ({ category, categoryIndex, label: category.label, value: category.values[0] ?? 0 }))
     .filter((slice) => slice.value > 0);
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
   if (total === 0) return <EmptyChart />;
   const radius = 68;
   const stroke = 22;
   const circumference = 2 * Math.PI * radius;
-  const offsets = slices.map((_, index) =>
-    slices.slice(0, index).reduce((sum, slice) => sum + (slice.value / total) * circumference, 0),
-  );
+  const offsets: number[] = [];
+  let offset = 0;
+  for (const slice of slices) {
+    offsets.push(offset);
+    offset += (slice.value / total) * circumference;
+  }
   return (
     <div className="flex min-h-[250px] items-center gap-5 px-2">
-      <svg viewBox="0 0 220 220" className="h-[190px] w-[190px] shrink-0">
+      <svg viewBox="0 0 220 220" role={hrefFor ? "group" : "img"} aria-label={title ?? "チャート"} className="h-[190px] w-[190px] shrink-0">
         <circle cx="110" cy="110" r={radius} fill="none" stroke="#f0edff" strokeWidth={stroke} />
         {slices.map((slice, i) => {
           const length = (slice.value / total) * circumference;
           const dash = `${length} ${circumference - length}`;
+          const selection = slice.category.drilldowns?.[0];
           const el = (
+            <SvgDatumLink
+              key={slice.category.key ?? slice.categoryIndex}
+              href={hrefFor && selection ? hrefFor(selection) : undefined}
+              label={datumLabel(title, slice.label, data.series[0] ?? "", slice.value)}
+              categoryKey={slice.category.key}
+              seriesIndex={0}
+            >
             <circle
-              key={slice.label}
               cx="110"
               cy="110"
               r={radius}
@@ -254,33 +372,53 @@ function DonutChart({ data }: { data: DashboardWidgetData }) {
             >
               <title>{`${slice.label}: ${slice.value}`}</title>
             </circle>
+            </SvgDatumLink>
           );
           return el;
         })}
+        <SvgDatumLink
+          href={hrefFor && data.drilldown ? hrefFor(data.drilldown) : undefined}
+          label={datumLabel(title, "合計", "", total)}
+          kind="total"
+        >
         <text x="110" y="106" textAnchor="middle" fontSize="28" fontWeight="600" fill="#303030">
           {total}
         </text>
         <text x="110" y="126" textAnchor="middle" fontSize="11" fill="#8a8a8a">
           合計
         </text>
+        </SvgDatumLink>
       </svg>
       <div className="min-w-0 space-y-2">
-        {slices.map((slice, i) => (
-          <div key={slice.label} className="flex items-center gap-2 text-[12px] text-neutral-600">
+        {slices.map((slice, i) => {
+          const selection = slice.category.drilldowns?.[0];
+          const href = hrefFor && selection ? hrefFor(selection) : undefined;
+          const content = <>
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-sm"
               style={{ backgroundColor: COLORS[i % COLORS.length] }}
             />
             <span className="truncate">{slice.label}</span>
             <span className="ml-auto font-medium text-neutral-800">{slice.value}</span>
-          </div>
-        ))}
+          </>;
+          return href ? (
+            <a
+              key={slice.category.key ?? slice.categoryIndex}
+              href={href}
+              aria-label={datumLabel(title, slice.label, data.series[0] ?? "", slice.value)}
+              data-dashboard-chart-link="legend"
+              data-dashboard-chart-category={slice.category.key}
+              data-dashboard-chart-series={0}
+              className="flex items-center gap-2 rounded px-1 py-0.5 text-[12px] text-neutral-600 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+            >{content}</a>
+          ) : <div key={slice.category.key ?? slice.categoryIndex} className="flex items-center gap-2 text-[12px] text-neutral-600">{content}</div>;
+        })}
       </div>
     </div>
   );
 }
 
-function TimeChart({ data }: { data: DashboardWidgetData }) {
+function TimeChart({ data, title, hrefFor }: ChartProps) {
   if (data.categories.length === 0) return <EmptyChart />;
   const width = 640;
   const height = 260;
@@ -299,7 +437,7 @@ function TimeChart({ data }: { data: DashboardWidgetData }) {
   const yAt = (value: number) => top + plotH - (value / maxValue) * plotH;
   const labelEvery = Math.max(1, Math.ceil(count / 7));
   return (
-    <ChartFrame height={height}>
+    <ChartFrame height={height} title={title} interactive={Boolean(hrefFor)}>
       <GridAndAxes width={width} height={height} max={maxValue} ticks={scale.values} />
       {data.benchmark !== null && data.benchmark !== undefined && (
         <line x1={left} x2={left + plotW} y1={yAt(data.benchmark)} y2={yAt(data.benchmark)} stroke="#e879a8" strokeDasharray="5 4" />
@@ -316,9 +454,17 @@ function TimeChart({ data }: { data: DashboardWidgetData }) {
               strokeLinejoin="round"
               strokeLinecap="round"
             />
-            {data.categories.map((category, i) => (
+            {data.categories.map((category, i) => {
+              const selection = category.drilldowns?.[si];
+              return (
+              <SvgDatumLink
+                key={`${category.key ?? i}-${si}`}
+                href={hrefFor && selection ? hrefFor(selection) : undefined}
+                label={datumLabel(title, category.label, series, category.values[si] ?? 0)}
+                categoryKey={category.key}
+                seriesIndex={si}
+              >
               <circle
-                key={`${series}-${i}`}
                 cx={xAt(i)}
                 cy={yAt(category.values[si] ?? 0)}
                 r="3.2"
@@ -328,7 +474,17 @@ function TimeChart({ data }: { data: DashboardWidgetData }) {
               >
                 <title>{`${category.label} / ${series}: ${category.values[si] ?? 0}`}</title>
               </circle>
-            ))}
+              {hrefFor && selection && (
+                <circle
+                  cx={xAt(i)}
+                  cy={yAt(category.values[si] ?? 0)}
+                  r={Math.min(8, Math.max(3.2, plotW / Math.max(1, count - 1) / 2))}
+                  fill="transparent"
+                />
+              )}
+              </SvgDatumLink>
+              );
+            })}
           </g>
         );
       })}
@@ -364,9 +520,13 @@ function TimeChart({ data }: { data: DashboardWidgetData }) {
 export default function ChartRenderer({
   data,
   chartType,
+  title,
+  hrefFor,
 }: {
   data: DashboardWidgetData;
   chartType: DashboardChartType;
+  title?: string;
+  hrefFor?: HrefFor;
 }) {
   if (data.kind === "disabled-status") {
     return (
@@ -379,18 +539,26 @@ export default function ChartRenderer({
     );
   }
   if (data.kind === "number") {
+    const href = hrefFor && data.drilldown ? hrefFor(data.drilldown) : undefined;
+    const value = data.value ?? 0;
+    const valueClass = "text-[48px] font-semibold leading-none tracking-tight text-neutral-900";
     return (
       <div className="flex min-h-[64px] flex-col items-center justify-center py-1">
-        <div className="text-[48px] font-semibold leading-none tracking-tight text-neutral-900">
-          {data.value ?? 0}
-        </div>
+        {href ? (
+          <a href={href} aria-label={datumLabel(title, "", "", value)} data-dashboard-chart-link="total" className={`${valueClass} rounded hover:underline hover:decoration-neutral-300 hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2c60b8]`}>
+            {value}
+          </a>
+        ) : <div className={valueClass}>{value}</div>}
       </div>
     );
   }
-  if (chartType === "donut") return <DonutChart data={data} />;
-  if (chartType === "line" || chartType === "burnup" || chartType === "burndown") {
-    return <TimeChart data={data} />;
+  if (data.kind === "text") return null;
+  let chart: ReactNode;
+  if (chartType === "donut") chart = <DonutChart data={data} title={title} hrefFor={hrefFor} />;
+  else if (chartType === "line" || chartType === "burnup" || chartType === "burndown") {
+    chart = <TimeChart data={data} title={title} hrefFor={hrefFor} />;
   }
-  if (chartType === "number") return <EmptyChart />;
-  return <CategoricalChart data={data} chartType={chartType} />;
+  else if (chartType === "number") chart = <EmptyChart />;
+  else chart = <CategoricalChart data={data} chartType={chartType} title={title} hrefFor={hrefFor} />;
+  return <div>{chart}<ChartDataLinks data={data} title={title} hrefFor={hrefFor} /></div>;
 }

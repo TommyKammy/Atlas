@@ -5,7 +5,7 @@ import { audit } from "@/lib/audit";
 import { withProject } from "@/lib/api/route";
 
 /** Persist the complete section order for one project. */
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const rawIds = (body ?? {}) as { ids?: unknown };
   const ids = Array.isArray(rawIds.ids)
     ? rawIds.ids.map(Number).filter((id: number) => Number.isInteger(id) && id > 0)

@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { api } from "@/lib/api-client";
@@ -709,6 +711,7 @@ export default function BoardView({
                   value={drafts[g.key] ?? ""}
                   onChange={(e) => setDrafts((d) => ({ ...d, [g.key]: e.target.value }))}
                   onKeyDown={(e) => {
+                    if (isImeComposing(e)) return;
                     if (e.key === "Enter") {
                       addTask(g);
                       setAddingTo(null);

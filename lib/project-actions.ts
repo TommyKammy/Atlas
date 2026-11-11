@@ -1,3 +1,4 @@
+import { canConfigureProject, canShareProject } from "./project-policy";
 import type { ProjectRole } from "./project-roles";
 
 export type ProjectActionKey =
@@ -104,6 +105,8 @@ export const PROJECT_MENU_GROUPS: { label: string; items: ProjectMenuItem[] }[] 
   },
 ];
 
-export function canUseProjectAction(role: ProjectRole, item: ProjectMenuItem): boolean {
+export function canUseProjectAction(role: ProjectRole, item: { key: ProjectActionKey; roles: readonly ProjectRole[] }, settings?: unknown): boolean {
+  if (item.key === "appearance") return canConfigureProject(role, settings);
+  if (item.key === "public-link") return canShareProject(role, settings);
   return item.roles.includes(role);
 }

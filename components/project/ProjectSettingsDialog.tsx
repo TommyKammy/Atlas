@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { toast } from "@/lib/ui-feedback";
 import Dialog from "../ui/Dialog";
+import type { NotificationDeliveryStatus } from "@/lib/notification-delivery-status";
 import { PROJECT_DIALOG_PRIMARY, PROJECT_DIALOG_SECONDARY } from "./RenameProjectDialog";
 import {
   DEPENDENCY_BUFFER_LABELS,
@@ -18,6 +19,7 @@ import {
 type OwnerUser = { id: number; name: string; email?: string | null; is_guest?: boolean };
 type Team = { id: number; name: string; description?: string };
 type SettingsPayload = {
+  notification_delivery?: NotificationDeliveryStatus;
   project: {
     id: number;
     name: string;
@@ -63,6 +65,8 @@ export default function ProjectSettingsDialog({
   const [settings, setSettings] = useState<ProjectSettings>(DEFAULT_PROJECT_SETTINGS);
   const [users, setUsers] = useState<OwnerUser[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [delivery, setDelivery] = useState<NotificationDeliveryStatus | null>(null);
+  const [deliveryBusy, setDeliveryBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +83,7 @@ export default function ProjectSettingsDialog({
         setTeamId(data.project.team_id === null ? "" : String(data.project.team_id));
         setDueOn(data.project.due_on ?? "");
         setSettings(normalizeProjectSettings(data.project.settings));
+        setDelivery(data.notification_delivery ?? null);
         setTeams(Array.isArray(data.teams) ? data.teams : []);
         setUsers(Array.isArray(directory?.users) ? directory.users : []);
         setLoaded(true);
@@ -92,6 +97,19 @@ export default function ProjectSettingsDialog({
       cancelled = true;
     };
   }, [projectId]);
+
+  const refreshDelivery = async (retry: boolean) => {
+    if (deliveryBusy) return;
+    setDeliveryBusy(true);
+    setError("");
+    try {
+      if (retry) await api(`/api/projects/${projectId}/notifications/retry`, "POST", {});
+      const data = await api<SettingsPayload>(`/api/projects/${projectId}/settings`);
+      setDelivery(data.notification_delivery ?? null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally { setDeliveryBusy(false); }
+  };
 
   const save = async () => {
     if (saving) return;
@@ -352,6 +370,22 @@ export default function ProjectSettingsDialog({
                         <span className="block text-xs text-neutral-500">課題の割り当て・コメント・期日の変更をメールで受け取ります。</span>
                       </span>
                     </label>
+                    <div data-notification-email-status={!delivery ? "unknown" : !delivery.smtp_configured ? "unconfigured" : !delivery.worker_running ? "worker_stopped" : "ready"}
+                      className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+                      <p className="font-medium text-neutral-700">メールの配信状況</p>
+                      <p className="mt-1">{!delivery ? "配信状況を取得できていません。" : !delivery.smtp_configured
+                        ? "SMTPまたはアプリの公開URLが未設定のため、メールは未接続です。タスクの変更は保存されます。"
+                        : !delivery.worker_running ? "配信ワーカーが動作していません。メール通知は保留中です。"
+                          : "SMTP設定があります。実際の接続・受付結果は各メールの送信時に確認します。"}</p>
+                      {delivery && <p className="mt-1">SMTP受付済み {delivery.counts.sent ?? 0}件 ／ 保留 {(delivery.counts.pending ?? 0) + (delivery.counts.unconfigured ?? 0) + delivery.source_pending}件 ／ 再試行待ち {delivery.counts.retry ?? 0}件 ／ 失敗 {(delivery.counts.failed ?? 0) + delivery.source_failed}件</p>}
+                      <p className="mt-1">未接続中の保留分は、設定後に再試行してください。通知配信機能の導入前に作成された通知は対象外です。</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button type="button" disabled={deliveryBusy} onClick={() => void refreshDelivery(false)} className="rounded border px-2 py-1 disabled:opacity-50">配信状況を更新</button>
+                        <button type="button" data-notification-email-retry disabled={deliveryBusy || !delivery?.smtp_configured || !delivery.worker_running || !settings.notifications.email}
+                          onClick={() => void refreshDelivery(true)} className="rounded border px-2 py-1 disabled:opacity-50">保留・失敗分を再試行（最大100件）</button>
+                      </div>
+                      {delivery && (delivery.counts.failed ?? 0) + (delivery.counts.retry ?? 0) + delivery.source_failed > 0 && <p className="mt-2">接続切断などで受付結果を確認できない場合、自動または手動の再試行でメールが重複することがあります。</p>}
+                    </div>
                     <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-3">
                       <input
                         type="checkbox"
@@ -374,7 +408,7 @@ export default function ProjectSettingsDialog({
                       <p className="mt-1">外部チャンネル連携は未接続です。接続設定は今後追加されます。</p>
                     </div>
                     <p className="text-[11px] text-neutral-400">
-                      通知設定は保存され、配信基盤の更新後に適用されます。
+                      保存後に設定が反映されます。アプリ内通知をオフにすると、受信トレイと未読件数から除外します。
                     </p>
                   </div>
                 )}

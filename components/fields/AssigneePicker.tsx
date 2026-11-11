@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useEffect, useRef, useState } from "react";
 import type { User } from "@/lib/data";
 import TaskAvatar from "../task/TaskAvatar";
@@ -61,6 +63,7 @@ export default function AssigneePicker({
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => {
+          if (isImeComposing(event)) return;
           if (event.key === "Escape") {
             event.preventDefault();
             event.stopPropagation();
@@ -88,6 +91,7 @@ export default function AssigneePicker({
           <div
             data-assignee-menu
             onKeyDown={(event) => {
+              if (isImeComposing(event)) return;
               if (event.key === "Escape") {
                 event.preventDefault();
                 event.stopPropagation();

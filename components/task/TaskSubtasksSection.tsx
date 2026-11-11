@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import Link from "next/link";
 import { useState } from "react";
 import type { TaskRow } from "@/lib/data";
@@ -21,6 +23,7 @@ export default function TaskSubtasksSection({
   onAdd,
   onToggle,
   onDelete,
+  canEdit = true,
 }: {
   projectId: number;
   view: string;
@@ -33,6 +36,7 @@ export default function TaskSubtasksSection({
   onAdd: () => void;
   onToggle: (task: TaskRow) => void;
   onDelete: (task: TaskRow) => void;
+  canEdit?: boolean;
 }) {
   const [hideDone, setHideDone] = useState(false);
   const visible = hideDone ? subtasks.filter((subtask) => !subtask.completed) : subtasks;
@@ -47,6 +51,7 @@ export default function TaskSubtasksSection({
           <>
             <button
               type="button"
+              disabled={!canEdit}
               onClick={onStartAdd}
               title="サブタスクを追加"
               aria-label="サブタスクを追加"
@@ -85,7 +90,7 @@ export default function TaskSubtasksSection({
               aria-label={`${subtask.name} の承認を開く`}
               title="承認の詳細を開く"
               className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-blue-300 text-[10px] text-blue-700 hover:bg-blue-50"
-            >承</Link> : <TaskCompletionToggle completed={subtask.completed} milestone={subtask.is_milestone} onToggle={() => onToggle(subtask)} />}
+            >承</Link> : <TaskCompletionToggle disabled={!canEdit} completed={subtask.completed} milestone={subtask.is_milestone} onToggle={() => onToggle(subtask)} />}
             <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}`}
               className={`min-w-0 flex-1 truncate hover:text-blue-700 hover:underline ${
@@ -101,6 +106,7 @@ export default function TaskSubtasksSection({
             {dueLabel && <span className="shrink-0 text-[11px] text-neutral-500">{dueLabel}</span>}
             <button
               type="button"
+              disabled={!canEdit}
               onClick={() => onDelete(subtask)}
               title="サブタスクを削除"
               aria-label={`${subtask.name} を削除`}
@@ -112,12 +118,13 @@ export default function TaskSubtasksSection({
         );
       })}
 
-      {adding ? (
+      {canEdit && adding ? (
         <div className="mt-1 flex gap-1.5">
           <input
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             onKeyDown={(event) => {
+              if (isImeComposing(event)) return;
               if (event.key === "Enter") onAdd();
               if (event.key === "Escape") onCancelAdd();
             }}
@@ -144,6 +151,7 @@ export default function TaskSubtasksSection({
       ) : (
         <button
           type="button"
+          disabled={!canEdit}
           onClick={onStartAdd}
           className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
         >

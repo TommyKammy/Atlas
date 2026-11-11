@@ -8,7 +8,7 @@ import {
   listRuleEditorDrafts,
 } from "@/lib/automation/editor-drafts";
 
-export const GET = withProject("edit", async (req, { uid, projectId }) => {
+export const GET = withProject("configure", async (req, { uid, projectId }) => {
   const rawRuleId = new URL(req.url).searchParams.get("rule_id");
   if (rawRuleId === null) return NextResponse.json({ drafts: await listRuleEditorDrafts(projectId, uid) });
   const ruleId = Number(rawRuleId);
@@ -18,7 +18,7 @@ export const GET = withProject("edit", async (req, { uid, projectId }) => {
   return NextResponse.json({ rule, draft: await getRuleEditorDraft(projectId, uid, { ruleId }) });
 });
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const payload = (body ?? {}) as { rule_id?: unknown };
   if (typeof payload !== "object" || Array.isArray(payload)) throw badRequest("invalid draft");
   if (payload.rule_id !== undefined &&

@@ -5,6 +5,7 @@ import { PROJECT_ICONS } from "@/lib/project-appearance";
 import { withProject } from "@/lib/api/route";
 import { mergeProjectSettings } from "@/lib/project-settings";
 import { detachMultiHomedTasks } from "@/lib/project-delete";
+import { projectPatchRequiresAdmin } from "@/lib/project-policy";
 
 export const DELETE = withProject("admin", async (_req, { uid, projectId }) => {
   const movedTasks = await withTransaction(async (q) => {
@@ -26,8 +27,12 @@ export const DELETE = withProject("admin", async (_req, { uid, projectId }) => {
   return NextResponse.json({ deleted: projectId, moved_tasks: movedTasks });
 });
 
-export const PATCH = withProject("admin", async (req, { uid, projectId }) => {
+export const PATCH = withProject("configure", async (req, { uid, projectId, role }) => {
   const body = await req.json().catch(() => ({}));
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "invalid project patch" }, { status: 400 });
+  if (role !== "admin" && projectPatchRequiresAdmin(body)) {
+    return NextResponse.json({ error: "project administration requires an admin" }, { status: 403 });
+  }
   const sets: string[] = [];
   const values: unknown[] = [];
   let statusOptions: string[] | undefined;

@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useEffect, useId, useRef, useState } from "react";
 import type { RuleEditorOption, RuleOptionKind } from "@/lib/automation/no-code-inputs";
 
@@ -84,6 +86,7 @@ export function RuleEntityPicker({ projectId, kind, value, onChange, label, fiel
           onFocus={() => { setOpen(true); setQuery(""); setActive(0); }}
           onChange={(event) => { setQuery(event.target.value); setOpen(true); setActive(0); }}
           onKeyDown={(event) => {
+            if (isImeComposing(event)) return;
             if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); }
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               event.preventDefault(); setOpen(true);

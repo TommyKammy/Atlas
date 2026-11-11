@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { LIST_STATE_PARAM, listFilterSearch, normalizeListFilterInitial } from "./list-filter-state";
 import {
   parseListDateFilter,
   parseListGroupBy,
@@ -13,25 +14,8 @@ import {
 } from "./list-view";
 import { usePersistedViewState } from "./view-state-client";
 
-export type ListFilterInitial = {
-  hide_completed?: boolean;
-  completed_only?: boolean;
-  mine_only?: boolean;
-  assignee?: string;
-  status?: string;
-  due?: string;
-  start?: string;
-  creator?: string;
-  created?: string;
-  updated?: string;
-  completed_on?: string;
-  sort?: string;
-  sortdir?: "asc" | "desc";
-  group?: string;
-  group2?: string;
-  groupdir?: "asc" | "desc";
-  subtasks_collapsed?: boolean;
-};
+export type { ListFilterInitial } from "./list-filter-state";
+import type { ListFilterInitial } from "./list-filter-state";
 
 type PushPatch = {
   hide?: boolean;
@@ -62,10 +46,14 @@ export function useListFilters({
   projectId,
   initial,
   statusFieldEnabled,
+  persistViewState = true,
+  activeSavedId = null,
 }: {
   projectId: number;
   initial: ListFilterInitial;
   statusFieldEnabled: boolean;
+  persistViewState?: boolean;
+  activeSavedId?: number | null;
 }) {
   const router = useRouter();
   const [hideCompleted, setHideCompleted] = useState(initial.hide_completed === true);
@@ -93,6 +81,47 @@ export function useListFilters({
   );
   const [subtasksCollapsed, setSubtasksCollapsed] = useState(initial.subtasks_collapsed === true);
 
+  const source = normalizeListFilterInitial(initial, statusFieldEnabled);
+  const sourceKey = JSON.stringify([activeSavedId, source]);
+  const [previousSourceKey, setPreviousSourceKey] = useState(sourceKey);
+  if (previousSourceKey !== sourceKey) {
+    // Reset only the conditions; task drafts, selection and row editors stay mounted.
+    setPreviousSourceKey(sourceKey);
+    setHideCompleted(source.hide_completed);
+    setCompletedOnly(source.completed_only);
+    setMineOnly(source.mine_only);
+    setAssigneeFilter(source.assignee);
+    setStatusFilter(source.status);
+    setDueFilter(source.due);
+    setStartFilter(source.start);
+    setCreatorFilter(source.creator);
+    setCreatedFilter(source.created);
+    setUpdatedFilter(source.updated);
+    setCompletedDateFilter(source.completed_on);
+    setSortKey(source.sort);
+    setSortDir(source.sortdir);
+    setGroupBy(source.group);
+    setGroup2(source.group2);
+    setGroupDir(source.groupdir);
+    setSubtasksCollapsed(source.subtasks_collapsed);
+  }
+
+  const pendingSnapshotHref = useRef<string | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (!persistViewState || q.has("dashboard") || q.has("saved") || q.get(LIST_STATE_PARAM) === "1") {
+      pendingSnapshotHref.current = null;
+      return;
+    }
+    // Freeze this entry through the router so the server search/tree snapshot
+    // agrees with later refreshes. The list and its input drafts stay mounted.
+    const search = listFilterSearch(q.toString(), normalizeListFilterInitial(initial, statusFieldEnabled));
+    const href = `${window.location.pathname}?${search}${window.location.hash}`;
+    if (pendingSnapshotHref.current === href) return;
+    pendingSnapshotHref.current = href;
+    router.replace(href, { scroll: false });
+  }, [router, projectId, persistViewState, initial, statusFieldEnabled]);
+
   usePersistedViewState(projectId, "list", {
     hide_completed: hideCompleted,
     completed_only: completedOnly,
@@ -111,69 +140,30 @@ export function useListFilters({
     group2: group2 ?? "",
     groupdir: groupDir,
     subtasks_collapsed: subtasksCollapsed,
-  });
+  }, { enabled: persistViewState });
 
   const pushState = (patch: PushPatch) => {
-    const q = new URLSearchParams(window.location.search);
-    q.set("view", "list");
-    q.delete("saved");
-    const hide = patch.hide ?? hideCompleted;
-    const completed = patch.completed ?? completedOnly;
-    const mine = patch.mine ?? mineOnly;
-    const asn = patch.assignee ?? assigneeFilter;
-    const st = patch.status ?? statusFilter;
-    const so = patch.sort ?? sortKey;
-    const sd = patch.sortdir ?? sortDir;
-    const du = patch.due ?? dueFilter;
-    const start = patch.start ?? startFilter;
-    const creator = patch.creator ?? creatorFilter;
-    const created = patch.created ?? createdFilter;
-    const updated = patch.updated ?? updatedFilter;
-    const completedOn = patch.completed_on ?? completedDateFilter;
-    const gr = patch.group ?? groupBy;
-    const gr2 = patch.group2 !== undefined ? patch.group2 : group2;
-    const grd = patch.groupdir ?? groupDir;
-    const subtasks = patch.subtasks ?? (subtasksCollapsed ? "collapsed" : "expanded");
-    if (hide) q.set("hide", "1");
-    else q.delete("hide");
-    if (completed) q.set("completed", "done");
-    else q.delete("completed");
-    if (mine) q.set("mine", "1");
-    else q.delete("mine");
-    if (asn !== "") q.set("assignee", asn);
-    else q.delete("assignee");
-    if (st !== "") q.set("status", st);
-    else q.delete("status");
-    if (so !== "position") {
-      q.set("sort", so);
-      if (sd === "desc") q.set("sortdir", "desc");
-      else q.delete("sortdir");
-    } else {
-      q.delete("sort");
-      q.delete("sortdir");
-    }
-    if (du !== "") q.set("due", du);
-    else q.delete("due");
-    if (start !== "") q.set("start", start);
-    else q.delete("start");
-    if (creator !== "") q.set("creator", creator);
-    else q.delete("creator");
-    if (created !== "") q.set("created", created);
-    else q.delete("created");
-    if (updated !== "") q.set("updated", updated);
-    else q.delete("updated");
-    if (completedOn !== "") q.set("completed_on", completedOn);
-    else q.delete("completed_on");
-    if (gr !== "section") q.set("group", gr);
-    else q.delete("group");
-    if (gr2 && gr2 !== gr && gr2 !== "section") q.set("group2", gr2);
-    else if (gr2 === "section" && gr !== "section") q.set("group2", "section");
-    else q.delete("group2");
-    if (grd === "desc") q.set("groupdir", "desc");
-    else q.delete("groupdir");
-    if (subtasks === "collapsed") q.set("subtasks", "collapsed");
-    else q.delete("subtasks");
-    router.push(`/projects/${projectId}?${q.toString()}`);
+    const state = normalizeListFilterInitial({
+      hide_completed: patch.hide ?? hideCompleted,
+      completed_only: patch.completed ?? completedOnly,
+      mine_only: patch.mine ?? mineOnly,
+      assignee: patch.assignee ?? assigneeFilter,
+      status: patch.status ?? statusFilter,
+      sort: patch.sort ?? sortKey,
+      sortdir: patch.sortdir ?? sortDir,
+      due: patch.due ?? dueFilter,
+      start: patch.start ?? startFilter,
+      creator: patch.creator ?? creatorFilter,
+      created: patch.created ?? createdFilter,
+      updated: patch.updated ?? updatedFilter,
+      completed_on: patch.completed_on ?? completedDateFilter,
+      group: patch.group ?? groupBy,
+      group2: (patch.group2 !== undefined ? patch.group2 : group2) ?? "",
+      groupdir: patch.groupdir ?? groupDir,
+      subtasks_collapsed: patch.subtasks ? patch.subtasks === "collapsed" : subtasksCollapsed,
+    }, statusFieldEnabled);
+    const search = listFilterSearch(window.location.search, state);
+    router.push(`/projects/${projectId}?${search}`);
   };
 
   const setFilter = (key: keyof ListFilters, value: string | boolean) => {

@@ -5,7 +5,7 @@ import { normalizeFormFields } from "@/lib/forms";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 
-export const PATCH = withResourceProject("edit", "project_forms", async (_req, { uid, projectId, params, body }) => {
+export const PATCH = withResourceProject("configure", "project_forms", async (_req, { uid, projectId, params, body }) => {
   const id = params.id;
   const payload = (body ?? {}) as { name?: unknown; description?: unknown; fields?: unknown; published?: unknown };
   const sets: string[] = [];
@@ -43,7 +43,7 @@ export const PATCH = withResourceProject("edit", "project_forms", async (_req, {
   return NextResponse.json({ id: Number(id) });
 }, { body: true });
 
-export const DELETE = withResourceProject("edit", "project_forms", async (_req, { uid, projectId, params }) => {
+export const DELETE = withResourceProject("configure", "project_forms", async (_req, { uid, projectId, params }) => {
   const id = params.id;
   await db.query("DELETE FROM project_forms WHERE id = $1::bigint", [id]);
   await notifyProject(projectId);

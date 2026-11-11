@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ApiError } from "@/lib/api/errors";
 import { withUser } from "@/lib/api/route";
 import { getWorkspace } from "@/lib/data";
 import { audit } from "@/lib/audit";
@@ -72,6 +73,7 @@ export const POST = withUser(async (req, { uid, params }) => {
     });
     return NextResponse.json({ id: ruleId }, { status: 201 });
   } catch (caught) {
+    if (caught instanceof ApiError) throw caught;
     return NextResponse.json(
       { error: caught instanceof Error ? caught.message : "rule creation failed" },
       { status: 400 },

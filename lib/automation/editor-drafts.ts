@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db, withTransaction, type Queryable } from "../db";
 import { ApiError, badRequest, forbidden, notFound } from "../api/errors";
-import { canEditProject } from "../project-roles";
-import { getProjectAccess } from "../repositories/projects";
+import { getProjectPolicyAccess } from "../project-policy-access";
 import { audit } from "../audit";
 import { notifyProject } from "../notify";
 import { createProjectRule, getProjectRule, updateProjectRule } from "./repository";
@@ -123,7 +122,7 @@ async function editorProject(q: Queryable, projectId: number, userId: number, mu
     [projectId],
   );
   if (project.rowCount === 0) throw notFound("project not found");
-  if (!canEditProject((await getProjectAccess(userId, projectId, q)).role)) throw forbidden();
+  if (!(await getProjectPolicyAccess(userId, projectId, q)).canConfigure) throw forbidden();
   return project.rows[0] as { id: number; workspace_id: number };
 }
 

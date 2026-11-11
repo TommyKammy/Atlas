@@ -3,6 +3,9 @@ import type { Portfolio, PortfolioProject, PortfolioRule } from "../portfolios";
 import { RULE_LIMITS, type RuleDefinition } from "../automation/types";
 import type { ProjectRule } from "../automation/types";
 import { assignWebhookActionIds, redactWebhookDefinition, redactWebhookRun } from "../automation/webhook-credentials";
+import { forbidden } from "../api/errors";
+import { getProjectPolicyAccess } from "../project-policy-access";
+import { normalizeProjectSettings } from "../project-settings";
 import { canEditProject } from "../project-roles";
 import { getProjectAccess } from "./projects";
 import { historyRuleEvaluation, type RuleEvaluationTrace } from "../automation/evaluation";
@@ -125,8 +128,12 @@ export async function updatePortfolio(
   );
 }
 
-export async function deletePortfolio(portfolioId: number): Promise<void> {
-  await db.query("DELETE FROM portfolios WHERE id = $1::bigint", [portfolioId]);
+export async function deletePortfolio(portfolioId: number, actorId: number): Promise<void> {
+  await withTransaction(async (q) => {
+    await lockPortfolio(q, portfolioId);
+    await assertPortfolioConfiguration(q, portfolioId, actorId);
+    await q.query("DELETE FROM portfolios WHERE id = $1::bigint", [portfolioId]);
+  });
 }
 
 export async function getPortfolioProjects(
@@ -156,6 +163,20 @@ async function lockPortfolio(q: Queryable, portfolioId: number): Promise<void> {
   await q.query("SELECT id FROM portfolios WHERE id = $1 FOR NO KEY UPDATE", [portfolioId]);
 }
 
+/** Retain legacy portfolio linking roles while respecting explicitly locked project workflows. */
+async function assertPortfolioConfiguration(q: Queryable, portfolioId: number, actorId: number, projectId?: number, creating = false): Promise<void> {
+  const projects = await q.query(`SELECT p.id, p.settings FROM projects p
+    WHERE p.deleted_at IS NULL AND ($2::bigint IS NULL OR p.id = $2)
+      AND (p.id = $2 OR EXISTS (SELECT 1 FROM portfolio_items i WHERE i.portfolio_id = $1 AND i.project_id = p.id))
+      AND ($3::boolean OR EXISTS (SELECT 1 FROM portfolio_rules r WHERE r.portfolio_id = $1))`, [portfolioId, projectId ?? null, creating]);
+  for (const project of projects.rows) {
+    if (normalizeProjectSettings(project.settings).who_can_edit === "admins" &&
+        !(await getProjectPolicyAccess(actorId, Number(project.id), q)).canConfigure) {
+      throw forbidden("a linked project restricts workflow changes to admins");
+    }
+  }
+}
+
 export async function addPortfolioProject(
   portfolioId: number,
   projectId: number,
@@ -172,6 +193,7 @@ export async function addPortfolioProject(
       [projectId, portfolioId],
     );
     if (p.rowCount === 0) throw new Error("project not found in portfolio workspace");
+    await assertPortfolioConfiguration(q, portfolioId, actorId, projectId);
     if (!canEditProject(role)) {
       const { rows: [state] } = await q.query(
         `SELECT
@@ -210,9 +232,11 @@ export async function addPortfolioProject(
 export async function removePortfolioProject(
   portfolioId: number,
   projectId: number,
+  actorId: number,
 ): Promise<void> {
   await withTransaction(async (q) => {
     await lockPortfolio(q, portfolioId);
+    await assertPortfolioConfiguration(q, portfolioId, actorId, projectId);
     await q.query(
       "DELETE FROM portfolio_items WHERE portfolio_id = $1::bigint AND project_id = $2::bigint",
       [portfolioId, projectId],
@@ -282,6 +306,7 @@ export async function createPortfolioRule(input: {
 }): Promise<number> {
   return withTransaction(async (q) => {
     await lockPortfolio(q, input.portfolioId);
+    await assertPortfolioConfiguration(q, input.portfolioId, input.ownerId, undefined, true);
     const count = await q.query(
       "SELECT COUNT(*)::int AS n FROM portfolio_rules WHERE portfolio_id = $1::bigint",
       [input.portfolioId],
@@ -339,8 +364,9 @@ export async function updatePortfolioRule(
     definition?: RuleDefinition;
     enabled?: boolean;
   },
-  expectedVersion?: number,
-  expectedUpdatedAt?: string,
+  expectedVersion: number | undefined,
+  expectedUpdatedAt: string | undefined,
+  actorId: number,
 ): Promise<boolean> {
   return withTransaction(async (q) => {
     const sets: string[] = [];
@@ -364,6 +390,7 @@ export async function updatePortfolioRule(
     }
     if (sets.length === 0) return true;
     await lockPortfolio(q, portfolioId);
+    await assertPortfolioConfiguration(q, portfolioId, actorId);
     const ruleParam = values.length + 1;
     values.push(ruleId, portfolioId, expectedVersion ?? null, expectedUpdatedAt ?? null);
     const updated = await q.query(
@@ -399,9 +426,11 @@ export async function updatePortfolioRule(
 export async function deletePortfolioRule(
   ruleId: number,
   portfolioId: number,
+  actorId: number,
 ): Promise<void> {
   await withTransaction(async (q) => {
     await lockPortfolio(q, portfolioId);
+    await assertPortfolioConfiguration(q, portfolioId, actorId);
     await q.query(
       "DELETE FROM portfolio_rules WHERE id = $1::bigint AND portfolio_id = $2::bigint",
       [ruleId, portfolioId],

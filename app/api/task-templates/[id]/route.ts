@@ -8,7 +8,7 @@ import { withResourceProject } from "@/lib/api/route";
 import { emitTaskEvent } from "@/lib/domain/events";
 
 
-export const PATCH = withResourceProject("edit", "task_templates", async (_req, { projectId, params, body }) => {
+export const PATCH = withResourceProject("configure", "task_templates", async (_req, { projectId, params, body }) => {
   const id = params.id;
   const patch = (body ?? {}) as Record<string, unknown>;
   const sets: string[] = [];
@@ -52,7 +52,7 @@ export const PATCH = withResourceProject("edit", "task_templates", async (_req, 
   return NextResponse.json({ id: Number(id) });
 }, { body: true });
 
-export const DELETE = withResourceProject("edit", "task_templates", async (_req, { projectId, params }) => {
+export const DELETE = withResourceProject("configure", "task_templates", async (_req, { projectId, params }) => {
   const id = params.id;
   const r = await db.query("DELETE FROM task_templates WHERE id = $1::bigint", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });

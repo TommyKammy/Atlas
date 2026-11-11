@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { withProject } from "@/lib/api/route";
 import { notifyProject } from "@/lib/notify";
 
-export const POST = withProject("edit", async (_req, { projectId, body }) => {
+export const POST = withProject("configure", async (_req, { projectId, body }) => {
   const ids = (body as { ids?: unknown } | null)?.ids;
   if (!Array.isArray(ids) || ids.length === 0) {
     return NextResponse.json({ error: "project_id and ids are required" }, { status: 400 });

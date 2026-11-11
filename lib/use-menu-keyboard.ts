@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "./ime-keyboard";
+
 import { useEffect, useRef, type RefObject } from "react";
 
 const NAV_KEYS = new Set(["ArrowDown", "ArrowUp", "Home", "End"]);
@@ -58,6 +60,7 @@ export function useMenuKeyboard({
     if (autoFocus) raf = window.requestAnimationFrame(() => focusAt(0));
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isImeComposing(event)) return;
       if (event.key === "Escape") {
         event.preventDefault();
         closeRef.current();

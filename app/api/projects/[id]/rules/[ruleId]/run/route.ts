@@ -7,7 +7,7 @@ import { getManualRuleExecution, getProjectRule } from "@/lib/automation/reposit
 
 /** Manually trigger one rule against a task (Asana-style manual trigger). */
 export const POST = withProject(
-  "edit",
+  "configure",
   async (_req, { uid, projectId, params, body }) => {
     const ruleId = Number(params.ruleId);
     if (!Number.isInteger(ruleId) || ruleId <= 0) {

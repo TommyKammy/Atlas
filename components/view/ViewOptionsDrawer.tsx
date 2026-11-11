@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { projectDrawerTop } from "@/lib/drawer-position";
 import { VIEW_ICON_CHOICES } from "@/lib/view-icons";
@@ -180,6 +182,7 @@ export default function ViewOptionsDrawer({
                 onChange={(event) => setNameDraft(event.target.value)}
                 onBlur={() => void commitName()}
                 onKeyDown={(event) => {
+                  if (isImeComposing(event)) return;
                   if (event.key === "Enter") {
                     event.preventDefault();
                     void commitName();

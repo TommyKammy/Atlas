@@ -16,7 +16,7 @@ export const GET = withProject("view", async (_req, { projectId, uid }) => {
 });
 
 export const POST = withProject(
-  "edit",
+  "configure",
   async (_req, { uid, projectId, body }) => {
     const payload = (body ?? {}) as {
       name?: unknown;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { withProject } from "@/lib/api/route";
 import { normalizeProjectSettings } from "@/lib/project-settings";
+import { getNotificationDeliveryStatus } from "@/lib/notification-delivery-status";
 
 /** Project settings payload for the header action dialog. */
 export const GET = withProject("admin", async (_req, { projectId }) => {
@@ -18,6 +19,7 @@ export const GET = withProject("admin", async (_req, { projectId }) => {
     [row.workspace_id],
   );
   return NextResponse.json({
+    notification_delivery: await getNotificationDeliveryStatus(projectId),
     project: {
       id: Number(row.id),
       workspace_id: Number(row.workspace_id),

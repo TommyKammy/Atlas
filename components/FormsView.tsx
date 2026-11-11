@@ -23,9 +23,11 @@ function cloneDefaults(): FormField[] {
 export default function FormsView({
   projectId,
   initial,
+  canConfigure = true,
 }: {
   projectId: number;
   initial: ProjectForm[];
+  canConfigure?: boolean;
 }) {
   const refresh = useApiRefresh();
   const [builder, setBuilder] = useState<Builder | null>(null);
@@ -40,12 +42,14 @@ export default function FormsView({
   useFocusTrap(answerRef, answering !== null, () => setAnswering(null));
 
   const startCreate = () => {
+    if (!canConfigure) return;
     setError("");
     setMessage("");
     setBuilder({ id: null, name: "", description: "", fields: cloneDefaults() });
   };
 
   const startEdit = (form: ProjectForm) => {
+    if (!canConfigure) return;
     setError("");
     setMessage("");
     setBuilder({
@@ -165,6 +169,7 @@ export default function FormsView({
         <button
           type="button"
           data-form-new
+          disabled={!canConfigure}
           onClick={startCreate}
           className="flex h-8 shrink-0 items-center gap-1 rounded-md border border-[#e1e1e1] bg-white px-3 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50"
         >
@@ -222,6 +227,7 @@ export default function FormsView({
                   <button
                     type="button"
                     data-form-publish={form.id}
+                    disabled={!canConfigure}
                     onClick={() => void togglePublish(form)}
                     className="h-7 rounded-md border border-[#e1e1e1] px-2 text-[12px] text-neutral-700 hover:bg-neutral-50"
                   >
@@ -239,6 +245,7 @@ export default function FormsView({
                   <button
                     type="button"
                     data-form-edit={form.id}
+                    disabled={!canConfigure}
                     aria-label={`${form.name}を編集`}
                     onClick={() => startEdit(form)}
                     className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
@@ -250,6 +257,7 @@ export default function FormsView({
                   <button
                     type="button"
                     data-form-delete={form.id}
+                    disabled={!canConfigure}
                     aria-label={`${form.name}を削除`}
                     onClick={() => void remove(form)}
                     className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-red-50 hover:text-red-600"

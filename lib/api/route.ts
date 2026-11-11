@@ -185,7 +185,8 @@ export function withResourceProject<P extends Params = Params>(
   });
 }
 
-/** Resolve a task from params.id or ?task_id and enforce project/task access. */
+/** Resolve a task from params.id or ?task_id and enforce project/task access.
+ * Use edit for business content; configure/share belong to project-scoped routes. */
 export function withTask<P extends Params = Params>(
   level: ProjectPermission,
   handler: (req: NextRequest, ctx: TaskContext<P>) => Promise<Response>,

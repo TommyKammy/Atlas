@@ -23,7 +23,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
   return NextResponse.json(await getProjectTabs(projectId));
 });
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const { name, view_type } = (body ?? {}) as { name?: string; view_type?: string };
   if (!name || String(name).trim() === "" || !view_type || !VIEW_TYPES.has(view_type)) {
     return NextResponse.json({ error: "name and a valid view_type are required" }, { status: 400 });

@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
@@ -79,6 +81,7 @@ export default function InviteUserDialog({
             autoComplete="off"
             className={field}
             onKeyDown={(e) => {
+              if (isImeComposing(e)) return;
               if (e.key === "Enter") invite();
             }}
           />

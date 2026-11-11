@@ -13,7 +13,7 @@ import {
 } from "@/lib/custom-fields";
 import { validateCustomFieldReferences } from "@/lib/custom-field-validation";
 
-export const PATCH = withResourceProject("edit", "custom_fields", async (_req, { uid, role, params, body }) => {
+export const PATCH = withResourceProject("configure", "custom_fields", async (_req, { uid, role, params, body }) => {
   const id = params.id;
   const payload = (body ?? {}) as {
     name?: unknown;
@@ -113,7 +113,7 @@ export const PATCH = withResourceProject("edit", "custom_fields", async (_req, {
   });
 }, { body: true });
 
-export const DELETE = withResourceProject("edit", "custom_fields", async (_req, { params }) => {
+export const DELETE = withResourceProject("configure", "custom_fields", async (_req, { params }) => {
   const id = params.id;
   const r = await db.query(
     "UPDATE custom_fields SET deleted_at = COALESCE(deleted_at, now()) WHERE id = $1::bigint RETURNING id",

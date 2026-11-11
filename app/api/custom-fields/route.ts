@@ -55,7 +55,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
   );
 });
 
-export const POST = withProject("edit", async (_req, { uid, projectId, role, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, role, body }) => {
   const { name, field_type, options, description, config, access_level, editor_ids } = (body ?? {}) as {
     name?: string;
     field_type?: string;

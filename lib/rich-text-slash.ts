@@ -1,3 +1,4 @@
+import { isImeComposing } from "./ime-keyboard";
 import { Extension, type Editor } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from "@tiptap/suggestion";
@@ -240,6 +241,7 @@ export const SlashCommand = Extension.create({
               draw();
             },
             onKeyDown({ event }: SuggestionKeyDownProps) {
+              if (isImeComposing(event)) return false;
               if (!props) return false;
               if (event.key === "ArrowDown") {
                 selected = Math.min(selected + 1, props.items.length - 1);

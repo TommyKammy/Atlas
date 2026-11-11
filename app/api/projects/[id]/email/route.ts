@@ -30,7 +30,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
   });
 });
 
-export const PATCH = withProject("edit", async (_req, { projectId, body }) => {
+export const PATCH = withProject("configure", async (_req, { projectId, body }) => {
   const payload = (body ?? {}) as { enabled?: unknown; regenerate?: unknown };
   const sets: string[] = [];
   const values: unknown[] = [];

@@ -17,11 +17,13 @@ export default function TaskAttachmentsSection({
   uploading,
   onUpload,
   onDelete,
+  canEdit = true,
 }: {
   attachments: Attachment[];
   uploading: boolean;
   onUpload: (file: File) => void;
   onDelete: (id: number) => void;
+  canEdit?: boolean;
 }) {
   return (
     <section className="mt-5" data-task-attachments>
@@ -29,7 +31,7 @@ export default function TaskAttachmentsSection({
         title="添付"
         count={attachments.length}
         action={
-          <label
+          canEdit ? <label
             className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded text-[16px] ${
               uploading
                 ? "cursor-wait text-neutral-300"
@@ -48,12 +50,12 @@ export default function TaskAttachmentsSection({
                 event.target.value = "";
               }}
             />
-          </label>
+          </label> : undefined
         }
       />
 
       {attachments.length === 0 ? (
-        <label className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600">
+        canEdit ? <label className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600">
           <span className="text-base leading-none">＋</span>
           <span>{uploading ? "アップロード中…" : "添付を追加"}</span>
           <input
@@ -66,7 +68,7 @@ export default function TaskAttachmentsSection({
               event.target.value = "";
             }}
           />
-        </label>
+        </label> : <p className="px-1 text-[13px] text-neutral-500">添付はありません</p>
       ) : (
         <div className="space-y-1">
           {attachments.map((attachment) => (
@@ -89,7 +91,7 @@ export default function TaskAttachmentsSection({
                 >
                   {attachment.file_name}
                 </a>
-                <button
+                {canEdit && <button
                   type="button"
                   onClick={() => onDelete(attachment.id)}
                   className="invisible shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 group-hover/att:visible"
@@ -97,7 +99,7 @@ export default function TaskAttachmentsSection({
                   aria-label={`${attachment.file_name} を削除`}
                 >
                   ×
-                </button>
+                </button>}
               </div>
               <div className="mt-0.5 flex items-center gap-2 pl-9 text-[10px] text-neutral-400">
                 <span>{formatSize(attachment.size_bytes)}</span>
@@ -109,7 +111,7 @@ export default function TaskAttachmentsSection({
               </div>
             </div>
           ))}
-          <label className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700">
+          {canEdit && <label className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700">
             <span className="text-sm leading-none">＋</span>
             {uploading ? "アップロード中…" : "ファイルを追加"}
             <input
@@ -122,7 +124,7 @@ export default function TaskAttachmentsSection({
                 event.target.value = "";
               }}
             />
-          </label>
+          </label>}
         </div>
       )}
     </section>

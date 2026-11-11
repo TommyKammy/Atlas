@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import Dialog from "../ui/Dialog";
 
 export const PROJECT_DIALOG_PRIMARY =
@@ -36,6 +38,7 @@ export default function RenameProjectDialog({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
+            if (isImeComposing(event)) return;
             if (event.key === "Enter") onSave();
           }}
           aria-label="プロジェクト名"

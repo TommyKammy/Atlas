@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
 import { withProject } from "@/lib/api/route";
 
-export const GET = withProject("admin", async (_req, { projectId }) => {
+export const GET = withProject("share", async (_req, { projectId }) => {
   const r = await db.query(
     "SELECT id, label, created_at::text AS created_at, expires_at::text AS expires_at FROM project_share_tokens WHERE project_id = $1::bigint ORDER BY id",
     [projectId],
@@ -12,7 +12,7 @@ export const GET = withProject("admin", async (_req, { projectId }) => {
   return NextResponse.json(r.rows);
 });
 
-export const POST = withProject("admin", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("share", async (_req, { uid, projectId, body }) => {
   const payload = (body ?? {}) as { label?: unknown; expires_in_days?: unknown };
   const label = typeof payload.label === "string" ? payload.label.trim().slice(0, 120) : "";
   const expRaw = payload.expires_in_days;
@@ -26,7 +26,7 @@ export const POST = withProject("admin", async (_req, { uid, projectId, body }) 
   return NextResponse.json(r.rows[0], { status: 201 });
 }, { body: true });
 
-export const DELETE = withProject("admin", async (req, { projectId }) => {
+export const DELETE = withProject("share", async (req, { projectId }) => {
   const { searchParams } = new URL(req.url);
   const tokenRowId = searchParams.get("token_id");
   if (!tokenRowId) return NextResponse.json({ error: "token_id is required" }, { status: 400 });

@@ -3,7 +3,7 @@ import { withProject } from "@/lib/api/route";
 import { suggestRuleDefinition } from "@/lib/automation/ai";
 
 export const POST = withProject(
-  "edit",
+  "configure",
   async (_req, { uid, projectId, body }) => {
     const payload = (body ?? {}) as { prompt?: unknown };
     const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";

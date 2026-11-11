@@ -14,7 +14,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
 });
 
 export const POST = withProject(
-  "edit",
+  "configure",
   async (_req, { uid, projectId, body }) => {
     const payload = (body ?? {}) as { body?: unknown; status?: unknown; status_color?: unknown };
     const text = typeof payload.body === "string" ? payload.body.trim() : "";

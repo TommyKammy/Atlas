@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { withProject } from "@/lib/api/route";
 import { withTransaction } from "@/lib/db";
-import { getProjectAccess } from "@/lib/repositories/projects";
-import { canEditProject } from "@/lib/project-roles";
+import { getProjectPolicyAccess } from "@/lib/project-policy-access";
 import { validateRuleDefinition } from "@/lib/automation/validate";
 import { validateRuleConditionScope } from "@/lib/automation/condition-validation";
 import { validateRuleCustomFieldActions } from "@/lib/automation/custom-field-actions";
@@ -12,7 +11,7 @@ import { previewResponse } from "@/lib/automation/preview";
 import { loadRuleSnapshot } from "@/lib/automation/snapshot";
 import { evaluateRule } from "@/lib/automation/evaluation";
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const payload = (body ?? {}) as { rule_id?: unknown; definition?: unknown; event?: unknown };
   if ((JSON.stringify(payload.definition)?.length ?? 0) > 131_072) return NextResponse.json({ error: "definition is too large" }, { status: 400 });
   const ruleId = payload.rule_id === undefined ? undefined : configuredTaskId(payload.rule_id);
@@ -21,7 +20,7 @@ export const POST = withProject("edit", async (_req, { uid, projectId, body }) =
   if (!definition.ok) return NextResponse.json({ error: definition.error }, { status: 400 });
   return withTransaction(async (q) => {
     await q.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
-    if (!canEditProject((await getProjectAccess(uid, projectId, q)).role)) {
+    if (!(await getProjectPolicyAccess(uid, projectId, q)).canConfigure) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
     const project = await q.query("SELECT workspace_id FROM projects WHERE id = $1 AND deleted_at IS NULL", [projectId]);

@@ -33,6 +33,31 @@ export type DashboardFilter = {
   section?: number | "";
 };
 
+/** Stable selection identity; display labels never identify a chart bucket. */
+export type DashboardDrilldownCategory =
+  | { kind: "section"; id: number | null }
+  | { kind: "assignee"; id: number | null }
+  | { kind: "status"; value: string }
+  | { kind: "completion"; completed: boolean }
+  | { kind: "due_month"; month: string | null }
+  | { kind: "created_month"; month: string }
+  | { kind: "day"; day: string };
+
+export type DashboardDrilldownSeries = "all" | "open" | "done" | "total" | "remaining";
+
+/** A frozen condition snapshot, not a list of task IDs or a saved-view ID. */
+export type DashboardDrilldown = {
+  v: 1;
+  title: string;
+  filters: DashboardFilter;
+  metric: DashboardMetric;
+  chartType: DashboardChartType;
+  groupBy: DashboardGroupBy;
+  asOfDay: string;
+  category?: DashboardDrilldownCategory;
+  seriesKey?: DashboardDrilldownSeries;
+};
+
 export type DashboardWidgetOptions = {
   data_labels?: boolean;
   range_days?: number;

@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import SearchSuggestMenu from "./search/SearchSuggestMenu";
@@ -28,6 +30,7 @@ export default function SearchBox() {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
+      if (isImeComposing(event)) return;
       if (event.key === "Escape") setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
@@ -128,6 +131,7 @@ export default function SearchBox() {
             setOpen(true);
           }}
           onKeyDown={(e) => {
+            if (isImeComposing(e)) return;
             if (e.key === "ArrowDown") {
               e.preventDefault();
               moveActive(1);

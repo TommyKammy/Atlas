@@ -84,7 +84,7 @@ export const PATCH = withUser(async (req, { uid, params }) => {
     if (!customFields.ok) return NextResponse.json({ error: customFields.error }, { status: customFields.status });
   }
   if (typeof body?.enabled === "boolean") patch.enabled = body.enabled;
-  const updated = await updatePortfolioRule(ruleId, id, patch, loaded.rule.version, loaded.rule.updated_at);
+  const updated = await updatePortfolioRule(ruleId, id, patch, loaded.rule.version, loaded.rule.updated_at, uid);
   if (!updated) {
     return NextResponse.json({ error: "ルールが更新されました。最新のルールを読み込んでください" }, { status: 409 });
   }
@@ -100,7 +100,7 @@ export const DELETE = withUser(async (_req, { uid, params }) => {
   const ruleId = Number(params.ruleId);
   const loaded = await load(id, ruleId, uid);
   if (loaded.error) return loaded.error;
-  await deletePortfolioRule(ruleId, id);
+  await deletePortfolioRule(ruleId, id, uid);
   await audit(uid, "portfolio_rule.delete", {
     entity: "portfolio_rule",
     entityId: ruleId,

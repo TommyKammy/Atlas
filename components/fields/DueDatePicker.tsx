@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useEffect, useRef, useState } from "react";
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -185,6 +187,7 @@ export default function DueDatePicker({
           <div
             data-due-menu
             onKeyDown={(event) => {
+              if (isImeComposing(event)) return;
               if (event.key === "Escape") {
                 event.preventDefault();
                 event.stopPropagation();
@@ -204,6 +207,7 @@ export default function DueDatePicker({
                   value={startText}
                   onChange={(event) => setStartText(event.target.value)}
                   onKeyDown={(event) => {
+                    if (isImeComposing(event)) return;
                     if (event.key === "Enter" && !event.nativeEvent.isComposing) {
                       event.preventDefault();
                       if (commitInputs()) onCancel();
@@ -235,6 +239,7 @@ export default function DueDatePicker({
                   value={dueText}
                   onChange={(event) => setDueText(event.target.value)}
                   onKeyDown={(event) => {
+                    if (isImeComposing(event)) return;
                     if (event.key === "Enter" && !event.nativeEvent.isComposing) {
                       event.preventDefault();
                       if (commitInputs()) onCancel();

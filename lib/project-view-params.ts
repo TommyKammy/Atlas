@@ -1,3 +1,4 @@
+import { LIST_STATE_PARAM } from "./list-filter-state";
 import type { ViewState } from "./data";
 import {
   parseListDateFilter,
@@ -134,6 +135,7 @@ export function buildListInitial({
   saved?: SavedView;
   statusFieldEnabled: boolean;
 }): ListInitial {
+  if (searchParamString(searchParams, LIST_STATE_PARAM) === "1") stored = undefined;
   const filters = saved?.filters;
   const rawGroup2 = saved
     ? (filters?.group2 ?? "")
@@ -209,11 +211,10 @@ export function buildListInitial({
           ? searchParamString(searchParams, "sort")
           : storedString(stored, "sort"),
     ),
-    sortdir:
-      searchParamString(searchParams, "sortdir") !== ""
-        ? searchParamString(searchParams, "sortdir") === "desc"
-          ? "desc"
-          : "asc"
+    sortdir: saved
+      ? filters?.sortdir === "desc" ? "desc" : "asc"
+      : searchParamString(searchParams, "sortdir") !== ""
+        ? searchParamString(searchParams, "sortdir") === "desc" ? "desc" : "asc"
         : ((storedString(stored, "sortdir", ["asc", "desc"]) || "asc") as "asc" | "desc"),
     group: parseListGroupBy(
       saved

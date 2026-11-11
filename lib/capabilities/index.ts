@@ -1,3 +1,4 @@
+import { getProjectPolicyAccess } from "../project-policy-access";
 import { createHmac, randomUUID } from "node:crypto";
 import { db, withTransaction, type Queryable } from "../db";
 import { getProjectAccess } from "../repositories/projects";
@@ -163,6 +164,7 @@ export async function executeCapability(
     if (!taskId) throw new Error("task.set_status requires a task");
     const projectId = await taskProject(taskId, q);
     await assertEdit(ctx, projectId);
+    if (!(await getProjectPolicyAccess(ctx.actorId, projectId, q)).canConfigure) throw new Error("project configuration is restricted");
     const status = asString(params.status).slice(0, 64);
     if (status === "") throw new Error("status is required");
     const changed = await q.query(
@@ -508,6 +510,7 @@ export async function executeCapability(
     const projectId = asNumber(params.project_id ?? ctx.projectId);
     if (!projectId) throw new Error("project.set_status requires a project");
     await assertEdit(ctx, projectId);
+    if (!(await getProjectPolicyAccess(ctx.actorId, projectId, q)).canConfigure) throw new Error("project configuration is restricted");
     const status = asString(params.status);
     if (status === "") throw new Error("status is required");
     const color = isProjectStatusColor(params.status_color) ? params.status_color : "none";

@@ -391,6 +391,7 @@ export type SavedView = {
     completed_on?: string;
     group2?: string;
     groupdir?: string;
+    sortdir?: string;
     subtasks_collapsed?: boolean;
   };
   sort_key: string;

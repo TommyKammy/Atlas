@@ -31,6 +31,8 @@ import EmptyCellIcon from "./fields/EmptyCellIcon";
 import TaskAvatar from "./task/TaskAvatar";
 import TaskStatusChip from "./task/TaskStatusChip";
 import TaskApprovalSection from "./task/TaskApprovalSection";
+import TaskDraftInput from "./task/TaskDraftInput";
+import TaskSaveStatus from "./task/TaskSaveStatus";
 import type { TaskApprovalSummary } from "@/lib/task-approval";
 import { QUICK_REACTIONS, useTaskPane } from "@/lib/use-task-pane";
 
@@ -106,7 +108,8 @@ export default function TaskPane({
     depDraft,
     setDepDraft,
     conflict,
-    setConflict,
+    discardConflict,
+    inputRecovery,
     uploading,
     referenceOpen,
     setReferenceOpen,
@@ -128,6 +131,11 @@ export default function TaskPane({
     setNewMemberSection,
     toggleReaction,
     patch,
+    patchChecked,
+    saveStates,
+    reloading,
+    reloadRevision,
+    reloadTask,
     retryOverwrite,
     toggle,
     remove,
@@ -139,6 +147,7 @@ export default function TaskPane({
     deleteComment,
     addSubtask,
     addDependency,
+    removeDependency,
     openAddProject,
     onPickMemberProject,
     addMembership,
@@ -322,11 +331,6 @@ export default function TaskPane({
     );
   };
 
-  const removeDependency = async (dependencyId: number) => {
-    await fetch(`/api/dependencies?task_id=${task.id}&depends_on_id=${dependencyId}`, { method: "DELETE" });
-    refresh();
-  };
-
   const collaboratorList = (() => {
     const map = new Map<number, { id: number; name: string; avatar_url?: string | null }>();
     const add = (id: number | null, name: string | null | undefined) => {
@@ -370,6 +374,7 @@ export default function TaskPane({
         onCopyLink={() => void copyTaskLink()}
         onToggleFullscreen={() => setMaximized((value) => !value)}
         onOpenApproval={() => setApprovalOpenSignal((value) => value + 1)}
+        canEdit={canEdit && !reloading}
       />
 
       <div
@@ -381,6 +386,8 @@ export default function TaskPane({
         <TaskVisibilityBanner onShare={() => void shareTask()} />
 
         <div className="px-4 pb-8 pt-3">
+          <TaskSaveStatus states={saveStates} reloading={reloading} onReload={reloadTask} />
+          {!canEdit && <p role="status" data-task-readonly className="mb-2 text-[12px] text-neutral-600">タスクの項目は閲覧のみです。変更には編集権限が必要です。</p>}
           {conflict && (
             <div className="mb-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm">
               <div className="font-semibold text-red-700">他のユーザーが先に更新しました</div>
@@ -405,10 +412,8 @@ export default function TaskPane({
                   最新で上書きする
                 </button>
                 <button
-                  onClick={() => {
-                    setConflict(null);
-                    refresh();
-                  }}
+                  onClick={discardConflict}
+                  data-task-conflict-discard
                   className="rounded border px-3 py-1 hover:bg-white"
                 >
                   破棄して最新表示
@@ -417,16 +422,17 @@ export default function TaskPane({
             </div>
           )}
 
-          <input
-            defaultValue={task.name}
-            key={`name-${task.id}`}
-            aria-label="タスク名"
-            onBlur={(event) =>
-              event.target.value.trim() &&
-              event.target.value !== task.name &&
-              patch({ name: event.target.value.trim() })
-            }
-            onKeyDown={(event) => event.key === "Enter" && (event.target as HTMLInputElement).blur()}
+          <TaskDraftInput
+            taskId={task.id}
+            field="name"
+            value={task.name}
+            updatedAt={task.updated_at}
+            recovery={inputRecovery}
+            readOnly={!canEdit || reloading}
+            label="タスク名"
+            onSave={(value, stamp) => { if (value.trim()) return patch({ name: value.trim() }, stamp); }}
+            normalize={(value) => value.trim()}
+            enterBlurs
             className="w-full border-b border-transparent bg-transparent pb-1 text-[24px] font-semibold leading-8 tracking-[-0.01em] text-neutral-900 outline-none placeholder:text-neutral-300 focus:border-[#4075cf]"
             placeholder="タスク名を入力"
           />
@@ -441,7 +447,7 @@ export default function TaskPane({
           <TaskApprovalSection key={task.id} task={task} viewerId={viewerId} canEdit={canEdit}
             openSignal={approvalOpenSignal} onSummaryChange={(value) => setApprovalOverride({ taskId: task.id, stamp: task.updated_at, approval: value })} onChanged={refresh} />
 
-          <div className="mt-2 space-y-0.5" data-task-fields>
+          <fieldset disabled={!canEdit || reloading} className="mt-2 min-w-0 space-y-0.5 border-0 p-0" data-task-fields>
             <FieldRow label="担当者">
               {assigneeEditing ? (
                 <div className="min-w-0">
@@ -477,6 +483,7 @@ export default function TaskPane({
 
             <FieldRow label="期日">
               <TaskDueDateField
+                key={`dates-${task.id}-${reloadRevision}`}
                 start={task.start_on}
                 due={task.due_on}
                 overdue={isOverdue}
@@ -485,6 +492,7 @@ export default function TaskPane({
             </FieldRow>
 
             <TaskDependenciesSection
+              key={`dependencies-${task.id}-${reloadRevision}`}
               projectId={projectId}
               view={view}
               taskId={task.id}
@@ -591,16 +599,19 @@ export default function TaskPane({
 
             <FieldRow label="進捗">
               <div className="flex h-7 items-center gap-2">
-                <input
+                <TaskDraftInput
+                  taskId={task.id}
+                  field="progress"
+                  value={task.progress}
+                  updatedAt={task.updated_at}
+                  recovery={inputRecovery}
+                  readOnly={!canEdit || reloading}
                   type="number"
                   min={0}
                   max={100}
-                  defaultValue={task.progress}
-                  key={`progress-${task.id}`}
-                  onBlur={(event) =>
-                    patch({ progress: Math.max(0, Math.min(100, Number(event.target.value))) })
-                  }
-                  aria-label="進捗"
+                  onSave={(value, stamp) => patch({ progress: Math.max(0, Math.min(100, Number(value))) }, stamp)}
+                  normalize={(value) => String(Math.max(0, Math.min(100, Number(value))))}
+                  label="進捗"
                   className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
                 />
                 <span className="text-[10px] text-neutral-400">%</span>
@@ -612,7 +623,7 @@ export default function TaskPane({
 
             {statusFieldEnabled && (
               <FieldRow label={statusFieldName}>
-                <details className="relative inline-block">
+                {canEdit ? <details className="relative inline-block">
                   <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
                     <TaskStatusChip status={task.status} />
                   </summary>
@@ -633,7 +644,7 @@ export default function TaskPane({
                       </button>
                     ))}
                   </div>
-                </details>
+                </details> : <TaskStatusChip status={task.status} />}
               </FieldRow>
             )}
 
@@ -650,19 +661,21 @@ export default function TaskPane({
                 <option value="monthly">毎月</option>
               </select>
             </FieldRow>
-          </div>
+          </fieldset>
 
-          <TaskCustomFieldsSection customFields={customFields} renderEditor={renderCustomEditor} />
+          <TaskCustomFieldsSection key={`fields-${task.id}-${reloadRevision}`} customFields={customFields} renderEditor={renderCustomEditor} />
 
           <TaskDescriptionSection
-            key={`description-${task.id}`}
+            key={`description-${task.id}-${reloadRevision}`}
             doc={task.description_doc ?? null}
             legacy={task.description}
             mentionUsers={mentionUsers}
-            onSave={(doc) => patch({ description_doc: doc })}
+            onSave={(doc) => patchChecked({ description_doc: doc })}
+            canEdit={canEdit && !reloading}
           />
 
           <TaskSubtasksSection
+            canEdit={canEdit && !reloading}
             projectId={projectId}
             view={view}
             subtasks={subtasks}
@@ -680,6 +693,7 @@ export default function TaskPane({
           />
 
           <TaskAttachmentsSection
+            canEdit={canEdit && !reloading}
             attachments={attachments}
             uploading={uploading}
             onUpload={uploadFile}

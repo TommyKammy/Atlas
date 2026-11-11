@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { ApiError } from "@/lib/api-client";
@@ -330,6 +332,7 @@ export default function CalendarView({
     openTask(task.id);
   };
   const multiBarKeyDown = (task: TaskRow, event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isImeComposing(event)) return;
     if (event.key === "Enter") openTask(task.id);
   };
   const multiBarPointerDown = (task: TaskRow, event: React.PointerEvent<HTMLDivElement>) => {
@@ -427,6 +430,7 @@ export default function CalendarView({
     openTask(task.id);
   };
   const singleBarKeyDown = (task: TaskRow, event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isImeComposing(event)) return;
     if (event.key === "Enter") openTask(task.id);
   };
   const singleBarPointerDown = (task: TaskRow, event: React.PointerEvent<HTMLDivElement>) => {
@@ -882,6 +886,7 @@ export default function CalendarView({
                         onStartAdd={() => startInlineAdd(iso)}
                         onDraftChange={setDraft}
                         onDraftKeyDown={(event) => {
+                          if (isImeComposing(event)) return;
                           if (event.key === "Enter") submitInlineAdd(iso);
                           if (event.key === "Escape") {
                             setAddingDate(null);

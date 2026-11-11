@@ -2,8 +2,15 @@
 
 import EmptyState from "../EmptyState";
 
-/** Empty-state card shown when a project has no tasks. */
-export default function ListEmptyState({ onAdd }: { onAdd: () => void }) {
+/** Distinguish an empty project from an empty dashboard selection. */
+export default function ListEmptyState({ onAdd, mode = "project" }: { onAdd: () => void; mode?: "project" | "filtered" }) {
+  if (mode === "filtered") {
+    return <EmptyState
+      scope="list"
+      title="条件に一致するタスクがありません"
+      description="ダッシュボードの条件や追加のフィルターを変更してください。"
+    />;
+  }
   return (
     <EmptyState
       scope="list"

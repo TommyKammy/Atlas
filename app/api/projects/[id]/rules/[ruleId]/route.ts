@@ -19,7 +19,7 @@ function ruleId(raw: string): number | null {
 }
 
 export const PATCH = withProject(
-  "edit",
+  "configure",
   async (_req, { uid, projectId, params, body }) => {
     const id = ruleId(params.ruleId);
     if (id === null) return NextResponse.json({ error: "invalid rule id" }, { status: 400 });
@@ -98,7 +98,7 @@ export const PATCH = withProject(
   { body: true },
 );
 
-export const DELETE = withProject("edit", async (_req, { uid, projectId, params }) => {
+export const DELETE = withProject("configure", async (_req, { uid, projectId, params }) => {
   const id = ruleId(params.ruleId);
   if (id === null) return NextResponse.json({ error: "invalid rule id" }, { status: 400 });
   const existing = await getProjectRule(id, projectId);

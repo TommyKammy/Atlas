@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
 import { withResourceProject } from "@/lib/api/route";
 
-export const POST = withResourceProject("edit", "custom_fields", async (_req, { params }) => {
+export const POST = withResourceProject("configure", "custom_fields", async (_req, { params }) => {
   const id = params.id;
   const r = await db.query(
     `UPDATE custom_fields SET deleted_at = NULL

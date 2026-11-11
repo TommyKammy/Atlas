@@ -57,6 +57,7 @@ export type ListViewContentProps = {
   editingDue: boolean;
   onCancelEdit: () => void;
   tasksEmpty: boolean;
+  emptyState: "project" | "filtered";
   focusAdd: () => void;
 };
 
@@ -74,6 +75,7 @@ export default function ListViewContent({
   editingDue,
   onCancelEdit,
   tasksEmpty,
+  emptyState,
   focusAdd,
 }: ListViewContentProps) {
   return (
@@ -115,7 +117,7 @@ export default function ListViewContent({
           {bulk.selectedCount > 0 && <ListBulkToolbar {...bulk} />}
           {menuCol !== null && <div className="fixed inset-0 z-30" onClick={onCloseMenu} />}
           {editingDue && <div className="fixed inset-0 z-30" onClick={onCancelEdit} />}
-          {tasksEmpty && <ListEmptyState onAdd={focusAdd} />}
+          {tasksEmpty && <ListEmptyState onAdd={focusAdd} mode={emptyState} />}
           <ListColumnHeaderRow
             {...columns.headerRow}
             headers={<ListColumnHeaders {...columns.headers} />}

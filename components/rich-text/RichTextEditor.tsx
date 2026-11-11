@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { FocusEvent, ReactNode } from "react";
 import type { Editor } from "@tiptap/core";
@@ -91,6 +93,7 @@ export default function RichTextEditor({
           ...dataAttributes,
         },
         handleKeyDown: (_view, event) => {
+          if (isImeComposing(event)) return false;
           if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
             event.preventDefault();
             void onSubmitRef.current?.();

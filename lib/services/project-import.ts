@@ -7,6 +7,8 @@ import { normalizeFieldEditorIds } from "@/lib/field-access";
 import { canManageProject, type ProjectRole } from "@/lib/project-roles";
 import { receiveMultipart } from "@/lib/api/multipart";
 import { text as readText } from "node:stream/consumers";
+import { forbidden } from "@/lib/api/errors";
+import { getProjectPolicyAccess } from "@/lib/project-policy-access";
 
 const MAX_ROWS = 1000;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -35,6 +37,14 @@ export async function importProject(
       return NextResponse.json({ error: `unexpected header col ${i}: ${header[i] ?? ""}` }, { status: 400 });
     }
   }
+  const rowCount = records.length - 1;
+  if (rowCount > MAX_ROWS) {
+    return NextResponse.json({
+      error: `CSV contains ${rowCount} data rows; the maximum is ${MAX_ROWS}. No rows were imported.`,
+      max_rows: MAX_ROWS,
+      received_rows: rowCount,
+    }, { status: 400 });
+  }
   const customNames = header.slice(base.length);
 
   const result = await withTransaction(async (q) => {
@@ -60,6 +70,19 @@ export async function importProject(
     const sectionByName = new Map(
       (sections.rows as { id: number; name: string }[]).map((s) => [s.name, s.id]),
     );
+    const policy = await getProjectPolicyAccess(uid, projectId, q);
+    if (!policy.canConfigure) {
+      // Validate the whole file before the first row can create tasks or
+      // values. Row-level savepoints must not turn a denied configuration
+      // change into a successful partial import.
+      if (customNames.some((name) => name !== "" && !fieldByName.has(name))) {
+        throw forbidden("CSV contains unknown custom fields; project configuration permission is required");
+      }
+      const createsSection = records.slice(1).some((row) =>
+        (row[1] ?? "").trim() !== "サブタスク" && (row[2] ?? "").trim() !== "" &&
+        (row[0] ?? "").trim() !== "" && !sectionByName.has((row[0] ?? "").trim()));
+      if (createsSection) throw forbidden("CSV would create a section; project configuration permission is required");
+    }
 
     // Section creation stays outside the row savepoint. This preserves the
     // previous behavior where a failed row can leave an empty section behind.
@@ -85,7 +108,7 @@ export async function importProject(
     const errors: string[] = [];
     const createdIds: number[] = [];
     let lastTop: number | null = null;
-    const rows = records.slice(1, MAX_ROWS + 1);
+    const rows = records.slice(1);
 
     for (let li = 0; li < rows.length; li++) {
       const cols = rows[li];

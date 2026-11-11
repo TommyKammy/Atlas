@@ -4,7 +4,7 @@ import { withProject } from "@/lib/api/route";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 
-export const PATCH = withProject("edit", async (_req, { uid, projectId, params, body }) => {
+export const PATCH = withProject("configure", async (_req, { uid, projectId, params, body }) => {
   const appId = params.appId;
   const owned = await db.query(
     "SELECT id FROM project_apps WHERE id = $1::bigint AND project_id = $2::bigint",
@@ -37,7 +37,7 @@ export const PATCH = withProject("edit", async (_req, { uid, projectId, params, 
   return NextResponse.json({ id: Number(appId) });
 }, { body: true });
 
-export const DELETE = withProject("edit", async (_req, { uid, projectId, params }) => {
+export const DELETE = withProject("configure", async (_req, { uid, projectId, params }) => {
   const appId = params.appId;
   const owned = await db.query(
     "SELECT id FROM project_apps WHERE id = $1::bigint AND project_id = $2::bigint",

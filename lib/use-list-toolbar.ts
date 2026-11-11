@@ -19,6 +19,7 @@ export function useListToolbar({
   router,
   refresh,
   canEdit,
+  canSaveView = true,
   viewTabId,
   viewName,
   viewIcon,
@@ -37,6 +38,7 @@ export function useListToolbar({
   router: RouterLike;
   refresh: () => void;
   canEdit: boolean;
+  canSaveView?: boolean;
   viewTabId: number | null;
   viewName: string;
   viewIcon: string | null;
@@ -150,7 +152,6 @@ export function useListToolbar({
     (updatedFilter !== "" ? 1 : 0) +
     (completedDateFilter !== "" ? 1 : 0) +
     (statusFieldEnabled && statusFilter !== "" ? 1 : 0);
-  const sortActive = sortKey !== "position";
 
   const cycleSort = (key: "name" | "due" | "progress") => {
     if (sortKey !== key) {
@@ -263,16 +264,7 @@ export function useListToolbar({
     setCreatedFilter("");
     setUpdatedFilter("");
     setCompletedDateFilter("");
-    const current = new URLSearchParams(window.location.search);
-    const q = new URLSearchParams({ view: "list" });
-    const tab = current.get("tab");
-    if (tab) q.set("tab", tab);
-    if (sortActive) {
-      q.set("sort", sortKey);
-      if (sortDir === "desc") q.set("sortdir", "desc");
-    }
-    if (groupBy !== "section") q.set("group", groupBy);
-    router.push(`/projects/${projectId}?${q.toString()}`);
+    pushState({ hide: false, completed: false, mine: false, assignee: "", due: "", status: "", start: "", creator: "", created: "", updated: "", completed_on: "" });
     setFilterOpen(false);
   };
 
@@ -360,12 +352,13 @@ export function useListToolbar({
   };
 
   const saveView = async () => {
-    if (!saveName.trim()) return;
+    if (!canSaveView || !saveName.trim()) return;
     const res = await api<{ id: number }>("/api/saved-views", "POST", {
       project_id: projectId,
       name: saveName,
       filters: {
         ...filters,
+        sortdir: sortDir,
         group2: group2 ?? "",
         groupdir: groupDir,
         subtasks_collapsed: subtasksCollapsed,
@@ -455,6 +448,7 @@ export function useListToolbar({
       saveName,
       setSaveName,
       saveView,
+      canSaveView,
       optionsOpen,
       setOptionsOpen,
       viewName,

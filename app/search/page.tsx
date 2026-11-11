@@ -19,6 +19,7 @@ import { recordSearchHistoryAtBoundary } from "@/lib/search-history";
 import SavedSearchBar from "@/components/SavedSearchBar";
 import SearchHistoryClear from "@/components/SearchHistoryClear";
 import SearchResults from "@/components/search/SearchResults";
+import { emptySearchPage, parseSearchPage, searchDateParam, SEARCH_QUERY_LIMIT } from "@/lib/search-pagination";
 
 export const instant = false;
 
@@ -27,8 +28,9 @@ function str(sp: { [key: string]: string | string[] | undefined }, key: string):
   return typeof v === "string" ? v : "";
 }
 
-function dateParam(value: string): string | null {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+function idParam(value: string): number | null {
+  const id = /^\d+$/.test(value) ? Number(value) : 0;
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 export default async function SearchPage(props: {
@@ -38,7 +40,7 @@ export default async function SearchPage(props: {
   const ws = await getWorkspace();
   const viewerId = await getCurrentUserId();
   if (!viewerId) redirect("/login");
-  const q = str(sp, "q").trim();
+  const q = str(sp, "q").trim().slice(0, SEARCH_QUERY_LIMIT);
   if (q !== "") {
     after(() => recordSearchHistoryAtBoundary(viewerId, q).catch(() => undefined));
   }
@@ -60,23 +62,23 @@ export default async function SearchPage(props: {
     a.localeCompare(b, "ja"),
   );
   const custom = customFields
-    .map((field) => ({ fieldId: field.id, value: str(sp, `cf_${field.id}`).trim(), type: field.field_type }))
+    .map((field) => ({ fieldId: field.id, value: str(sp, `cf_${field.id}`).trim().slice(0, 2000), type: field.field_type }))
     .filter((entry) => entry.value !== "");
   const f = {
     q,
-    projectId: /^\d+$/.test(projectRaw) ? Number(projectRaw) : null,
-    assigneeId: assigneeRaw === "none" ? ("none" as const) : /^\d+$/.test(assigneeRaw) ? Number(assigneeRaw) : null,
+    projectId: idParam(projectRaw),
+    assigneeId: assigneeRaw === "none" ? ("none" as const) : idParam(assigneeRaw),
     completed: (completedRaw === "open" || completedRaw === "done" ? completedRaw : "all") as
       | "all"
       | "open"
       | "done",
-    status: statusRaw !== "" ? statusRaw : null,
-    dueFrom: dateParam(str(sp, "from")),
-    dueTo: dateParam(str(sp, "to")),
-    createdFrom: dateParam(str(sp, "created_from")),
-    createdTo: dateParam(str(sp, "created_to")),
-    completedFrom: dateParam(str(sp, "completed_from")),
-    completedTo: dateParam(str(sp, "completed_to")),
+    status: statusRaw !== "" ? statusRaw.slice(0, 200) : null,
+    dueFrom: searchDateParam(str(sp, "from")),
+    dueTo: searchDateParam(str(sp, "to")),
+    createdFrom: searchDateParam(str(sp, "created_from")),
+    createdTo: searchDateParam(str(sp, "created_to")),
+    completedFrom: searchDateParam(str(sp, "completed_from")),
+    completedTo: searchDateParam(str(sp, "completed_to")),
     custom,
   };
   const searched =
@@ -92,22 +94,24 @@ export default async function SearchPage(props: {
     f.completedFrom !== null ||
     f.completedTo !== null ||
     custom.length > 0;
-  const results = ws && searched ? await searchTasksAdvanced(ws.id, f, viewerId ?? undefined) : [];
-  const [projectHits, messageHits, knowledgeHits, fileHits] =
-    ws && q !== ""
-      ? await Promise.all([
-          searchProjectsGlobal(ws.id, q, viewerId ?? undefined),
-          searchMessagesGlobal(ws.id, q, viewerId ?? undefined),
-          searchKnowledgeGlobal(ws.id, q, viewerId ?? undefined),
-          searchFilesGlobal(ws.id, q, viewerId ?? undefined),
-        ])
-      : [[], [], [], []];
-  const total = results.length + projectHits.length + messageHits.length + knowledgeHits.length + fileHits.length;
+  const [taskPage, projectPage, messagePage, knowledgePage, filePage] = await Promise.all([
+    ws && searched ? searchTasksAdvanced(ws.id, f, viewerId, { page: parseSearchPage(sp.tasks_page), pageSize: 100 }) : emptySearchPage<never>(100),
+    ws && q !== "" ? searchProjectsGlobal(ws.id, q, viewerId, { page: parseSearchPage(sp.projects_page), pageSize: 20 }) : emptySearchPage<never>(20),
+    ws && q !== "" ? searchMessagesGlobal(ws.id, q, viewerId, { page: parseSearchPage(sp.messages_page), pageSize: 20 }) : emptySearchPage<never>(20),
+    ws && q !== "" ? searchKnowledgeGlobal(ws.id, q, viewerId, { page: parseSearchPage(sp.knowledge_page), pageSize: 20 }) : emptySearchPage<never>(20),
+    ws && q !== "" ? searchFilesGlobal(ws.id, q, viewerId, { page: parseSearchPage(sp.files_page), pageSize: 20 }) : emptySearchPage<never>(20),
+  ]);
+  const total = taskPage.total + projectPage.total + messagePage.total + knowledgePage.total + filePage.total;
+  const searchParams = { ...sp, q };
+  const pagination = { tasks: taskPage, projects: projectPage, messages: messagePage, knowledge: knowledgePage, files: filePage };
 
   const field = "rounded border px-2 py-1 text-sm";
   return (
     <div className="p-6">
       <h1 className="text-lg font-bold">検索</h1>
+      {str(sp, "q").trim().length > SEARCH_QUERY_LIMIT && (
+        <p role="status" className="mt-2 text-[12px] text-amber-800">キーワードは先頭{SEARCH_QUERY_LIMIT}文字で検索しています。</p>
+      )}
       {q === "" && searchHistory.length > 0 && (
         <div data-search-history className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-neutral-600">
           <span className="font-medium text-neutral-500">最近の検索</span>
@@ -128,7 +132,7 @@ export default async function SearchPage(props: {
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1">
             キーワード
-            <input name="q" defaultValue={q} placeholder="名前・説明" className={`${field} w-48`} />
+            <input name="q" maxLength={SEARCH_QUERY_LIMIT} defaultValue={q} placeholder="名前・説明" className={`${field} w-48`} />
           </label>
           <label className="flex flex-col gap-1">
             プロジェクト
@@ -248,16 +252,19 @@ export default async function SearchPage(props: {
 
       {ws && <SavedSearchBar workspaceId={ws.id} saved={savedSearches} />}
 
-      {searched && <p className="mt-3 text-sm text-neutral-500">{total}件</p>}
+      {searched && <p data-search-total={total} className="mt-3 text-sm text-neutral-500">合計 {total}件</p>}
+      {searched && q !== "" && <p className="mt-1 text-[12px] text-neutral-500">プロジェクト・メッセージ・知識・ファイルはキーワードで検索します。その他の絞り込み条件はタスクに適用されます。</p>}
       <SearchResults
         q={q}
         searched={searched}
         total={total}
-        tasks={results}
-        projects={projectHits}
-        messages={messageHits}
-        knowledge={knowledgeHits}
-        files={fileHits}
+        tasks={taskPage.items}
+        projects={projectPage.items}
+        messages={messagePage.items}
+        knowledge={knowledgePage.items}
+        files={filePage.items}
+        pagination={pagination}
+        searchParams={searchParams}
       />
 
     </div>

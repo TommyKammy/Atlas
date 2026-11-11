@@ -7,7 +7,7 @@ import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { copyRuleWithoutWebhookCredentials } from "@/lib/automation/webhook-credentials";
 
-export const POST = withProject("edit", async (_req, { uid, projectId, params }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, params }) => {
   const id = params.id;
   const created = await withTransaction(async (q) => {
     const bundle = await q.query(

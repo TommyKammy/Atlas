@@ -10,7 +10,7 @@ export const GET = withProject("view", async (_req, { projectId }) => {
   return NextResponse.json(await getProjectApps(projectId));
 });
 
-export const POST = withProject("edit", async (_req, { uid, projectId, body }) => {
+export const POST = withProject("configure", async (_req, { uid, projectId, body }) => {
   const payload = (body ?? {}) as { app_key?: unknown; config?: unknown };
   const appKey = typeof payload.app_key === "string" ? payload.app_key : "";
   const definition = appDefinition(appKey);

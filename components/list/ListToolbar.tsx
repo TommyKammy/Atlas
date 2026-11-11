@@ -1,5 +1,7 @@
 "use client";
 
+import { isImeComposing } from "@/lib/ime-keyboard";
+
 import { useEffect, type Dispatch, type SetStateAction } from "react";
 import type { CustomField, Section, TaskTemplate, User } from "@/lib/data";
 import {
@@ -97,6 +99,7 @@ export default function ListToolbar({
   saveName,
   setSaveName,
   saveView,
+  canSaveView = true,
   autoRefresh,
   setAutoRefresh,
   lastRefresh,
@@ -157,6 +160,7 @@ export default function ListToolbar({
   saveName: string;
   setSaveName: (value: string) => void;
   saveView: () => void;
+  canSaveView?: boolean;
   autoRefresh: boolean;
   setAutoRefresh: (value: boolean) => void;
   lastRefresh: string | null;
@@ -198,7 +202,7 @@ export default function ListToolbar({
   useEffect(() => {
     if (!filterOpen && !sortOpen && !groupOpen && !optionsOpen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (isImeComposing(event) || event.key !== "Escape") return;
       setFilterOpen(false);
       setSortOpen(false);
       setGroupOpen(false);
@@ -405,6 +409,7 @@ export default function ListToolbar({
         saveName={saveName}
         setSaveName={setSaveName}
         saveView={saveView}
+        canSaveView={canSaveView}
         autoRefresh={autoRefresh}
         setAutoRefresh={setAutoRefresh}
         lastRefresh={lastRefresh}
