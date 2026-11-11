@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { withUser } from "@/lib/api/route";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { validatePassword } from "@/lib/password-policy";
+import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES } from "@/lib/auth-rate-limit";
 
 export const GET = withUser(async (_req, { uid: id }) => {
   const r = await db.query(
@@ -15,6 +16,13 @@ export const GET = withUser(async (_req, { uid: id }) => {
 }, { inactiveStatus: 404 });
 
 export const PATCH = withUser(async (req, { uid: id }) => {
+  try {
+    await guardAuthRequest(req, "profile");
+  } catch (error) {
+    const limited = authRateLimitResponse(error);
+    if (limited) return limited;
+    throw error;
+  }
   const me = await db.query(
     "SELECT id, name, email, password_hash FROM users WHERE id = $1 AND deactivated_at IS NULL",
     [id],
@@ -54,6 +62,14 @@ export const PATCH = withUser(async (req, { uid: id }) => {
   }
   const wantsPassword = typeof body?.new_password === "string" && body.new_password !== "";
   if (wantsPassword) {
+    let attempt;
+    try {
+      attempt = await reserveAuthAttempt("password-change", String(id), POLICIES["password-change"]);
+    } catch (error) {
+      const limited = authRateLimitResponse(error);
+      if (limited) return limited;
+      throw error;
+    }
     const passwordError = await validatePassword(String(body.new_password));
     if (passwordError) {
       return NextResponse.json({ error: passwordError }, { status: 400 });
@@ -62,6 +78,13 @@ export const PATCH = withUser(async (req, { uid: id }) => {
     const stored = me.rows[0].password_hash as string | null;
     if (!stored || !verifyPassword(current, stored)) {
       return NextResponse.json({ error: "current password mismatch" }, { status: 401 });
+    }
+    try {
+      await attempt.release();
+    } catch (error) {
+      const limited = authRateLimitResponse(error);
+      if (limited) return limited;
+      throw error;
     }
     values.push(hashPassword(String(body.new_password)));
     sets.push(`password_hash = $${values.length}`);

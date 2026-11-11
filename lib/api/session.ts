@@ -8,8 +8,15 @@ import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
 } from "@/lib/session-token";
+import { SamlSessionRequiredError, type SessionAuthMethod } from "@/lib/session-policy";
 
 export { SESSION_COOKIE, SESSION_TTL_SECONDS };
+
+/** Acquire before user/session mutation rows in a transaction that issues credentials. */
+export async function lockSessionPolicy(q: Queryable) {
+  await q.query(`SELECT workspace_id FROM workspace_security
+    WHERE workspace_id=(SELECT id FROM workspaces ORDER BY id LIMIT 1) FOR SHARE`);
+}
 
 export type SessionUser = {
   id: number;
@@ -56,7 +63,9 @@ async function loadSessionByToken(token: string): Promise<SessionAccess | null> 
      LEFT JOIN workspace_security w ON w.workspace_id = (SELECT id FROM workspaces ORDER BY id LIMIT 1)
      WHERE s.token_hash = $1
        AND s.expires_at > now()
-       AND u.deactivated_at IS NULL`,
+       AND u.deactivated_at IS NULL
+       AND (s.auth_method = 'saml' OR u.is_admin OR w.saml_mode IS NULL
+         OR w.saml_mode IN ('off','optional') OR (w.saml_mode='members_only' AND u.is_guest))`,
     [tokenHash],
   );
   const row = r.rows[0] as
@@ -80,19 +89,22 @@ async function loadSessionByToken(token: string): Promise<SessionAccess | null> 
 /** Create a server-side session and return the raw cookie token. */
 export async function createSession(
   userId: number,
-  { userAgent, maxAge = SESSION_TTL_SECONDS, mfaPending = false }: {
+  { userAgent, maxAge = SESSION_TTL_SECONDS, mfaPending = false, authMethod = "password" }: {
     userAgent?: string | null;
     maxAge?: number;
     mfaPending?: boolean;
+    authMethod?: SessionAuthMethod;
   } = {},
   q?: Queryable,
 ): Promise<string> {
   const token = generateSessionToken();
-  await (q ?? db).query(
-    `INSERT INTO user_sessions (token_hash, user_id, expires_at, user_agent, mfa_enrollment_only)
-     VALUES ($1, $2::bigint, now() + make_interval(secs => $3), $4, $5)`,
-    [hashSessionToken(token), userId, maxAge, userAgent?.slice(0, 500) ?? null, mfaPending],
+  const created = await (q ?? db).query(
+    `INSERT INTO user_sessions (token_hash, user_id, expires_at, user_agent, mfa_enrollment_only, auth_method)
+     VALUES ($1, $2::bigint, now() + make_interval(secs => $3), $4, $5, $6)
+     RETURNING token_hash`,
+    [hashSessionToken(token), userId, maxAge, userAgent?.slice(0, 500) ?? null, mfaPending, authMethod],
   );
+  if (created.rowCount !== 1) throw new SamlSessionRequiredError();
   // The janitor also removes expired sessions. Keep this opportunistic cleanup
   // outside any transaction that needs the session insert to succeed atomically.
   if (!q) await db.query("DELETE FROM user_sessions WHERE expires_at <= now()").catch(() => undefined);
@@ -101,14 +113,17 @@ export async function createSession(
 
 /** Replace the previous credential after MFA while preserving its expiry. */
 export async function rotateSessionAfterMfa(q: Queryable, access: SessionAccess) {
+  // Settings revocation locks policy before sessions. Keep the same order here
+  // rather than deleting the old session and then waiting in the insert trigger.
+  await lockSessionPolicy(q);
   const token = generateSessionToken();
   const r = await q.query(
     `WITH previous AS (
        DELETE FROM user_sessions WHERE token_hash = $1 AND user_id = $2 AND expires_at > now()
-       RETURNING user_id, expires_at, user_agent
+       RETURNING user_id, expires_at, user_agent, auth_method
      )
-     INSERT INTO user_sessions (token_hash, user_id, expires_at, user_agent)
-     SELECT $3, user_id, expires_at, user_agent FROM previous
+     INSERT INTO user_sessions (token_hash, user_id, expires_at, user_agent, auth_method)
+     SELECT $3, user_id, expires_at, user_agent, auth_method FROM previous
      RETURNING floor(extract(epoch FROM expires_at - now()))::int AS max_age`,
     [access.tokenHash, access.user.id, hashSessionToken(token)],
   );

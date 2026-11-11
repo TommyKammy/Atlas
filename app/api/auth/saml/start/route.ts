@@ -1,9 +1,11 @@
+import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES } from "@/lib/auth-rate-limit";
+import { verifiedAuthClientIp } from "@/lib/auth-client-ip.mjs";
 import { NextResponse } from "next/server";
 import { getSecuritySettings } from "@/lib/admin-data";
 import { allowsSamlFlowCookie, appOrigin, buildSaml, SAML_FLOW_COOKIE_OPTIONS, samlFlowCookieName } from "@/lib/saml";
 import { generateSessionToken } from "@/lib/session-token";
 
-export async function GET(req: Request) {
+async function startSaml(req: Request) {
   const settings = await getSecuritySettings();
   const origin = appOrigin(req);
   if (settings.saml_mode === "off") {
@@ -20,5 +22,17 @@ export async function GET(req: Request) {
     return res;
   } catch {
     return NextResponse.redirect(new URL("/login?saml=error", origin));
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    await guardAuthRequest(req, "saml-start");
+    await reserveAuthAttempt("saml-start", verifiedAuthClientIp(req) ?? "unattributed", POLICIES["saml-start"]);
+    return await startSaml(req);
+  } catch (error) {
+    const limited = authRateLimitResponse(error);
+    if (limited) return limited;
+    throw error;
   }
 }

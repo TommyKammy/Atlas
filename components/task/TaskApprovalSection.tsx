@@ -35,6 +35,8 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
   const selectRef = useRef<HTMLSelectElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const controller = useRef<AbortController | null>(null);
+  const explicitRead = useRef<AbortController | null>(null);
+  const queuedBackgroundRead = useRef(false);
   const mutation = useRef(false);
   const alive = useRef(true);
   const taskStamp = useRef(task.updated_at);
@@ -53,18 +55,30 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
     if (result.approval) setExpanded(true);
   }, [viewerId]);
 
-  const load = useCallback(async (explicit = false) => {
+  const load = useCallback(async function loadApproval(explicit = false): Promise<void> {
     if (mutation.current) return;
+    if (!explicit && explicitRead.current && !explicitRead.current.signal.aborted) {
+      // A live update must not cancel the user's explicit confirmation read.
+      // Re-read afterwards in case the live update is newer than its snapshot.
+      queuedBackgroundRead.current = true;
+      return;
+    }
     controller.current?.abort();
     const request = new AbortController();
     controller.current = request;
+    if (explicit) {
+      explicitRead.current = request;
+      queuedBackgroundRead.current = false;
+      // Only this explicit read's success may lift the confirmation fence.
+      setStale(true);
+    }
     setLoading(true);
     setError("");
     try {
       const response = await fetch(`/api/tasks/${task.id}/approval`, { signal: request.signal, cache: "no-store" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "承認情報を読み込めませんでした");
-      if (request.signal.aborted || !alive.current) return;
+      if (request.signal.aborted || !alive.current || controller.current !== request) return;
       adopt(result as TaskApprovalResponse);
       setReadFailed(false);
       if (explicit) {
@@ -72,12 +86,21 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
         setNotice("最新の承認情報を読み込みました。内容を確認してから操作してください。");
       }
     } catch (caught) {
-      if (!request.signal.aborted && alive.current) {
+      if (!request.signal.aborted && alive.current && controller.current === request) {
         setReadFailed(true);
         setError(caught instanceof Error ? caught.message : "承認情報を読み込めませんでした");
       }
     } finally {
-      if (!request.signal.aborted && alive.current) setLoading(false);
+      if (explicitRead.current === request) explicitRead.current = null;
+      if (!request.signal.aborted && alive.current && controller.current === request) {
+        setLoading(false);
+        if (explicit && queuedBackgroundRead.current) {
+          queuedBackgroundRead.current = false;
+          queueMicrotask(() => {
+            if (alive.current && !mutation.current && controller.current === request) void loadApproval();
+          });
+        }
+      }
     }
   }, [task.id, adopt]);
 

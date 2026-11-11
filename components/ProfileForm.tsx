@@ -1,5 +1,7 @@
 "use client";
 
+import { authenticationFailureMessage } from "@/lib/auth-client-feedback";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import UserAvatar from "./UserAvatar";
@@ -74,7 +76,7 @@ export default function ProfileForm({
       if (typeof data?.avatar_url === "string") setAvatarUrl(data.avatar_url);
       router.refresh();
     } else {
-      setMsg(`更新に失敗しました: ${data?.error ?? res.status}`);
+      setMsg(authenticationFailureMessage(res) ?? `更新に失敗しました: ${data?.error ?? res.status}`);
     }
   };
 
@@ -100,7 +102,7 @@ export default function ProfileForm({
       setNewPw("");
       setConfirmPw("");
     } else {
-      setMsg(`更新に失敗しました: ${data?.error ?? res.status}`);
+      setMsg(authenticationFailureMessage(res) ?? `更新に失敗しました: ${data?.error ?? res.status}`);
     }
   };
 
@@ -116,7 +118,7 @@ export default function ProfileForm({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setTwoFaMsg(`設定を開始できませんでした: ${data?.error ?? res.status}`);
+        setTwoFaMsg(authenticationFailureMessage(res) ?? `設定を開始できませんでした: ${data?.error ?? res.status}`);
         return;
       }
       setTotpSetup(data as TotpSetup);
@@ -136,7 +138,7 @@ export default function ProfileForm({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setTwoFaMsg(`有効化に失敗しました: ${data?.error ?? res.status}`);
+        setTwoFaMsg(authenticationFailureMessage(res) ?? `有効化に失敗しました: ${data?.error ?? res.status}`);
         return;
       }
       setTotpEnabled(true);
@@ -162,7 +164,7 @@ export default function ProfileForm({
           : { action: "verify", code: totpCode }),
       });
       if (!res.ok) {
-        setTwoFaMsg("認証コードが正しくありません。再度お試しください。");
+        setTwoFaMsg(authenticationFailureMessage(res) ?? "認証コードが正しくありません。再度お試しください。");
         return;
       }
       router.push("/");
@@ -183,7 +185,7 @@ export default function ProfileForm({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setTwoFaMsg(`無効化に失敗しました: ${data?.error ?? res.status}`);
+        setTwoFaMsg(authenticationFailureMessage(res) ?? `無効化に失敗しました: ${data?.error ?? res.status}`);
         return;
       }
       setTotpEnabled(false);
@@ -430,7 +432,7 @@ export default function ProfileForm({
           </div>
         )}
 
-        {twoFaMsg && <p className="mt-2 text-sm text-neutral-600">{twoFaMsg}</p>}
+        {twoFaMsg && <p role="status" data-auth-feedback className="mt-2 text-sm text-neutral-600">{twoFaMsg}</p>}
       </section>
 
       {msg && <p className="text-sm text-neutral-600">{msg}</p>}

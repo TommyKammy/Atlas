@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { db, withTransaction } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth";
-import { conflict, forbidden, jsonError, notFound, unauthorized } from "@/lib/api/errors";
+import { ApiError, conflict, forbidden, jsonError, notFound, unauthorized } from "@/lib/api/errors";
 import { consumeRecoveryCodeForUser } from "@/lib/api/mfa";
-import { getMfaRequestSession, rotateSessionAfterMfa, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
+import { getMfaRequestSession, lockSessionPolicy, rotateSessionAfterMfa, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
 import { getSecuritySettings } from "@/lib/admin-data";
+import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES } from "@/lib/auth-rate-limit";
+import { SamlSessionRequiredError } from "@/lib/session-policy";
+import { decryptMfaSecret, encryptMfaSecret, MfaSecretUnavailableError } from "@/lib/mfa-secret";
 import {
   generateRecoveryCodes,
   generateTotpSecret,
@@ -61,6 +64,7 @@ export async function GET(req: Request) {
 }
 
 async function updateMfa(req: Request) {
+  await guardAuthRequest(req, "mfa");
   const access = await getMfaRequestSession(req);
   if (!access) throw notFound();
   const uid = access.user.id;
@@ -68,23 +72,44 @@ async function updateMfa(req: Request) {
   if (!me) throw notFound();
   const body = await req.json().catch(() => null);
   const action = typeof body?.action === "string" ? body.action : "";
+  if (!["begin", "enable", "disable", "verify"].includes(action)) return NextResponse.json({ error: "invalid action" }, { status: 400 });
+  const scope = action === "verify" ? "mfa-verify" : action === "begin" ? "mfa-enroll" : "mfa-manage";
+  const attempt = await reserveAuthAttempt(scope, String(uid), POLICIES[scope]);
+  try {
+    return await applyMfa(access, me, body, action, attempt);
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status >= 500) await attempt.release();
+    throw error;
+  }
+}
+
+async function applyMfa(
+  access: NonNullable<Awaited<ReturnType<typeof getMfaRequestSession>>>,
+  me: NonNullable<Awaited<ReturnType<typeof loadMe>>>,
+  body: Record<string, unknown> | null,
+  action: string,
+  attempt: Awaited<ReturnType<typeof reserveAuthAttempt>>,
+) {
+  const uid = access.user.id;
 
   if (action === "verify") {
     if (!access.mfaPending || !me.totp_enabled) throw forbidden("two-factor verification unavailable");
     const code = typeof body?.code === "string" ? body.code.trim() : "";
     const recoveryCode = typeof body?.recovery_code === "string" ? body.recovery_code.trim() : "";
     const session = await withTransaction(async (q) => {
+      await lockSessionPolicy(q);
       const current = await q.query(
         "SELECT totp_secret FROM users WHERE id = $1 AND totp_enabled AND deactivated_at IS NULL FOR UPDATE",
         [uid],
       );
       if (current.rowCount !== 1) throw unauthorized("invalid two-factor code");
       const secret = current.rows[0].totp_secret as string | null;
-      const verified = code ? !!secret && verifyTotp(secret, code)
+      const verified = code ? !!secret && verifyTotp(decryptMfaSecret(secret, uid, "active"), code)
         : !!recoveryCode && await consumeRecoveryCodeForUser(q, uid, recoveryCode);
       if (!verified) throw unauthorized("invalid two-factor code");
       const rotated = await rotateSessionAfterMfa(q, access);
       if (!rotated) throw unauthorized();
+      await attempt.release(q);
       return rotated;
     });
     const res = NextResponse.json({ enabled: true });
@@ -94,37 +119,41 @@ async function updateMfa(req: Request) {
 
   if (action === "begin") {
     const secret = generateTotpSecret();
+    const encrypted = encryptMfaSecret(secret, uid, "pending");
     const updated = await db.query(
       "UPDATE users SET totp_pending_secret = $2 WHERE id = $1 AND NOT totp_enabled AND deactivated_at IS NULL",
-      [uid, secret],
+      [uid, encrypted],
     );
     if (updated.rowCount !== 1) throw conflict("two-factor authentication is already enabled");
     const issuer = me.workspace_name || "Atlas";
     const uri = otpauthUrl(secret, me.email ?? me.name, issuer);
     const qrDataUrl = await QRCode.toDataURL(uri, { margin: 1, width: 220 });
-    return NextResponse.json({ secret, otpauth_uri: uri, qr_data_url: qrDataUrl });
+    return NextResponse.json({ secret, otpauth_uri: uri, qr_data_url: qrDataUrl }, { headers: { "Cache-Control": "no-store" } });
   }
 
   if (action === "enable") {
     if (me.totp_enabled) throw conflict("two-factor authentication is already enabled");
     const code = typeof body?.code === "string" ? body.code.trim() : "";
-    if (!me.totp_pending_secret || !verifyTotp(me.totp_pending_secret, code)) {
+    const pendingSecret = me.totp_pending_secret ? decryptMfaSecret(me.totp_pending_secret, uid, "pending") : null;
+    if (!pendingSecret || !verifyTotp(pendingSecret, code)) {
       return NextResponse.json({ error: "invalid verification code" }, { status: 400 });
     }
     const recoveryCodes = generateRecoveryCodes();
     const session = await withTransaction(async (q) => {
+      await lockSessionPolicy(q);
       const updated = await q.query(
         `UPDATE users SET totp_secret = $2, totp_pending_secret = NULL, totp_enabled = TRUE,
            totp_recovery_codes = $3, totp_enrolled_at = now()
-         WHERE id = $1 AND totp_pending_secret = $2 AND NOT totp_enabled AND deactivated_at IS NULL`,
-        [uid, me.totp_pending_secret, recoveryCodes.map(hashRecoveryCode)],
+         WHERE id = $1 AND totp_pending_secret = $4 AND NOT totp_enabled AND deactivated_at IS NULL`,
+        [uid, encryptMfaSecret(pendingSecret, uid, "active"), recoveryCodes.map(hashRecoveryCode), me.totp_pending_secret],
       );
       if (updated.rowCount !== 1) throw conflict("two-factor setup changed; start again");
       const rotated = await rotateSessionAfterMfa(q, access);
       if (!rotated) throw unauthorized();
+      await attempt.release(q);
       return rotated;
     });
-    const res = NextResponse.json({ enabled: true, recovery_codes: recoveryCodes });
+    const res = NextResponse.json({ enabled: true, recovery_codes: recoveryCodes }, { headers: { "Cache-Control": "no-store" } });
     res.cookies.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.maxAge));
     return res;
   }
@@ -143,6 +172,7 @@ async function updateMfa(req: Request) {
     if (!me.password_hash || !verifyPassword(password, me.password_hash)) {
       return NextResponse.json({ error: "password mismatch" }, { status: 401 });
     }
+    await attempt.release();
     await db.query(
       `UPDATE users SET totp_enabled = FALSE, totp_secret = NULL, totp_pending_secret = NULL,
          totp_recovery_codes = '{}', totp_enrolled_at = NULL
@@ -157,8 +187,16 @@ async function updateMfa(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    return await updateMfa(req);
+    const response = await updateMfa(req);
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   } catch (error) {
+    const limited = authRateLimitResponse(error);
+    if (limited) return limited;
+    if (error instanceof SamlSessionRequiredError) return NextResponse.json({ error: "SAML SSO is required", saml_required: true }, { status: 403 });
+    if (error instanceof MfaSecretUnavailableError) return NextResponse.json({
+      error: "two-factor authentication is temporarily unavailable", code: "mfa_unavailable",
+    }, { status: 503, headers: { "Cache-Control": "no-store" } });
     return jsonError(error);
   }
 }

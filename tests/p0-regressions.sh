@@ -17,6 +17,11 @@ case "$suite" in
   *) echo "Usage: bash tests/p0-regressions.sh [p0|p1|integrity|p2|all|approval|project-delete [repeat-count]]" >&2; exit 2 ;;
 esac
 
+# Each disposable stack receives its own ephemeral encryption key.
+export MFA_ENCRYPTION_KEY_ID=regression
+MFA_ENCRYPTION_KEYS=$(node -e 'process.stdout.write(JSON.stringify({regression:require("node:crypto").randomBytes(32).toString("base64")}))')
+export MFA_ENCRYPTION_KEYS
+
 prefix="atlas-p0-$(date +%s)-$$-$RANDOM"
 image="$prefix:app"
 network_id="" db_id="" redis_id="" app_id="" replica_id="" uploads_volume="" saml_dir=""
@@ -79,6 +84,7 @@ redis_id=$(docker run -d --name "$prefix-redis" --network "$network_id" --networ
 app_id=$(docker run -d --name "$prefix-app" --network "$network_id" \
   --mount "source=$uploads_volume,target=/app/uploads" \
   -e DATABASE_URL=postgres://atlas:atlas@db:5432/atlas_p0 \
+  -e MFA_ENCRYPTION_KEY_ID -e MFA_ENCRYPTION_KEYS \
   -e REDIS_URL=redis://redis:6379 -e AUTOMATION_WORKER_DISABLED=1 -e NOTIFICATION_WORKER_DISABLED=1 \
   -e AUTOMATION_WORKER_TOKEN=atlas-regression-worker "$image")
 docker exec "$app_id" mkdir -p /app/tests
@@ -105,7 +111,11 @@ if [[ "$suite" == p1 || "$suite" == all ]]; then
   docker cp "$saml_dir/cert.pem" "$app_id:/app/tests/saml-fixture/"
   docker cp tests/saml-assertion.mjs "$app_id:/app/tests/"
   docker cp tests/p1-regressions.mjs "$app_id:/app/tests/"
-  docker exec "$app_id" node --test /app/tests/p1-regressions.mjs || status=1
+  docker exec "$app_id" node --import tsx --test /app/tests/p1-regressions.mjs || status=1
+  for file in auth-encryption auth-policy auth-rate-limit; do
+    docker cp "tests/$file-regressions.mjs" "$app_id:/app/tests/"
+    docker exec "$app_id" node --import tsx --test "/app/tests/$file-regressions.mjs" || status=1
+  done
   for file in p1-final-portfolio p1-final-task-auth p1-final-copy; do
     docker cp "tests/$file-regressions.mjs" "$app_id:/app/tests/"
     docker exec "$app_id" node --test "/app/tests/$file-regressions.mjs" || status=1
@@ -144,7 +154,8 @@ if [[ "$suite" == p2 || "$suite" == all ]]; then
   replica_id=$(docker run -d --name "$prefix-attachment-replica" --network "$network_id" \
     --network-alias attachment-replica --mount "source=$uploads_volume,target=/app/uploads" \
     -e DATABASE_URL=postgres://atlas:atlas@db:5432/atlas_p0 \
-    -e REDIS_URL=redis://redis:6379 -e AUTOMATION_WORKER_DISABLED=1 -e NOTIFICATION_WORKER_DISABLED=1 "$image")
+    -e MFA_ENCRYPTION_KEY_ID -e MFA_ENCRYPTION_KEYS \
+  -e REDIS_URL=redis://redis:6379 -e AUTOMATION_WORKER_DISABLED=1 -e NOTIFICATION_WORKER_DISABLED=1 "$image")
   for file in p2-migration p2-data p2-automation p2-attachments p2-timeline-pins ev09 ev10; do
     docker cp "tests/$file-regressions.mjs" "$app_id:/app/tests/"
     docker exec -e ATLAS_ATTACHMENT_REPLICA=http://attachment-replica:3000 \

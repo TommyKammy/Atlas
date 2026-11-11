@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { encryptMfaSecret } from "../lib/mfa-secret.ts";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { readFile } from "node:fs/promises";
@@ -150,7 +151,8 @@ test("R06 concurrent login requests can consume a recovery code only once", { ti
     [editorId, email, hashPassword(password), [hashRecoveryCode(recoveryCode)]],
   );
 
-  // Let both requests read the code before releasing the writes.
+  // Queue both requests behind writes. The final MFA recheck also locks the
+  // user row, so the second request may wait there before consuming the code.
   const blocker = await db.connect();
   let logins;
   try {
@@ -164,7 +166,8 @@ test("R06 concurrent login requests can consume a recovery code only once", { ti
     while (Date.now() < deadline) {
       const { rows: [{ n }] } = await db.query(
         `SELECT count(*)::int AS n FROM pg_stat_activity
-         WHERE wait_event_type = 'Lock' AND query LIKE '%totp_recovery_codes%'`,
+         WHERE wait_event_type = 'Lock' AND (query LIKE '%totp_recovery_codes%'
+           OR (query LIKE '%FROM users WHERE id=%' AND query LIKE '%FOR UPDATE%'))`,
       );
       waiting = n;
       if (waiting >= 2) break;
@@ -276,7 +279,7 @@ test("R07 SAML signs in once, honors session expiry, and preserves MFA", { timeo
   assert.equal((await request(cookieFrom(another), "GET", "/api/me", 200)).email, email);
 
   const secret = "JBSWY3DPEHPK3PXP";
-  await db.query("UPDATE users SET totp_enabled = true, totp_secret = $2 WHERE id = $1", [userId, secret]);
+  await db.query("UPDATE users SET totp_enabled = true, totp_secret = $2 WHERE id = $1", [userId, encryptMfaSecret(secret, userId, "active")]);
   const challenge = await submit(await beginSaml());
   assert.equal(challenge.status, 303);
   assert.equal(challenge.headers.get("location"), "/profile#two-factor");

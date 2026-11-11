@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { normalizePermissions, type Permission } from "./permissions";
+import { isSamlSessionAllowed } from "./session-policy";
 
 export type AdminWorkspace = {
   id: number;
@@ -30,7 +31,7 @@ export function requiresSaml(
   mode: SecuritySettings["saml_mode"],
   user: { is_admin: boolean; is_guest: boolean },
 ): boolean {
-  return !user.is_admin && (mode === "required" || (mode === "members_only" && !user.is_guest));
+  return !isSamlSessionAllowed(mode, { isAdmin: user.is_admin, isGuest: user.is_guest }, "password");
 }
 
 export type TeamMember = {

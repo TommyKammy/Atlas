@@ -37,6 +37,8 @@ services:
       - "127.0.0.1:${ATLAS_E2E_PORT:?Run bash tests/run-e2e.sh}:3000"
     environment:
       DATABASE_URL: postgres://atlas:atlas@db:5432/atlas_e2e
+      MFA_ENCRYPTION_KEY_ID: ${MFA_ENCRYPTION_KEY_ID:?Run bash tests/run-e2e.sh}
+      MFA_ENCRYPTION_KEYS: ${MFA_ENCRYPTION_KEYS:?Run bash tests/run-e2e.sh}
       REDIS_URL: redis://redis:6379
       WS_ALLOWED_ORIGINS: ${ATLAS_E2E_BASE:?Run bash tests/run-e2e.sh}
       AUTOMATION_WORKER_TOKEN: ${ATLAS_E2E_WORKER_TOKEN:?Run bash tests/run-e2e.sh}

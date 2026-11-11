@@ -1,90 +1,96 @@
 import { NextResponse } from "next/server";
 import { db, withTransaction } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth";
-import { createSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
+import { createSession, lockSessionPolicy, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
 import { consumeRecoveryCodeForUser } from "@/lib/api/mfa";
 import { verifyTotp } from "@/lib/totp";
-import { getSecuritySettings, requiresSaml } from "@/lib/admin-data";
+import { requiresSaml } from "@/lib/admin-data";
+import { decryptMfaSecret, MfaSecretUnavailableError } from "@/lib/mfa-secret";
+import { SamlSessionRequiredError } from "@/lib/session-policy";
+import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES } from "@/lib/auth-rate-limit";
 
-export async function POST(req: Request) {
+function samlRequired() {
+  return NextResponse.json({ error: "SAML SSO is required for this workspace", saml_required: true,
+    saml_start: "/api/auth/saml/start" }, { status: 403, headers: { "Cache-Control": "no-store" } });
+}
+
+async function login(req: Request) {
+  await guardAuthRequest(req, "login");
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body?.password === "string" ? body.password : "";
   const totp = typeof body?.totp === "string" ? body.totp.trim() : "";
   const recoveryCode = typeof body?.recovery_code === "string" ? body.recovery_code.trim() : "";
-  if (!email || !password) {
-    return NextResponse.json({ error: "email and password are required" }, { status: 400 });
-  }
-  const r = await db.query(
-    `SELECT id, name, password_hash, deactivated_at, is_admin, is_guest,
-       totp_enabled, totp_secret
-     FROM users WHERE email = $1`,
-    [email],
-  );
-  const row = r.rows[0] as
-    | {
-        id: number;
-        name: string;
-        password_hash: string | null;
-        deactivated_at: string | null;
-        is_admin: boolean;
-        is_guest: boolean;
-        totp_enabled: boolean;
-        totp_secret: string | null;
-      }
-    | undefined;
-  if (row?.deactivated_at) {
-    return NextResponse.json({ error: "account is deactivated" }, { status: 403 });
-  }
-  if (!row?.password_hash || !verifyPassword(password, row.password_hash)) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return NextResponse.json({ error: "invalid credentials" }, { status: 401 });
-  }
-
-  const security = await getSecuritySettings();
-  if (requiresSaml(security.saml_mode, row)) {
-    return NextResponse.json(
-      {
-        error: "SAML SSO is required for this workspace",
-        saml_required: true,
-        saml_start: "/api/auth/saml/start",
-      },
-      { status: 403 },
-    );
-  }
-
-  const mfaPending = security.two_factor_policy === "required" && !row.totp_enabled;
-  const sessionOptions = { userAgent: req.headers.get("user-agent"), mfaPending };
-  const invalidCode = () => NextResponse.json({ error: "invalid two-factor code" }, { status: 401 });
-  let token: string | null;
-  if (row.totp_enabled) {
-    if (!totp && !recoveryCode) {
-      return NextResponse.json(
-        { error: "two-factor code required", two_factor_required: true },
-        { status: 401 },
-      );
+  if (!email || !password || email.length > 320) return NextResponse.json({ error: "email and password are required" }, { status: 400 });
+  const attempt = await reserveAuthAttempt("login-account", email, POLICIES["login-account"]);
+  try {
+    const r = await db.query(`SELECT id,name,password_hash,deactivated_at,is_admin,is_guest,totp_enabled,totp_secret
+      FROM users WHERE email=$1`, [email]);
+    const row = r.rows[0] as { id: number; name: string; password_hash: string | null;
+      deactivated_at: string | null; is_admin: boolean; is_guest: boolean;
+      totp_enabled: boolean; totp_secret: string | null } | undefined;
+    if (row?.deactivated_at) return NextResponse.json({ error: "account is deactivated" }, { status: 403 });
+    if (!row?.password_hash || !verifyPassword(password, row.password_hash)) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return NextResponse.json({ error: "invalid credentials" }, { status: 401 });
     }
-    if (totp) {
-      if (!row.totp_secret || !verifyTotp(row.totp_secret, totp)) return invalidCode();
-      token = await createSession(row.id, sessionOptions);
-    } else {
-      token = await withTransaction(async (q) => {
-        if (!(await consumeRecoveryCodeForUser(q, row.id, recoveryCode))) return null;
-        return createSession(row.id, sessionOptions, q);
+    // A valid first factor does not consume the password-failure allowance.
+    // OTP/recovery attempts have their own shared per-user allowance.
+    await attempt.release();
+    const mfa = totp || recoveryCode ? await reserveAuthAttempt("mfa-verify", String(row.id), POLICIES["mfa-verify"]) : null;
+    let outcome;
+    try {
+      outcome = await withTransaction(async (q) => {
+        // The final decision must use current MFA/password state, including
+        // enrollment or resets that completed while the first factor was checked.
+        await lockSessionPolicy(q);
+        const current = await q.query(`SELECT id,name,password_hash,is_admin,is_guest,totp_enabled,totp_secret
+          FROM users WHERE id=$1 AND deactivated_at IS NULL FOR UPDATE`, [row.id]);
+        const live = current.rows[0] as typeof row | undefined;
+        if (!live || live.password_hash !== row.password_hash) return { kind: "credentials" as const };
+        const policy = await q.query(`SELECT saml_mode,two_factor_policy FROM workspace_security
+          WHERE workspace_id=(SELECT id FROM workspaces ORDER BY id LIMIT 1)`);
+        const security = policy.rows[0] as { saml_mode: "off" | "optional" | "required" | "members_only"; two_factor_policy: string } | undefined;
+        if (security && requiresSaml(security.saml_mode, live)) return { kind: "saml" as const };
+        const mfaPending = security?.two_factor_policy === "required" && !live.totp_enabled;
+        if (live.totp_enabled) {
+          if (!mfa) return { kind: "challenge" as const };
+          const verified = totp ? !!live.totp_secret && verifyTotp(decryptMfaSecret(live.totp_secret, live.id, "active"), totp)
+            : await consumeRecoveryCodeForUser(q, live.id, recoveryCode);
+          if (!verified) return { kind: "invalid" as const };
+        }
+        const token = await createSession(live.id, { userAgent: req.headers.get("user-agent"), mfaPending }, q);
+        if (mfa) await mfa.release(q);
+        return { kind: "session" as const, token, name: live.name, mfaPending };
       });
+    } catch (error) {
+      if (mfa) await mfa.release();
+      throw error;
     }
-  } else {
-    token = await createSession(row.id, sessionOptions);
+    if (outcome.kind === "saml") { if (mfa) await mfa.release(); return samlRequired(); }
+    if (outcome.kind === "challenge") return NextResponse.json({ error: "two-factor code required", two_factor_required: true }, { status: 401 });
+    if (outcome.kind === "credentials") { if (mfa) await mfa.release(); return NextResponse.json({ error: "invalid credentials" }, { status: 401 }); }
+    if (outcome.kind === "invalid") return NextResponse.json({ error: "invalid two-factor code" }, { status: 401 });
+    const res = NextResponse.json({ id: row.id, name: outcome.name, two_factor_setup_required: outcome.mfaPending },
+      { headers: { "Cache-Control": "no-store" } });
+    res.cookies.set(SESSION_COOKIE, outcome.token, sessionCookieOptions());
+    res.cookies.set("atlas_uid", "", { path: "/", maxAge: 0 });
+    return res;
+  } catch (error) {
+    await attempt.release();
+    throw error;
   }
-  if (!token) return invalidCode();
+}
 
-  const res = NextResponse.json({
-    id: row.id,
-    name: row.name,
-    two_factor_setup_required: mfaPending,
-  });
-  res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
-  // Remove the legacy numeric demo cookie if it is still present.
-  res.cookies.set("atlas_uid", "", { path: "/", maxAge: 0 });
-  return res;
+export async function POST(req: Request) {
+  try { return await login(req); } catch (error) {
+    const limited = authRateLimitResponse(error);
+    if (limited) return limited;
+    if (error instanceof SamlSessionRequiredError) return samlRequired();
+    if (error instanceof MfaSecretUnavailableError) return NextResponse.json({
+      error: "two-factor authentication is temporarily unavailable", code: "mfa_unavailable",
+    }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ error: "authentication temporarily unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
 }

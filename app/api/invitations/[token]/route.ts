@@ -1,8 +1,10 @@
+import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES } from "@/lib/auth-rate-limit";
 import { NextResponse } from "next/server";
 import { db, withTransaction } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { createSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
 import { getSecuritySettings, requiresSaml } from "@/lib/admin-data";
+import { SamlSessionRequiredError } from "@/lib/session-policy";
 import { validatePassword } from "@/lib/password-policy";
 import { getRoleByKey } from "@/lib/permissions";
 
@@ -44,7 +46,7 @@ export async function GET(
   });
 }
 
-export async function POST(
+async function acceptInvitation(
   req: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
@@ -100,12 +102,23 @@ export async function POST(
         [name, row.email, role.isGuest, role.isAdmin, role.id, hashPassword(password)],
       );
       await q.query("UPDATE invitations SET accepted_at = now() WHERE id = $1", [row.id]);
-      const samlRequired = requiresSaml(security.saml_mode, user.rows[0]);
-      const mfaPending = !samlRequired && security.two_factor_policy === "required";
-      const sessionToken = samlRequired ? null : await createSession(Number(user.rows[0].id), {
-        userAgent: req.headers.get("user-agent"),
-        mfaPending,
-      }, q);
+      let samlRequired = requiresSaml(security.saml_mode, user.rows[0]);
+      let mfaPending = !samlRequired && security.two_factor_policy === "required";
+      let sessionToken = null;
+      if (!samlRequired) {
+        try {
+          sessionToken = await createSession(Number(user.rows[0].id), {
+            userAgent: req.headers.get("user-agent"),
+            mfaPending,
+          }, q);
+        } catch (error) {
+          if (!(error instanceof SamlSessionRequiredError)) throw error;
+          // The invitation can be accepted even if policy tightened while the
+          // user was created. It must not mint a password-authenticated session.
+          samlRequired = true;
+          mfaPending = false;
+        }
+      }
       return { user: user.rows[0], sessionToken, mfaPending, samlRequired };
     });
   } catch (e) {
@@ -123,4 +136,17 @@ export async function POST(
   }, { status: 201 });
   if (outcome.sessionToken) res.cookies.set(SESSION_COOKIE, outcome.sessionToken, sessionCookieOptions());
   return res;
+}
+
+export async function POST(req: Request, context: { params: Promise<{ token: string }> }) {
+  try {
+    await guardAuthRequest(req, "invitation");
+    const { token } = await context.params;
+    await reserveAuthAttempt("invitation", token, POLICIES.invitation);
+    return await acceptInvitation(req, context);
+  } catch (error) {
+    const limited = authRateLimitResponse(error);
+    if (limited) return limited;
+    throw error;
+  }
 }

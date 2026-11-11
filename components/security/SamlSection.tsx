@@ -83,7 +83,7 @@ export function SamlSection({
           ))}
         </div>
         <p className="mt-2 text-[11px] text-neutral-400">
-          必須にすると、対象ユーザーはパスワードではなく SAML SSO でサインインします。管理者は緊急時のためにパスワードでサインインできます。
+          必須にすると、対象ユーザーのパスワード認証による既存セッションも失効し、SAML SSO での再サインインが必要になります。SAML 認証済みのセッションは維持します。管理者は緊急時のためにパスワードでサインインできます。
         </p>
 
         <div className="mt-4 grid gap-3">

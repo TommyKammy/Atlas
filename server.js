@@ -1,10 +1,13 @@
 // Custom production server: Next.js + WebSocket live channel.
 // Run with `node server.js` (see Dockerfile). Single-instance only.
 const { createServer } = require("http");
-const { createHash } = require("crypto");
+const { createHash, randomBytes } = require("crypto");
 const next = require("next");
 const { WebSocketServer } = require("ws");
 const { Pool } = require("pg");
+
+// Per-process proof key; never accept a client-supplied peer identity directly.
+process.env.ATLAS_INTERNAL_AUTH_IP_KEY = randomBytes(32).toString("hex");
 
 const dbPool = new Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 3_000 });
 const SESSION_COOKIE_RE = /(?:^|;\s*)atlas_session=([A-Za-z0-9_-]{43})(?:;|$)/;
@@ -33,6 +36,11 @@ async function loadLiveAccess(subscriptions) {
            LEFT JOIN user_sessions s ON s.token_hash = target.token_hash
              AND s.expires_at > now() AND NOT s.mfa_enrollment_only
            LEFT JOIN users u ON u.id = s.user_id AND u.deactivated_at IS NULL
+             AND (s.auth_method = 'saml' OR u.is_admin OR NOT EXISTS (
+               SELECT 1 FROM workspace_security sw
+               WHERE sw.workspace_id = (SELECT id FROM workspaces ORDER BY id LIMIT 1)
+                 AND (sw.saml_mode = 'required' OR (sw.saml_mode = 'members_only' AND NOT u.is_guest))
+             ))
              AND ((u.totp_enabled AND s.created_at >= COALESCE(u.totp_enrolled_at, '-infinity'::timestamptz))
                OR NOT EXISTS (SELECT 1 FROM workspace_security
                  WHERE workspace_id = (SELECT id FROM workspaces ORDER BY id LIMIT 1) AND two_factor_policy = 'required'))
@@ -94,10 +102,12 @@ app.prepare().then(async () => {
   const { reconcileAttachmentFiles } = await import("./lib/attachment-files.mjs");
   const { startNotificationEmailWorker } = await import("./lib/notification-email-worker.mjs");
   const { installServerShutdown } = await import("./lib/server-shutdown.mjs");
+  const { stampAuthClientIp } = await import("./lib/auth-client-ip.mjs");
   const bus = createLiveRooms(loadLiveAccess);
   const notificationWorker = startNotificationEmailWorker(dbPool);
 
   const server = createServer((req, res) => {
+    stampAuthClientIp(req, process.env.ATLAS_INTERNAL_AUTH_IP_KEY);
     const u = new URL(req.url, "http://internal");
     handle(req, res, { pathname: u.pathname, query: Object.fromEntries(u.searchParams) });
   });

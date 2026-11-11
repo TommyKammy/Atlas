@@ -208,6 +208,7 @@ test("a committed decision with a lost response stays fenced through live refres
   await requestApproval(page, f);
   const approver = await actor(browser, "tanaka@example.com");
   let releaseReads = () => {};
+  let releaseExplicitRead = () => {};
   try {
     const pane = await section(approver.page, f.path);
     await approver.page.bringToFront();
@@ -259,12 +260,47 @@ test("a committed decision with a lost response stays fenced through live refres
     holdReads = false;
     releaseReads();
     await backgroundRead;
-    await approver.page.unroute(matcher, loseReply);
+    await approver.page.unrouteAll({ behavior: "wait" });
+    // Wait for the actual RSC task props, not merely a GET that can observe the
+    // new stamp before that RSC response reaches the pane.
+    const title = approver.page.locator('[data-task-draft-field="name"]');
+    await expect(title).toHaveValue(`${f.taskName} updated`);
+    await approver.page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     await expect(pane).toHaveAttribute("aria-busy", "false");
     await expect(pane.getByRole("alert")).toContainText("最新");
     await expect(latest).toBeEnabled();
+
+    let arrived!: () => void;
+    let readCount = 0;
+    const explicitArrived = new Promise<void>((resolve) => { arrived = resolve; });
+    const explicitGate = new Promise<void>((resolve) => { releaseExplicitRead = resolve; });
+    const failedReads: string[] = [];
+    approver.page.on("requestfailed", (request) => {
+      if (request.url().endsWith(f.api) && request.method() === "GET") failedReads.push(request.failure()?.errorText ?? "failed");
+    });
+    await approver.page.route(matcher, async (route) => {
+      if (route.request().method() === "GET" && ++readCount === 1) {
+        arrived();
+        await explicitGate;
+      }
+      await route.continue();
+    });
     await latest.click();
+    await explicitArrived;
+    // Deliver a second, real task invalidation while the explicit read is held.
+    // It must queue a background read rather than abort the explicit request.
+    const secondName = `${f.taskName} updated during explicit confirmation`;
+    expect((await page.request.patch(`/api/tasks/${f.taskId}`, { data: { name: secondName } })).status()).toBe(200);
+    await expect(title).toHaveValue(secondName);
+    await approver.page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    expect(readCount).toBe(1);
+    expect(failedReads).toEqual([]);
+    releaseExplicitRead();
+    await expect.poll(() => readCount).toBe(2);
+    await expect(pane).toHaveAttribute("aria-busy", "false");
     await expect(pane.getByRole("alert")).toHaveCount(0);
+    expect(failedReads).toEqual([]);
+    await approver.page.unrouteAll({ behavior: "wait" });
     await expect(pane.locator('[data-approval-status="approved"]')).toBeVisible();
     for (const name of ["承認する", "却下する", "差し戻す", "再申請する"]) {
       await expect(pane.getByRole("button", { name, exact: true })).toHaveCount(0);
@@ -276,6 +312,8 @@ test("a committed decision with a lost response stays fenced through live refres
     expect((await detail(page, f.api)).approval?.version).toBe(2);
   } finally {
     releaseReads();
+    releaseExplicitRead();
+    await approver.page.unrouteAll({ behavior: "wait" });
     await approver.context.close();
   }
 });

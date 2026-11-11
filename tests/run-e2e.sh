@@ -24,6 +24,11 @@ for program in docker node python3 curl openssl shasum; do
   command -v "$program" >/dev/null || e2e_abort "missing test dependency: $program"
 done
 
+# Only this newly created stack uses this short-lived MFA encryption key.
+export MFA_ENCRYPTION_KEY_ID=regression
+MFA_ENCRYPTION_KEYS=$(node -e 'process.stdout.write(JSON.stringify({regression:require("node:crypto").randomBytes(32).toString("base64")}))')
+export MFA_ENCRYPTION_KEYS
+
 export ATLAS_E2E_STACK="atlas-e2e-$(openssl rand -hex 16)"
 export ATLAS_E2E_MARKER="$(openssl rand -hex 16)"
 export ATLAS_E2E_WORKER_TOKEN="$(openssl rand -hex 32)"
