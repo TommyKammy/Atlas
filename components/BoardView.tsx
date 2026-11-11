@@ -17,6 +17,7 @@ import EmptyState from "./EmptyState";
 import { usePersistedViewState } from "@/lib/view-state-client";
 import BoardToolbar, { type BoardCardFields } from "./board/BoardToolbar";
 import BoardCard from "./board/BoardCard";
+import BoardSectionAdd from "./board/BoardSectionAdd";
 import { taskMatchesListFilters, parseListDateFilter, parseListGroupBy, parseListSortKey, type ListDateFilter, type ListFilters, type ListGroupBy, type ListSortKey } from "@/lib/list-view";
 
 
@@ -37,6 +38,7 @@ export default function BoardView({
   viewIcon,
   viewTabId,
   canEdit,
+  canConfigure,
 }: {
   projectId: number;
   sections: Section[];
@@ -51,6 +53,7 @@ export default function BoardView({
   viewIcon: string | null;
   viewTabId: number | null;
   canEdit: boolean;
+  canConfigure: boolean;
   initial: {
     hide_completed?: boolean;
     completed_only?: boolean;
@@ -98,6 +101,7 @@ export default function BoardView({
   const [sortKey, setSortKey] = useState<ListSortKey>(() => parseListSortKey(initial.sort));
   const [sortDir, setSortDir] = useState<"asc" | "desc">(initial.sortdir === "desc" ? "desc" : "asc");
   const [showEmptyGroups, setShowEmptyGroups] = useState(initial.show_empty_groups !== false);
+  const [createdSectionIds, setCreatedSectionIds] = useState<Set<number>>(() => new Set());
   const [autoRefresh, setAutoRefresh] = useState(initial.auto_refresh !== false);
   const [cardFields, setCardFields] = useState<BoardCardFields>({
     assignee: initial.show_assignee !== false,
@@ -264,7 +268,9 @@ export default function BoardView({
     }
     groups = sortGroups([...map.values()].map((group) => ({ ...group, items: sortItems(group.items) })));
   }
-  groups = groups.filter((g) => showEmptyGroups || g.items.length > 0);
+  // Reveal newly added columns without changing the user's empty-group setting.
+  groups = groups.filter((g) => showEmptyGroups || g.items.length > 0 ||
+    g.sectionId !== undefined && createdSectionIds.has(g.sectionId));
   const activeFilters =
     (hideCompleted ? 1 : 0) +
     (completedOnly ? 1 : 0) +
@@ -582,7 +588,10 @@ export default function BoardView({
         viewTabId={viewTabId}
         canEdit={canEdit}
         showEmptyGroups={showEmptyGroups}
-        setShowEmptyGroups={setShowEmptyGroups}
+        setShowEmptyGroups={(show) => {
+          setCreatedSectionIds(new Set());
+          setShowEmptyGroups(show);
+        }}
         autoRefresh={autoRefresh}
         setAutoRefresh={setAutoRefresh}
         cardFields={cardFields}
@@ -604,10 +613,11 @@ export default function BoardView({
           }
         />
       )}
-      <div className="flex gap-3 overflow-x-auto p-4 pb-16">
+      <div data-board-columns className="flex gap-3 overflow-x-auto p-4 pb-16">
         {groups.map((g) => (
           <div
             key={g.key}
+            data-board-column={g.key}
             className="relative w-72 shrink-0 rounded-lg bg-neutral-100 p-2"
           >
             {isDragging && (
@@ -747,6 +757,16 @@ export default function BoardView({
             )}
           </div>
         ))}
+        {canConfigure && effectiveGroupBy === "section" && (
+          <BoardSectionAdd
+            projectId={projectId}
+            columnCount={groups.length}
+            onCreated={(sectionId) => {
+              setCreatedSectionIds((current) => new Set(current).add(sectionId));
+              refresh();
+            }}
+          />
+        )}
       </div>
     </div>
   );

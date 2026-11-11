@@ -3,7 +3,7 @@
 import { isImeComposing } from "@/lib/ime-keyboard";
 import { useEffect, useId, useRef } from "react";
 
-/** Shared inline section composer for list groups and the timeline sidebar. */
+/** Shared inline section composer for list groups, board columns and timeline. */
 export default function ListSectionAdd({
   adding,
   name,

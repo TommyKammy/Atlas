@@ -342,6 +342,7 @@ export default async function ProjectPage(props: {
             viewIcon={activeBoardTab?.icon ?? null}
             viewTabId={activeBoardTab && activeBoardTab.id > 0 ? activeBoardTab.id : null}
             canEdit={access.role === "admin" || access.role === "editor"}
+            canConfigure={canConfigure}
             initialGroup={boardInitialGroup}
             statusFieldName={project.status_field_name ?? "Status"}
             statusFieldEnabled={project.status_field_enabled !== false}
