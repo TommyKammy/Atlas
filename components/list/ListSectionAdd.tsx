@@ -1,8 +1,9 @@
 "use client";
 
 import { isImeComposing } from "@/lib/ime-keyboard";
+import { useEffect, useId, useRef } from "react";
 
-/** Add-section footer shown below all list groups. */
+/** Shared inline section composer for list groups and the timeline sidebar. */
 export default function ListSectionAdd({
   adding,
   name,
@@ -10,6 +11,9 @@ export default function ListSectionAdd({
   onCreate,
   onCancel,
   onStart,
+  compact = false,
+  saving = false,
+  error = null,
 }: {
   adding: boolean;
   name: string;
@@ -17,32 +21,64 @@ export default function ListSectionAdd({
   onCreate: () => void;
   onCancel: () => void;
   onStart: () => void;
+  compact?: boolean;
+  saving?: boolean;
+  error?: string | null;
 }) {
+  const startRef = useRef<HTMLButtonElement>(null);
+  const errorId = useId();
+  const wasAdding = useRef(adding);
+  useEffect(() => {
+    const restoreFocus = wasAdding.current && !adding;
+    wasAdding.current = adding;
+    if (!restoreFocus) return;
+    // Global Escape handlers may blur the active control during the same event.
+    const frame = requestAnimationFrame(() => startRef.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(frame);
+  }, [adding]);
+
   return (
-    <div className="pt-4" id="custom-field-add">
+    <div className={compact ? "px-3 pb-3 pt-2" : "pt-4"} id={compact ? undefined : "custom-field-add"}>
       {adding ? (
-        <div className="flex gap-2">
+        <div className={compact ? "flex min-w-0 flex-wrap gap-2" : "flex gap-2"} aria-busy={saving}>
           <input
             value={name}
             onChange={(event) => onNameChange(event.target.value)}
             data-add-section-input
-            onKeyDown={(event) => !isImeComposing(event) && event.key === "Enter" && onCreate()}
+            aria-label="セクション名"
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
+            disabled={saving}
+            onKeyDown={(event) => {
+              if (isImeComposing(event) || saving) return;
+              if (event.key === "Enter") {
+                event.preventDefault();
+                onCreate();
+              } else if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                onCancel();
+              }
+            }}
             placeholder="セクション名"
             autoFocus
-            className="rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
+            className={`${compact ? "w-full min-w-0 " : ""}rounded border px-2 py-1 text-sm outline-none focus:border-blue-500 disabled:bg-neutral-50`}
           />
           <button
+            type="button"
             onClick={onCreate}
-            className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+            disabled={saving}
+            className={`rounded bg-blue-600 py-1 text-white hover:bg-blue-700 disabled:opacity-50 ${compact ? "px-2 text-xs" : "px-3 text-sm"}`}
           >
-            追加
+            {saving ? "追加中…" : "追加"}
           </button>
-          <button onClick={onCancel} className="px-2 text-sm text-neutral-500">
+          <button type="button" onClick={onCancel} disabled={saving} className={`text-neutral-500 disabled:opacity-50 ${compact ? "px-1 text-xs" : "px-2 text-sm"}`}>
             キャンセル
           </button>
+          {error && <p id={errorId} role="alert" className="w-full text-sm text-red-700">{error}</p>}
         </div>
       ) : (
-        <button onClick={onStart} className="text-sm text-neutral-500 hover:text-neutral-800">
+        <button type="button" ref={startRef} onClick={onStart} className="text-left text-sm text-neutral-500 hover:text-neutral-800">
           ＋ セクションを追加
         </button>
       )}

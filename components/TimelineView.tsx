@@ -20,6 +20,7 @@ import TimelineAxis from "./timeline/TimelineAxis";
 import TimelineCanvas from "./timeline/TimelineCanvas";
 import TimelineDependencyLayer from "./timeline/TimelineDependencyLayer";
 import TimelineToolbar from "./timeline/TimelineToolbar";
+import TimelineSectionAdd, { type TimelineSectionAddHandle } from "./timeline/TimelineSectionAdd";
 import { usePersistedViewState } from "@/lib/view-state-client";
 import { timelineInterval } from "@/lib/timeline-lanes";
 import { clampTimelineDay } from "@/lib/timeline-axis";
@@ -73,6 +74,7 @@ export default function TimelineView({
   viewIcon,
   viewTabId,
   canEdit,
+  canConfigure,
   users,
   viewerId,
   statusFieldName,
@@ -89,6 +91,7 @@ export default function TimelineView({
   viewIcon: string | null;
   viewTabId: number | null;
   canEdit: boolean;
+  canConfigure: boolean;
   users: User[];
   viewerId: number;
   statusFieldName: string;
@@ -104,6 +107,7 @@ export default function TimelineView({
   const [revealBarId, setRevealBarId] = useState<number | null>(null);
   const [focusedBarId, setFocusedBarId] = useState<number | null>(null);
   const pendingBarFocus = useRef<number | null>(null);
+  const sectionAddRef = useRef<TimelineSectionAddHandle>(null);
   const {
     depLink,
     depTargetId,
@@ -391,18 +395,12 @@ export default function TimelineView({
   }, [projectId, router]);
 
   const addToday = () => {
+    if (!canEdit) return;
     if (sections.length === 0) {
-      void addSection();
+      sectionAddRef.current?.start();
       return;
     }
     openDraft(sections[0].id, Math.min(max, Math.max(min, todayDay)));
-  };
-
-  const addSection = async () => {
-    const name = prompt("セクション名");
-    if (!name?.trim()) return;
-    await api("/api/sections", "POST", { project_id: projectId, name: name.trim() });
-    refresh();
   };
 
   const toggleSection = (id: number) => {
@@ -631,6 +629,7 @@ export default function TimelineView({
         viewIcon={viewIcon}
         viewTabId={viewTabId}
         canEdit={canEdit}
+        canAddTask={canEdit && (sections.length > 0 || canConfigure)}
         showWeekends={showWeekends}
         setShowWeekends={setShowWeekends}
         showDependencies={showDependencies}
@@ -643,7 +642,7 @@ export default function TimelineView({
           scope="timeline"
           title="タイムラインにタスクがありません"
           description="タスクを追加すると、日付に沿ってここに表示されます。"
-          action={
+          action={canEdit && (sections.length > 0 || canConfigure) ? (
             <button
               type="button"
               onClick={addToday}
@@ -651,7 +650,7 @@ export default function TimelineView({
             >
               ＋ 今日のタスク
             </button>
-          }
+          ) : undefined}
         />
       )}
       <div className="flex">
@@ -689,12 +688,9 @@ export default function TimelineView({
               <span data-timeline-group-line className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[#e1e1e1]" />
             </div>
           ))}
-          <button
-            onClick={addSection}
-            className="mt-2 ml-5 flex h-9 items-center gap-1.5 rounded px-2 text-[13px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
-          >
-            <span className="text-[15px] leading-none">＋</span> セクションを追加
-          </button>
+          {canConfigure && (
+            <TimelineSectionAdd ref={sectionAddRef} projectId={projectId} onCreated={refresh} />
+          )}
         </div>
 
         <TimelineCanvas

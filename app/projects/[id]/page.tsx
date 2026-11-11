@@ -362,6 +362,7 @@ export default async function ProjectPage(props: {
             viewIcon={activeTimelineTab?.icon ?? null}
             viewTabId={activeTimelineTab && activeTimelineTab.id > 0 ? activeTimelineTab.id : null}
             canEdit={access.role === "admin" || access.role === "editor"}
+            canConfigure={canConfigure}
             users={users}
             viewerId={viewerId}
             statusFieldName={project.status_field_name ?? "Status"}

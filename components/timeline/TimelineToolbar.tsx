@@ -52,6 +52,7 @@ export default function TimelineToolbar({
   viewIcon,
   viewTabId,
   canEdit,
+  canAddTask,
   showWeekends,
   setShowWeekends,
   showDependencies,
@@ -88,6 +89,7 @@ export default function TimelineToolbar({
   viewIcon: string | null;
   viewTabId: number | null;
   canEdit: boolean;
+  canAddTask: boolean;
   showWeekends: boolean;
   setShowWeekends: (value: boolean) => void;
   showDependencies: boolean;
@@ -182,7 +184,8 @@ export default function TimelineToolbar({
           type="button"
           onClick={addToday}
           data-timeline-add
-          className="flex h-7 items-center gap-1 rounded-md border border-[#e1e1e1] bg-white px-2.5 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50"
+          disabled={!canAddTask}
+          className="flex h-7 items-center gap-1 rounded-md border border-[#e1e1e1] bg-white px-2.5 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className="text-[15px] leading-none">＋</span> タスクを追加
         </button>
