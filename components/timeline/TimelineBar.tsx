@@ -19,6 +19,7 @@ export type TimelineBarProps = {
   lane: number;
   overlapping: boolean;
   onMoveRow: (task: TaskTimelineRow, delta: number) => void;
+  onMoveSection: (task: TaskTimelineRow, delta: number) => void;
   x1: string;
   x2: string;
   min: number;
@@ -50,6 +51,7 @@ function TimelineBar({
   lane,
   overlapping,
   onMoveRow,
+  onMoveSection,
   x1,
   x2,
   min,
@@ -89,7 +91,7 @@ function TimelineBar({
     : task.completed ? "bg-[#aaaaaa] text-[#050505]"
     : critical ? "bg-red-200 text-neutral-900"
     : defaultBarFace;
-  const barInfo = `${task.name}（${task.start_on ?? "?"} 〜 ${task.due_on ?? "?"}・進捗${task.progress}%${task.assignee_name ? `・担当${task.assignee_name}` : ""}${rowLocked ? "・行固定" : ""}）${!task.completed && critical ? "【クリティカルパス】" : ""} — 左右で日付移動、上下で行移動、左右端で期間変更、Alt+上下で行移動`;
+  const barInfo = `${task.name}（${task.start_on ?? "?"} 〜 ${task.due_on ?? "?"}・進捗${task.progress}%${task.assignee_name ? `・担当${task.assignee_name}` : ""}${rowLocked ? "・行固定" : ""}）${!task.completed && critical ? "【クリティカルパス】" : ""} — 左右で日付移動、上下でセクション・行移動、左右端で期間変更、Alt+上下で行移動、Alt+Shift+上下でセクション移動`;
 
   const active = drag !== null;
   const dragMode = drag?.mode ?? null;
@@ -138,6 +140,14 @@ function TimelineBar({
 
   return (
     <div className="relative h-10" data-timeline-row={task.id} data-timeline-lane={lane}>
+      {drag?.axis && drag.mode === "move" && (
+        <div
+          data-timeline-drag-origin={task.id}
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[3px] rounded-[4px] border border-dashed border-neutral-300 bg-neutral-100/60"
+          style={{ left: x1, width: `calc(${x2} - ${x1})`, minWidth: 8, height: TIMELINE_BAR_HEIGHT }}
+        />
+      )}
       <div
         data-timeline-bar={task.id}
         data-timeline-critical-task={critical ? "true" : "false"}
@@ -152,7 +162,8 @@ function TimelineBar({
           if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
           event.preventDefault();
           event.stopPropagation();
-          onMoveRow(task, event.key === "ArrowUp" ? -1 : 1);
+          if (event.shiftKey) onMoveSection(task, event.key === "ArrowUp" ? -1 : 1);
+          else onMoveRow(task, event.key === "ArrowUp" ? -1 : 1);
         }}
         onPointerDown={(event) => onBarPointerDown(event, task)}
         onPointerMove={onBarPointerMove}

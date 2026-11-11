@@ -61,13 +61,13 @@ function overlaps(a: { start: number; end: number }, b: { start: number; end: nu
 /**
  * Greedy interval partitioning with optional pinned rows.
  *
- * - Pinned tasks are never moved. Auto tasks take the lowest row that does not
+ * - Pinned tasks start at their preferred row and move down on collision.
+ *   Auto tasks take the lowest row that does not
  *   overlap any pinned or already-placed auto task.
  * - Rows are allowed to be empty. The section height is derived from the
  *   highest used row.
  * - Auto tasks are sorted by start/end/id for deterministic results.
- * - Returns ids of pinned tasks that overlap another pinned task in the same
- *   row so the UI can show a warning without moving them.
+ * - The overlap set remains empty: even legacy colliding pins are separated.
  */
 export function assignTimelineLanes(items: TimelineLaneInterval[]): {
   laneById: Map<number, number>;
@@ -98,22 +98,15 @@ export function assignTimelineLanes(items: TimelineLaneInterval[]): {
     maxRow = Math.max(maxRow, row);
   };
 
-  for (const item of normalized) {
-    if (item.pinnedRow === null) continue;
-    push(item.pinnedRow, item);
-    laneById.set(item.id, item.pinnedRow);
-  }
-
-  // Detect intentional (or accidental) overlaps between pinned tasks.
-  for (const list of rowIntervals.values()) {
-    for (let i = 0; i < list.length; i++) {
-      for (let j = i + 1; j < list.length; j++) {
-        if (overlaps(list[i], list[j])) {
-          overlappingIds.add(list[i].id);
-          overlappingIds.add(list[j].id);
-        }
-      }
-    }
+  // Pins express a preferred row, never permission to hide another bar.
+  // Stable ordering also repairs legacy overlapping pins without DB writes.
+  const pinned = normalized.filter((item) => item.pinnedRow !== null)
+    .sort((a, b) => a.pinnedRow! - b.pinnedRow! || a.id - b.id);
+  for (const item of pinned) {
+    let row = item.pinnedRow!;
+    while ((rowIntervals.get(row) ?? []).some((entry) => overlaps(entry, item))) row++;
+    push(row, item);
+    laneById.set(item.id, row);
   }
 
   const auto = normalized

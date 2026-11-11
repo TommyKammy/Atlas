@@ -20,15 +20,21 @@ test("timelineBarDragStyle resizes the end edge without translating the bar", ()
 
 test("timelineBarDragStyle translates the bar only for move drags", () => {
   assert.deepEqual(timelineBarDragStyle({ ...base, mode: "move", axis: "x" }), {
-    transform: "translateX(24px)",
+    transform: "translate(24px, 40px)",
   });
   assert.deepEqual(timelineBarDragStyle({ ...base, mode: "move", axis: null }), {
     transform: "translate(24px, 40px)",
   });
 });
 
-test("timelineBarDragStyle uses translateY for row drags", () => {
+test("timelineBarDragStyle keeps both offsets when the drop intent changes to a row", () => {
   assert.deepEqual(timelineBarDragStyle({ ...base, mode: "move", axis: "row" }), {
-    transform: "translateY(40px)",
+    transform: "translate(24px, 40px)",
+  });
+});
+
+test("timelineBarDragStyle leaves a non-reorderable bar on its original Y axis", () => {
+  assert.deepEqual(timelineBarDragStyle({ ...base, mode: "move", axis: "x", canReorder: false }), {
+    transform: "translateX(24px)",
   });
 });

@@ -30,7 +30,7 @@ export function useTimelineDraft({
   }, [draft?.key, draft]);
 
   const openDraft = (sectionId: number | null, day: number) => {
-    if (sectionId !== null) expandSection(sectionId);
+    expandSection(sectionId);
     seq.current += 1;
     const next: TimelineDraft = { sectionId, day, key: seq.current };
     draftRef.current = next;

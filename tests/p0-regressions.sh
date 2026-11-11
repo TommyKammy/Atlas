@@ -122,6 +122,8 @@ if [[ "$suite" == p1 || "$suite" == all ]]; then
   done
 fi
 if [[ "$suite" == integrity || "$suite" == all ]]; then
+  docker cp tests/timeline-section-move-regressions.mjs "$app_id:/app/tests/"
+  docker exec "$app_id" node --test /app/tests/timeline-section-move-regressions.mjs || status=1
   docker cp tests/p1-integrity-regressions.mjs "$app_id:/app/tests/"
   docker exec "$app_id" node --test /app/tests/p1-integrity-regressions.mjs || status=1
   docker cp tests/p1-automation-regressions.mjs "$app_id:/app/tests/"

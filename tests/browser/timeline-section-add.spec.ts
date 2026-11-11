@@ -301,8 +301,9 @@ test("an empty timeline starts a section from the task toolbar and then creates 
   await editor(page).input.fill("最初の工程");
   const created = sectionResponse(page);
   await editor(page).input.press("Enter");
-  await created;
-  await expect(page.locator("[data-timeline-section-row]")).toHaveText("最初の工程");
+  const { id: sectionId } = await (await created).json() as { id: number };
+  await expect(page.locator(`[data-timeline-section-row="${sectionId}"]`)).toHaveText("最初の工程");
+  await expect(page.locator('[data-timeline-section-row="0"]')).toHaveText("セクションなし");
   await addTask.click();
   const taskName = page.getByRole("textbox", { name: "新しいタスク名", exact: true });
   await expect(taskName).toBeFocused();

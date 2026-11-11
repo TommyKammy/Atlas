@@ -14,6 +14,8 @@ export type TimelineDraftPosition = { sectionId: number | null } | null;
 
 export type TimelineGroup = {
   section: Section;
+  /** The display-only section key 0 represents the nullable project section. */
+  sectionId: number | null;
   tasks: TaskTimelineRow[];
   all: TaskTimelineRow[];
   collapsed: boolean;
@@ -23,6 +25,8 @@ export type TimelineGroup = {
   laneById: Map<number, number>;
   laneCount: number;
   overlappingIds: Set<number>;
+  occupantsByLane: Map<number, number[]>;
+  intervalsById: Map<number, { start: number; end: number }>;
 };
 
 export type TimelineDependencyShape = {
@@ -71,9 +75,11 @@ export function useTimelineLayout({
   max: number;
 }) {
   const groups = useMemo<TimelineGroup[]>(() => {
+    const sectionIds = new Set(sections.map((section) => section.id));
     const bySection = new Map<number | null, TaskTimelineRow[]>();
     for (const t of dated) {
-      const k = taskSectionId(t);
+      const rawSection = taskSectionId(t);
+      const k = rawSection !== null && sectionIds.has(rawSection) ? rawSection : null;
       if (!bySection.has(k)) bySection.set(k, []);
       bySection.get(k)!.push(t);
     }
@@ -93,10 +99,12 @@ export function useTimelineLayout({
     // can resolve section + date, like Asana's timeline canvas.
     let cursorY = TIMELINE_AXIS_HEIGHT;
     const out: TimelineGroup[] = [];
-    for (const section of sections) {
-      const all = bySection.get(section.id) ?? [];
+    const displaySections = [...sections, { id: 0, name: "セクションなし", position: Infinity }];
+    for (const section of displaySections) {
+      const sectionId = section.id === 0 ? null : section.id;
+      const all = bySection.get(sectionId) ?? [];
       const isCollapsed = collapsed.has(section.id);
-      const hasDraft = !isCollapsed && draft?.sectionId === section.id;
+      const hasDraft = !isCollapsed && draft?.sectionId === sectionId;
       const shown = isCollapsed ? [] : all;
       const laneIntervals = shown
         .map((task) => {
@@ -130,8 +138,15 @@ export function useTimelineLayout({
       const height = isCollapsed
         ? TIMELINE_ROW_PITCH
         : lanes * TIMELINE_ROW_PITCH + (hasDraft ? TIMELINE_ROW_PITCH : 0);
+      const occupantsByLane = new Map<number, number[]>();
+      for (const [id, lane] of laneById) {
+        const occupants = occupantsByLane.get(lane) ?? [];
+        occupants.push(id);
+        occupantsByLane.set(lane, occupants);
+      }
       out.push({
         section,
+        sectionId,
         tasks: shown,
         all,
         collapsed: isCollapsed,
@@ -141,6 +156,8 @@ export function useTimelineLayout({
         laneById,
         laneCount: lanes,
         overlappingIds,
+        occupantsByLane,
+        intervalsById: new Map(laneIntervals.map((item) => [item.id, { start: item.start, end: Math.max(item.end, item.visualEnd ?? item.end) }])),
       });
       cursorY += height;
     }

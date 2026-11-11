@@ -88,9 +88,9 @@ test("assignTimelineLanes packs auto tasks around pinned intervals", () => {
     { id: 3, start: 12, end: 15 },
   ]);
   assert.equal(result.laneById.get(1), 0);
-  assert.equal(result.laneById.get(2), 0);
-  assert.equal(result.laneById.get(3), 1);
-  assert.deepEqual([...result.overlappingIds].sort(), [1, 2]);
+  assert.equal(result.laneById.get(2), 1);
+  assert.equal(result.laneById.get(3), 2);
+  assert.equal(result.overlappingIds.size, 0);
 });
 
 test("assignTimelineLanes uses visual footprints for label overlap", () => {
@@ -118,4 +118,20 @@ test("estimateTimelineLabelDays grows with text and shrinks with zoom", () => {
   const long = estimateTimelineLabelDays("RFP社内レビュー・4社承認 Wava1", 12);
   assert.ok(long > short);
   assert.ok(estimateTimelineLabelDays("RFP", 40) < estimateTimelineLabelDays("RFP", 12));
+});
+
+
+test("legacy pins are separated deterministically regardless of input order", () => {
+  const items = Array.from({ length: 50 }, (_, id) => ({ id, start: 10, end: 20, pinnedRow: 0 }));
+  const a = assignTimelineLanes(items), b = assignTimelineLanes([...items].reverse());
+  assert.deepEqual(a.laneById, b.laneById);
+  assert.equal(new Set(a.laneById.values()).size, 50);
+});
+
+test("pinned labels and milestones cannot cover another pinned bar", () => {
+  const result = assignTimelineLanes([
+    { id: 1, start: 10, end: 10, visualEnd: 14, pinnedRow: 0 },
+    { id: 2, start: 12, end: 12, pinnedRow: 0 },
+  ]);
+  assert.equal(result.laneById.get(2), 1);
 });

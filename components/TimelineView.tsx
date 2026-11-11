@@ -1,5 +1,7 @@
 "use client";
 
+import type { TimelineRowPlacement } from "@/lib/timeline-row-drop";
+
 import { isImeComposing } from "@/lib/ime-keyboard";
 
 import { toast as toastMessage } from "@/lib/ui-feedback";
@@ -11,6 +13,7 @@ import { useRouter } from "next/navigation";
 import type { Section, User } from "@/lib/data";
 import { decodeTimelineTask, type TaskTimelineRow, type TimelineTaskPayload } from "@/lib/timeline-task-payload";
 import { shiftDate } from "@/lib/timeline-dnd";
+import { taskSectionId } from "@/lib/task-section";
 import { formatDay } from "@/lib/calendar";
 import EmptyState from "./EmptyState";
 import ProjectTaskContextMenu from "./task/ProjectTaskContextMenu";
@@ -108,6 +111,10 @@ export default function TimelineView({
   const [focusedBarId, setFocusedBarId] = useState<number | null>(null);
   const pendingBarFocus = useRef<number | null>(null);
   const sectionAddRef = useRef<TimelineSectionAddHandle>(null);
+  const movingTasks = useRef(new Set<number>());
+  const placementFocus = useRef<{
+    id: number; sectionId: number | null; row: number; stamp: string; restoreFocus: boolean;
+  } | null>(null);
   const {
     depLink,
     depTargetId,
@@ -136,7 +143,6 @@ export default function TimelineView({
     visibleTasks,
     dated,
     undated,
-    canReorder,
     activeFilterCount,
     setTimelineFilter,
     clearTimelineFilters,
@@ -236,11 +242,11 @@ export default function TimelineView({
     projectId,
     refresh,
     expandSection: (sectionId) => {
-      if (sectionId === null) return;
+      const key = sectionId ?? 0;
       setCollapsed((prev) => {
-        if (!prev.has(sectionId)) return prev;
+        if (!prev.has(key)) return prev;
         const next = new Set(prev);
-        next.delete(sectionId);
+        next.delete(key);
         return next;
       });
     },
@@ -404,7 +410,7 @@ export default function TimelineView({
   };
 
   const toggleSection = (id: number) => {
-    if (draftRef.current?.sectionId === id) finishDraft(draftInputRef.current?.value ?? "");
+    if (draftRef.current?.sectionId === (id === 0 ? null : id)) finishDraft(draftInputRef.current?.value ?? "");
     setCollapsed((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -442,7 +448,7 @@ export default function TimelineView({
     if (y < AXIS_H) return;
     const group = sectionAtY(y);
     if (!group) return;
-    openDraft(group.section.id, dayAtX(e.clientX));
+    openDraft(group.sectionId, dayAtX(e.clientX));
   };
 
   const onCanvasMove = (e: React.PointerEvent) => {
@@ -489,6 +495,62 @@ export default function TimelineView({
     }
   }, [canEdit, projectId, refresh]);
 
+  const setTimelinePlacement = useCallback(async (t: TaskTimelineRow, sectionId: number | null, row: number, placements?: TimelineRowPlacement[], dateDelta = 0) => {
+    if (!canEdit || movingTasks.current.has(t.id)) return;
+    if (!placements && dateDelta === 0 && taskSectionId(t) === sectionId && t.timeline_row === row) return;
+    movingTasks.current.add(t.id);
+    const active = document.activeElement;
+    const restoreFocus = active instanceof Element && active.closest(`[data-timeline-bar="${t.id}"]`) !== null;
+    try {
+      const saved = await api<{ updated_at: string }>(`/api/tasks/${t.id}/timeline-row`, "PUT", {
+        project_id: projectId,
+        section_id: sectionId,
+        row_index: row,
+        expected_updated_at: t.timeline_row_updated_at ?? null,
+        expected_task_updated_at: t.updated_at,
+        expected_section_id: taskSectionId(t),
+        ...(placements ? { placements } : {}),
+        ...(dateDelta !== 0 ? { date_delta: dateDelta } : {}),
+      });
+      placementFocus.current = { id: t.id, sectionId, row, stamp: saved.updated_at, restoreFocus };
+      setCollapsed((current) => {
+        const key = sectionId ?? 0;
+        if (!current.has(key)) return current;
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+      setRevealBarId(t.id);
+      toastMessage(taskSectionId(t) === sectionId ? "行を移動しました" : "セクションを移動しました");
+      refresh();
+    } catch (error) {
+      placementFocus.current = null;
+      toastMessage(error instanceof ApiError && error.status === 409
+        ? "他のユーザーが先に更新しました。最新を表示します。"
+        : "タスクの移動に失敗しました。もう一度お試しください。");
+      refresh();
+    } finally {
+      movingTasks.current.delete(t.id);
+    }
+  }, [canEdit, projectId, refresh]);
+
+  useLayoutEffect(() => {
+    const pending = placementFocus.current;
+    if (!pending) return;
+    const updated = tasks.find((task) => task.id === pending.id);
+    if (!updated || taskSectionId(updated) !== pending.sectionId || updated.timeline_row !== pending.row ||
+        updated.timeline_row_updated_at !== pending.stamp) return;
+    const bar = contentRef.current?.querySelector<HTMLElement>(`[data-timeline-bar="${pending.id}"]`);
+    if (!bar) return;
+    placementFocus.current = null;
+    const active = document.activeElement;
+    if (pending.restoreFocus && (active === document.body || active === bar ||
+        active instanceof Element && active.closest(`[data-timeline-bar="${pending.id}"]`))) {
+      bar.focus({ preventScroll: true });
+      bar.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }, [groups, tasks, revealBarId]);
+
   const onDragStart = useCallback(() => {
     setHover(null);
     clearBarHover();
@@ -506,12 +568,11 @@ export default function TimelineView({
     contentRef,
     scrollRef,
     groups,
-    tasks,
     span,
     canEdit,
     onDragStart,
     onCommit: commitChange,
-    onRowDrop: setTimelineRow,
+    onRowDrop: setTimelinePlacement,
   });
 
   const moveTimelineRow = useCallback((t: TaskTimelineRow, delta: number) => {
@@ -522,10 +583,34 @@ export default function TimelineView({
     void setTimelineRow(t, next);
   }, [canEdit, groups, setTimelineRow]);
 
+  const moveTimelineSection = useCallback((t: TaskTimelineRow, delta: number) => {
+    if (!canEdit) return;
+    const index = groups.findIndex((group) => group.all.some((task) => task.id === t.id));
+    const destination = groups[index + delta];
+    if (index < 0 || !destination) return;
+    void setTimelinePlacement(t, destination.sectionId, 0);
+  }, [canEdit, groups, setTimelinePlacement]);
+
   const onBarClick = useCallback((event: React.MouseEvent<HTMLDivElement>, id: number) => {
     event.stopPropagation();
     if (!moved.current) openTask(id);
   }, [moved, openTask]);
+
+  const insertion = drag?.rowDrop?.insert ? drag.rowDrop : null;
+  const draggedId = drag?.id;
+  const displayGroups = useMemo(() => {
+    if (!insertion) return groups;
+    let offset = 0;
+    return groups.map((group) => {
+      const selected = group.sectionId === insertion.sectionId;
+      const lanes = selected ? new Map([...group.laneById].map(([id, row]) =>
+        [id, id !== draggedId && row >= insertion.row ? row + 1 : row])) : group.laneById;
+      const result = { ...group, top: group.top + offset, height: group.height + (selected ? ROW_PITCH : 0),
+        laneCount: group.laneCount + (selected ? 1 : 0), laneById: lanes };
+      if (selected) offset += ROW_PITCH;
+      return result;
+    });
+  }, [groups, insertion, draggedId]);
 
   const renderBar = (t: TaskTimelineRow, lane: number, overlapping: boolean) => {
     const p = pos.get(t.id)!;
@@ -536,6 +621,7 @@ export default function TimelineView({
         lane={lane}
         overlapping={overlapping}
         onMoveRow={moveTimelineRow}
+        onMoveSection={moveTimelineSection}
         x1={p.x1}
         x2={p.x2}
         min={min}
@@ -543,7 +629,7 @@ export default function TimelineView({
         dayWidth={dayWidth}
         critical={showCritical && critical.has(t.id)}
         drag={drag?.id === t.id ? drag : null}
-        canReorder={canReorder}
+        canReorder={canEdit}
         hovered={barHoverId === t.id}
         overflow={barOverflowId === t.id}
         dependencyTarget={depTargetId === t.id}
@@ -656,8 +742,13 @@ export default function TimelineView({
       <div className="flex">
         <div className="w-36 shrink-0 border-r border-[#eaeaea] md:w-60">
           <div className="h-[49px]" />
-          {groups.map((group) => (
-            <div key={group.section.id} className="relative" data-timeline-section={group.section.id}>
+          {displayGroups.map((group) => (
+            <div
+              key={group.section.id}
+              className={`relative ${drag?.rowDrop?.sectionId === group.sectionId ? "bg-[#e8f0fe]" : ""}`}
+              data-timeline-section={group.section.id}
+              data-timeline-drop-target={drag?.rowDrop?.sectionId === group.sectionId ? "true" : undefined}
+            >
               <button
                 type="button"
                 data-timeline-section-row={group.section.id}
@@ -675,6 +766,9 @@ export default function TimelineView({
                   <path d="m2.5 4.5 3.5 3 3.5-3" />
                 </svg>
                 <span className="truncate">{group.section.name}</span>
+                {drag?.rowDrop?.sectionId === group.sectionId && (
+                  <span className="ml-auto shrink-0 text-[11px] font-medium text-[#24529c]">移動先</span>
+                )}
               </button>
               {!group.collapsed &&
                 Array.from({ length: Math.max(0, group.laneCount - 1) }).map((_, index) => (
@@ -741,13 +835,16 @@ export default function TimelineView({
               />
             ))}
 
-            {groups.map((group) => (
+            {displayGroups.map((group) => (
               <div
                 key={group.section.id}
                 className="relative"
                 style={{ height: group.height }}
                 data-timeline-group={group.section.id}
               >
+                {drag?.rowDrop?.sectionId === group.sectionId && (
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[#2c60b8]/[0.04]" />
+                )}
                 {!group.collapsed &&
                   group.tasks.map((t) => {
                     const lane = group.laneById.get(t.id) ?? 0;
@@ -830,12 +927,13 @@ export default function TimelineView({
               <div
                 data-timeline-row-drop
                 data-timeline-row-drop-index={drag.rowDrop.row}
-                className="pointer-events-none absolute inset-x-0 z-[5] h-[2px] bg-[#2c60b8]"
-                style={{ top: drag.rowDrop.top - 1 }}
+                data-timeline-row-insert={drag.rowDrop.insert ? "true" : undefined}
+                data-timeline-row-drop-section={drag.rowDrop.sectionId ?? "none"}
+                className="pointer-events-none absolute inset-x-0 z-[5] border-y border-[#2c60b8] bg-[#2c60b8]/10"
+                style={{ top: drag.rowDrop.top, height: ROW_PITCH }}
               >
-                <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-[#2c60b8]" />
-                <span className="absolute left-2 -top-2 rounded bg-[#2c60b8] px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm">
-                  行 {drag.rowDrop.row + 1}
+                <span data-timeline-drop-label className="sticky left-2 inline-block rounded-b bg-[#2c60b8] px-2 py-0.5 text-[11px] font-medium text-white">
+                  {groups.find((group) => group.sectionId === drag.rowDrop?.sectionId)?.section.name}・{drag.rowDrop.insert ? "挿入" : "行"} {drag.rowDrop.row + 1}
                 </span>
               </div>
             )}
@@ -848,7 +946,7 @@ export default function TimelineView({
               />
             )}
             <TimelineDependencyLayer
-              shapes={dependencyShapes}
+              shapes={drag?.axis === "row" ? [] : dependencyShapes}
               hoveredKey={hoveredDep}
               draft={depLink}
               onHover={showDepHover}

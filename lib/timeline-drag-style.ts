@@ -22,16 +22,11 @@ export function timelineBarDragStyle(input: {
   x2: string;
   canReorder: boolean;
 }): TimelineBarDragStyle {
-  const { mode, axis, dx, dy, x1, x2, canReorder } = input;
-  if (axis === "row") {
-    return { transform: `translateY(${dy}px)` };
-  }
+  const { mode, dx, dy, x1, x2, canReorder } = input;
   if (mode === "move") {
     return {
       transform:
-        axis === "x"
-          ? `translateX(${dx}px)`
-          : canReorder
+        canReorder
             ? `translate(${dx}px, ${dy}px)`
             : `translateX(${dx}px)`,
     };
