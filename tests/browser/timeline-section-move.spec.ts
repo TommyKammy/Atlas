@@ -946,3 +946,61 @@ for (const status of [409, 503]) {
     expect(await readTask(page, f.projectId, f.taskId)).toMatchObject({ start_on: shiftDay(f.start, 2), due_on: shiftDay(f.due, 2), section_id: f.sections[1].id });
   });
 }
+
+
+for (const legacyPins of [true, false]) {
+  test(`TR02 keyboard insertion uses displayed lanes with ${legacyPins ? "overlapping saved pins" : "automatic peers"} and persists focus/order`, async ({page})=>{
+    const f=await fixture(page);
+    const moving=await createTask(page,f.projectId,f.sections[0].id,'Keyboard moving task');
+    if(legacyPins) {await pin(page,f.projectId,f.taskId,0);await pin(page,f.projectId,moving.taskId,0);}
+    await openTimeline(page,f.projectId);
+    await expect(bar(page,moving.taskId)).toHaveAttribute('data-timeline-lane','1');
+    await bar(page,moving.taskId).focus();
+    const steps=[{key:'Alt+ArrowUp',row:0,peer:1},{key:'Alt+ArrowDown',row:2,peer:1},{key:'Alt+ArrowUp',row:1,peer:2}];
+    for(const step of steps) {
+      const saved=moveResponse(page,moving.taskId);
+      await bar(page,moving.taskId).press(step.key);
+      const response=await saved,body=response.request().postDataJSON();
+      expect(body).toMatchObject({project_id:f.projectId,section_id:f.sections[0].id,row_index:step.row,expected_section_id:f.sections[0].id});
+      expect(body.expected_task_updated_at).toBeTruthy();
+      expect(body.placements).toEqual([expect.objectContaining({task_id:f.taskId,row_index:step.peer})]);
+      expect(body).not.toHaveProperty('date_delta');
+      await expectPinned(page,moving.taskId,f.sections[0].id,step.row);
+      await expectPinned(page,f.taskId,f.sections[0].id,step.peer);
+      await expect(bar(page,moving.taskId)).toBeFocused();
+    }
+    await page.reload();
+    await expectPinned(page,moving.taskId,f.sections[0].id,1);
+    await expectPinned(page,f.taskId,f.sections[0].id,2);
+    expect(await readTask(page,f.projectId,moving.taskId)).toMatchObject({start_on:moving.start,due_on:moving.due,section_id:f.sections[0].id});
+    expect(await readTask(page,f.projectId,f.taskId)).toMatchObject({start_on:f.start,due_on:f.due,section_id:f.sections[0].id});
+  });
+}
+
+for(const status of [409,503]) {
+  test(`TR02 keyboard insertion recovers from ${status} and retries without partial row/date changes`,async({page})=>{
+    const f=await fixture(page),moving=await createTask(page,f.projectId,f.sections[0].id,'Keyboard conflict task');
+    await pin(page,f.projectId,f.taskId,0);await pin(page,f.projectId,moving.taskId,0);
+    await openTimeline(page,f.projectId);await bar(page,moving.taskId).focus();
+    await page.route(`**/api/tasks/${moving.taskId}/timeline-row`,async route=>{
+      if(status===409) {
+        // Change a peer after the insertion's CAS stamps have been captured.
+        const changed=await page.request.patch(`/api/tasks/${f.taskId}`,{data:{name:'Peer edited concurrently'}});
+        expect(changed.status()).toBe(200);
+        await route.continue();
+      } else await route.fulfill({status,contentType:'application/json',body:JSON.stringify({error:'temporary failure'})});
+    },{times:1});
+    const failed=moveResponse(page,moving.taskId,status);
+    await bar(page,moving.taskId).press('Alt+ArrowUp');await failed;
+    await expect(page.getByRole('status').filter({hasText:status===409?'他のユーザーが先に更新しました':'タスクの移動に失敗しました'})).toBeVisible();
+    await expect(bar(page,moving.taskId)).toHaveAttribute('data-timeline-lane','1');
+    await expect(bar(page,f.taskId)).toHaveAttribute('data-timeline-lane','0');
+    if(status===409) await expect(bar(page,f.taskId)).toHaveAttribute('aria-label',/Peer edited concurrently/);
+    const saved=moveResponse(page,moving.taskId);
+    await bar(page,moving.taskId).press('Alt+ArrowUp');await saved;
+    await expectPinned(page,moving.taskId,f.sections[0].id,0);
+    await expectPinned(page,f.taskId,f.sections[0].id,1);
+    await expect(bar(page,moving.taskId)).toBeFocused();
+    expect(await readTask(page,f.projectId,moving.taskId)).toMatchObject({start_on:moving.start,due_on:moving.due});
+  });
+}

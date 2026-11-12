@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { resolveTimelineTaskDrop, resolveTimelineRowDrop, type TimelineRowDropGroup } from "./timeline-row-drop";
+import { resolveTimelineTaskDrop, resolveTimelineRowDrop, resolveTimelineKeyboardDrop, timelineInsertionPlacements, type TimelineRowDropGroup } from "./timeline-row-drop";
 
 const groups: readonly TimelineRowDropGroup[] = [
   { sectionId: 101, top: 49, height: 120, laneCount: 3, collapsed: false },
@@ -158,4 +158,60 @@ test("diagonal insertion uses the shifted span when the original dates did not o
 test("a diagonal drop moving clear of another span does not reserve a stale insertion gap", () => {
   const previous = resolveTimelineTaskDrop(occupiedGroups, 55, 520, 2, null)!;
   assert.deepEqual(resolveTimelineTaskDrop(occupiedGroups, 55, 520, 2, previous, 20), { sectionId: 1, row: 0, top: 49 });
+});
+
+test("keyboard up uses the rendered lane and the pointer's above-bar insertion", () => {
+  const group = occupiedGroups[0];
+  assert.deepEqual(resolveTimelineKeyboardDrop(group, 2, -1), resolveTimelineTaskDrop(occupiedGroups, 55, 520, 2, null));
+});
+
+test("keyboard down inserts below an overlapping peer just like a pointer drop", () => {
+  const group = occupiedGroups[0];
+  assert.deepEqual(resolveTimelineKeyboardDrop(group, 1, 1), resolveTimelineTaskDrop(occupiedGroups, 120, 520, 1, null));
+  assert.equal(resolveTimelineKeyboardDrop(group, 1, 1)?.row, 2);
+});
+
+test("keyboard movement shares an available row without moving nonoverlapping peers", () => {
+  const group = { ...occupiedGroups[0], intervalsById: new Map([[1, { start: 1, end: 3 }], [2, { start: 10, end: 20 }]]) };
+  assert.deepEqual(resolveTimelineKeyboardDrop(group, 2, -1), { sectionId: 1, row: 0, top: 49 });
+});
+
+test("keyboard appending stays in the source section, including the sectionless group", () => {
+  for (const sectionId of [1, null]) {
+    const group = { ...occupiedGroups[0], sectionId };
+    assert.deepEqual(resolveTimelineKeyboardDrop(group, 2, 1), { sectionId, row: 2, top: 129 });
+  }
+});
+
+test("keyboard boundaries, hidden tasks and unsupported directions cannot produce a write", () => {
+  assert.equal(resolveTimelineKeyboardDrop(occupiedGroups[0], 1, -1), null);
+  assert.equal(resolveTimelineKeyboardDrop(occupiedGroups[0], 99, 1), null);
+  assert.equal(resolveTimelineKeyboardDrop({ ...occupiedGroups[0], collapsed: true }, 2, -1), null);
+  for (const delta of [0, 2, NaN]) assert.equal(resolveTimelineKeyboardDrop(occupiedGroups[0], 1, delta), null);
+  const tall = { ...occupiedGroups[0], laneById: new Map([[1, 200]]) };
+  assert.equal(resolveTimelineKeyboardDrop(tall, 1, 1), null);
+});
+
+test("keyboard insertion cannot push any peer past the row limit", () => {
+  const tall = { ...occupiedGroups[0], laneById: new Map([[1, 0], [2, 1], [3, 200]]) };
+  assert.equal(resolveTimelineKeyboardDrop(tall, 2, -1), null);
+});
+
+test("insertion plans preserve peer versions and displayed rows, excluding the moving task", () => {
+  const group = { ...occupiedGroups[0], tasks: [
+    { id: 1, updated_at: "task-1", timeline_row_updated_at: "pin-1" },
+    { id: 2, updated_at: "task-2", timeline_row_updated_at: "pin-2" },
+  ] };
+  const drop = resolveTimelineKeyboardDrop(group, 2, -1)!;
+  assert.deepEqual(timelineInsertionPlacements(group, 2, drop), [
+    { task_id: 1, row_index: 1, expected_updated_at: "pin-1", expected_task_updated_at: "task-1" },
+  ]);
+  assert.equal(timelineInsertionPlacements(group, 2, { sectionId: 1, row: 2, top: 129 }), undefined);
+});
+
+test("keyboard insertion also captures automatic peers without inventing a pin version", () => {
+  const group = { ...occupiedGroups[0], tasks: [{ id: 1, updated_at: "task-1" }, { id: 2, updated_at: "task-2" }] };
+  assert.deepEqual(timelineInsertionPlacements(group, 2, resolveTimelineKeyboardDrop(group, 2, -1)!), [
+    { task_id: 1, row_index: 1, expected_updated_at: null, expected_task_updated_at: "task-1" },
+  ]);
 });

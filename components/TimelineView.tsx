@@ -1,6 +1,6 @@
 "use client";
 
-import type { TimelineRowPlacement } from "@/lib/timeline-row-drop";
+import { resolveTimelineKeyboardDrop, timelineInsertionPlacements, type TimelineRowPlacement } from "@/lib/timeline-row-drop";
 
 import { isImeComposing } from "@/lib/ime-keyboard";
 
@@ -473,28 +473,6 @@ export default function TimelineView({
     );
   };
 
-  const setTimelineRow = useCallback(async (t: TaskTimelineRow, rowIndex: number) => {
-    if (!canEdit) return;
-    const current = t.timeline_row ?? null;
-    if (current === rowIndex) return;
-    try {
-      await api(`/api/tasks/${t.id}/timeline-row`, "PUT", {
-        project_id: projectId,
-        row_index: rowIndex,
-        expected_updated_at: t.timeline_row_updated_at ?? null,
-      });
-      toastMessage("行を移動しました");
-      refresh();
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
-        toastMessage("他のユーザーが先に更新しました。最新を表示します。");
-        refresh();
-      } else {
-        toastMessage(error instanceof Error ? error.message : "行の移動に失敗しました");
-      }
-    }
-  }, [canEdit, projectId, refresh]);
-
   const setTimelinePlacement = useCallback(async (t: TaskTimelineRow, sectionId: number | null, row: number, placements?: TimelineRowPlacement[], dateDelta = 0) => {
     if (!canEdit || movingTasks.current.has(t.id)) return;
     if (!placements && dateDelta === 0 && taskSectionId(t) === sectionId && t.timeline_row === row) return;
@@ -577,11 +555,12 @@ export default function TimelineView({
 
   const moveTimelineRow = useCallback((t: TaskTimelineRow, delta: number) => {
     if (!canEdit) return;
-    const group = groups.find((entry) => entry.tasks.some((task) => task.id === t.id));
-    const current = t.timeline_row ?? group?.laneById.get(t.id) ?? 0;
-    const next = Math.max(0, Math.min(200, current + delta));
-    void setTimelineRow(t, next);
-  }, [canEdit, groups, setTimelineRow]);
+    const group = groups.find((entry) => entry.laneById.has(t.id));
+    if (!group) return;
+    const drop = resolveTimelineKeyboardDrop(group, t.id, delta);
+    if (!drop) return;
+    void setTimelinePlacement(t, drop.sectionId, drop.row, timelineInsertionPlacements(group, t.id, drop));
+  }, [canEdit, groups, setTimelinePlacement]);
 
   const moveTimelineSection = useCallback((t: TaskTimelineRow, delta: number) => {
     if (!canEdit) return;

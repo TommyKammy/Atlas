@@ -2,8 +2,8 @@ import type { TimelineRowPlacement } from "@/lib/timeline-row-drop";
 import { NextResponse } from "next/server";
 import { withTransaction } from "@/lib/db";
 import { withUser } from "@/lib/api/route";
-import { badRequest, notFound } from "@/lib/api/errors";
-import { requireProjectPermission } from "@/lib/api-project-auth";
+import { ApiError, badRequest, notFound } from "@/lib/api/errors";
+import { requireProjectPermission, requireTaskPermission } from "@/lib/api-project-auth";
 import { audit } from "@/lib/audit";
 import { notifyProject } from "@/lib/notify";
 import { emitTaskEvent } from "@/lib/domain/events";
@@ -244,7 +244,12 @@ export const PUT = withUser(async (req, { uid, params }) => {
       }
       if (nextDates.due_on !== previousDates.due_on) {
         await logEvent(taskId, uid, "due_changed", `期日を${nextDates.due_on}に設定しました`, q);
-        await emitTaskEvent({ projectId, taskId, actorId: uid, type: "task.due_changed",
+        // Shared dates use the same authorized home as PATCH /api/tasks/:id,
+        // independent of the canvas that supplied the project-local placement.
+        // Resolve after locking the task, so a removed home cannot receive it.
+        const taskAuth = await requireTaskPermission(req, taskId, "edit", { queryable: q });
+        if (!taskAuth.ok) throw new ApiError(taskAuth.status, taskAuth.error);
+        await emitTaskEvent({ projectId: taskAuth.projectId, taskId, actorId: uid, type: "task.due_changed",
           data: { previous_due_on: previousDates.due_on, due_on: nextDates.due_on } }, q);
       }
       if (datesChanged) {

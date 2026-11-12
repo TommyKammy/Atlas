@@ -21,12 +21,13 @@ export async function requireProjectPermission(
   req: Request,
   projectId: number,
   level: ProjectPermission,
+  q: Queryable = db,
 ): Promise<ProjectAuth> {
   const session = await getRequestSession(req);
   if (!session) return { ok: false, status: 403, error: "unauthenticated" };
   const access = level === "configure" || level === "share"
-    ? await getProjectPolicyAccess(session.id, projectId)
-    : await getProjectAccess(session.id, projectId);
+    ? await getProjectPolicyAccess(session.id, projectId, q)
+    : await getProjectAccess(session.id, projectId, q);
   if (!access.role) return { ok: false, status: 403, error: "project access denied" };
   const allowed = level === "configure"
     ? "canConfigure" in access && access.canConfigure
@@ -168,9 +169,9 @@ export async function requireTaskPermission(
   req: Request,
   taskId: number,
   level: ProjectPermission = "edit",
-  options?: { scope?: "any" | "primary" },
+  options?: { scope?: "any" | "primary"; queryable?: Queryable },
 ): Promise<TaskAuth> {
-  const context = await getTaskProjectContext(taskId);
+  const context = await getTaskProjectContext(taskId, options?.queryable);
   if (!context) return { ok: false, status: 404, error: "task not found" };
   const scope = options?.scope ?? "any";
   const candidates =
@@ -185,7 +186,7 @@ export async function requireTaskPermission(
       error: "project access denied",
     };
     for (const projectId of candidates) {
-      const auth = await requireProjectPermission(req, projectId, level);
+      const auth = await requireProjectPermission(req, projectId, level, options?.queryable);
       if (auth.ok) return { ok: true, uid: auth.uid, projectId };
       lastError = auth;
     }

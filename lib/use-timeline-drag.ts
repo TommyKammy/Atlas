@@ -5,7 +5,7 @@ import type { TaskTimelineRow } from "./timeline-task-payload";
 import type { TimelineGroup } from "./use-timeline-layout";
 import { dayDeltaFromPixels } from "./timeline-dnd";
 import { TIMELINE_EDGE_HIT, TIMELINE_ROW_PITCH } from "./timeline-metrics";
-import { resolveTimelineTaskDrop, type TimelineRowPlacement, type TimelineRowDrop } from "./timeline-row-drop";
+import { resolveTimelineTaskDrop, timelineInsertionPlacements, type TimelineRowPlacement, type TimelineRowDrop } from "./timeline-row-drop";
 
 export type TimelineDragMode = "move" | "start" | "end";
 
@@ -284,11 +284,7 @@ export function useTimelineDrag({
       const source = groups.find((group) => group.laneById.has(t.id));
       if (drop.insert || source?.sectionId !== drop.sectionId || source.laneById.get(t.id) !== drop.row) {
         const group = groups.find((g) => g.sectionId === drop.sectionId)!;
-        const placements = drop.insert ? group.tasks.filter((peer) => peer.id !== t.id).map((peer) => {
-          const lane = group.laneById.get(peer.id)!;
-          return { task_id: peer.id, row_index: lane + (lane >= drop.row ? 1 : 0),
-            expected_updated_at: peer.timeline_row_updated_at ?? null, expected_task_updated_at: peer.updated_at };
-        }) : undefined;
+        const placements = timelineInsertionPlacements(group, t.id, drop);
         await onRowDrop(t, drop.sectionId, drop.row, placements, final.dateDelta);
         return;
       }

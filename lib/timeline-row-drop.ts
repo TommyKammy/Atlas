@@ -76,13 +76,48 @@ export function resolveTimelineTaskDrop(
   const group = groups.find((g) => g.sectionId === drop.sectionId)!;
   const source = groups.find((g) => g.intervalsById.has(taskId));
   const interval = source?.intervalsById.get(taskId);
+  return resolveRowCollision(group, drop, taskId, interval, y - drop.top >= TIMELINE_ROW_PITCH / 2, dateDelta);
+}
+
+function resolveRowCollision(
+  group: TaskDropGroup, drop: TimelineRowDrop, taskId: number,
+  interval: { start: number; end: number } | undefined, below: boolean, dateDelta = 0,
+): TimelineRowDrop | null {
   const collision = interval && (group.occupantsByLane.get(drop.row) ?? []).some((id) => {
     const other = group.intervalsById.get(id)!;
     return id !== taskId && interval.start + dateDelta <= other.end && other.start <= interval.end + dateDelta;
   });
   if (!collision) return drop;
-  const row = drop.row + (y - drop.top >= TIMELINE_ROW_PITCH / 2 ? 1 : 0);
+  const row = drop.row + (below ? 1 : 0);
   // Inserting shifts peers too. Never send an out-of-range plan to the API.
   if (row > MAX_PINNED_ROW || [...group.laneById].some(([id, lane]) => id !== taskId && lane >= row && lane >= MAX_PINNED_ROW)) return null;
   return { sectionId: drop.sectionId, row, top: group.top + row * TIMELINE_ROW_PITCH, insert: true };
+}
+
+/** Keyboard moves use the displayed lane, including collision-displaced pins. */
+export function resolveTimelineKeyboardDrop(
+  group: TaskDropGroup, taskId: number, delta: number,
+): TimelineRowDrop | null {
+  const current = group.laneById.get(taskId);
+  if (current === undefined || group.collapsed || (delta !== -1 && delta !== 1)) return null;
+  const row = current + delta;
+  if (row < 0 || row > MAX_PINNED_ROW) return null;
+  return resolveRowCollision(group, {
+    sectionId: group.sectionId, row, top: group.top + row * TIMELINE_ROW_PITCH,
+  }, taskId, group.intervalsById.get(taskId), delta > 0);
+}
+
+/** Keep pointer and keyboard insertion plans, including peer CAS stamps, identical. */
+export function timelineInsertionPlacements(
+  group: Pick<TaskDropGroup, "laneById"> & {
+    tasks: readonly { id: number; updated_at: string; timeline_row_updated_at?: string | null }[];
+  },
+  taskId: number, drop: TimelineRowDrop,
+): TimelineRowPlacement[] | undefined {
+  if (!drop.insert) return undefined;
+  return group.tasks.filter((peer) => peer.id !== taskId).map((peer) => {
+    const lane = group.laneById.get(peer.id)!;
+    return { task_id: peer.id, row_index: lane + (lane >= drop.row ? 1 : 0),
+      expected_updated_at: peer.timeline_row_updated_at ?? null, expected_task_updated_at: peer.updated_at };
+  });
 }

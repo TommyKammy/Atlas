@@ -491,3 +491,84 @@ test("a stale peer on a diagonal move leaves the dragged dates and all layout un
   await request(f.owner,'PUT',path(f.id),409,{...body,date_delta:-8});
   assert.deepEqual(await state(f.id),before);assert.deepEqual(await state(peer),peerBefore);assert.deepEqual(await history(f.id),[]);
 });
+
+
+for (const access of ['both homes', 'secondary only', 'primary viewer', 'no primary']) {
+  test(`TR01 ${access}: date events choose the same authorized home across horizontal, resize, detail and diagonal writes`, {timeout:30_000}, async()=>{
+    await db.query("UPDATE domain_events SET processed_at=now() WHERE processed_at IS NULL AND failed_at IS NULL");
+    const f=await setup(`TR01 ${access}`);
+    let cookie=f.owner, expectedProject=f.a;
+    if(access==='secondary only'||access==='primary viewer') {
+      await db.query("DELETE FROM project_members WHERE project_id=$1 AND user_id=$2",[f.a,f.editorId]);
+      if(access==='primary viewer') await db.query("INSERT INTO project_members(project_id,user_id,role) VALUES($1,$2,'viewer')",[f.a,f.editorId]);
+      await db.query("INSERT INTO project_members(project_id,user_id,role) VALUES($1,$2,'editor')",[f.b,f.editorId]);
+      cookie=f.editor;expectedProject=f.b;
+    }
+    if(access==='no primary') await db.query("UPDATE tasks SET project_id=NULL,section_id=NULL WHERE id=$1",[f.id]);
+    const ruleIds=new Map();
+    // Legacy tasks without a primary project still have an event-routing contract.
+    // Exercise rule side effects for the supported primary + secondary layouts.
+    for(const project of access==='no primary'?[]:[f.a,f.b]) {
+      const {id}=await request(f.owner,'POST',`/api/projects/${project}/rules`,201,{
+        name:`TR01 due ${project}`,definition:{triggers:[{event:'task.due_changed'}],actions:[{capability:'task.add_comment',params:{body:`TR01 due ${project}`}}]},
+      });
+      ruleIds.set(project,id);
+    }
+    const shift=value=>new Date(Date.parse(value+'T00:00:00Z')+86_400_000).toISOString().slice(0,10);
+    const processed=[];
+    for(const mode of ['horizontal','resize','detail','diagonal','same-section diagonal']) {
+      const before=await state(f.id);
+      const version=await placement(f,f.b,mode==='diagonal'?f.b2:before.memberships.find(m=>m.project_id===f.b).section_id,3);
+      if(mode.includes('diagonal')) await request(cookie,'PUT',path(f.id),200,{...version,date_delta:1});
+      else await request(cookie,'PATCH',`/api/tasks/${f.id}`,200,{
+        expected_updated_at:version.expected_task_updated_at,due_on:shift(before.task.due_on),
+        ...(mode==='horizontal'?{start_on:shift(before.task.start_on)}:{}),
+      });
+      const events=(await db.query("SELECT id,project_id FROM domain_events WHERE subject_id=$1 AND type='task.due_changed' ORDER BY id",[f.id])).rows;
+      assert.equal(events.length,processed.length+1,`${mode} emits once`);
+      const event=events.at(-1);assert.equal(Number(event.project_id),expectedProject,mode);
+      for(let pass=0;pass<2;pass++) {
+        const response=await http('/api/automation/process?limit=100',{method:'POST',timeout:10_000,headers:{'x-automation-token':'atlas-regression-worker'}});
+        assert.equal(response.status,200,await response.text());
+      }
+      const runs=(await db.query("SELECT rule_id,status FROM rule_runs WHERE event_id=$1",[event.id])).rows;
+      assert.deepEqual(runs,access==='no primary'?[]:[{rule_id:String(ruleIds.get(expectedProject)),status:'success'}],`${mode} executes only the authorized home's due rule once`);
+      processed.push(event.id);
+    }
+    const after=await state(f.id);
+    assert.equal(after.events.filter(e=>e.type==='task.section_changed').length,1);
+    assert.equal(after.events.find(e=>e.type==='task.section_changed').project_id,f.b,'section events stay local');
+    const comments=(await db.query("SELECT body FROM comments WHERE task_id=$1 ORDER BY id",[f.id])).rows;
+    assert.deepEqual(comments.map(c=>c.body),access==='no primary'?[]:Array(5).fill(`TR01 due ${expectedProject}`));
+    assert.equal(after.task.project_id,access==='no primary'?null:f.a);
+  });
+}
+
+test('TR01 concurrent date placements resolve authorization on their transaction connection without exhausting the pool', {timeout:20_000}, async()=>{
+  const f=await setup('TR01 pool'), jobs=[];
+  for(let i=0;i<12;i++) {
+    const id=await task(f.a,`TR01 concurrent ${i}`);
+    await db.query("UPDATE tasks SET section_id=$2,start_on='2030-06-01',due_on='2030-06-05' WHERE id=$1",[id,f.a1]);
+    jobs.push({id,body:{...await placement({...f,id},f.a,f.a2,1),date_delta:1}});
+  }
+  const locker=await db.connect();let requests=[];
+  try {
+    await locker.query('BEGIN');await locker.query('LOCK TABLE task_events IN ACCESS EXCLUSIVE MODE');
+    requests=jobs.map(({id,body})=>http(path(id),{cookie:f.owner,method:'PUT',json:body,timeout:15_000}));
+    requests.forEach(p=>void p.catch(()=>undefined));
+    const deadline=Date.now()+5000;let waiting=0;
+    while(Date.now()<deadline) {
+      waiting=Number((await db.query("SELECT count(*) AS n FROM pg_stat_activity WHERE wait_event_type='Lock' AND query ILIKE '%INSERT INTO task_events%'")).rows[0].n);
+      if(waiting>=10)break;
+      await delay(20);
+    }
+    assert.equal(waiting,10,'all application pool connections are held by placement transactions');
+  } finally {await locker.query('ROLLBACK');locker.release();}
+  const responses=await Promise.all(requests);
+  for(const r of responses)assert.equal(r.status,200,await r.text());
+  for(const {id} of jobs) {
+    const saved=await state(id);
+    assert.equal(saved.task.due_on,'2030-06-06');assert.equal(saved.task.section_id,f.a2);
+    assert.equal(saved.events.filter(e=>e.type==='task.due_changed').length,1);
+  }
+});
