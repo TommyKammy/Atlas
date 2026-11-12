@@ -179,7 +179,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
             : <div data-knowledge-legacy className="atlas-rich-text knowledge-document" dangerouslySetInnerHTML={{ __html: renderMarkdown(selected.body) }} />}
         </> : <div className="py-16 text-center">
           <h3 className="text-lg font-semibold">チームの知識をここに</h3><p className="mt-2 text-sm text-neutral-600">ノートを選択して読むか、議事録や手順書を作成できます。</p>
-          {canEdit && <button onClick={() => create()} className="mt-5 rounded-md bg-[#2c60b8] px-4 py-2 text-sm text-white">最初のノートを作成</button>}
+          {canEdit && <button onClick={() => create()} className="mt-5 rounded-md bg-[#2c60b8] px-4 py-2 text-sm text-white">ノートを作成</button>}
         </div>}
       </section>
     </div>
