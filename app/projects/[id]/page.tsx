@@ -133,7 +133,7 @@ export default async function ProjectPage(props: {
   const overviewData = view === "overview" ? await getOverviewViewData(projectId) : null;
   const dashboardData = view === "dashboard" ? await getDashboardViewData(projectId) : null;
   const messagesData = view === "messages" ? await getMessagesViewData(projectId) : null;
-  const knowledgeData = view === "knowledge" ? await getKnowledgeViewData(projectId, Number(qstr("note")) || undefined) : null;
+  const knowledgeData = view === "knowledge" ? await getKnowledgeViewData(projectId, { userId: viewerId }, Number(qstr("note")) || undefined) : null;
   const formsData = view === "forms" ? await getFormsViewData(projectId) : null;
   const filesData = view === "files" ? await getFilesViewData(projectId) : null;
 

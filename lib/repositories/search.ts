@@ -1,3 +1,4 @@
+import { assertDataActor, projectDataAccess, type DataActor } from "../data-actor";
 import { db } from "../db";
 import type { User } from "../data";
 import { compatibleTaskParent } from "./scope";
@@ -97,14 +98,15 @@ export type AdvancedTaskHit = {
   project_name: string;
 };
 
-export function searchTasksAdvanced(workspaceId: number, f: AdvancedSearchFilters, viewerUserId?: number): Promise<AdvancedTaskHit[]>;
-export function searchTasksAdvanced(workspaceId: number, f: AdvancedSearchFilters, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<AdvancedTaskHit>>;
+export function searchTasksAdvanced(workspaceId: number, f: AdvancedSearchFilters, actor: DataActor): Promise<AdvancedTaskHit[]>;
+export function searchTasksAdvanced(workspaceId: number, f: AdvancedSearchFilters, actor: DataActor, page: SearchPageRequest): Promise<SearchPage<AdvancedTaskHit>>;
 export async function searchTasksAdvanced(
   workspaceId: number,
   f: AdvancedSearchFilters,
-  viewerUserId?: number,
+  actor: DataActor,
   pagination?: SearchPageRequest,
 ) {
+  assertDataActor(actor);
   const escaped = f.q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const like = `%${escaped}%`;
   const hasQuery = f.q !== "";
@@ -123,11 +125,8 @@ export async function searchTasksAdvanced(
     conds.push(`(t.name ILIKE $${likeParam} OR t.description ILIKE $${likeParam}
       OR EXISTS (SELECT 1 FROM comments c WHERE c.task_id = t.id AND c.body ILIKE $${likeParam}))`);
   }
-  if (viewerUserId !== undefined) {
-    params.push(viewerUserId);
-    conds.push(`(EXISTS (SELECT 1 FROM users ux WHERE ux.id = $${params.length} AND ux.is_admin)
-      OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $${params.length}))`);
-  }
+  params.push(actor.userId);
+  conds.push(projectDataAccess("p", `$${params.length}`));
   if (f.projectId !== null) {
     params.push(f.projectId);
     conds.push(`p.id = $${params.length}`);
@@ -209,12 +208,6 @@ export async function searchTasksAdvanced(
   );
 }
 
-function searchAccessClause(viewerUserId: number | undefined, paramIndex: number): string {
-  if (viewerUserId === undefined) return "";
-  return ` AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $${paramIndex} AND ux.is_admin)
-    OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $${paramIndex}))`;
-}
-
 export type GlobalProjectHit = {
   id: number;
   name: string;
@@ -252,22 +245,20 @@ export type GlobalFileHit = {
 };
 
 /** Projects whose name matches the keyword, exact/prefix/contains first. */
-export function searchProjectsGlobal(workspaceId: number, q: string, viewerUserId?: number): Promise<GlobalProjectHit[]>;
-export function searchProjectsGlobal(workspaceId: number, q: string, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<GlobalProjectHit>>;
+export function searchProjectsGlobal(workspaceId: number, q: string, actor: DataActor): Promise<GlobalProjectHit[]>;
+export function searchProjectsGlobal(workspaceId: number, q: string, actor: DataActor, page: SearchPageRequest): Promise<SearchPage<GlobalProjectHit>>;
 export async function searchProjectsGlobal(
   workspaceId: number,
   q: string,
-  viewerUserId?: number,
+  actor: DataActor,
   pagination?: SearchPageRequest,
 ): Promise<GlobalProjectHit[] | SearchPage<GlobalProjectHit>> {
+  assertDataActor(actor);
   if (q.trim() === "") return pagination ? emptySearchPage(20) : [];
   const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
-  let access = "";
-  if (viewerUserId !== undefined) {
-    params.push(viewerUserId);
-    access = searchAccessClause(viewerUserId, params.length);
-  }
+  params.push(actor.userId);
+  const access = ` AND ${projectDataAccess("p", `$${params.length}`)}`;
   return searchRows<GlobalProjectHit>(
     `SELECT p.id, p.name, p.color, p.icon,
        CASE WHEN lower(p.name) = lower($3) THEN 0 WHEN p.name ILIKE $4 THEN 1 ELSE 2 END AS match_rank,
@@ -280,22 +271,20 @@ export async function searchProjectsGlobal(
 }
 
 /** Project messages (title/body) within the workspace. */
-export function searchMessagesGlobal(workspaceId: number, q: string, viewerUserId?: number): Promise<GlobalMessageHit[]>;
-export function searchMessagesGlobal(workspaceId: number, q: string, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<GlobalMessageHit>>;
+export function searchMessagesGlobal(workspaceId: number, q: string, actor: DataActor): Promise<GlobalMessageHit[]>;
+export function searchMessagesGlobal(workspaceId: number, q: string, actor: DataActor, page: SearchPageRequest): Promise<SearchPage<GlobalMessageHit>>;
 export async function searchMessagesGlobal(
   workspaceId: number,
   q: string,
-  viewerUserId?: number,
+  actor: DataActor,
   pagination?: SearchPageRequest,
 ): Promise<GlobalMessageHit[] | SearchPage<GlobalMessageHit>> {
+  assertDataActor(actor);
   if (q.trim() === "") return pagination ? emptySearchPage(20) : [];
   const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
-  let access = "";
-  if (viewerUserId !== undefined) {
-    params.push(viewerUserId);
-    access = searchAccessClause(viewerUserId, params.length);
-  }
+  params.push(actor.userId);
+  const access = ` AND ${projectDataAccess("p", `$${params.length}`)}`;
   return searchRows<GlobalMessageHit>(
     `SELECT m.id, m.title, m.body, m.created_at::text AS created_at,
        p.id AS project_id, p.name AS project_name,
@@ -311,22 +300,20 @@ export async function searchMessagesGlobal(
 }
 
 /** Knowledge notes (title/body) within the workspace. */
-export function searchKnowledgeGlobal(workspaceId: number, q: string, viewerUserId?: number): Promise<GlobalKnowledgeHit[]>;
-export function searchKnowledgeGlobal(workspaceId: number, q: string, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<GlobalKnowledgeHit>>;
+export function searchKnowledgeGlobal(workspaceId: number, q: string, actor: DataActor): Promise<GlobalKnowledgeHit[]>;
+export function searchKnowledgeGlobal(workspaceId: number, q: string, actor: DataActor, page: SearchPageRequest): Promise<SearchPage<GlobalKnowledgeHit>>;
 export async function searchKnowledgeGlobal(
   workspaceId: number,
   q: string,
-  viewerUserId?: number,
+  actor: DataActor,
   pagination?: SearchPageRequest,
 ): Promise<GlobalKnowledgeHit[] | SearchPage<GlobalKnowledgeHit>> {
+  assertDataActor(actor);
   if (q.trim() === "") return pagination ? emptySearchPage(20) : [];
   const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
-  let access = "";
-  if (viewerUserId !== undefined) {
-    params.push(viewerUserId);
-    access = searchAccessClause(viewerUserId, params.length);
-  }
+  params.push(actor.userId);
+  const access = ` AND ${projectDataAccess("p", `$${params.length}`)}`;
   return searchRows<GlobalKnowledgeHit>(
     `SELECT k.id, k.title, k.body, k.updated_at::text AS updated_at,
        p.id AS project_id, p.name AS project_name,
@@ -335,29 +322,27 @@ export async function searchKnowledgeGlobal(
        k.updated_at AS sort_timestamp
      FROM project_knowledge k JOIN projects p ON p.id = k.project_id
      WHERE p.workspace_id = $1 AND p.archived_at IS NULL AND p.deleted_at IS NULL
-       AND (k.title ILIKE $2 OR k.body ILIKE $2)${access}
+       AND k.deleted_at IS NULL AND (k.title ILIKE $2 OR k.body ILIKE $2)${access}
 `,
     params, "match_rank, sort_timestamp DESC, id", 20, pagination,
   );
 }
 
 /** Attachment file names within the workspace. */
-export function searchFilesGlobal(workspaceId: number, q: string, viewerUserId?: number): Promise<GlobalFileHit[]>;
-export function searchFilesGlobal(workspaceId: number, q: string, viewerUserId: number | undefined, page: SearchPageRequest): Promise<SearchPage<GlobalFileHit>>;
+export function searchFilesGlobal(workspaceId: number, q: string, actor: DataActor): Promise<GlobalFileHit[]>;
+export function searchFilesGlobal(workspaceId: number, q: string, actor: DataActor, page: SearchPageRequest): Promise<SearchPage<GlobalFileHit>>;
 export async function searchFilesGlobal(
   workspaceId: number,
   q: string,
-  viewerUserId?: number,
+  actor: DataActor,
   pagination?: SearchPageRequest,
 ): Promise<GlobalFileHit[] | SearchPage<GlobalFileHit>> {
+  assertDataActor(actor);
   if (q.trim() === "") return pagination ? emptySearchPage(20) : [];
   const escaped = q.replace(/[%_\\]/g, (m) => `\\${m}`);
   const params: unknown[] = [workspaceId, `%${escaped}%`, q, `${escaped}%`];
-  let access = "";
-  if (viewerUserId !== undefined) {
-    params.push(viewerUserId);
-    access = searchAccessClause(viewerUserId, params.length);
-  }
+  params.push(actor.userId);
+  const access = ` AND ${projectDataAccess("p", `$${params.length}`)}`;
   return searchRows<GlobalFileHit>(
     `SELECT id, file_name, mime_type, created_at, task_id, task_name, project_id, project_name, match_rank, created_timestamp
      FROM (
@@ -418,15 +403,11 @@ export async function clearSearchHistory(userId: number): Promise<void> {
 
 export async function getSearchCustomFields(
   workspaceId: number,
-  viewerUserId?: number,
+  actor: DataActor,
 ): Promise<SearchCustomField[]> {
-  const params: unknown[] = [workspaceId];
-  let access = "";
-  if (viewerUserId !== undefined) {
-    params.push(viewerUserId);
-    access = ` AND (EXISTS (SELECT 1 FROM users ux WHERE ux.id = $2 AND ux.is_admin)
-      OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $2))`;
-  }
+  assertDataActor(actor);
+  const params: unknown[] = [workspaceId, actor.userId];
+  const access = ` AND ${projectDataAccess("p", "$2")}`;
   const r = await db.query(
     `SELECT f.id, f.name, f.field_type, f.options, p.name AS project_name
      FROM custom_fields f JOIN projects p ON p.id = f.project_id

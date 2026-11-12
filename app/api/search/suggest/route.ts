@@ -1,13 +1,9 @@
+import { searchTasksAdvanced, searchProjectsGlobal, searchMessagesGlobal, searchKnowledgeGlobal, searchFilesGlobal } from "@/lib/services/authorized-data";
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api/route";
 import {
   getSearchHistory,
   getWorkspace,
-  searchFilesGlobal,
-  searchKnowledgeGlobal,
-  searchMessagesGlobal,
-  searchProjectsGlobal,
-  searchTasksAdvanced,
   type AdvancedSearchFilters,
 } from "@/lib/data";
 
@@ -34,11 +30,11 @@ export const GET = withUser(async (req, { uid }) => {
     custom: [],
   };
   const [tasks, projects, messages, knowledge, files] = await Promise.all([
-    searchTasksAdvanced(ws.id, filters, uid),
-    searchProjectsGlobal(ws.id, q, uid),
-    searchMessagesGlobal(ws.id, q, uid),
-    searchKnowledgeGlobal(ws.id, q, uid),
-    searchFilesGlobal(ws.id, q, uid),
+    searchTasksAdvanced(ws.id, filters, { userId: uid }),
+    searchProjectsGlobal(ws.id, q, { userId: uid }),
+    searchMessagesGlobal(ws.id, q, { userId: uid }),
+    searchKnowledgeGlobal(ws.id, q, { userId: uid }),
+    searchFilesGlobal(ws.id, q, { userId: uid }),
   ]);
   return NextResponse.json({
     history: [],

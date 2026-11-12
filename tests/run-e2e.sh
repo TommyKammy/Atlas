@@ -113,7 +113,11 @@ if [[ "$suite" == browser || "$suite" == knowledge || "$suite" == sidebar || "$s
       --grep 'changing membership project|membership picker waits for client handlers' --repeat-each "$timeline_repeat" \
       --workers "$timeline_workers" --retries=0 --trace retain-on-failure --output "$browser_output"
   elif [[ "$suite" == knowledge ]]; then
-    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/knowledge.spec.ts tests/browser/knowledge-order.spec.ts --output "$browser_output"
+    require_e2e_target
+    docker exec "$E2E_APP_ID" mkdir -p /app/tests
+    docker cp tests/authorized-data-integration.ts "$E2E_APP_ID:/app/tests/authorized-data-integration.ts"
+    docker exec -e ATLAS_E2E_MARKER="$ATLAS_E2E_MARKER" "$E2E_APP_ID" node --import tsx tests/authorized-data-integration.ts
+    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/knowledge.spec.ts tests/browser/knowledge-order.spec.ts tests/browser/knowledge-trash.spec.ts --output "$browser_output"
   elif [[ "$suite" == sidebar ]]; then
     E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/sidebar.spec.ts tests/browser/sidebar-project-order.spec.ts --workers 1 --output "$browser_output"
   else

@@ -1,3 +1,4 @@
+import { getProjectKnowledge, type DataActor } from "../services/authorized-data";
 import { cache } from "react";
 import { getDashboardTasks, getDashboardWidgets } from "../dashboard";
 import { getProjectRules } from "../automation/repository";
@@ -7,7 +8,6 @@ import {
   getDependencies,
   getProjectActivity,
   getProjectApps,
-  getProjectKnowledge,
   getProjectMembers,
   getProjectMessages,
   getProjectForms,
@@ -107,8 +107,8 @@ export async function getMessagesViewData(projectId: number) {
   return { messages: await getProjectMessages(projectId) };
 }
 
-export async function getKnowledgeViewData(projectId: number, selectedNoteId?: number) {
-  return { knowledge: await getProjectKnowledge(projectId, selectedNoteId) };
+export async function getKnowledgeViewData(projectId: number, actor: DataActor, selectedNoteId?: number) {
+  return { knowledge: await getProjectKnowledge(projectId, actor, selectedNoteId) };
 }
 
 export async function getFormsViewData(projectId: number) {

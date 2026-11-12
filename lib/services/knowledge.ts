@@ -1,17 +1,15 @@
-import { db, withTransaction, type Queryable } from "../db";
-import { badRequest, conflict, notFound } from "../api/errors";
+import { withTransaction, type Queryable } from "../db";
+import { badRequest, conflict, notFound, forbidden } from "../api/errors";
 import { knowledgeMarkdown, validateKnowledgeDoc } from "../knowledge-document";
-import type { ProjectKnowledge } from "../repositories/projects";
 import { moveKnowledgeId } from "../knowledge-order";
+import { readKnowledge } from "./authorized-data";
+import { assertDataActor, projectDataAccess } from "../data-actor";
 
-export const knowledgeColumns = `k.id, k.title, k.body, k.body_doc, k.revision, k.position,
-  k.created_at::text AS created_at, k.updated_at::text AS updated_at,
-  (SELECT name FROM users WHERE id = k.author_id) AS author_name`;
-
-export async function readKnowledge(id: number, q: Queryable = db): Promise<ProjectKnowledge> {
-  const result = await q.query(`SELECT ${knowledgeColumns} FROM project_knowledge k WHERE k.id = $1`, [id]);
-  if (!result.rows[0]) throw notFound();
-  return result.rows[0];
+async function lockEditableProject(projectId: number, uid: number, q: Queryable) {
+  assertDataActor({ userId: uid });
+  const result = await q.query(`SELECT p.id FROM projects p WHERE p.id = $1
+    AND p.deleted_at IS NULL AND ${projectDataAccess("p", "$2", "edit")} FOR UPDATE`, [projectId, uid]);
+  if (!result.rowCount) throw forbidden("プロジェクトを編集する権限がありません");
 }
 
 function payload(value: unknown): Record<string, unknown> {
@@ -39,30 +37,30 @@ export async function createKnowledge(projectId: number, uid: number, value: unk
   if (key !== undefined && (typeof key !== "string" || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(key))) throw badRequest("作成キーが無効です");
   return withTransaction(async q => {
     // Serialize appends with reordering; new notes are always added at the end.
-    await q.query("SELECT id FROM projects WHERE id = $1 FOR UPDATE", [projectId]);
+    await lockEditableProject(projectId, uid, q);
     const inserted = await q.query(`INSERT INTO project_knowledge (project_id, author_id, title, body, body_doc, create_key, position)
       VALUES ($1, $2, $3, $4, $5::jsonb, $6,
-        (SELECT COALESCE(MAX(position), 0) + 1 FROM project_knowledge WHERE project_id = $1))
+        (SELECT COALESCE(MAX(position), 0) + 1 FROM project_knowledge WHERE project_id = $1 AND deleted_at IS NULL))
       ON CONFLICT (create_key) DO NOTHING RETURNING id`,
     [projectId, uid, name, text.body, text.doc === null ? null : JSON.stringify(text.doc), key ?? null]);
     let id = inserted.rows[0]?.id;
     if (!id) {
-      const previous = await q.query("SELECT id FROM project_knowledge WHERE create_key = $1 AND project_id = $2 AND author_id = $3", [key, projectId, uid]);
+      const previous = await q.query("SELECT id FROM project_knowledge WHERE create_key = $1 AND project_id = $2 AND author_id = $3 AND deleted_at IS NULL", [key, projectId, uid]);
       id = previous.rows[0]?.id;
       if (!id) throw conflict("作成キーが使用済みです");
     }
-    return readKnowledge(id, q);
+    return readKnowledge(id, { userId: uid }, q);
   });
 }
 
-export async function reorderKnowledge(projectId: number, value: unknown) {
+export async function reorderKnowledge(projectId: number, uid: number, value: unknown) {
   const input = payload(value);
   const id = input.note_id, target = input.target_id, placement = input.placement;
   if (![id, target].every(value => typeof value === "number" && Number.isSafeInteger(value) && value > 0) ||
     (placement !== "before" && placement !== "after")) throw badRequest("並べ替え先が無効です");
   return withTransaction(async q => {
-    await q.query("SELECT id FROM projects WHERE id = $1 FOR UPDATE", [projectId]);
-    const rows = await q.query("SELECT id FROM project_knowledge WHERE project_id = $1 ORDER BY position, id", [projectId]);
+    await lockEditableProject(projectId, uid, q);
+    const rows = await q.query("SELECT id FROM project_knowledge WHERE project_id = $1 AND deleted_at IS NULL ORDER BY position, id", [projectId]);
     const previous = rows.rows.map(row => row.id as number);
     if (!previous.includes(id as number) || !previous.includes(target as number)) throw notFound("ノートが見つかりません");
     const order = moveKnowledgeId(previous, id as number, target as number, placement);
@@ -79,8 +77,11 @@ export async function updateKnowledge(id: number, uid: number, value: unknown) {
   if (!("title" in input || "body" in input || "body_doc" in input || "restore_revision" in input)) throw badRequest("変更内容がありません");
   if (input.expected_revision !== undefined && (!Number.isInteger(input.expected_revision) || Number(input.expected_revision) < 0)) throw badRequest("リビジョンが無効です");
   return withTransaction(async q => {
+    const owner = await q.query("SELECT project_id FROM project_knowledge WHERE id = $1 AND deleted_at IS NULL", [id]);
+    if (!owner.rowCount) throw notFound("ノートが見つかりません");
+    await lockEditableProject(owner.rows[0].project_id, uid, q);
     await q.query("SELECT id FROM project_knowledge WHERE id = $1 FOR UPDATE", [id]);
-    const current = await readKnowledge(id, q);
+    const current = await readKnowledge(id, { userId: uid }, q);
     if ((input.body_doc !== undefined || current.body_doc || input.restore_revision !== undefined) && input.expected_revision === undefined) throw conflict("最新版を取得してから保存してください");
     if (input.expected_revision !== undefined && input.expected_revision !== current.revision) throw conflict("別の画面で更新されています。変更をコピーしてから最新版を開いてください");
     let nextTitle = "title" in input ? title(input.title) : current.title;
@@ -96,6 +97,37 @@ export async function updateKnowledge(id: number, uid: number, value: unknown) {
       SELECT id, revision, title, body, body_doc, updated_at, $2 FROM project_knowledge WHERE id = $1`, [id, uid]);
     await q.query(`UPDATE project_knowledge SET title = $2, body = $3, body_doc = $4::jsonb,
       revision = revision + 1, updated_at = now() WHERE id = $1`, [id, nextTitle, next.body, next.doc === null ? null : JSON.stringify(next.doc)]);
-    return readKnowledge(id, q);
+    return readKnowledge(id, { userId: uid }, q);
   });
 }
+
+/** Keep the body and every revision. A new revision invalidates pre-trash editors. */
+async function changeTrashState(id: number, uid: number, expectedRevision: unknown, restore: boolean) {
+  if (!Number.isSafeInteger(expectedRevision) || Number(expectedRevision) < 0) throw badRequest("ノートのリビジョンが必要です");
+  return withTransaction(async q => {
+    const owner = await q.query("SELECT project_id FROM project_knowledge WHERE id = $1", [id]);
+    if (!owner.rowCount) throw notFound("ノートが見つかりません");
+    const projectId = owner.rows[0].project_id;
+    // Match create/reorder/update lock order, including concurrent restores.
+    await lockEditableProject(projectId, uid, q);
+    const result = await q.query("SELECT revision, deleted_at FROM project_knowledge WHERE id = $1 FOR UPDATE", [id]);
+    const current = result.rows[0];
+    if (!current) throw notFound("ノートが見つかりません");
+    if (current.revision !== expectedRevision || (current.deleted_at !== null) !== restore) {
+      throw conflict("別の画面で更新されています。最新版を開いてください");
+    }
+    await q.query(`INSERT INTO knowledge_revisions (knowledge_id, revision, title, body, body_doc, saved_at, archived_by)
+      SELECT id, revision, title, body, body_doc, updated_at, $2 FROM project_knowledge WHERE id = $1`, [id, uid]);
+    if (restore) {
+      await q.query(`UPDATE project_knowledge SET deleted_at = NULL, deleted_by = NULL, revision = revision + 1,
+        position = (SELECT COALESCE(MAX(position), 0) + 1 FROM project_knowledge WHERE project_id = $2 AND deleted_at IS NULL)
+        WHERE id = $1`, [id, projectId]);
+    } else {
+      await q.query("UPDATE project_knowledge SET deleted_at = now(), deleted_by = $2, revision = revision + 1 WHERE id = $1", [id, uid]);
+    }
+    return restore ? readKnowledge(id, { userId: uid }, q) : { deleted: id };
+  });
+}
+
+export const trashKnowledge = (id: number, uid: number, expectedRevision: unknown) => changeTrashState(id, uid, expectedRevision, false);
+export const restoreKnowledge = (id: number, uid: number, expectedRevision: unknown) => changeTrashState(id, uid, expectedRevision, true);

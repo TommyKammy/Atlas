@@ -1,16 +1,11 @@
+import { getSearchCustomFields, searchTasksAdvanced, searchProjectsGlobal, searchMessagesGlobal, searchKnowledgeGlobal, searchFilesGlobal } from "@/lib/services/authorized-data";
 import Link from "next/link";
 import {
   getProjectsForUser,
   getSavedSearches,
-  getSearchCustomFields,
   getSearchUsers,
   getSearchHistory,
   getWorkspace,
-  searchTasksAdvanced,
-  searchProjectsGlobal,
-  searchMessagesGlobal,
-  searchKnowledgeGlobal,
-  searchFilesGlobal,
 } from "@/lib/data";
 import { getCurrentUserId } from "@/lib/current-user";
 import { redirect } from "next/navigation";
@@ -48,7 +43,7 @@ export default async function SearchPage(props: {
     ? await Promise.all([
         getProjectsForUser(ws.id, viewerId),
         getSearchUsers(ws.id, viewerId),
-        getSearchCustomFields(ws.id, viewerId),
+        getSearchCustomFields(ws.id, { userId: viewerId }),
         getSavedSearches(ws.id, viewerId),
         getSearchHistory(viewerId),
       ])
@@ -95,11 +90,11 @@ export default async function SearchPage(props: {
     f.completedTo !== null ||
     custom.length > 0;
   const [taskPage, projectPage, messagePage, knowledgePage, filePage] = await Promise.all([
-    ws && searched ? searchTasksAdvanced(ws.id, f, viewerId, { page: parseSearchPage(sp.tasks_page), pageSize: 100 }) : emptySearchPage<never>(100),
-    ws && q !== "" ? searchProjectsGlobal(ws.id, q, viewerId, { page: parseSearchPage(sp.projects_page), pageSize: 20 }) : emptySearchPage<never>(20),
-    ws && q !== "" ? searchMessagesGlobal(ws.id, q, viewerId, { page: parseSearchPage(sp.messages_page), pageSize: 20 }) : emptySearchPage<never>(20),
-    ws && q !== "" ? searchKnowledgeGlobal(ws.id, q, viewerId, { page: parseSearchPage(sp.knowledge_page), pageSize: 20 }) : emptySearchPage<never>(20),
-    ws && q !== "" ? searchFilesGlobal(ws.id, q, viewerId, { page: parseSearchPage(sp.files_page), pageSize: 20 }) : emptySearchPage<never>(20),
+    ws && searched ? searchTasksAdvanced(ws.id, f, { userId: viewerId }, { page: parseSearchPage(sp.tasks_page), pageSize: 100 }) : emptySearchPage<never>(100),
+    ws && q !== "" ? searchProjectsGlobal(ws.id, q, { userId: viewerId }, { page: parseSearchPage(sp.projects_page), pageSize: 20 }) : emptySearchPage<never>(20),
+    ws && q !== "" ? searchMessagesGlobal(ws.id, q, { userId: viewerId }, { page: parseSearchPage(sp.messages_page), pageSize: 20 }) : emptySearchPage<never>(20),
+    ws && q !== "" ? searchKnowledgeGlobal(ws.id, q, { userId: viewerId }, { page: parseSearchPage(sp.knowledge_page), pageSize: 20 }) : emptySearchPage<never>(20),
+    ws && q !== "" ? searchFilesGlobal(ws.id, q, { userId: viewerId }, { page: parseSearchPage(sp.files_page), pageSize: 20 }) : emptySearchPage<never>(20),
   ]);
   const total = taskPage.total + projectPage.total + messagePage.total + knowledgePage.total + filePage.total;
   const searchParams = { ...sp, q };

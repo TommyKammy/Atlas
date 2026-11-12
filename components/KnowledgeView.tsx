@@ -8,6 +8,7 @@ import { confirmAction } from "@/lib/ui-feedback";
 import KnowledgeComposer, { downloadNote } from "./knowledge/KnowledgeComposer";
 import RichTextEditor from "./rich-text/RichTextEditor";
 import KnowledgeNoteList from "./knowledge/KnowledgeNoteList";
+import KnowledgeTrash from "./knowledge/KnowledgeTrash";
 import { applyKnowledgeOrder, mergeKnowledgeNote, moveKnowledgeId, type NotePlacement } from "@/lib/knowledge-order";
 
 const templates = [
@@ -32,6 +33,8 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
   const [offset, setOffset] = useState(Math.min(initial.length, 100));
   const [editing, setEditing] = useState<{ note: ProjectKnowledge | null; key: string; template?: string } | null>(null);
   const [history, setHistory] = useState<History[] | null>(null);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [notice, setNotice] = useState("");
   const [acting, setBusy] = useState(false);
   const [reordering, setReordering] = useState(false);
   const reorderPending = useRef(false);
@@ -112,7 +115,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
   });
   const create = (body = "") => void action(async () => {
     if (!await leave()) return;
-    setHistory(null); setEditing({ note: null, key: crypto.randomUUID(), template: body });
+    setTrashOpen(false); setHistory(null); setEditing({ note: null, key: crypto.randomUUID(), template: body });
   });
   const edit = () => void action(async () => {
     if (!selected) return;
@@ -120,14 +123,37 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
     saved(note); setHistory(null); setEditing({ note, key: crypto.randomUUID() });
   });
   const close = () => { setEditing(null); guard.current = null; };
+  const refreshNotes = async (restored?: ProjectKnowledge) => {
+    const items = await api(`/api/knowledge?project_id=${projectId}`) as ProjectKnowledge[];
+    setNotes(restored ? mergeKnowledgeNote(items, restored) : items);
+    setOffset(items.length); setHasMore(items.length === 100);
+    searchRef.current = ""; setSearch(""); setResults(null); setSearchMore(false);
+    setSelectedId(restored?.id ?? items[0]?.id ?? null); setHistory(null);
+    const url = new URL(window.location.href);
+    if (restored) url.searchParams.set("note", String(restored.id)); else url.searchParams.delete("note");
+    window.history.replaceState(null, "", url);
+  };
   const links = notes.map(note => ({ title: note.title, href: `/projects/${projectId}?view=knowledge&note=${note.id}` }));
 
   return <div data-knowledge className="px-4 pb-12 text-neutral-900">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="text-xl font-semibold">プロジェクトの知識</h2><p className="mt-1 text-sm text-neutral-600">決定事項、議事録、手順をチームに残す</p></div>
-      {canEdit && <button data-knowledge-new disabled={busy} onClick={() => create()} className="rounded-md bg-[#2c60b8] px-3 py-2 text-sm font-medium text-white hover:bg-[#24529c] disabled:opacity-50">＋ ノートを追加</button>}
+      {canEdit && <div className="flex gap-2">
+        <button className={button} disabled={busy} aria-pressed={trashOpen} onClick={() => void action(async () => {
+          if (!await leave()) return;
+          close(); setHistory(null); setNotice(""); setTrashOpen(value => !value);
+        })}>{trashOpen ? "ノート一覧に戻る" : "ゴミ箱"}</button>
+        <button data-knowledge-new disabled={busy} onClick={() => create()} className="rounded-md bg-[#2c60b8] px-3 py-2 text-sm font-medium text-white hover:bg-[#24529c] disabled:opacity-50">＋ ノートを追加</button>
+      </div>}
     </div>
     {error && <p role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+    {notice && <p role="status" className="mb-4 text-sm text-neutral-700">{notice}</p>}
+    {trashOpen ? <KnowledgeTrash projectId={projectId} onBusyChange={setBusy} onRestored={async note => {
+      setNotice(`「${note.title}」を復元しました`);
+      try { await refreshNotes(note); }
+      catch { saved(note); setError("ノートは復元されました。一覧を更新できなかったため、画面を再読み込みしてください。"); }
+      setTrashOpen(false);
+    }} /> : <>
     <div className="grid min-w-0 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
       <aside aria-label="ノート一覧" className={`${editing ? "hidden lg:block" : ""} min-w-0 border-b border-neutral-200 pb-4 lg:border-r lg:border-b-0 lg:pr-5`}>
         <label className="sr-only" htmlFor="knowledge-search">ノートを検索</label>
@@ -155,9 +181,11 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
               <button className={button} disabled={busy} onClick={() => void action(async () => setHistory(history ? null : await api(`/api/knowledge/${selected.id}?history=1`)))}>履歴</button>
               {canEdit && <><button data-knowledge-edit className={button} disabled={busy} onClick={edit}>ノートを編集</button>
                 <button className={button} disabled={busy} onClick={() => void action(async () => {
-                  if (!await confirmAction(`「${selected.title}」と保存履歴を削除しますか？`)) return;
+                  if (!await confirmAction(`「${selected.title}」をゴミ箱に移しますか？本文と保存履歴は保持され、後から復元できます。`, { confirmLabel: "ゴミ箱に移す" })) return;
                   await api(`/api/knowledge/${selected.id}?revision=${selected.revision}`, { method: "DELETE" });
                   setNotes(items => items.filter(note => note.id !== selected.id)); setSelectedId(null); setHistory(null);
+                  setNotice(`「${selected.title}」をゴミ箱に移しました`);
+                  await refreshNotes();
                 })}>削除</button></>}
             </div>
           </div>
@@ -183,5 +211,6 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
         </div>}
       </section>
     </div>
+    </>}
   </div>;
 }

@@ -800,10 +800,10 @@ R=$(api PATCH /api/knowledge/$KID '{"title":"E2E知識更新","body":"更新本�
 [[ "$(jget "$R" id)" == "$KID" ]] && ok "knowledge update" || bad "knowledge update" "$R"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=knowledge" -o "$TMPD/knowledge2.html"
 grep -q 'E2E知識更新' "$TMPD/knowledge2.html" && ok "knowledge update visible" || bad "knowledge update visible"
-R=$(api DELETE /api/knowledge/$KID)
+R=$(api DELETE "/api/knowledge/$KID?revision=1")
 [[ "$(jget "$R" deleted)" == "$KID" ]] && ok "knowledge delete" || bad "knowledge delete" "$R"
-N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_knowledge WHERE id=$KID;")
-[[ "$N" == "0" ]] && ok "knowledge cleaned" || bad "knowledge cleaned ($N)"
+N=$(db_sql -t -A -c "SELECT COUNT(*) FROM project_knowledge WHERE id=$KID AND deleted_at IS NOT NULL;")
+[[ "$N" == "1" ]] && ok "knowledge retained in trash" || bad "knowledge retained in trash ($N)"
 
 echo "== project email =="
 EM=$(api GET /api/projects/1/email)
@@ -1029,7 +1029,7 @@ GK=$(api POST /api/knowledge '{"project_id":1,"title":"E2E-SCOPE-NOTE","body":"k
 GKID=$(jget "$GK" id)
 curl -s -m 15 -b "$JAR" "$BASE/search?q=E2E-SCOPE-NOTE" -o "$TMPD/scope-note.html"
 grep -q 'data-search-section="knowledge"' "$TMPD/scope-note.html" && grep -q 'E2E-SCOPE-NOTE' "$TMPD/scope-note.html" && ok "search scope knowledge" || bad "search scope knowledge"
-api DELETE /api/knowledge/$GKID >/dev/null
+api DELETE "/api/knowledge/$GKID?revision=0" >/dev/null
 
 echo "E2E search file" > "$TMPD/searchfile.txt"
 GA=$(curl -s -m 15 -b "$JAR" -X POST "$BASE/api/attachments" -F "task_id=2" -F "file=@$TMPD/searchfile.txt;filename=E2E-SCOPE-FILE.txt;type=text/plain")
