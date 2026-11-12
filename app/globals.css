@@ -367,3 +367,26 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
     overflow-x: auto;
   }
 }
+
+/* Knowledge documents keep tables and long content inside the page on narrow screens. */
+.knowledge-document { overflow-wrap: anywhere; }
+.knowledge-document .tiptap { padding-inline: 0.25rem; }
+.knowledge-document .tableWrapper { overflow-x: auto; margin-block: 1rem; }
+.knowledge-document table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.knowledge-document th, .knowledge-document td { border: 1px solid #d4d4d4; padding: 0.5rem; vertical-align: top; min-width: 4rem; position: relative; }
+.knowledge-document th { background: #f5f5f5; font-weight: 600; }
+.knowledge-document .selectedCell { background: #eff6ff; }
+.knowledge-document img { display: block; max-width: 100%; height: auto; margin-block: 1rem; border-radius: 0.375rem; }
+.knowledge-document pre { max-width: 100%; overflow-x: auto; }
+.knowledge-document [contenteditable=false] { cursor: default; }
+.knowledge-document p.is-editor-empty:first-child::before { color: #525252; }
+
+.knowledge-document .atlas-rich-text, .atlas-rich-text.knowledge-document { font-size: 15px; line-height: 1.8; }
+.knowledge-document .atlas-rich-text h1 { font-size: 1.6em; margin-top: 1.2em; }
+.knowledge-document .atlas-rich-text h2 { font-size: 1.3em; margin-top: 1em; }
+.knowledge-document .atlas-rich-text h3 { font-size: 1.1em; margin-top: 0.8em; }
+.knowledge-document ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.knowledge-document ul[data-type="taskList"] > li { display: flex; align-items: flex-start; gap: 0.5rem; }
+.knowledge-document ul[data-type="taskList"] > li > label { flex: 0 0 auto; margin-top: 0.25rem; }
+.knowledge-document ul[data-type="taskList"] > li > div { flex: 1; min-width: 0; }
+.knowledge-document ul[data-type="taskList"] > li p { margin: 0; }

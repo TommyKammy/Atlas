@@ -107,8 +107,8 @@ export async function getMessagesViewData(projectId: number) {
   return { messages: await getProjectMessages(projectId) };
 }
 
-export async function getKnowledgeViewData(projectId: number) {
-  return { knowledge: await getProjectKnowledge(projectId) };
+export async function getKnowledgeViewData(projectId: number, selectedNoteId?: number) {
+  return { knowledge: await getProjectKnowledge(projectId, selectedNoteId) };
 }
 
 export async function getFormsViewData(projectId: number) {

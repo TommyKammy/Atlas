@@ -4,7 +4,7 @@ import { isImeComposing } from "@/lib/ime-keyboard";
 
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { FocusEvent, ReactNode } from "react";
-import type { Editor } from "@tiptap/core";
+import type { Editor, Extensions } from "@tiptap/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { docToText, markdownToDoc } from "@/lib/rich-text-markdown";
 import { richTextExtensions } from "@/lib/rich-text-extensions";
@@ -32,6 +32,8 @@ export default function RichTextEditor({
   onReady,
   className = "",
   children,
+  extraExtensions,
+  editable = true,
 }: {
   initialDoc?: RichTextDoc | null;
   legacy?: string;
@@ -49,8 +51,11 @@ export default function RichTextEditor({
   onReady?: (editor: Editor) => void;
   className?: string;
   children?: ReactNode;
+  extraExtensions?: Extensions;
+  editable?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
+  const [ready, setReady] = useState(false);
   const [hasContent, setHasContent] = useState(() => {
     const initial = initialDoc ?? markdownToDoc(legacy ?? "", mentionUsers);
     return docToText(initial).length > 0;
@@ -65,10 +70,10 @@ export default function RichTextEditor({
 
   const mentionKey = mentionUsers.map((user) => `${user.id}:${user.name}`).join("|");
   const extensions = useMemo(
-    () => richTextExtensions({ placeholder, mentionUsers }),
+    () => [...richTextExtensions({ placeholder, mentionUsers, openOnClick: !editable }), ...(extraExtensions ?? [])],
     // User names and placeholder are stable while an editor is open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [placeholder, mentionKey],
+    [placeholder, mentionKey, extraExtensions, editable],
   );
   const initialContent = useMemo(
     () => initialDoc ?? markdownToDoc(legacy ?? "", mentionUsers),
@@ -81,6 +86,7 @@ export default function RichTextEditor({
     {
       extensions,
       content: initialContent,
+      editable,
       immediatelyRender: false,
       autofocus: autoFocus ? "end" : false,
       editorProps: {
@@ -109,6 +115,7 @@ export default function RichTextEditor({
         onChangeRef.current?.(doc, text);
       },
       onCreate: ({ editor: current }) => {
+        setReady(true);
         const text = docToText(current.getJSON() as RichTextDoc);
         setHasContent(text.length > 0);
       },
@@ -121,8 +128,8 @@ export default function RichTextEditor({
   };
 
   useEffect(() => {
-    if (editor) onReady?.(editor);
-  }, [editor, onReady]);
+    if (editor && ready) onReady?.(editor);
+  }, [editor, onReady, ready]);
 
   if (!editor) {
     return (
@@ -141,6 +148,8 @@ export default function RichTextEditor({
             ? "border border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]"
             : "border border-neutral-300"
       } ${className}`}
+      aria-busy={!ready}
+      style={!ready ? { pointerEvents: "none" } : undefined}
       onFocusCapture={() => setFocused(true)}
       onBlurCapture={onBlurCapture}
     >

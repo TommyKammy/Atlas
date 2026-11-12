@@ -314,6 +314,8 @@ export async function getProjectForms(projectId: number): Promise<ProjectForm[]>
 }
 
 export type ProjectKnowledge = {
+  body_doc: RichTextDoc | null;
+  revision: number;
   id: number;
   title: string;
   body: string;
@@ -322,14 +324,20 @@ export type ProjectKnowledge = {
   author_name: string | null;
 };
 
-export async function getProjectKnowledge(projectId: number): Promise<ProjectKnowledge[]> {
+export async function getProjectKnowledge(projectId: number, selectedNoteId?: number): Promise<ProjectKnowledge[]> {
   const r = await db.query(
-    `SELECT k.id, k.title, k.body, k.created_at::text AS created_at,
+    `SELECT k.id, k.title, k.body, k.body_doc, k.revision, k.created_at::text AS created_at,
             k.updated_at::text AS updated_at, u.name AS author_name
      FROM project_knowledge k LEFT JOIN users u ON u.id = k.author_id
      WHERE k.project_id = $1 ORDER BY k.updated_at DESC, k.id DESC LIMIT 100`,
     [projectId],
   );
+  if (selectedNoteId && Number.isSafeInteger(selectedNoteId) && selectedNoteId > 0 && !r.rows.some(row => row.id === selectedNoteId)) {
+    const selected = await db.query(`SELECT k.id, k.title, k.body, k.body_doc, k.revision,
+      k.created_at::text AS created_at, k.updated_at::text AS updated_at, u.name AS author_name
+      FROM project_knowledge k LEFT JOIN users u ON u.id = k.author_id WHERE k.project_id = $1 AND k.id = $2`, [projectId, selectedNoteId]);
+    r.rows.push(...selected.rows);
+  }
   return r.rows;
 }
 

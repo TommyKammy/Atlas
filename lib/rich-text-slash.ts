@@ -155,16 +155,21 @@ export const SlashCommand = Extension.create({
         allowedPrefixes: [" ", "\n"],
         decorationClass: "atlas-slash-command",
         floatingUi: { strategy: "fixed" },
-        items: ({ query }) => {
+        items: ({ query, editor }) => {
           const needle = query.trim().toLowerCase();
-          return items()
+          const commands = items();
+          if (editor.schema.nodes.table) commands.push({
+            title: "表", description: "3列の表を挿入", keywords: ["table", "表"], icon: "▦",
+            run: e => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+          });
+          return commands
             .filter(
               (item) =>
                 needle === "" ||
                 item.title.toLowerCase().includes(needle) ||
                 item.keywords.some((keyword) => keyword.toLowerCase().includes(needle)),
             )
-            .slice(0, 10);
+            .slice(0, 12);
         },
         command: ({ editor, range, props }) => {
           editor.chain().focus().deleteRange(range).run();
@@ -211,7 +216,11 @@ export const SlashCommand = Extension.create({
               button.addEventListener("mousedown", activate);
               button.addEventListener("mouseenter", () => {
                 selected = index;
-                draw();
+                // Keep the hovered button mounted until pointerdown/click completes.
+                element?.querySelectorAll("button").forEach((button, buttonIndex) => {
+                  button.style.background = buttonIndex === selected ? "#eef4ff" : "transparent";
+                  button.style.color = buttonIndex === selected ? "#1d4f91" : "#333";
+                });
               });
               element?.appendChild(button);
             });

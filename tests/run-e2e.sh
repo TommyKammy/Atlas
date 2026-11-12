@@ -4,11 +4,11 @@ cd "$(dirname "$0")/.."
 source scripts/e2e-guard.sh
 
 suite="${1:-shell}"
-usage='usage: bash tests/run-e2e.sh [shell|browser|critical-performance|timeline-stability [repeat-count [workers]]]'
+usage='usage: bash tests/run-e2e.sh [shell|browser|knowledge|critical-performance|timeline-stability [repeat-count [workers]]]'
 timeline_repeat=50
 timeline_workers=4
 case "$suite" in
-  shell|browser|critical-performance) [[ $# -le 1 ]] || e2e_abort "$usage" ;;
+  shell|browser|knowledge|critical-performance) [[ $# -le 1 ]] || e2e_abort "$usage" ;;
   timeline-stability)
     [[ $# -le 3 ]] || e2e_abort "$usage"
     timeline_repeat="${2-50}"
@@ -96,7 +96,7 @@ expect_guard_rejection 'HTTP target does not match the labeled test app' \
 expect_guard_rejection 'a per-run marker is required' \
   env ATLAS_E2E_MARKER= bash scripts/restore.sh /no-such-backup
 printf 'ok   unsafe E2E and restore targets refused\n'
-if [[ "$suite" == browser || "$suite" == timeline-stability ]]; then
+if [[ "$suite" == browser || "$suite" == knowledge || "$suite" == timeline-stability ]]; then
   browser_output="test-results/$suite-$ATLAS_E2E_STACK"
   if output=$(ATLAS_E2E_STACK= E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- --output "$browser_output/guard-missing-stack" 2>&1) ||
     [[ "$output" != *'Atlas E2E isolation check failed: run bash tests/run-e2e.sh'* ]]; then
@@ -112,6 +112,8 @@ if [[ "$suite" == browser || "$suite" == timeline-stability ]]; then
     E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/timeline-resilience.spec.ts \
       --grep 'changing membership project|membership picker waits for client handlers' --repeat-each "$timeline_repeat" \
       --workers "$timeline_workers" --retries=0 --trace retain-on-failure --output "$browser_output"
+  elif [[ "$suite" == knowledge ]]; then
+    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/knowledge.spec.ts --output "$browser_output"
   else
     E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- --output "$browser_output"
   fi

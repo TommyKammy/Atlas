@@ -1,0 +1,77 @@
+import { db, withTransaction, type Queryable } from "../db";
+import { badRequest, conflict, notFound } from "../api/errors";
+import { knowledgeMarkdown, validateKnowledgeDoc } from "../knowledge-document";
+import type { ProjectKnowledge } from "../repositories/projects";
+
+export const knowledgeColumns = `k.id, k.title, k.body, k.body_doc, k.revision,
+  k.created_at::text AS created_at, k.updated_at::text AS updated_at,
+  (SELECT name FROM users WHERE id = k.author_id) AS author_name`;
+
+export async function readKnowledge(id: number, q: Queryable = db): Promise<ProjectKnowledge> {
+  const result = await q.query(`SELECT ${knowledgeColumns} FROM project_knowledge k WHERE k.id = $1`, [id]);
+  if (!result.rows[0]) throw notFound();
+  return result.rows[0];
+}
+
+function payload(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw badRequest("ノートの形式が無効です");
+  return value as Record<string, unknown>;
+}
+function title(value: unknown): string {
+  if (typeof value !== "string" || !value.trim() || value.length > 300) throw badRequest("タイトルは1〜300文字で入力してください");
+  return value.trim();
+}
+function content(input: Record<string, unknown>) {
+  if ("body_doc" in input) {
+    try {
+      const doc = validateKnowledgeDoc(input.body_doc);
+      return { body: knowledgeMarkdown(doc), doc };
+    } catch (error) { throw badRequest(error instanceof Error ? error.message : "本文が無効です"); }
+  }
+  if (typeof input.body !== "string" || input.body.length > 100_000) throw badRequest("本文は10万文字以内で入力してください");
+  return { body: input.body, doc: null };
+}
+
+export async function createKnowledge(projectId: number, uid: number, value: unknown) {
+  const input = payload(value), name = title(input.title), text = content(input);
+  const key = input.create_key;
+  if (key !== undefined && (typeof key !== "string" || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(key))) throw badRequest("作成キーが無効です");
+  return withTransaction(async q => {
+    const inserted = await q.query(`INSERT INTO project_knowledge (project_id, author_id, title, body, body_doc, create_key)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6) ON CONFLICT (create_key) DO NOTHING RETURNING id`,
+    [projectId, uid, name, text.body, text.doc === null ? null : JSON.stringify(text.doc), key ?? null]);
+    let id = inserted.rows[0]?.id;
+    if (!id) {
+      const previous = await q.query("SELECT id FROM project_knowledge WHERE create_key = $1 AND project_id = $2 AND author_id = $3", [key, projectId, uid]);
+      id = previous.rows[0]?.id;
+      if (!id) throw conflict("作成キーが使用済みです");
+    }
+    return readKnowledge(id, q);
+  });
+}
+
+export async function updateKnowledge(id: number, uid: number, value: unknown) {
+  const input = payload(value);
+  if (!("title" in input || "body" in input || "body_doc" in input || "restore_revision" in input)) throw badRequest("変更内容がありません");
+  if (input.expected_revision !== undefined && (!Number.isInteger(input.expected_revision) || Number(input.expected_revision) < 0)) throw badRequest("リビジョンが無効です");
+  return withTransaction(async q => {
+    await q.query("SELECT id FROM project_knowledge WHERE id = $1 FOR UPDATE", [id]);
+    const current = await readKnowledge(id, q);
+    if ((input.body_doc !== undefined || current.body_doc || input.restore_revision !== undefined) && input.expected_revision === undefined) throw conflict("最新版を取得してから保存してください");
+    if (input.expected_revision !== undefined && input.expected_revision !== current.revision) throw conflict("別の画面で更新されています。変更をコピーしてから最新版を開いてください");
+    let nextTitle = "title" in input ? title(input.title) : current.title;
+    let next = "body_doc" in input || "body" in input ? content(input) : { body: current.body, doc: current.body_doc };
+    if ("restore_revision" in input) {
+      if (!Number.isInteger(input.restore_revision)) throw badRequest("履歴が無効です");
+      const old = await q.query("SELECT title, body, body_doc FROM knowledge_revisions WHERE knowledge_id = $1 AND revision = $2", [id, input.restore_revision]);
+      if (!old.rows[0]) throw notFound("履歴が見つかりません");
+      nextTitle = old.rows[0].title;
+      next = { body: old.rows[0].body, doc: old.rows[0].body_doc };
+    }
+    await q.query(`INSERT INTO knowledge_revisions (knowledge_id, revision, title, body, body_doc, saved_at, archived_by)
+      SELECT id, revision, title, body, body_doc, updated_at, $2 FROM project_knowledge WHERE id = $1`, [id, uid]);
+    await q.query(`UPDATE project_knowledge SET title = $2, body = $3, body_doc = $4::jsonb,
+      revision = revision + 1, updated_at = now() WHERE id = $1`, [id, nextTitle, next.body, next.doc === null ? null : JSON.stringify(next.doc)]);
+    return readKnowledge(id, q);
+  });
+}

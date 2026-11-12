@@ -23,17 +23,19 @@ export function richTextExtensions({
   mentionUsers = [],
   withPlaceholder = true,
   withSlash = true,
+  openOnClick = false,
 }: {
   placeholder?: string;
   mentionUsers?: MentionUser[];
   withPlaceholder?: boolean;
   withSlash?: boolean;
+  openOnClick?: boolean;
 } = {}): Extensions {
   const extensions: Extensions = [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
       link: {
-        openOnClick: false,
+        openOnClick,
         autolink: true,
         protocols: ["http", "https", "mailto"],
         HTMLAttributes: LINK_ATTRIBUTES,

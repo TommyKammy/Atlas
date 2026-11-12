@@ -133,7 +133,7 @@ export default async function ProjectPage(props: {
   const overviewData = view === "overview" ? await getOverviewViewData(projectId) : null;
   const dashboardData = view === "dashboard" ? await getDashboardViewData(projectId) : null;
   const messagesData = view === "messages" ? await getMessagesViewData(projectId) : null;
-  const knowledgeData = view === "knowledge" ? await getKnowledgeViewData(projectId) : null;
+  const knowledgeData = view === "knowledge" ? await getKnowledgeViewData(projectId, Number(qstr("note")) || undefined) : null;
   const formsData = view === "forms" ? await getFormsViewData(projectId) : null;
   const filesData = view === "files" ? await getFilesViewData(projectId) : null;
 
@@ -375,7 +375,8 @@ export default async function ProjectPage(props: {
           <LazyMessagesView projectId={projectId} initial={messagesData.messages} />
         )}
         {view === "knowledge" && knowledgeData && (
-          <LazyKnowledgeView projectId={projectId} initial={knowledgeData.knowledge} />
+          <LazyKnowledgeView key={projectId} projectId={projectId} initial={knowledgeData.knowledge} initialNoteId={Number(qstr("note")) || undefined} viewerId={viewerId}
+            canEdit={access.role === "admin" || access.role === "editor"} />
         )}
         {view === "forms" && formsData && (
           <LazyFormsView canConfigure={canConfigure} projectId={projectId} initial={formsData.forms} />
