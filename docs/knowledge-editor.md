@@ -5,6 +5,8 @@ The knowledge view uses the existing Tiptap editor with knowledge-only table, HT
 ## Features
 
 - Note list, server-side title/body search, pagination and direct note links.
+- Persistent manual note order shared by project members. Selecting, editing, restoring and autosaving retain the note's position; new notes append.
+- Drag the six-dot handle to move a note before/after another, with an insertion line and edge auto-scroll. Mouse and touch are supported; Alt+Up/Down on the focused handle provides keyboard movement, and Escape cancels dragging. Searching hides the handles until the full list is restored.
 - Slash commands, headings, lists, checklists, quotes, code, formatting and undo.
 - Tables with row/column operations; HTTPS image URLs with alt text and no-referrer rendering.
 - Top-level block movement using buttons or Alt+Up/Down.
@@ -20,6 +22,10 @@ The knowledge view uses the existing Tiptap editor with knowledge-only table, HT
 
 Migration `0021_knowledge_documents.sql` only adds columns, an index and a revision table. It does not rewrite existing titles, Markdown bodies or timestamps. Existing Markdown is rendered as before and converted on demand. Opening and closing the editor does not save. A title-only change leaves the original body untouched. The first body edit archives the exact original Markdown before saving structured JSON.
 
+Migration `0022_knowledge_order.sql` freezes each project's current `updated_at DESC, id DESC` order into `position` once. It does not modify titles, bodies, documents, content revisions, timestamps or history. Future reads use `position, id`, so content changes no longer sort the list. Apply the migration before running the new application; no content conversion is required.
+
+`POST /api/knowledge/reorder` accepts `project_id`, `note_id`, `target_id` and `placement` (`before` / `after`). Edit permission and membership of both notes in that project are required. Relative moves run under a project-row lock shared with creation and deletion, retaining unloaded notes and unrelated concurrent moves. They update positions only, without creating content revisions. The response supplies the canonical ID order. Failed saves roll back the local order without replacing newer editor content; selection and editor state remain intact. Pagination resumes at the first unloaded ID after a move across page boundaries. Concurrent moves of the same note resolve in transaction order.
+
 Rich documents are authoritative in `body_doc`. `body` is a Markdown projection for search/export. Rich formatting and table details need not round-trip through Markdown; the JSON document and revision snapshots retain the original structure. The existing Markdown importer supports a subset of Markdown, so users should inspect complex legacy documents when editing; their exact original remains in history.
 
 Rich updates and restoration require `expected_revision`. A mismatch returns 409 without changing content. The pre-existing legacy string API remains available for legacy documents; it cannot overwrite a rich document without a matching revision. `create_key` makes retried creations idempotent. A lost create response followed by newer typing is handled by saving that typing after the original creation is recovered.
@@ -31,6 +37,8 @@ Updates are serialized by a row lock in a transaction that includes the old-vers
 Run `npm test`, `npm run typecheck`, and ESLint on the changed source files. Run `bash tests/run-e2e.sh knowledge` for a newly generated disposable PostgreSQL/Redis/application stack. This command checks the existing isolation guards, executes knowledge browser regressions, and removes only its own labeled stack on exit. Never point the browser suite at an established environment.
 
 Browser coverage includes preservation, migration to rich text and restoration, tables/images, block movement/undo, save failure, concurrent changes, edits during save, viewer/outsider authorization, invalid documents, idempotent creation, Japanese IME confirmation, recovery after reload, old-note search/direct links, and desktop/tablet/mobile layouts. The shared task-description failure and in-flight edit tests are also run during review.
+
+`knowledge-order.spec.ts` additionally covers stable selection/edit order, bidirectional mouse dragging, touch dragging, keyboard focus, edge scrolling, cancellation, failure/retry during autosave, reload persistence, cross-page moves, concurrent moves/creation and reorder authorization. The `knowledge` suite runs both knowledge spec files.
 
 ## Boundaries
 

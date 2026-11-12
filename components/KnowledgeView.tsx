@@ -7,6 +7,8 @@ import { knowledgeExtensions } from "@/lib/knowledge-extensions";
 import { confirmAction } from "@/lib/ui-feedback";
 import KnowledgeComposer, { downloadNote } from "./knowledge/KnowledgeComposer";
 import RichTextEditor from "./rich-text/RichTextEditor";
+import KnowledgeNoteList from "./knowledge/KnowledgeNoteList";
+import { applyKnowledgeOrder, mergeKnowledgeNote, moveKnowledgeId, type NotePlacement } from "@/lib/knowledge-order";
 
 const templates = [
   { name: "白紙", body: "" },
@@ -30,13 +32,17 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
   const [offset, setOffset] = useState(Math.min(initial.length, 100));
   const [editing, setEditing] = useState<{ note: ProjectKnowledge | null; key: string; template?: string } | null>(null);
   const [history, setHistory] = useState<History[] | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [acting, setBusy] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  const reorderPending = useRef(false);
+  const [orderStatus, setOrderStatus] = useState("");
+  const busy = acting || reordering;
   const [error, setError] = useState("");
   const guard = useRef<(() => Promise<boolean>) | null>(null);
   const selected = notes.find(note => note.id === selectedId);
   const filtered = search && results ? results : notes.filter(note => `${note.title}\n${note.body}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
   const saved = (note: ProjectKnowledge) => {
-    setNotes(items => [note, ...items.filter(item => item.id !== note.id)]);
+    setNotes(items => mergeKnowledgeNote(items, note));
     setSelectedId(note.id);
   };
   const api = async (url: string, init?: RequestInit) => {
@@ -44,6 +50,33 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? `操作できませんでした (${response.status})`);
     return data;
+  };
+  const reorder = async (id: number, target: number, placement: NotePlacement) => {
+    if (busy || reorderPending.current || search || !canEdit) return;
+    const before = notes.map(note => ({ id: note.id, position: note.position }));
+    const order = moveKnowledgeId(before.map(note => note.id), id, target, placement);
+    // Even adjacent visible rows may have unloaded notes between them. Let the
+    // server resolve no-ops against the complete list instead of the loaded slice.
+    reorderPending.current = true; setReordering(true); setError(""); setOrderStatus("並び順を保存中…");
+    setNotes(items => applyKnowledgeOrder(items, order));
+    try {
+      const result = await api("/api/knowledge/reorder", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId, note_id: id, target_id: target, placement }) });
+      setNotes(items => applyKnowledgeOrder(items, result.order));
+      // A loaded note can cross an unloaded page. Resume at the first unseen ID,
+      // rather than skipping a row that shifted across the previous offset.
+      const loaded = new Set(notes.map(note => note.id));
+      const firstMissing = (result.order as number[]).findIndex(id => !loaded.has(id));
+      setOffset(firstMissing === -1 ? result.order.length : firstMissing);
+      setHasMore(firstMissing !== -1);
+      setOrderStatus("並び順を保存しました");
+    } catch (error) {
+      // Restore positions only: an autosave may have updated content during the request.
+      const positions = new Map(before.map(note => [note.id, note.position]));
+      setNotes(items => items.map(note => positions.has(note.id) ? { ...note, position: positions.get(note.id)! } : note)
+        .sort((a, b) => a.position - b.position || a.id - b.id));
+      setOrderStatus(""); setError(error instanceof Error ? error.message : "並び順を保存できませんでした");
+    } finally { reorderPending.current = false; setReordering(false); }
   };
   const action = async (run: () => Promise<void>) => {
     if (busy) return; setBusy(true); setError("");
@@ -67,7 +100,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
     const items = await api(`/api/knowledge?project_id=${projectId}&q=${encodeURIComponent(search)}&offset=${search ? results?.length ?? 0 : offset}`) as ProjectKnowledge[];
     if (searchRef.current !== search) return;
     if (search) { setResults(previous => [...(previous ?? []), ...items]); setSearchMore(items.length === 100); }
-    else { setNotes(previous => [...previous, ...items.filter(item => !previous.some(note => note.id === item.id))]); setOffset(value => value + items.length); setHasMore(items.length === 100); }
+    else { setNotes(previous => [...previous, ...items.filter(item => !previous.some(note => note.id === item.id))].sort((a, b) => a.position - b.position || a.id - b.id)); setOffset(value => value + items.length); setHasMore(items.length === 100); }
   });
   const leave = async () => !guard.current || await guard.current();
   const select = (id: number) => void action(async () => {
@@ -100,13 +133,10 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
         <label className="sr-only" htmlFor="knowledge-search">ノートを検索</label>
         <input id="knowledge-search" type="search" value={search} maxLength={300} onChange={event => { searchRef.current = event.target.value; setSearch(event.target.value); setResults(null); setSearchMore(false); setError(""); }} placeholder="タイトル・本文を検索" className="mb-3 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm placeholder:text-neutral-600 focus:outline-blue-600" />
         <p className="mb-2 text-xs text-neutral-600">{search && results === null ? "検索中…" : `${filtered.length} 件${(search ? searchMore : hasMore) ? "以上" : ""}のノート`}</p>
-        <nav className="flex max-h-64 gap-1 overflow-auto lg:max-h-[65vh] lg:flex-col" aria-label="ノートを選択">
-          {filtered.map(note => <button key={note.id} data-knowledge-note={note.id} aria-current={selectedId === note.id ? "page" : undefined}
-            disabled={busy} onClick={() => select(note.id)} className={`min-w-40 shrink-0 rounded-md px-3 py-2.5 text-left lg:min-w-0 ${selectedId === note.id ? "bg-blue-50 text-blue-800" : "hover:bg-neutral-50"}`}>
-            <span className="block max-w-52 truncate text-sm font-medium">{note.title}</span>
-            <span className="mt-1 block text-xs text-neutral-600">{date(note.updated_at)}</span>
-          </button>)}
-        </nav>
+        <KnowledgeNoteList notes={filtered} selectedId={selectedId} disabled={busy} canReorder={canEdit && !search}
+          onSelect={select} onMove={(id, target, placement) => void reorder(id, target, placement)} />
+        {canEdit && <p className="mt-2 text-xs text-neutral-500">{search ? "並べ替えるには検索を解除してください" : "⠿ をドラッグして並べ替え"}</p>}
+        <p role="status" aria-live="polite" data-note-order-status className="mt-1 text-xs text-neutral-600">{orderStatus}</p>
         {(search ? searchMore : hasMore) && <button disabled={busy} className={`${button} mt-3 w-full`} onClick={loadMore}>さらに読み込む</button>}
         {filtered.length === 0 && <p className="py-4 text-sm text-neutral-600">{search ? "一致するノートがありません" : "ノートはまだありません"}</p>}
         {canEdit && <div className="mt-5 border-t border-neutral-200 pt-4">

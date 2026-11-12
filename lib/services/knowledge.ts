@@ -2,8 +2,9 @@ import { db, withTransaction, type Queryable } from "../db";
 import { badRequest, conflict, notFound } from "../api/errors";
 import { knowledgeMarkdown, validateKnowledgeDoc } from "../knowledge-document";
 import type { ProjectKnowledge } from "../repositories/projects";
+import { moveKnowledgeId } from "../knowledge-order";
 
-export const knowledgeColumns = `k.id, k.title, k.body, k.body_doc, k.revision,
+export const knowledgeColumns = `k.id, k.title, k.body, k.body_doc, k.revision, k.position,
   k.created_at::text AS created_at, k.updated_at::text AS updated_at,
   (SELECT name FROM users WHERE id = k.author_id) AS author_name`;
 
@@ -37,8 +38,12 @@ export async function createKnowledge(projectId: number, uid: number, value: unk
   const key = input.create_key;
   if (key !== undefined && (typeof key !== "string" || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(key))) throw badRequest("作成キーが無効です");
   return withTransaction(async q => {
-    const inserted = await q.query(`INSERT INTO project_knowledge (project_id, author_id, title, body, body_doc, create_key)
-      VALUES ($1, $2, $3, $4, $5::jsonb, $6) ON CONFLICT (create_key) DO NOTHING RETURNING id`,
+    // Serialize appends with reordering; new notes are always added at the end.
+    await q.query("SELECT id FROM projects WHERE id = $1 FOR UPDATE", [projectId]);
+    const inserted = await q.query(`INSERT INTO project_knowledge (project_id, author_id, title, body, body_doc, create_key, position)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6,
+        (SELECT COALESCE(MAX(position), 0) + 1 FROM project_knowledge WHERE project_id = $1))
+      ON CONFLICT (create_key) DO NOTHING RETURNING id`,
     [projectId, uid, name, text.body, text.doc === null ? null : JSON.stringify(text.doc), key ?? null]);
     let id = inserted.rows[0]?.id;
     if (!id) {
@@ -47,6 +52,25 @@ export async function createKnowledge(projectId: number, uid: number, value: unk
       if (!id) throw conflict("作成キーが使用済みです");
     }
     return readKnowledge(id, q);
+  });
+}
+
+export async function reorderKnowledge(projectId: number, value: unknown) {
+  const input = payload(value);
+  const id = input.note_id, target = input.target_id, placement = input.placement;
+  if (![id, target].every(value => typeof value === "number" && Number.isSafeInteger(value) && value > 0) ||
+    (placement !== "before" && placement !== "after")) throw badRequest("並べ替え先が無効です");
+  return withTransaction(async q => {
+    await q.query("SELECT id FROM projects WHERE id = $1 FOR UPDATE", [projectId]);
+    const rows = await q.query("SELECT id FROM project_knowledge WHERE project_id = $1 ORDER BY position, id", [projectId]);
+    const previous = rows.rows.map(row => row.id as number);
+    if (!previous.includes(id as number) || !previous.includes(target as number)) throw notFound("ノートが見つかりません");
+    const order = moveKnowledgeId(previous, id as number, target as number, placement);
+    const changed = order.some((noteId, index) => noteId !== previous[index]);
+    if (changed) await q.query(`UPDATE project_knowledge k SET position = ordered.position
+      FROM unnest($2::bigint[]) WITH ORDINALITY AS ordered(id, position)
+      WHERE k.project_id = $1 AND k.id = ordered.id AND k.position IS DISTINCT FROM ordered.position`, [projectId, order]);
+    return { order, changed };
   });
 }
 

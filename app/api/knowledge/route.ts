@@ -12,7 +12,7 @@ export const GET = withProject("view", async (req, { projectId }) => {
   if (query.length > 300 || !Number.isSafeInteger(offset) || offset < 0 || offset > 100_000) return NextResponse.json({ error: "検索条件が無効です" }, { status: 400 });
   const r = await db.query(`SELECT ${knowledgeColumns} FROM project_knowledge k
     WHERE project_id = $1 AND ($2 = '' OR position(lower($2) in lower(title || E'\\n' || body)) > 0)
-    ORDER BY updated_at DESC, id DESC LIMIT 100 OFFSET $3`, [projectId, query, offset]);
+    ORDER BY position, id LIMIT 100 OFFSET $3`, [projectId, query, offset]);
   return NextResponse.json(r.rows);
 });
 

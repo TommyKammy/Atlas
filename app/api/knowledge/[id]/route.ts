@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { withResourceProject } from "@/lib/api/route";
 import { notifyProject } from "@/lib/notify";
 import { audit } from "@/lib/audit";
@@ -26,8 +26,11 @@ export const PATCH = withResourceProject("edit", "project_knowledge", async (_re
 export const DELETE = withResourceProject("edit", "project_knowledge", async (req, { uid, projectId, params }) => {
   const revision = new URL(req.url).searchParams.get("revision");
   if (revision !== null && !/^\d+$/.test(revision)) return NextResponse.json({ error: "リビジョンが無効です" }, { status: 400 });
-  const result = await db.query(`DELETE FROM project_knowledge WHERE id = $1
-    AND ($2::integer IS NULL OR revision = $2::integer) RETURNING id`, [params.id, revision]);
+  const result = await withTransaction(async q => {
+    await q.query("SELECT id FROM projects WHERE id = $1 FOR UPDATE", [projectId]);
+    return q.query(`DELETE FROM project_knowledge WHERE id = $1
+      AND ($2::integer IS NULL OR revision = $2::integer) RETURNING id`, [params.id, revision]);
+  });
   if (!result.rowCount) return NextResponse.json({ error: "別の画面で更新されています。最新版を開いてください" }, { status: 409 });
   await notifyProject(projectId);
   await audit(uid, "knowledge.delete", { entity: "knowledge", entityId: Number(params.id), projectId });

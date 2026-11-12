@@ -113,7 +113,7 @@ if [[ "$suite" == browser || "$suite" == knowledge || "$suite" == timeline-stabi
       --grep 'changing membership project|membership picker waits for client handlers' --repeat-each "$timeline_repeat" \
       --workers "$timeline_workers" --retries=0 --trace retain-on-failure --output "$browser_output"
   elif [[ "$suite" == knowledge ]]; then
-    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/knowledge.spec.ts --output "$browser_output"
+    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/knowledge.spec.ts tests/browser/knowledge-order.spec.ts --output "$browser_output"
   else
     E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- --output "$browser_output"
   fi
