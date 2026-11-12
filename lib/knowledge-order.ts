@@ -1,13 +1,4 @@
-export type NotePlacement = "before" | "after";
-
-/** Relative intent keeps unseen pages and unrelated concurrent moves intact. */
-export function moveKnowledgeId(order: number[], id: number, targetId: number, placement: NotePlacement): number[] {
-  if (!order.includes(id) || !order.includes(targetId)) throw new Error("ノートが見つかりません");
-  if (id === targetId) return order;
-  const next = order.filter(value => value !== id);
-  next.splice(next.indexOf(targetId) + (placement === "after" ? 1 : 0), 0, id);
-  return next;
-}
+export { moveListItem as moveKnowledgeId, type RelativePlacement as NotePlacement } from "./list-order";
 
 export function applyKnowledgeOrder<T extends { id: number; position: number }>(items: T[], order: number[]): T[] {
   const rank = new Map(order.map((id, index) => [id, index + 1]));

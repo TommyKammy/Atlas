@@ -3,10 +3,11 @@ import NavPending from "./NavPending";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getFavorites, getRecentProjects } from "@/lib/data";
 import SidebarProjectLink from "./SidebarProjectLink";
+import SidebarProjectList from "./SidebarProjectList";
+import { getSidebarProjects } from "@/lib/repositories/sidebar-projects";
 import SidebarAddProject from "./SidebarAddProject";
 import SidebarInviteButton from "./SidebarInviteButton";
 import {
-  getProjectsForUser,
   getUnreadCount,
   getUsers,
   getWorkspace,
@@ -99,7 +100,7 @@ export default async function SidebarNav() {
   const ws = await getWorkspace();
   const users = await getUsers();
   const me = users.find((u) => u.id === cuid) ?? null;
-  const projects = ws && me ? await getProjectsForUser(ws.id, me.id) : [];
+  const projects = ws && me ? await getSidebarProjects(ws.id, me.id) : [];
   const unread = ws && me ? await getUnreadCount(me.id, ws.id) : 0;
   const favorites = me ? await getFavorites(me.id) : [];
   const recents = me ? await getRecentProjects(me.id) : [];
@@ -114,7 +115,7 @@ export default async function SidebarNav() {
       <div className="flex h-10 shrink-0 items-center px-3 text-[12px] font-medium text-neutral-400">
         <span className="truncate">{ws?.name ?? "Atlas"}</span>
       </div>
-      <nav className="flex-1 overflow-y-auto px-2 pb-4 text-sm">
+      <nav data-reorder-scroll data-sidebar-navigation className="flex-1 overflow-y-auto px-2 pb-4 text-sm">
         {MAIN_NAV.map((entry) => (
           <NavLink key={entry.key} item={entry} className={item} unread={entry.key === "inbox" ? unread : 0} />
         ))}
@@ -135,7 +136,7 @@ export default async function SidebarNav() {
           </>
         )}
         {recents.length > 0 && (
-          <>
+          <div data-sidebar-recents>
             <div className={label}>{NAV_LABELS.recent}</div>
             {recents.map((p) => (
               <SidebarProjectLink
@@ -146,22 +147,14 @@ export default async function SidebarNav() {
                 starred={favoriteIds.has(p.id)}
               />
             ))}
-          </>
+          </div>
         )}
         <NavLink item={TRASH_NAV} className={item} />
         <div className={`${label} flex items-center justify-between pr-1`}>
           <span>{NAV_LABELS.projects}</span>
           {ws && <SidebarAddProject />}
         </div>
-        {projects.map((p) => (
-          <SidebarProjectLink
-            key={p.id}
-            project={p}
-            href={`/projects/${p.id}`}
-            className={item}
-            starred={favoriteIds.has(p.id)}
-          />
-        ))}
+        {ws && me && <SidebarProjectList key={`${ws.id}:${me.id}`} workspaceId={ws.id} projects={projects} favoriteIds={[...favoriteIds]} />}
         {projects.length === 0 && <div className="px-3 py-1.5 text-neutral-500">（なし）</div>}
       </nav>
       {me?.is_admin && (
