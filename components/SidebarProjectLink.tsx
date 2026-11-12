@@ -3,7 +3,7 @@
 import { api } from "@/lib/api-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type HTMLAttributes } from "react";
 import ProjectIcon from "./ProjectIcon";
 import NavPending from "./NavPending";
 import { useMutation } from "@/lib/use-mutation";
@@ -27,12 +27,14 @@ export default function SidebarProjectLink({
   className,
   starred = false,
   leading = "project",
+  reorderProps,
 }: {
   project: CtxProject;
   href: string;
   className: string;
   starred?: boolean;
   leading?: "project" | "star";
+  reorderProps?: HTMLAttributes<HTMLAnchorElement>;
 }) {
   const router = useRouter();
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -160,7 +162,7 @@ export default function SidebarProjectLink({
 
   return (
     <>
-      <Link href={href} className={className} onContextMenu={openMenu}>
+      <Link {...reorderProps} data-project-reorder={reorderProps ? project.id : undefined} href={href} className={className} onContextMenu={openMenu}>
         {leading === "star" ? (
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0 text-amber-300">
             <path d="m12 3 2.7 5.9 6.3.7-4.7 4.3 1.3 6.3-5.6-3.2-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z" />
@@ -174,7 +176,7 @@ export default function SidebarProjectLink({
             className="h-4 w-4 text-[9px]"
           />
         )}
-        <span className="truncate">{project.name}</span>
+        <span data-reorder-label={reorderProps ? true : undefined} className="truncate" style={reorderProps ? { touchAction: "none" } : undefined}>{project.name}</span>
         <NavPending className="ml-auto" />
       </Link>
 

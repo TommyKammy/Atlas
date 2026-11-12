@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes } from "react";
+import { useCallback, useEffect, useRef, useState, type HTMLAttributes } from "react";
 import type { RelativePlacement } from "./list-order";
 
 type Target = { id: number; placement: RelativePlacement };
 type Drag = { id: number; pointerId: number; title: string; startX: number; startY: number; x: number; y: number; active: boolean; target: Target | null };
 
-/** Handles live in rows marked data-reorder-id, within a data-reorder-scroll container. */
+/** Clickable names live in data-reorder-id rows within a data-reorder-scroll container. */
 export function useListReorder({ ids, disabled, onMove, includeTrailingSpace = false }: {
   ids: number[]; disabled: boolean; onMove: (id: number, target: number, placement: RelativePlacement) => void;
   /** The list owns the scroll container's trailing padding (no sections below). */
@@ -14,9 +14,14 @@ export function useListReorder({ ids, disabled, onMove, includeTrailingSpace = f
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const current = useRef<Drag | null>(null);
+  const suppressClick = useRef(false);
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragging = drag !== null;
-  const cancel = useCallback(() => { current.current = null; setDrag(null); }, []);
+  const cancel = useCallback(() => {
+    // Escape/outside drops must not turn the completed gesture into navigation.
+    if (current.current?.active) suppressClick.current = true;
+    current.current = null; setDrag(null);
+  }, []);
   const targetAt = useCallback((x: number, y: number): Target | null => {
     const list = listRef.current;
     if (!list) return null;
@@ -65,14 +70,27 @@ export function useListReorder({ ids, disabled, onMove, includeTrailingSpace = f
     };
   }, [dragging, targetAt, cancel]);
 
-  const handleProps = (id: number, title: string): ButtonHTMLAttributes<HTMLButtonElement> => ({
-    type: "button", "aria-disabled": disabled || ids.length < 2,
+  const itemProps = <T extends HTMLElement>(id: number, title: string): HTMLAttributes<T> & { "data-reorderable": boolean } => ({
+    "data-reorderable": !disabled && ids.length > 1,
     "aria-keyshortcuts": "Alt+ArrowUp Alt+ArrowDown",
-    title: "ドラッグして並べ替え（Alt + ↑ / ↓）",
-    style: { touchAction: "none", cursor: disabled || ids.length < 2 ? "default" : drag?.id === id ? "grabbing" : "grab" },
+    title: "クリックして開く・ドラッグして並べ替え（Alt + ↑ / ↓）",
+    draggable: false,
+    style: { userSelect: "none", cursor: !disabled && ids.length > 1 ? drag?.id === id ? "grabbing" : "grab" : undefined },
+    onDragStart: event => event.preventDefault(),
+    onClickCapture: event => {
+      // Keyboard activation (detail=0) and the next pointer gesture stay normal.
+      if (event.detail !== 0 && suppressClick.current) {
+        suppressClick.current = false;
+        event.preventDefault(); event.stopPropagation();
+      }
+    },
     onPointerDown: event => {
-      if (disabled || ids.length < 2 || event.button !== 0 || !event.isPrimary || current.current) return;
-      event.preventDefault(); event.currentTarget.focus(); event.currentTarget.setPointerCapture(event.pointerId);
+      if (event.button !== 0 || !event.isPrimary || current.current) return;
+      suppressClick.current = false;
+      if (disabled || ids.length < 2 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      // Preserve the native click, focus and modifier-click behavior. Capture
+      // only routes pointer movement; crossing the threshold starts a drag.
+      event.currentTarget.setPointerCapture(event.pointerId);
       const item: Drag = { id, pointerId: event.pointerId, title, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, active: false, target: null };
       current.current = item; setDrag(item);
     },
@@ -80,6 +98,7 @@ export function useListReorder({ ids, disabled, onMove, includeTrailingSpace = f
       const item = current.current;
       if (!item || event.pointerId !== item.pointerId) return;
       const active = item.active || Math.hypot(event.clientX - item.startX, event.clientY - item.startY) > 5;
+      if (active) suppressClick.current = true;
       const next = { ...item, x: event.clientX, y: event.clientY, active, target: active ? targetAt(event.clientX, event.clientY) : null };
       current.current = next; setDrag(next);
     },
@@ -89,6 +108,7 @@ export function useListReorder({ ids, disabled, onMove, includeTrailingSpace = f
       const item = current.current;
       if (!item || item.pointerId !== event.pointerId) return;
       const target = targetAt(event.clientX, event.clientY);
+      if (item.active) event.preventDefault();
       cancel();
       if (!disabled && item.active && target && item.id !== target.id && ids.includes(item.id) && ids.includes(target.id)) onMove(item.id, target.id, target.placement);
     },
@@ -101,5 +121,5 @@ export function useListReorder({ ids, disabled, onMove, includeTrailingSpace = f
       if (index !== -1 && target !== undefined) onMove(id, target, event.key === "ArrowUp" ? "before" : "after");
     },
   });
-  return { listRef, drag, handleProps };
+  return { listRef, drag, itemProps };
 }

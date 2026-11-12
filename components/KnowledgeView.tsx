@@ -135,7 +135,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
         <p className="mb-2 text-xs text-neutral-600">{search && results === null ? "検索中…" : `${filtered.length} 件${(search ? searchMore : hasMore) ? "以上" : ""}のノート`}</p>
         <KnowledgeNoteList notes={filtered} selectedId={selectedId} disabled={busy} canReorder={canEdit && !search}
           onSelect={select} onMove={(id, target, placement) => void reorder(id, target, placement)} />
-        {canEdit && <p className="mt-2 text-xs text-neutral-500">{search ? "並べ替えるには検索を解除してください" : "⠿ をドラッグして並べ替え"}</p>}
+        {canEdit && <p className="mt-2 text-xs text-neutral-500">{search ? "並べ替えるには検索を解除してください" : "ノート名をドラッグして並べ替え"}</p>}
         <p role="status" aria-live="polite" data-note-order-status className="mt-1 text-xs text-neutral-600">{orderStatus}</p>
         {(search ? searchMore : hasMore) && <button disabled={busy} className={`${button} mt-3 w-full`} onClick={loadMore}>さらに読み込む</button>}
         {filtered.length === 0 && <p className="py-4 text-sm text-neutral-600">{search ? "一致するノートがありません" : "ノートはまだありません"}</p>}

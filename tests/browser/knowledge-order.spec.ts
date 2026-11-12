@@ -21,8 +21,8 @@ async function fixture(page: Page, count = 4) {
   }
   await page.goto(`/projects/${id}?view=knowledge&note=${notes[0].id}`);
   await expect(page.locator("[data-knowledge-note]").first()).toBeVisible();
-  // Hydration is complete once the handle can respond to keyboard focus.
-  await page.locator("[data-note-handle]").first().focus();
+  // Hydration is complete once the note name can respond to keyboard focus.
+  await page.locator("[data-note-reorder]").first().focus();
   return { id, notes, ids: notes.map(note => note.id) };
 }
 async function order(page: Page) {
@@ -30,8 +30,8 @@ async function order(page: Page) {
 }
 async function read(page: Page, id: number): Promise<ProjectKnowledge> { return (await page.request.get(`/api/knowledge/${id}`)).json(); }
 async function drag(page: Page, from: number, to: number, placement: "before" | "after") {
-  await page.locator(`[data-note-handle="${from}"]`).scrollIntoViewIfNeeded();
-  const a = (await page.locator(`[data-note-handle="${from}"]`).boundingBox())!;
+  await page.locator(`[data-note-reorder="${from}"]`).scrollIntoViewIfNeeded();
+  const a = (await page.locator(`[data-note-reorder="${from}"] [data-reorder-label]`).boundingBox())!;
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2); await page.mouse.down();
   await page.locator(`[data-note-row="${to}"]`).scrollIntoViewIfNeeded();
   const b = (await page.locator(`[data-note-row="${to}"]`).boundingBox())!;
@@ -58,6 +58,21 @@ test("selecting, editing and reloading never reorder notes; newly created notes 
   await page.reload(); expect(await order(page)).toEqual([...f.ids, added.id]);
 });
 
+test("note names support ordinary clicks, small pointer movement and keyboard activation without reordering", async ({ page }) => {
+  const f = await fixture(page);
+  await expect(page.locator("[data-note-handle]")).toHaveCount(0);
+  let writes = 0;
+  page.on("request", request => { if (request.url().endsWith("/api/knowledge/reorder")) writes++; });
+  const name = page.locator(`[data-knowledge-note="${f.ids[2]}"] [data-reorder-label]`);
+  const bounds = (await name.boundingBox())!;
+  await page.mouse.move(bounds.x + 30, bounds.y + bounds.height / 2); await page.mouse.down();
+  await page.mouse.move(bounds.x + 33, bounds.y + bounds.height / 2); await page.mouse.up();
+  await expect(page.locator(`[data-knowledge-note="${f.ids[2]}"]`)).toHaveAttribute("aria-current", "page");
+  await page.locator(`[data-knowledge-note="${f.ids[1]}"]`).press("Enter");
+  await expect(page.locator(`[data-knowledge-note="${f.ids[1]}"]`)).toHaveAttribute("aria-current", "page");
+  expect(await order(page)).toEqual(f.ids); expect(writes).toBe(0);
+});
+
 test("dragging in both directions persists order without selecting or changing content/history", async ({ page }) => {
   const f = await fixture(page);
   await drag(page, f.ids[3], f.ids[0], "before");
@@ -79,7 +94,7 @@ test("keyboard reorder preserves a mounted editor and its autosave", async ({ pa
   await page.locator("[data-knowledge-edit]").click();
   const title = page.getByRole("textbox", { name: "ノートのタイトル", exact: true });
   await title.fill("編集中のノート");
-  const handle = page.locator(`[data-note-handle="${f.ids[2]}"]`);
+  const handle = page.locator(`[data-note-reorder="${f.ids[2]}"]`);
   await handle.press("Alt+ArrowUp");
   await expect(page.locator("[data-note-order-status]")).toHaveText("並び順を保存しました");
   expect(await order(page)).toEqual([f.ids[0], f.ids[2], f.ids[1], f.ids[3]]);
@@ -101,7 +116,7 @@ test("failed reorder rolls back only positions and allows retry", async ({ page 
     await new Promise(resolve => setTimeout(resolve, 2000));
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "並び順を保存できませんでした" }) });
   });
-  await page.locator(`[data-note-handle="${f.ids[2]}"]`).press("Alt+ArrowUp");
+  await page.locator(`[data-note-reorder="${f.ids[2]}"]`).press("Alt+ArrowUp");
   await expect(page.locator("[data-knowledge]").getByRole("alert")).toHaveText("並び順を保存できませんでした");
   expect(await order(page)).toEqual(f.ids);
   await expect(page.locator("[data-knowledge-save-status]")).toHaveText("すべての変更を保存しました");
@@ -114,11 +129,11 @@ test("failed reorder rolls back only positions and allows retry", async ({ page 
   await page.reload(); expect(await order(page)).toEqual([f.ids[2], f.ids[0], f.ids[1], f.ids[3]]);
 });
 
-test("Escape and dropping outside cancel; filtering hides reorder handles", async ({ page }) => {
+test("Escape and dropping outside cancel; filtering disables reordering", async ({ page }) => {
   const f = await fixture(page);
   let writes = 0; page.on("request", req => { if (req.url().endsWith("/api/knowledge/reorder")) writes++; });
   for (const escape of [true, false]) {
-    const a = (await page.locator(`[data-note-handle="${f.ids[0]}"]`).boundingBox())!;
+    const a = (await page.locator(`[data-note-reorder="${f.ids[0]}"] [data-reorder-label]`).boundingBox())!;
     const b = (await page.locator(`[data-note-row="${f.ids[2]}"]`).boundingBox())!;
     await page.mouse.move(a.x + 10, a.y + 10); await page.mouse.down();
     await page.mouse.move(b.x + 30, b.y + b.height - 8, { steps: 5 });
@@ -126,11 +141,14 @@ test("Escape and dropping outside cancel; filtering hides reorder handles", asyn
     if (escape) await page.keyboard.press("Escape"); else await page.mouse.move(1200, 50);
     await page.mouse.up();
     expect(await order(page)).toEqual(f.ids);
+    await expect(page.locator(`[data-knowledge-note="${f.ids[0]}"]`)).toHaveAttribute("aria-current", "page");
   }
   expect(writes).toBe(0);
+  await page.locator(`[data-knowledge-note="${f.ids[2]}"] [data-reorder-label]`).click();
+  await expect(page.locator(`[data-knowledge-note="${f.ids[2]}"]`)).toHaveAttribute("aria-current", "page");
   await page.getByRole("searchbox", { name: "ノートを検索" }).fill("ノート 2");
   await expect(page.locator("[data-knowledge-note]")).toHaveCount(1);
-  await expect(page.locator("[data-note-handle]")).toHaveCount(0);
+  await expect(page.locator("[data-note-reorder]")).toHaveCount(0);
   await page.getByRole("searchbox", { name: "ノートを検索" }).fill("");
   expect(await order(page)).toEqual(f.ids);
 });
@@ -139,7 +157,7 @@ test("long lists scroll while dragging at the edge", async ({ page }) => {
   const f = await fixture(page, 24);
   const list = page.getByRole("navigation", { name: "ノートを選択" });
   const bounds = (await list.boundingBox())!;
-  const handle = (await page.locator(`[data-note-handle="${f.ids[0]}"]`).boundingBox())!;
+  const handle = (await page.locator(`[data-note-reorder="${f.ids[0]}"] [data-reorder-label]`).boundingBox())!;
   await page.mouse.move(handle.x + 10, handle.y + 10); await page.mouse.down();
   await page.mouse.move(bounds.x + 30, bounds.y + bounds.height - 3, { steps: 10 });
   await expect.poll(() => list.evaluate(el => el.scrollTop)).toBeGreaterThan(250);
@@ -149,15 +167,15 @@ test("long lists scroll while dragging at the edge", async ({ page }) => {
   expect(await order(page)).toEqual([...f.ids.slice(1), f.ids[0]]);
 });
 
-test("touch handle drag works on a narrow screen without horizontal overflow", async ({ page, browser }) => {
-  const f = await fixture(page);
+test("touch name drag works on a narrow screen without horizontal overflow", async ({ page, browser }) => {
+  const f = await fixture(page, 8);
   const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width: 390, height: 844 }, hasTouch: true });
   try {
     await context.request.post("/api/auth/login", { data: credentials });
     const mobile = await context.newPage(); await mobile.goto(`/projects/${f.id}?view=knowledge`);
-    const handle = mobile.locator(`[data-note-handle="${f.ids[0]}"]`);
+    const handle = mobile.locator(`[data-note-reorder="${f.ids[0]}"]`);
     await expect(handle).toBeVisible();
-    const a = (await handle.boundingBox())!;
+    const a = (await handle.locator("[data-reorder-label]").boundingBox())!;
     const b = (await mobile.locator(`[data-note-row="${f.ids[2]}"]`).boundingBox())!;
     const session = await context.newCDPSession(mobile);
     await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: a.x + 10, y: a.y + 10 }] });
@@ -165,7 +183,18 @@ test("touch handle drag works on a narrow screen without horizontal overflow", a
     await expect(mobile.locator("[data-note-drop]")).toHaveCount(1);
     await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect(mobile.locator("[data-note-order-status]")).toHaveText("並び順を保存しました");
-    expect(await order(mobile)).toEqual([f.ids[1], f.ids[2], f.ids[0], f.ids[3]]);
+    expect(await order(mobile)).toEqual([f.ids[1], f.ids[2], f.ids[0], ...f.ids.slice(3)]);
+    await expect(mobile.locator(`[data-knowledge-note="${f.ids[0]}"]`)).toHaveAttribute("aria-current", "page");
+    await mobile.locator(`[data-knowledge-note="${f.ids[2]}"] [data-reorder-label]`).tap();
+    await expect(mobile.locator(`[data-knowledge-note="${f.ids[2]}"]`)).toHaveAttribute("aria-current", "page");
+    // The date below the name remains a native touch-scrolling surface.
+    const date = (await mobile.locator(`[data-knowledge-note="${f.ids[0]}"] > span`).last().boundingBox())!;
+    const beforeScroll = await order(mobile);
+    await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: date.x + 40, y: date.y + 5 }] });
+    for (const delta of [25, 60, 100]) await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: date.x + 40, y: date.y + 5 - delta }] });
+    await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect.poll(() => mobile.getByRole("navigation", { name: "ノートを選択" }).evaluate(el => el.scrollTop)).toBeGreaterThan(20);
+    expect(await order(mobile)).toEqual(beforeScroll);
     expect(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   } finally { await context.close(); }
 });
@@ -204,7 +233,7 @@ test("reorder enforces edit permissions, project boundaries and input validation
     expect((await other.request.post("/api/knowledge/reorder", { data })).status()).toBe(403);
     const viewer = await other.newPage(); await viewer.goto(`/projects/${f.id}?view=knowledge`);
     await expect(viewer.locator("[data-knowledge-note]")).toHaveCount(4);
-    await expect(viewer.locator("[data-note-handle]")).toHaveCount(0);
+    await expect(viewer.locator("[data-note-reorder]")).toHaveCount(0);
   } finally { await other.close(); }
   expect((await page.request.get(`/api/knowledge?project_id=${f.id}`)).status()).toBe(200);
   expect((await (await page.request.get(`/api/knowledge?project_id=${f.id}`)).json()).map((note: ProjectKnowledge) => note.id)).toEqual(f.ids);

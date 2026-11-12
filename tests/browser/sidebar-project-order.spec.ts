@@ -4,7 +4,7 @@ const credentials = { email: "admin@example.com", password: "atlas-dev-2026" };
 const endpoint = "/api/sidebar/projects/order";
 const fixtures = new WeakMap<Page, { ids: number[]; original: number[] }>();
 const row = (page: Page, id: number) => page.locator(`[data-sidebar-project="${id}"]`);
-const handle = (page: Page, id: number) => page.locator(`[data-project-handle="${id}"]`);
+const item = (page: Page, id: number) => page.locator(`[data-project-reorder="${id}"]`);
 const status = (page: Page) => page.locator("[data-project-order-status]");
 const visibleOrder = (page: Page) => page.locator("[data-sidebar-project]").evaluateAll(rows => rows.map(row => Number(row.getAttribute("data-sidebar-project"))));
 async function serverOrder(request: APIRequestContext) {
@@ -37,8 +37,8 @@ async function fixture(page: Page, count = 4) {
   return { ids, all: await serverOrder(page.request) };
 }
 async function startDrag(page: Page, id: number) {
-  await handle(page, id).scrollIntoViewIfNeeded();
-  const bounds = (await handle(page, id).boundingBox())!;
+  await item(page, id).scrollIntoViewIfNeeded();
+  const bounds = (await item(page, id).locator("[data-reorder-label]").boundingBox())!;
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
 }
 async function drag(page: Page, id: number, target: number, placement: "before" | "after") {
@@ -49,7 +49,7 @@ async function drag(page: Page, id: number, target: number, placement: "before" 
   await expect(row(page, target).locator("[data-project-drop]")).toHaveAttribute("data-project-drop", placement);
   await page.mouse.up();
   await expect(status(page)).toHaveText("並び順を保存しました");
-  await expect(handle(page, id)).toHaveAttribute("aria-disabled", "false");
+  await expect(item(page, id)).toHaveAttribute("data-reorderable", "true");
 }
 
 test("dragging both ways persists personal order without navigation or changing recents", async ({ page, browser }) => {
@@ -57,11 +57,13 @@ test("dragging both ways persists personal order without navigation or changing 
   await page.goto(`/projects/${f.ids[1]}`); await page.goto(`/projects/${f.ids[2]}`); await page.goto("/");
   const recentLinks = page.locator("[data-sidebar-recents] a");
   const recents = await recentLinks.evaluateAll(links => links.map(link => link.getAttribute("href")));
-  await expect(page.locator("[data-sidebar-recents] [data-project-handle]")).toHaveCount(0);
+  await expect(page.locator("[data-sidebar-recents] [data-project-reorder]")).toHaveCount(0);
   const url = page.url();
+  await expect(page.locator("[data-project-handle]")).toHaveCount(0);
   await drag(page, f.ids[3], f.ids[0], "before");
   expect(page.url()).toBe(url);
   await drag(page, f.ids[0], f.ids[2], "after");
+  expect(page.url()).toBe(url);
   const expected = [...f.all.filter(id => !f.ids.includes(id)), f.ids[3], f.ids[1], f.ids[2], f.ids[0]];
   expect(await visibleOrder(page)).toEqual(expected);
   expect(await recentLinks.evaluateAll(links => links.map(link => link.getAttribute("href")))).toEqual(recents);
@@ -73,11 +75,30 @@ test("dragging both ways persists personal order without navigation or changing 
   } finally { await ssr.close(); }
 });
 
+test("project names retain clicks with small movement, modifier clicks and keyboard navigation", async ({ page }) => {
+  const f = await fixture(page);
+  let writes = 0;
+  page.on("request", request => { if (request.method() === "POST" && request.url().endsWith(endpoint)) writes++; });
+  const bounds = (await item(page, f.ids[1]).locator("[data-reorder-label]").boundingBox())!;
+  await page.mouse.move(bounds.x + 30, bounds.y + bounds.height / 2); await page.mouse.down();
+  await page.mouse.move(bounds.x + 33, bounds.y + bounds.height / 2); await page.mouse.up();
+  await expect(page).toHaveURL(new RegExp(`/projects/${f.ids[1]}(?:\\?|$)`));
+  expect(await visibleOrder(page)).toEqual(f.all);
+  await item(page, f.ids[2]).press("Enter");
+  await expect(page).toHaveURL(new RegExp(`/projects/${f.ids[2]}(?:\\?|$)`));
+  const url = page.url();
+  const popupPromise = page.context().waitForEvent("page");
+  await item(page, f.ids[3]).click({ modifiers: [process.platform === "darwin" ? "Meta" : "Control"] });
+  const popup = await popupPromise;
+  try { await expect(popup).toHaveURL(new RegExp(`/projects/${f.ids[3]}(?:\\?|$)`)); } finally { await popup.close(); }
+  expect(new URL(page.url()).pathname).toBe(new URL(url).pathname); expect(writes).toBe(0);
+});
+
 test("keyboard order keeps focus; project links and context menu keep working after refresh", async ({ page }) => {
   const f = await fixture(page);
-  await handle(page, f.ids[2]).press("Alt+ArrowUp");
+  await item(page, f.ids[2]).press("Alt+ArrowUp");
   await expect(status(page)).toHaveText("並び順を保存しました");
-  await expect(handle(page, f.ids[2])).toBeFocused();
+  await expect(item(page, f.ids[2])).toBeFocused();
   const expected = [...f.all.filter(id => !f.ids.includes(id)), f.ids[0], f.ids[2], f.ids[1], f.ids[3]];
   expect(await visibleOrder(page)).toEqual(expected);
   await row(page, f.ids[2]).getByRole("link").click({ button: "right" });
@@ -97,7 +118,7 @@ test("failed save rolls back and a later drag can retry", async ({ page }) => {
     await new Promise(resolve => setTimeout(resolve, 300));
     await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "unavailable" }) });
   });
-  await handle(page, f.ids[2]).press("Alt+ArrowUp");
+  await item(page, f.ids[2]).press("Alt+ArrowUp");
   await expect(page.locator("#atlas-sidebar-content").getByRole("alert")).toContainText("並び順を保存できませんでした");
   expect(await visibleOrder(page)).toEqual(f.all); expect(await serverOrder(page.request)).toEqual(f.all);
   await page.unroute(`**${endpoint}`);
@@ -108,6 +129,7 @@ test("failed save rolls back and a later drag can retry", async ({ page }) => {
 test("Escape, pointer cancellation, blur and dropping into recents never persist a move", async ({ page }) => {
   const f = await fixture(page);
   await page.goto(`/projects/${f.ids[0]}`); await page.goto("/");
+  const url = page.url();
   let writes = 0;
   page.on("request", request => { if (request.method() === "POST" && request.url().endsWith(endpoint)) writes++; });
   for (const cancel of ["Escape", "pointercancel", "lostpointercapture", "blur", "recents", "outside"] as const) {
@@ -117,7 +139,7 @@ test("Escape, pointer cancellation, blur and dropping into recents never persist
     await expect(page.locator("[data-project-drop]")).toHaveCount(1);
     if (cancel === "Escape") await page.keyboard.press("Escape");
     else if (cancel === "blur") await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-    else if (cancel === "pointercancel" || cancel === "lostpointercapture") await handle(page, f.ids[0]).dispatchEvent(cancel, { pointerId: 1 });
+    else if (cancel === "pointercancel" || cancel === "lostpointercapture") await item(page, f.ids[0]).dispatchEvent(cancel, { pointerId: 1 });
     else if (cancel === "recents") {
       const recent = (await page.locator("[data-sidebar-recents] a").first().boundingBox())!;
       await page.mouse.move(recent.x + 30, recent.y + 10);
@@ -125,8 +147,11 @@ test("Escape, pointer cancellation, blur and dropping into recents never persist
     await page.mouse.up();
     await expect(page.locator("[data-project-drop]")).toHaveCount(0);
     expect(await visibleOrder(page)).toEqual(f.all);
+    expect(page.url()).toBe(url);
   }
   expect(writes).toBe(0);
+  await item(page, f.ids[2]).locator("[data-reorder-label]").click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${f.ids[2]}(?:\\?|$)`));
 });
 
 test("long lists auto-scroll in the sidebar and can drop at the bottom", async ({ page }) => {
@@ -147,9 +172,9 @@ test("touch drag works at tablet width and does not resize the sidebar", async (
   try {
     await context.request.post("/api/auth/login", { data: credentials });
     const tablet = await context.newPage(); await tablet.goto("/");
-    await handle(tablet, f.ids[0]).scrollIntoViewIfNeeded();
+    await item(tablet, f.ids[0]).scrollIntoViewIfNeeded();
     const sidebarWidth = (await tablet.locator("[data-sidebar]").boundingBox())!.width;
-    const a = (await handle(tablet, f.ids[0]).boundingBox())!, b = (await row(tablet, f.ids[2]).boundingBox())!;
+    const a = (await item(tablet, f.ids[0]).locator("[data-reorder-label]").boundingBox())!, b = (await row(tablet, f.ids[2]).boundingBox())!;
     const cdp = await context.newCDPSession(tablet);
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: a.x + 10, y: a.y + 10 }] });
     await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: b.x + 30, y: b.y + b.height - 5 }] });
@@ -201,7 +226,7 @@ test("viewers can arrange their own visible projects; outsiders and other worksp
     expect((await move(viewer.request, f.ids[0], f.ids[2])).status()).toBe(404);
     expect((await viewer.request.post(endpoint, { data: { workspace_id: 999999, project_id: f.ids[0], target_id: f.ids[1], placement: "before" } })).status()).toBe(404);
     const viewerPage = await viewer.newPage(); await viewerPage.goto("/");
-    await expect(handle(viewerPage, f.ids[0])).toBeVisible();
+    await expect(item(viewerPage, f.ids[0])).toBeVisible();
     expect((await visibleOrder(viewerPage)).filter(id => f.ids.includes(id))).toEqual([f.ids[1], f.ids[0]]);
   } finally { await viewer.close(); }
 });

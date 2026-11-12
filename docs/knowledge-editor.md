@@ -6,7 +6,7 @@ The knowledge view uses the existing Tiptap editor with knowledge-only table, HT
 
 - Note list, server-side title/body search, pagination and direct note links.
 - Persistent manual note order shared by project members. Selecting, editing, restoring and autosaving retain the note's position; new notes append.
-- Drag the six-dot handle to move a note before/after another, with an insertion line and edge auto-scroll. Mouse and touch are supported; Alt+Up/Down on the focused handle provides keyboard movement, and Escape cancels dragging. Searching hides the handles until the full list is restored.
+- Drag the note name to move a note before/after another, with an insertion line and edge auto-scroll. Mouse and touch are supported; Alt+Up/Down on the focused note provides keyboard movement, and Escape cancels dragging. Searching disables reordering until the full list is restored. A normal click still selects the note; drag release/cancellation does not select it.
 - Slash commands, headings, lists, checklists, quotes, code, formatting and undo.
 - Tables with row/column operations; HTTPS image URLs with alt text and no-referrer rendering.
 - Top-level block movement using buttons or Alt+Up/Down.

@@ -8,7 +8,6 @@ import { moveListItem, orderByIds, type RelativePlacement } from "@/lib/list-ord
 import type { SidebarProject } from "@/lib/repositories/sidebar-projects";
 import { useListReorder } from "@/lib/use-list-reorder";
 import SidebarProjectLink from "./SidebarProjectLink";
-import ReorderGrip from "./ui/ReorderGrip";
 
 export default function SidebarProjectList({ workspaceId, projects, favoriteIds }: {
   workspaceId: number; projects: SidebarProject[]; favoriteIds: number[];
@@ -42,22 +41,18 @@ export default function SidebarProjectList({ workspaceId, projects, favoriteIds 
       setOrder(previous); setStatus(""); setError("並び順を保存できませんでした。もう一度並べ替えてください。");
     } finally { pending.current = false; setBusy(false); }
   };
-  const { listRef, drag, handleProps } = useListReorder({ ids: sorted.map(project => project.id), disabled: busy, includeTrailingSpace: true, onMove: (id, target, placement) => void move(id, target, placement) });
+  const { listRef, drag, itemProps } = useListReorder({ ids: sorted.map(project => project.id), disabled: busy, includeTrailingSpace: true, onMove: (id, target, placement) => void move(id, target, placement) });
   return <>
-    <p id={instructions} className="sr-only">ハンドルをドラッグしてプロジェクトを並べ替え。Alt と上下矢印でも移動できます。Escape でドラッグをキャンセル。</p>
+    <p id={instructions} className="sr-only">プロジェクト名をクリックして開く、ドラッグして並べ替え。Alt と上下矢印でも移動できます。Escape でドラッグをキャンセル。</p>
     <div ref={listRef} data-sidebar-projects role="group" aria-label="プロジェクト" className="py-0.5">
       {sorted.map(project => {
         const target = drag?.active && drag.target?.id === project.id && drag.id !== project.id ? drag.target.placement : null;
         return <div key={project.id} data-sidebar-project={project.id} data-reorder-id={project.id}
           className={`relative flex min-w-0 items-center rounded-md hover:bg-white/10 ${drag?.active && drag.id === project.id ? "opacity-40" : ""}`}>
           {target && <span data-project-drop={target} className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded bg-blue-400 ${target === "before" ? "top-0" : "bottom-0"}`} />}
-          <button {...handleProps(project.id, project.name)} data-project-handle={project.id}
-            aria-label={`「${project.name}」を並べ替え`} aria-describedby={instructions}
-            className="flex h-8 w-6 shrink-0 items-center justify-center rounded text-neutral-400 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-blue-400 aria-disabled:opacity-40">
-            <ReorderGrip />
-          </button>
           <SidebarProjectLink project={project} href={`/projects/${project.id}`} starred={favoriteIds.includes(project.id)}
-            className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md pr-2 text-[14px] text-neutral-300 focus-visible:outline-2 focus-visible:outline-blue-400" />
+            reorderProps={{ ...itemProps<HTMLAnchorElement>(project.id, project.name), "aria-describedby": instructions }}
+            className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-[14px] text-neutral-300 focus-visible:outline-2 focus-visible:outline-blue-400" />
         </div>;
       })}
     </div>
