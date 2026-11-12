@@ -157,6 +157,12 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
     box-shadow: 0 0 0 4px #2c60b8 !important;
   }
 
+  /* The full-height resize separator uses its own visible blue focus line. */
+  [data-sidebar-resize]:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   :where(button, a, summary, [tabindex]):not(:disabled) {
     cursor: pointer;
   }

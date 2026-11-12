@@ -76,3 +76,135 @@ test("header search shrinks while keeping create independently usable", async ({
     });
   }
 });
+
+test.describe("resizable sidebar", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  const sidebar = (page: Page) => page.locator("[data-sidebar]");
+  const handle = (page: Page) => page.getByRole("separator", { name: "サイドバーの幅を変更" });
+  const expectWidth = async (page: Page, width: number) => {
+    await expect.poll(async () => (await sidebar(page).boundingBox())?.width).toBe(width);
+  };
+  const preference = async (page: Page) => (await page.context().cookies()).find(c => c.name === "atlas_sidebar_width")?.value;
+  const startDrag = async (page: Page) => {
+    const grip = handle(page);
+    await expect(grip).toBeVisible();
+    const box = (await grip.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + 100);
+    await page.mouse.down();
+    await expect(sidebar(page)).toHaveAttribute("data-sidebar-resizing", "true");
+    return { x: box.x + box.width / 2, y: box.y + 100 };
+  };
+
+  test("dragging follows the pointer outside the grip, persists on release and survives navigation/reload", async ({ page }) => {
+    await page.goto("/");
+    const refreshes: string[] = [];
+    page.on("request", request => {
+      // Next can prefetch other routes without next-router-prefetch. A resize
+      // must not refresh the current page; unrelated prefetches are harmless.
+      if (request.headers().rsc === "1" && new URL(request.url()).pathname === "/") refreshes.push(request.url());
+    });
+    await expectWidth(page, 244);
+    const { x, y } = await startDrag(page);
+    await page.mouse.move(x + 116, y + 150, { steps: 8 });
+    await expectWidth(page, 360);
+    expect(await preference(page)).toBeUndefined();
+    await page.mouse.up();
+    await expect(sidebar(page)).not.toHaveAttribute("data-sidebar-resizing");
+    expect(await preference(page)).toBe("360");
+    expect(refreshes).toEqual([]);
+    await expect(page.locator("[data-sidebar-invite]")).toBeVisible();
+    const main = (await page.getByRole("main").boundingBox())!;
+    expect(main.x).toBe(360);
+    expect(main.width).toBe(1080);
+    await page.locator("#atlas-sidebar-content").getByRole("link", { name: "マイタスク", exact: true }).click();
+    await expect(page).toHaveURL(/\/my-tasks/);
+    await expectWidth(page, 360);
+    await page.reload();
+    await expectWidth(page, 360);
+    // The saved width must also be used by SSR, before JavaScript runs.
+    const ssr = await page.context().browser()!.newContext({ javaScriptEnabled: false, viewport: { width: 1440, height: 900 }, storageState: await page.context().storageState() });
+    try {
+      const serverPage = await ssr.newPage();
+      await serverPage.goto(page.url());
+      await expectWidth(serverPage, 360);
+    } finally { await ssr.close(); }
+  });
+
+  test("drag bounds, double-click reset and keyboard resizing have accessible values", async ({ page }) => {
+    await page.goto("/");
+    let point = await startDrag(page);
+    await page.mouse.move(point.x + 800, point.y); await page.mouse.up();
+    await expectWidth(page, 480);
+    point = await startDrag(page);
+    await page.mouse.move(0, point.y); await page.mouse.up();
+    await expectWidth(page, 220);
+    await handle(page).dblclick();
+    await expectWidth(page, 244);
+    await handle(page).focus();
+    for (const [key, width] of [["ArrowRight", 254], ["Shift+ArrowRight", 304], ["ArrowLeft", 294], ["Home", 220], ["End", 480], ["Enter", 244]] as const) {
+      await handle(page).press(key);
+      await expectWidth(page, width);
+      await expect(handle(page)).toHaveAttribute("aria-valuenow", String(width));
+      expect(await preference(page)).toBe(String(width));
+    }
+    await expect(handle(page)).toBeFocused();
+    await expect(handle(page)).toHaveAttribute("aria-orientation", "vertical");
+  });
+
+  for (const cancel of ["Escape", "pointercancel", "lostpointercapture", "blur", "resize"] as const) {
+    test(`${cancel} restores the saved width and cleans up an active drag`, async ({ page }) => {
+      await page.goto("/");
+      await handle(page).press("Shift+ArrowRight");
+      await expectWidth(page, 294);
+      const { x, y } = await startDrag(page);
+      await page.mouse.move(x + 60, y, { steps: 5 });
+      await expectWidth(page, 354);
+      if (cancel === "Escape") await page.keyboard.press("Escape");
+      else if (cancel === "blur") await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+      else if (cancel === "resize") await page.setViewportSize({ width: 1300, height: 900 });
+      else await handle(page).dispatchEvent(cancel, { pointerId: 1 });
+      await page.mouse.up();
+      await expectWidth(page, 294);
+      expect(await preference(page)).toBe("294");
+      await expect(sidebar(page)).not.toHaveAttribute("data-sidebar-resizing");
+      expect(await page.evaluate(() => [document.documentElement.style.cursor, document.body.style.userSelect])).toEqual(["", ""]);
+      await handle(page).press("ArrowRight");
+      await expectWidth(page, 304);
+    });
+  }
+
+  test("a secondary pointer cannot cancel the active resize", async ({ page }) => {
+    await page.goto("/");
+    const { x, y } = await startDrag(page);
+    await page.mouse.move(x + 60, y, { steps: 5 });
+    await handle(page).dispatchEvent("pointercancel", { pointerId: 2, isPrimary: false });
+    await handle(page).dispatchEvent("lostpointercapture", { pointerId: 2, isPrimary: false });
+    await expect(sidebar(page)).toHaveAttribute("data-sidebar-resizing", "true");
+    await page.mouse.up();
+    await expectWidth(page, 304);
+    expect(await preference(page)).toBe("304");
+  });
+
+  test("collapse preserves the custom width and responsive bounds keep the main area usable", async ({ page }) => {
+    await page.goto("/");
+    await handle(page).press("End");
+    await expectWidth(page, 480);
+    await page.locator("[data-sidebar-toggle]").click();
+    await expectWidth(page, 64);
+    await expect(handle(page)).toHaveCount(0);
+    await page.locator("[data-sidebar-toggle]").click();
+    await expectWidth(page, 480);
+    await page.setViewportSize({ width: 768, height: 900 });
+    await expectWidth(page, 288);
+    await expect(handle(page)).toHaveAttribute("aria-valuemax", "288");
+    await expect(handle(page)).toHaveAttribute("aria-valuenow", "288");
+    expect((await page.getByRole("main").boundingBox())!.width).toBe(480);
+    await page.setViewportSize({ width: 375, height: 900 });
+    await expect(sidebar(page)).toBeHidden();
+    expect((await page.getByRole("main").boundingBox())!.width).toBe(375);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expectWidth(page, 480);
+    expect(await preference(page)).toBe("480");
+  });
+});

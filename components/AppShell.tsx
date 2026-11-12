@@ -9,6 +9,8 @@ import SidebarToggle from "./SidebarToggle";
 import ThemeToggle from "./ThemeToggle";
 import { MOBILE_NAV } from "@/lib/navigation";
 import FeedbackHost from "./ui/FeedbackHost";
+import ResizableSidebar from "./ResizableSidebar";
+import { parseSidebarWidth, SIDEBAR_WIDTH_COOKIE } from "@/lib/sidebar-width";
 
 export default async function AppShell({
   children,
@@ -17,7 +19,9 @@ export default async function AppShell({
   children: React.ReactNode;
   theme: "light" | "dark";
 }) {
-  const collapsed = (await cookies()).get("atlas_sidebar")?.value === "collapsed";
+  const preferences = await cookies();
+  const collapsed = preferences.get("atlas_sidebar")?.value === "collapsed";
+  const sidebarWidth = parseSidebarWidth(preferences.get(SIDEBAR_WIDTH_COOKIE)?.value);
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white text-neutral-900">
       <header className="relative z-40 flex h-12 shrink-0 items-center gap-3 bg-[#262626] px-3 text-neutral-200">
@@ -30,23 +34,19 @@ export default async function AppShell({
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
-        <aside
-          className={`relative z-30 hidden shrink-0 bg-[#262626] text-neutral-200 transition-[width] duration-150 md:flex ${
-            collapsed ? "w-16" : "w-[244px]"
-          }`}
-        >
+        <ResizableSidebar collapsed={collapsed} initialWidth={sidebarWidth}>
           <div className="flex w-16 shrink-0 flex-col border-r border-white/10">
             <SidebarRail collapsed={collapsed} />
             <SidebarRailFooter />
           </div>
           {!collapsed && (
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div id="atlas-sidebar-content" className="flex min-w-0 flex-1 flex-col">
               <Suspense fallback={<div className="p-4 text-sm text-neutral-500">読み込み中…</div>}>
                 <SidebarNav />
               </Suspense>
             </div>
           )}
-        </aside>
+        </ResizableSidebar>
         <div className="flex min-w-0 flex-1 flex-col">
           <nav className="flex gap-1 overflow-x-auto border-b bg-white px-2 py-1.5 text-sm whitespace-nowrap md:hidden">
             {MOBILE_NAV.map((entry) => (
