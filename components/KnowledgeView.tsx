@@ -9,6 +9,7 @@ import KnowledgeComposer, { downloadNote } from "./knowledge/KnowledgeComposer";
 import RichTextEditor from "./rich-text/RichTextEditor";
 import KnowledgeNoteList from "./knowledge/KnowledgeNoteList";
 import KnowledgeTrash from "./knowledge/KnowledgeTrash";
+import KnowledgeAi from "./knowledge/KnowledgeAi";
 import { applyKnowledgeOrder, mergeKnowledgeNote, moveKnowledgeId, type NotePlacement } from "@/lib/knowledge-order";
 
 const templates = [
@@ -202,8 +203,13 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
                 })}>復元</button>}</li>)}
             </ul>
           </div>}
+          {canEdit && <KnowledgeAi key={`ai:${selected.id}:${selected.revision}`} note={selected} onSaved={note => {
+            saved(note);
+            const url = new URL(window.location.href); url.searchParams.set("note", String(note.id));
+            window.history.replaceState(null, "", url);
+          }} />}
           <h1 className="mb-6 break-words text-3xl leading-snug font-semibold tracking-tight">{selected.title}</h1>
-          {selected.body_doc ? <RichTextEditor key={`${selected.id}:${selected.revision}`} initialDoc={selected.body_doc} extraExtensions={knowledgeExtensions} editable={false} toolbar={false} borderless ariaLabel="ノートの内容" className="knowledge-document" />
+          {selected.body_doc ? <RichTextEditor key={`body:${selected.id}:${selected.revision}`} initialDoc={selected.body_doc} extraExtensions={knowledgeExtensions} editable={false} toolbar={false} borderless ariaLabel="ノートの内容" className="knowledge-document" />
             : <div data-knowledge-legacy className="atlas-rich-text knowledge-document" dangerouslySetInnerHTML={{ __html: renderMarkdown(selected.body) }} />}
         </> : <div className="py-16 text-center">
           <h3 className="text-lg font-semibold">チームの知識をここに</h3><p className="mt-2 text-sm text-neutral-600">ノートを選択して読むか、議事録や手順書を作成できます。</p>

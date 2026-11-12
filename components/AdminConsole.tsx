@@ -14,8 +14,9 @@ import TeamsPanel from "./TeamsPanel";
 import OrganizationPanel from "./OrganizationPanel";
 import SecurityPanel from "./SecurityPanel";
 import UsageStats from "./UsageStats";
+import LlmSettings from "./LlmSettings";
 
-type TabKey = "members" | "teams" | "workspace" | "security" | "insights";
+type TabKey = "members" | "teams" | "workspace" | "security" | "insights" | "ai";
 
 type Tab = {
   key: TabKey;
@@ -76,6 +77,7 @@ export default function AdminConsole({
       description: "統計と監査",
       allowed: permissions.includes("insights.view"),
     },
+    { key: "ai", label: "AI接続", description: "ノートの要約と文章改善", allowed: permissions.includes("workspace.manage") },
   ];
   const visible = tabs.filter((tab) => tab.allowed);
   const [active, setActive] = useState<TabKey>(visible[0]?.key ?? "members");
@@ -174,6 +176,7 @@ export default function AdminConsole({
         {active === "teams" && permissions.includes("teams.manage") && (
           <TeamsPanel initialTeams={initialTeams} users={initialUsers} />
         )}
+        {active === "ai" && permissions.includes("workspace.manage") && <LlmSettings />}
         {active === "workspace" && permissions.includes("workspace.manage") && (
           <OrganizationPanel initial={initialWorkspace} />
         )}

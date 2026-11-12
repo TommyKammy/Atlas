@@ -40,6 +40,8 @@ services:
       MFA_ENCRYPTION_KEY_ID: ${MFA_ENCRYPTION_KEY_ID:?Run bash tests/run-e2e.sh}
       MFA_ENCRYPTION_KEYS: ${MFA_ENCRYPTION_KEYS:?Run bash tests/run-e2e.sh}
       REDIS_URL: redis://redis:6379
+      LLM_ENCRYPTION_KEY: ${LLM_ENCRYPTION_KEY:-}
+      LLM_ALLOWED_LOCAL_ORIGINS: ${LLM_ALLOWED_LOCAL_ORIGINS:-}
       WS_ALLOWED_ORIGINS: ${ATLAS_E2E_BASE:?Run bash tests/run-e2e.sh}
       AUTOMATION_WORKER_TOKEN: ${ATLAS_E2E_WORKER_TOKEN:?Run bash tests/run-e2e.sh}
       TZ: Asia/Tokyo
@@ -50,6 +52,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  llm-mock:
+    profiles: ["ai"]
+    build: .
+    command: ["node", "/fixtures/llm-mock.mjs"]
+    labels:
+      io.atlas.e2e-marker: ${ATLAS_E2E_MARKER:?Run bash tests/run-e2e.sh}
+    volumes:
+      - ./tests/fixtures/llm-mock.mjs:/fixtures/llm-mock.mjs:ro
 
 volumes:
   atlas-uploads:

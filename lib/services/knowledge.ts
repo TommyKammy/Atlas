@@ -31,13 +31,14 @@ function content(input: Record<string, unknown>) {
   return { body: input.body, doc: null };
 }
 
-export async function createKnowledge(projectId: number, uid: number, value: unknown) {
+export async function createKnowledge(projectId: number, uid: number, value: unknown, beforeCreate?: (q: Queryable) => Promise<void>) {
   const input = payload(value), name = title(input.title), text = content(input);
   const key = input.create_key;
   if (key !== undefined && (typeof key !== "string" || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(key))) throw badRequest("作成キーが無効です");
   return withTransaction(async q => {
     // Serialize appends with reordering; new notes are always added at the end.
     await lockEditableProject(projectId, uid, q);
+    if (beforeCreate) await beforeCreate(q);
     const inserted = await q.query(`INSERT INTO project_knowledge (project_id, author_id, title, body, body_doc, create_key, position)
       VALUES ($1, $2, $3, $4, $5::jsonb, $6,
         (SELECT COALESCE(MAX(position), 0) + 1 FROM project_knowledge WHERE project_id = $1 AND deleted_at IS NULL))
