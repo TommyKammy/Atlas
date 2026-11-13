@@ -1,5 +1,5 @@
-// Custom production server: Next.js + WebSocket live channel.
-// Run with `node server.js` (see Dockerfile). Single-instance only.
+// Custom server: Next.js + WebSocket live channel. Single-instance only.
+// Development (Fast Refresh): NODE_ENV=development node server.js.
 const { createServer } = require("http");
 const { createHash, randomBytes } = require("crypto");
 const next = require("next");
@@ -14,7 +14,8 @@ const SESSION_COOKIE_RE = /(?:^|;\s*)atlas_session=([A-Za-z0-9_-]{43})(?:;|$)/;
 const hashSessionToken = (token) => createHash("sha256").update(token).digest("hex");
 
 const port = Number(process.env.APP_PORT || 3000);
-const app = next({ dev: false, dir: "./" });
+const dev = process.env.NODE_ENV === "development";
+const app = next({ dev, dir: "./", port });
 const handle = app.getRequestHandler();
 const wsOrigins = new Set((process.env.WS_ALLOWED_ORIGINS ?? process.env.APP_ORIGIN ?? process.env.APP_URL ??
   `http://127.0.0.1:${port},http://localhost:${port},http://[::1]:${port}`).split(",").flatMap((value) => {
@@ -124,6 +125,16 @@ app.prepare().then(async () => {
       url = new URL(req.url, "http://internal");
     } catch {
       rejectUpgrade(socket, "400 Bad Request");
+      return;
+    }
+    if (dev && (url.pathname === "/_next/hmr" || url.pathname.startsWith("/_next/hmr/"))) {
+      if (!wsOrigins.has(req.headers.origin)) {
+        rejectUpgrade(socket, "403 Forbidden");
+        return;
+      }
+      // Next installs its own upgrade listener through getRequestHandler().
+      // Leave this socket to that listener; destroying it breaks Fast Refresh.
+      socket.off("error", onSocketError);
       return;
     }
     if (url.pathname !== "/api/ws") {
@@ -239,7 +250,7 @@ app.prepare().then(async () => {
   janitor();
 
   server.listen(port, () => {
-    console.log(`Atlas ready on :${port} (http + ws /api/ws)`);
+    console.log(`Atlas ready on :${port} (${dev ? "development / Fast Refresh" : "production"}, http + ws /api/ws)`);
     startLiveSubscriber(bus);
   });
 });

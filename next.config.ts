@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   // Compile/runtime errors are still surfaced by Next.js.
   devIndicators: false,
   allowedDevOrigins: ["127.0.0.1", "localhost"],
+  // macOS Docker bind mounts may not forward file-system change events.
+  ...(process.env.NODE_ENV === "development" && process.env.ATLAS_DEV_POLLING === "1"
+    ? { watchOptions: { pollIntervalMs: 1000 } }
+    : {}),
   cacheComponents: true,
   partialPrefetching: true,
   async headers() {

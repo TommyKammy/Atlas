@@ -10,6 +10,7 @@ import RichTextEditor from "./rich-text/RichTextEditor";
 import KnowledgeNoteList from "./knowledge/KnowledgeNoteList";
 import KnowledgeTrash from "./knowledge/KnowledgeTrash";
 import KnowledgeAi from "./knowledge/KnowledgeAi";
+import KnowledgeActionMenu, { KnowledgeIcon, knowledgeAction, knowledgePrimaryAction, knowledgeMenuItem } from "./knowledge/KnowledgeActionMenu";
 import { applyKnowledgeOrder, mergeKnowledgeNote, moveKnowledgeId, type NotePlacement } from "@/lib/knowledge-order";
 
 const templates = [
@@ -144,7 +145,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
           if (!await leave()) return;
           close(); setHistory(null); setNotice(""); setTrashOpen(value => !value);
         })}>{trashOpen ? "ノート一覧に戻る" : "ゴミ箱"}</button>
-        <button data-knowledge-new disabled={busy} onClick={() => create()} className="rounded-md bg-[#2c60b8] px-3 py-2 text-sm font-medium text-white hover:bg-[#24529c] disabled:opacity-50">＋ ノートを追加</button>
+        <button data-knowledge-new disabled={busy} onClick={() => create()} className={knowledgeAction}>＋ ノートを追加</button>
       </div>}
     </div>
     {error && <p role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
@@ -173,23 +174,34 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
           </div>
         </div>}
       </aside>
-      <section aria-label="ノート" className="min-w-0 max-w-4xl">
-        {editing ? <KnowledgeComposer key={editing.key} note={editing.note} template={editing.template} projectId={projectId} viewerId={viewerId} links={links} guardRef={guard} onSaved={saved} onClose={close} /> : selected ? <>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 pb-3">
+      <section aria-label="ノート" className={`min-w-0 ${editing ? "max-w-4xl" : ""}`}>
+        {editing ? <KnowledgeComposer key={editing.key} note={editing.note} template={editing.template} projectId={projectId} viewerId={viewerId} links={links} guardRef={guard} onSaved={saved} onClose={close} /> : selected ? <KnowledgeAi key={`ai:${selected.id}:${selected.revision}`} note={selected} enabled={canEdit} onSaved={note => {
+          saved(note);
+          const url = new URL(window.location.href); url.searchParams.set("note", String(note.id));
+          window.history.replaceState(null, "", url);
+        }}>{(aiTrigger, aiPanel) => <>
+          <div data-knowledge-toolbar className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-4">
             <span className="text-xs text-neutral-600">{selected.author_name ?? "メンバー"} · {date(selected.updated_at)} 更新</span>
-            <div className="flex flex-wrap gap-2">
-              <button className={button} onClick={() => downloadNote(selected.title, selected.body)}>書き出す</button>
-              <button className={button} disabled={busy} onClick={() => void action(async () => setHistory(history ? null : await api(`/api/knowledge/${selected.id}?history=1`)))}>履歴</button>
-              {canEdit && <><button data-knowledge-edit className={button} disabled={busy} onClick={edit}>ノートを編集</button>
-                <button className={button} disabled={busy} onClick={() => void action(async () => {
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
+                <button className={knowledgeAction} onClick={() => downloadNote(selected.title, selected.body)}><KnowledgeIcon name="download" />書き出す</button>
+                {aiTrigger}
+              </div>
+              {canEdit && <button data-knowledge-edit aria-label="ノートを編集" className={knowledgePrimaryAction} disabled={busy} onClick={edit}><KnowledgeIcon name="edit" />編集</button>}
+              <KnowledgeActionMenu key={selected.id} label="ノートのその他の操作" disabled={busy} className={`${knowledgeAction} w-9 px-0`} icon={<KnowledgeIcon name="more" />}>
+                <button role="menuitem" className={knowledgeMenuItem} disabled={busy} onClick={() => { void action(async () => setHistory(history ? null : await api(`/api/knowledge/${selected.id}?history=1`))); }}><KnowledgeIcon name="history" />{history ? "履歴を閉じる" : "履歴"}</button>
+                {canEdit && <button role="menuitem" className={`${knowledgeMenuItem} text-red-700`} disabled={busy} onClick={() => { void action(async () => {
                   if (!await confirmAction(`「${selected.title}」をゴミ箱に移しますか？本文と保存履歴は保持され、後から復元できます。`, { confirmLabel: "ゴミ箱に移す" })) return;
                   await api(`/api/knowledge/${selected.id}?revision=${selected.revision}`, { method: "DELETE" });
                   setNotes(items => items.filter(note => note.id !== selected.id)); setSelectedId(null); setHistory(null);
                   setNotice(`「${selected.title}」をゴミ箱に移しました`);
                   await refreshNotes();
-                })}>削除</button></>}
+                }); }}><KnowledgeIcon name="trash" />ゴミ箱に移す</button>}
+              </KnowledgeActionMenu>
             </div>
           </div>
+          <div className={`grid min-w-0 items-start gap-6 ${aiPanel ? "xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]" : ""}`}>
+          <div className="min-w-0 max-w-4xl" data-knowledge-document-column>
           {history && <div className="mb-6 rounded-md border border-neutral-200 p-4" data-knowledge-history>
             <h3 className="text-sm font-semibold">保存履歴</h3>
             <p className="mt-1 text-xs text-neutral-600">直近50件と初版。復元前の内容も履歴に残ります。</p>
@@ -203,15 +215,13 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
                 })}>復元</button>}</li>)}
             </ul>
           </div>}
-          {canEdit && <KnowledgeAi key={`ai:${selected.id}:${selected.revision}`} note={selected} onSaved={note => {
-            saved(note);
-            const url = new URL(window.location.href); url.searchParams.set("note", String(note.id));
-            window.history.replaceState(null, "", url);
-          }} />}
           <h1 className="mb-6 break-words text-3xl leading-snug font-semibold tracking-tight">{selected.title}</h1>
           {selected.body_doc ? <RichTextEditor key={`body:${selected.id}:${selected.revision}`} initialDoc={selected.body_doc} extraExtensions={knowledgeExtensions} editable={false} toolbar={false} borderless ariaLabel="ノートの内容" className="knowledge-document" />
             : <div data-knowledge-legacy className="atlas-rich-text knowledge-document" dangerouslySetInnerHTML={{ __html: renderMarkdown(selected.body) }} />}
-        </> : <div className="py-16 text-center">
+          </div>
+          {aiPanel}
+          </div>
+        </>}</KnowledgeAi> : <div className="py-16 text-center">
           <h3 className="text-lg font-semibold">チームの知識をここに</h3><p className="mt-2 text-sm text-neutral-600">ノートを選択して読むか、議事録や手順書を作成できます。</p>
           {canEdit && <button onClick={() => create()} className="mt-5 rounded-md bg-[#2c60b8] px-4 py-2 text-sm text-white">ノートを作成</button>}
         </div>}

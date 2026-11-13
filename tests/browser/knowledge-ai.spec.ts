@@ -22,12 +22,28 @@ for (const width of [1440, 390]) test(`AI summary, improvements, copy and separa
   const f = await fixture(page); await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.setViewportSize({ width, height: 1000 });
   await page.goto(`/projects/${f.id}?view=knowledge&note=${f.note.id}`);
-  await page.getByRole("button", { name: "AIアシスト" }).click();
-  await expect(page.getByRole("button", { name: "要約を生成", exact: true })).toBeEnabled();
-  await page.getByRole("button", { name: "文章改善案を生成", exact: true }).click();
+  await page.getByRole("button", { name: "AIアシスト", exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: "要約を生成", exact: true })).toBeEnabled();
+  await page.getByRole("menuitem", { name: "文章改善案を生成", exact: true }).click();
   await expect(page.locator("[data-ai-output]")).toContainText("改善ポイント");
+  await page.getByRole("tab", { name: "要約", exact: true }).click();
   await page.getByRole("button", { name: "要約を生成", exact: true }).click();
   await expect(page.locator("[data-ai-output]")).toContainText("要約");
+  const summary = await page.locator("[data-ai-output]").innerText();
+  await page.getByRole("tab", { name: "文章改善案", exact: true }).click();
+  await expect(page.locator("[data-ai-output]")).toContainText("改善ポイント");
+  await page.getByRole("tab", { name: "要約", exact: true }).click();
+  await expect(page.locator("[data-ai-output]")).toHaveText(summary, { useInnerText: true });
+  const panelBox = await page.locator("[data-ai-panel]").boundingBox();
+  const documentBox = await page.locator("[data-knowledge-document-column]").boundingBox();
+  if (width >= 1280) expect(panelBox!.x).toBeGreaterThanOrEqual(documentBox!.x + documentBox!.width);
+  else expect(panelBox!.y).toBeGreaterThanOrEqual(documentBox!.y + documentBox!.height);
+  await page.getByRole("button", { name: "AIアシストを閉じる", exact: true }).click();
+  await expect(page.locator("[data-ai-panel]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "AIアシスト", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "AIアシスト", exact: true }).click();
+  await page.getByRole("menuitem", { name: "結果パネルを表示" }).click();
+  await expect(page.locator("[data-ai-output]")).toHaveText(summary, { useInnerText: true });
   expect(await page.locator("[data-ai-result] img").count()).toBe(0);
   expect(await page.evaluate(() => "aiInjected" in window)).toBe(false);
   await page.getByRole("button", { name: "コピー", exact: true }).click();
@@ -46,6 +62,28 @@ for (const width of [1440, 390]) test(`AI summary, improvements, copy and separa
   expect(notes).toHaveLength(2); expect(notes[1].body_doc.content[0].content[0].type).toBe("text");
   await expect(page.locator(".knowledge-document img")).toHaveCount(0);
 });
+test("toolbar menus support keyboard navigation and note switches cancel in-flight output", async ({ page }) => {
+  const f = await fixture(page, "slow");
+  const other = await (await page.request.post("/api/knowledge", { data: { project_id: f.id, title: "切り替え先", body: "別のノートです。" } })).json();
+  await page.goto(`/projects/${f.id}?view=knowledge&note=${f.note.id}`);
+  const more = page.getByRole("button", { name: "ノートのその他の操作" });
+  await more.focus(); await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("menuitem", { name: "履歴", exact: true })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("menuitem", { name: "ゴミ箱に移す", exact: true })).toBeFocused();
+  await page.keyboard.press("Escape"); await expect(more).toBeFocused();
+  await more.click(); await page.getByRole("menuitem", { name: "履歴", exact: true }).click();
+  await expect(page.locator("[data-knowledge-history]")).toBeVisible();
+  await page.getByRole("button", { name: "AIアシスト", exact: true }).click();
+  await page.getByRole("menuitem", { name: "要約を生成", exact: true }).click();
+  await expect(page.getByRole("button", { name: "中止", exact: true })).toBeVisible();
+  await page.locator(`[data-knowledge-note="${other.id}"]`).click();
+  await expect(page.getByRole("heading", { name: "切り替え先", exact: true })).toBeVisible();
+  await page.waitForTimeout(1600);
+  await expect(page.locator("[data-ai-panel]")).toHaveCount(0);
+  await expect(page.locator("[data-ai-output]")).toHaveCount(0);
+  expect(await (await page.request.get(`/api/knowledge/${f.note.id}`)).json()).toEqual(f.note);
+});
 for (const width of [1440, 390]) test(`switching rich and legacy notes keeps exactly one AI panel at ${width}px`, async ({ page }) => {
   const f = await fixture(page);
   const notes = [f.note];
@@ -60,20 +98,20 @@ for (const width of [1440, 390]) test(`switching rich and legacy notes keeps exa
   await page.setViewportSize({ width, height: 1000 });
   await page.goto(`/projects/${f.id}?view=knowledge&note=${notes[1].id}`);
   const panels = page.getByRole("region", { name: "ノートのAIアシスト", exact: true });
-  await panels.getByRole("button", { name: "AIアシスト" }).click();
-  await panels.getByRole("button", { name: "要約を生成", exact: true }).click();
+  await page.getByRole("button", { name: "AIアシスト", exact: true }).click();
+  await page.getByRole("menuitem", { name: "要約を生成", exact: true }).click();
   await expect(page.locator("[data-ai-output]")).toBeVisible();
   for (const index of [2, 1, 2, 0, 1, 0, 2, 1, 2, 0, 1, 2]) {
     const note = notes[index];
     await page.locator(`[data-knowledge-note="${note.id}"]`).click();
     await expect(page.getByRole("heading", { name: note.title, exact: true })).toBeVisible();
-    await expect(panels).toHaveCount(1);
+    await expect(panels).toHaveCount(0);
     await expect(page.locator("[data-ai-result]")).toHaveCount(0);
     await expect(page.locator(".knowledge-document")).toHaveCount(1);
     if (note.body_doc) await expect(page.locator(".knowledge-document")).toContainText(`${note.title}の本文`);
-    await expect(panels.getByRole("button", { name: "AIアシスト" })).toHaveAttribute("aria-expanded", "false");
-    await panels.getByRole("button", { name: "AIアシスト" }).click();
-    await expect(panels.getByRole("button", { name: "要約を生成", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "AIアシスト", exact: true })).toHaveAttribute("aria-expanded", "false");
+    await page.getByRole("button", { name: "AIアシスト", exact: true }).click();
+    await expect(page.getByRole("menuitem", { name: "要約を生成", exact: true })).toBeEnabled();
   }
   await page.screenshot({ path: test.info().outputPath(`ai-note-switch-${width}.png`), fullPage: true });
   expect(errors).toEqual([]);
@@ -134,9 +172,9 @@ test("concurrent requests are bounded and incomplete provider output is never sa
 test("cancel leaves the original note unchanged", async ({ page }) => {
   const f = await fixture(page, "slow");
   await page.goto(`/projects/${f.id}?view=knowledge&note=${f.note.id}`);
-  await page.getByRole("button", { name: "AIアシスト" }).click();
-  await expect(page.getByRole("button", { name: "要約を生成" })).toBeEnabled();
-  await page.getByRole("button", { name: "要約を生成" }).click();
+  await page.getByRole("button", { name: "AIアシスト", exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: "要約を生成" })).toBeEnabled();
+  await page.getByRole("menuitem", { name: "要約を生成" }).click();
   await page.waitForTimeout(400);
   await page.getByRole("button", { name: "中止", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "生成を中止しました" })).toBeVisible();
@@ -199,9 +237,9 @@ test("only administrators choose the project model; UI and forged requests canno
     expect(available).toHaveLength(1); expect(available[0]).toMatchObject({ id: assigned.id, model: "admin-selected" });
     const editor = await other.newPage();
     await editor.goto(`/projects/${f.id}?view=knowledge&note=${f.note.id}`);
-    await editor.getByRole("button", { name: "AIアシスト" }).click();
-    await expect(editor.getByRole("button", { name: "要約を生成", exact: true })).toBeEnabled();
-    await expect(editor.getByRole("region", { name: "ノートのAIアシスト" })).not.toContainText("admin-selected");
+    await editor.getByRole("button", { name: "AIアシスト", exact: true }).click();
+    await expect(editor.getByRole("menuitem", { name: "要約を生成", exact: true })).toBeEnabled();
+    await expect(editor.getByRole("menu", { name: "AIアシスト" })).not.toContainText("admin-selected");
     await expect(editor.getByRole("region", { name: "ノートのAIアシスト" }).getByRole("combobox")).toHaveCount(0);
     expect((await generate(other.request, f)).status()).toBe(403); // Previously permitted connection.
     for (const override of [{ model: "user-choice" }, { base_url: "http://example.invalid/v1" }]) {
@@ -210,12 +248,12 @@ test("only administrators choose the project model; UI and forged requests canno
     const generated = await generate(other.request, f, { connection_id: undefined });
     expect(generated.status()).toBe(200); expect((await generated.json()).model).toBe("admin-selected");
     await page.request.post("/api/admin/llm", { data: { ...assigned, model: "updated-by-admin" } });
-    await editor.getByRole("button", { name: "要約を生成", exact: true }).click();
+    await editor.getByRole("menuitem", { name: "要約を生成", exact: true }).click();
     await expect(editor.getByRole("region", { name: "ノートのAIアシスト" }).getByRole("alert")).toContainText("管理者がAI接続設定を更新しました");
     await expect(editor.locator("[data-ai-result]")).toHaveCount(0);
-    await editor.reload(); await editor.getByRole("button", { name: "AIアシスト" }).click();
-    await expect(editor.getByRole("button", { name: "要約を生成", exact: true })).toBeEnabled();
-    await editor.getByRole("button", { name: "要約を生成", exact: true }).click();
+    await editor.reload(); await editor.getByRole("button", { name: "AIアシスト", exact: true }).click();
+    await expect(editor.getByRole("menuitem", { name: "要約を生成", exact: true })).toBeEnabled();
+    await editor.getByRole("menuitem", { name: "要約を生成", exact: true }).click();
     await expect(editor.locator("[data-ai-output]")).toBeVisible();
     await expect(editor.getByRole("region", { name: "ノートのAIアシスト" })).not.toContainText("updated-by-admin");
     await editor.screenshot({ path: test.info().outputPath("admin-assigned-model.png"), fullPage: true });

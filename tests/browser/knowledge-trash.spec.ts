@@ -30,7 +30,8 @@ for (const width of [1440, 390]) test(`trash and restore preserve the document a
   await page.setViewportSize({ width, height: 1000 });
   const f = await fixture(page);
   await page.goto(`/projects/${f.id}?view=knowledge&note=${f.note.id}`);
-  await page.getByRole("button", { name: "削除", exact: true }).click();
+  await page.getByRole("button", { name: "ノートのその他の操作" }).click();
+  await page.getByRole("menuitem", { name: "ゴミ箱に移す", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("本文と保存履歴は保持");
   await dialog.getByRole("button", { name: "ゴミ箱に移す", exact: true }).click();
