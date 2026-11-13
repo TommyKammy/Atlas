@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectViewToolbar, ViewAddButton, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
@@ -15,8 +16,7 @@ export type TimelineSortKey = "default" | "due" | "start" | "assignee";
 export type TimelineMenuKey = "filter" | "sort" | "options" | null;
 export type TimelineZoomPreset = { key: string; label: string; dayWidth: number };
 
-const toolbarBtn =
-  "flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700";
+const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
 const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
 const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
@@ -179,16 +179,8 @@ export default function TimelineToolbar({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1.5 px-4 py-2">
-        <button
-          type="button"
-          onClick={addToday}
-          data-timeline-add
-          disabled={!canAddTask}
-          className="flex h-7 items-center gap-1 rounded-md border border-[#e1e1e1] bg-white px-2.5 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <span className="text-[15px] leading-none">＋</span> タスクを追加
-        </button>
+      <ProjectViewToolbar className="px-4">
+        <ViewAddButton onClick={addToday} data-timeline-add disabled={!canAddTask} />
         <a
           href={`/projects/${projectId}?view=timeline&from=${linkDay(min - navigationDays)}`}
           aria-label="前の期間"
@@ -425,7 +417,7 @@ export default function TimelineToolbar({
         >
           <OptionsIcon /> オプション
         </button>
-      </div>
+      </ProjectViewToolbar>
 
       <ViewOptionsDrawer
         open={optionsOpen}

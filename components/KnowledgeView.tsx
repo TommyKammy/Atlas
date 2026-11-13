@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectViewToolbar, ViewAddButton, viewToolbarActionClass } from "@/components/view/ProjectViewToolbar";
 import { useEffect, useRef, useState } from "react";
 import type { ProjectKnowledge } from "@/lib/data";
 import { renderMarkdown } from "@/lib/markdown";
@@ -138,15 +139,15 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
   const links = notes.map(note => ({ title: note.title, href: `/projects/${projectId}?view=knowledge&note=${note.id}` }));
 
   return <div data-knowledge className="px-4 pb-12 text-neutral-900">
-    <div className="mb-5 flex flex-wrap items-start justify-between gap-3 py-2">
+    <ProjectViewToolbar className="mb-5 justify-between">
       {canEdit && <>
-        <button data-knowledge-new disabled={busy} onClick={() => create()} className="flex h-7 items-center gap-1 rounded-md border border-[#e1e1e1] bg-white px-2.5 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50"><span className="text-[15px] leading-none">＋</span> ノートを追加</button>
-        <button className={button} disabled={busy} aria-pressed={trashOpen} onClick={() => void action(async () => {
+        <ViewAddButton data-knowledge-new disabled={busy} onClick={() => create()}>ノートを追加</ViewAddButton>
+        <button className={viewToolbarActionClass} disabled={busy} aria-pressed={trashOpen} onClick={() => void action(async () => {
           if (!await leave()) return;
           close(); setHistory(null); setNotice(""); setTrashOpen(value => !value);
         })}>{trashOpen ? "ノート一覧に戻る" : "ゴミ箱"}</button>
       </>}
-    </div>
+    </ProjectViewToolbar>
     {error && <p role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {notice && <p role="status" className="mb-4 text-sm text-neutral-700">{notice}</p>}
     {trashOpen ? <KnowledgeTrash projectId={projectId} onBusyChange={setBusy} onRestored={async note => {

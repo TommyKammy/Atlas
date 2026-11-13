@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectViewToolbar, ViewAddButton, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
 import Link from "next/link";
 import { useEffect, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
@@ -12,8 +13,7 @@ import ListFilterMenu from "../list/ListFilterMenu";
 import ViewOptionsDrawer from "../view/ViewOptionsDrawer";
 import { FilterIcon, OptionsIcon } from "../view/ViewToolbarIcons";
 
-const toolbarBtn =
-  "flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700";
+const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
 const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
 const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
@@ -198,15 +198,8 @@ export default function CalendarToolbar({
 
   return (
     <>
-      <div className="flex shrink-0 flex-wrap items-center gap-1.5 py-2">
-        <button
-          type="button"
-          onClick={addToday}
-          data-calendar-add
-          className="mr-1 flex h-7 items-center rounded-md border border-[#e1e1e1] bg-white px-2.5 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50"
-        >
-          ＋ タスクを追加
-        </button>
+      <ProjectViewToolbar>
+        <ViewAddButton onClick={addToday} data-calendar-add disabled={!canEdit} />
         <Link
           href={prevHref}
           aria-label={weekMode ? "前週" : "前月"}
@@ -392,7 +385,7 @@ export default function CalendarToolbar({
             <path d="m10.1 10.1 3 3" />
           </svg>
         </button>
-      </div>
+      </ProjectViewToolbar>
 
       <ViewOptionsDrawer
         open={optionsOpen}

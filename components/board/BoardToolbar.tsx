@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectViewToolbar, ViewAddButton, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
@@ -18,8 +19,7 @@ import ListSortMenu from "../list/ListSortMenu";
 import ViewOptionsDrawer from "../view/ViewOptionsDrawer";
 import { FilterIcon, GroupIcon, OptionsIcon, SortIcon } from "../view/ViewToolbarIcons";
 
-const toolbarBtn =
-  "flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700";
+const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
 const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
 const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
@@ -33,7 +33,7 @@ export type BoardCardFields = {
 };
 
 export default function BoardToolbar({
-  count,
+  onAddTask,
   users,
   statusFieldEnabled,
   statusFieldName,
@@ -63,7 +63,7 @@ export default function BoardToolbar({
   cardFields,
   onToggleCardField,
 }: {
-  count: number;
+  onAddTask: () => void;
   users: User[];
   statusFieldEnabled: boolean;
   statusFieldName: string;
@@ -151,9 +151,8 @@ export default function BoardToolbar({
 
   return (
     <>
-      <div className="relative flex flex-wrap items-center gap-1 px-4 py-2 text-sm text-neutral-600">
-        <span className="font-semibold text-neutral-800">ボード</span>
-        <span className="text-[12px] text-neutral-500">{count} 件</span>
+      <ProjectViewToolbar className="px-4">
+        <ViewAddButton data-board-add onClick={onAddTask} disabled={!canEdit} />
         <span className="ml-auto" />
 
         <span className="relative">
@@ -340,7 +339,7 @@ export default function BoardToolbar({
         >
           <OptionsIcon /> オプション
         </button>
-      </div>
+      </ProjectViewToolbar>
 
       <ViewOptionsDrawer
         open={optionsOpen}

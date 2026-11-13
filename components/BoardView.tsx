@@ -80,6 +80,8 @@ export default function BoardView({
   const router = useRouter();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [addingTask, setAddingTask] = useState(false);
+  const addInputRef = useRef<HTMLInputElement>(null);
   const [groupBy, setGroupBy] = useState<ListGroupBy>(() =>
     parseListGroupBy(initialGroup, statusFieldEnabled),
   );
@@ -271,6 +273,20 @@ export default function BoardView({
   // Reveal newly added columns without changing the user's empty-group setting.
   groups = groups.filter((g) => showEmptyGroups || g.items.length > 0 ||
     g.sectionId !== undefined && createdSectionIds.has(g.sectionId));
+  // Keep an input available even when there are no columns or filters hide every group.
+  if (addingTo === "toolbar-draft") {
+    groups = [...groups, {
+      key: "toolbar-draft",
+      label: sections[0]?.name ?? "セクションなし",
+      sectionId: sections[0]?.id,
+      items: [],
+    }];
+  }
+  const startAddingTask = () => {
+    if (!canEdit) return;
+    setAddingTo(groups[0]?.key ?? "toolbar-draft");
+    requestAnimationFrame(() => addInputRef.current?.focus());
+  };
   const activeFilters =
     (hideCompleted ? 1 : 0) +
     (completedOnly ? 1 : 0) +
@@ -526,14 +542,22 @@ export default function BoardView({
 
   const addTask = async (g: BoardGroup<TaskRow>) => {
     const name = (drafts[g.key] ?? "").trim();
-    if (!name) return;
-    const sectionId = g.sectionId ?? sections[0]?.id ?? null;
+    if (!canEdit || addingTask || !name) return;
+    const sectionId = g.key === "s-none" ? null : g.sectionId ?? sections[0]?.id ?? null;
     const base: Record<string, unknown> = { project_id: projectId, section_id: sectionId, name };
     if (g.assigneeId !== undefined && g.assigneeId !== null) base.assignee_id = g.assigneeId;
     if (g.status !== undefined) base.status = g.status;
-    await api("/api/tasks", "POST", base);
-    setDrafts((d) => ({ ...d, [g.key]: "" }));
-    refresh();
+    setAddingTask(true);
+    try {
+      await api("/api/tasks", "POST", base);
+      setDrafts((d) => ({ ...d, [g.key]: "" }));
+      setAddingTo(null);
+      refresh();
+    } catch (error) {
+      toastMessage(error instanceof Error ? error.message : "タスクを追加できませんでした");
+    } finally {
+      setAddingTask(false);
+    }
   };
 
   return (
@@ -557,7 +581,7 @@ export default function BoardView({
       data-board-show-empty={showEmptyGroups}
     >
       <BoardToolbar
-        count={visibleTasks.length}
+        onAddTask={startAddingTask}
         users={users}
         statusFieldEnabled={statusFieldEnabled}
         statusFieldName={statusFieldName}
@@ -605,7 +629,8 @@ export default function BoardView({
           action={
             <button
               type="button"
-              onClick={() => setAddingTo(groups[0]?.key ?? null)}
+              onClick={startAddingTask}
+              disabled={!canEdit}
               className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium text-white hover:bg-[#24529c]"
             >
               ＋ タスクを追加
@@ -718,13 +743,14 @@ export default function BoardView({
             {addingTo === g.key ? (
               <div className="mt-2 flex gap-1">
                 <input
+                  ref={addInputRef}
+                  disabled={addingTask}
                   value={drafts[g.key] ?? ""}
                   onChange={(e) => setDrafts((d) => ({ ...d, [g.key]: e.target.value }))}
                   onKeyDown={(e) => {
                     if (isImeComposing(e)) return;
                     if (e.key === "Enter") {
-                      addTask(g);
-                      setAddingTo(null);
+                      void addTask(g);
                     }
                     if (e.key === "Escape") setAddingTo(null);
                   }}
@@ -737,9 +763,9 @@ export default function BoardView({
                   className="w-full rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
                 />
                 <button
+                  disabled={addingTask || !(drafts[g.key] ?? "").trim()}
                   onClick={() => {
-                    addTask(g);
-                    setAddingTo(null);
+                    void addTask(g);
                   }}
                   className="shrink-0 rounded bg-blue-600 px-2 py-1 text-sm text-white"
                 >
@@ -749,6 +775,7 @@ export default function BoardView({
             ) : (
               <button
                 onClick={() => setAddingTo(g.key)}
+                disabled={!canEdit}
                 data-add-task-open
                 className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-neutral-600 hover:bg-neutral-200/60 hover:text-neutral-700"
               >

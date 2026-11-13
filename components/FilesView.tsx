@@ -1,3 +1,4 @@
+import { ProjectViewToolbar, ViewAddButton } from "@/components/view/ProjectViewToolbar";
 import Link from "next/link";
 import type { Attachment } from "@/lib/data";
 import AttachmentPreview from "./AttachmentPreview";
@@ -18,13 +19,13 @@ export default function FilesView({
 }) {
   return (
     <div className="px-4 pb-16">
-      <div className="flex flex-wrap items-center gap-2 py-2 text-sm">
-        <span className="text-neutral-500">ファイル（{attachments.length}件・上限25MB/件）</span>
-        <span className="ml-auto" />
-        <span className="rounded-md border bg-white px-2 py-1 text-[13px] text-neutral-400" title="タスク詳細ペインから添付してください">
-          ＋ ファイルを追加
+      <ProjectViewToolbar>
+        <span title="タスク詳細ペインから添付してください">
+          <ViewAddButton disabled aria-describedby="project-files-upload-help">ファイルを追加</ViewAddButton>
         </span>
-      </div>
+        <span className="ml-auto text-[12px] text-neutral-500">{attachments.length} 件 · 上限25MB/件</span>
+      </ProjectViewToolbar>
+      <p id="project-files-upload-help" className="my-4 text-[12px] text-neutral-500">ファイルはタスク詳細ペインから添付できます。</p>
       {attachments.length === 0 ? (
         <EmptyState
           scope="files"

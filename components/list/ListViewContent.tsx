@@ -100,14 +100,14 @@ export default function ListViewContent({
       data-list-updated={view.updatedFilter}
       data-list-completed-on={view.completedDateFilter}
     >
+      <ListToolbar
+        {...toolbar.props}
+        autoRefresh={toolbar.autoRefresh}
+        setAutoRefresh={toolbar.setAutoRefresh}
+        lastRefresh={toolbar.lastRefresh}
+      />
       <div className="overflow-x-auto">
         <div className="min-w-[860px]">
-          <ListToolbar
-            {...toolbar.props}
-            autoRefresh={toolbar.autoRefresh}
-            setAutoRefresh={toolbar.setAutoRefresh}
-            lastRefresh={toolbar.lastRefresh}
-          />
           <SavedViewsBar
             projectId={toolbar.props.projectId}
             savedViews={toolbar.savedViews}

@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectViewToolbar, ViewAddButton, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api-client";
 import { confirmAction, toast } from "@/lib/ui-feedback";
@@ -210,20 +211,18 @@ export default function DashboardView({
 
   return (
     <div className="px-4 pb-16" data-dashboard-view>
-      <div className="flex flex-wrap items-center gap-2 py-3">
+      <ProjectViewToolbar>
         {canEdit && (
           <div className="relative">
-            <button
+            <ViewAddButton
               type="button"
               onClick={() => setAddOpen((open) => !open)}
               data-dashboard-add-button
               aria-haspopup="menu"
               aria-expanded={addOpen}
-              className="flex h-8 items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 text-[13px] font-medium text-neutral-700 shadow-sm hover:bg-neutral-50"
             >
-              <span className="text-base leading-none">＋</span>
               ウィジェットを追加
-            </button>
+            </ViewAddButton>
             {addOpen && <AddMenu onPick={openCreate} />}
           </div>
         )}
@@ -232,7 +231,7 @@ export default function DashboardView({
             フィードバックを送る
           </a>
           <details className="relative">
-            <summary className="flex h-8 cursor-pointer list-none items-center rounded-md border border-neutral-300 bg-white px-3 text-[13px] text-neutral-700 shadow-sm hover:bg-neutral-50 [&::-webkit-details-marker]:hidden">
+            <summary className={`${viewToolbarControlClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
               ⋯ オプション
             </summary>
             <div className="absolute right-0 z-30 mt-1 flex w-56 flex-col gap-1 rounded-lg border border-neutral-200 bg-white p-3 text-sm shadow-xl">
@@ -252,7 +251,7 @@ export default function DashboardView({
             </div>
           </details>
         </div>
-      </div>
+      </ProjectViewToolbar>
 
       {tasks.length === 0 && (
         <EmptyState
@@ -270,7 +269,7 @@ export default function DashboardView({
         />
       )}
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-4">
         {widgetData.map(({ widget, data }) => {
           const filtersCount = activeFilterCount(widget.filters);
           const disabledStatus = widget.group_by === "status" && !statusFieldEnabled;

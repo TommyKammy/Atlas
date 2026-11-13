@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectViewToolbar, ViewAddButton } from "@/components/view/ProjectViewToolbar";
 import { confirmAction } from "@/lib/ui-feedback";
 
 import { useRef, useState } from "react";
@@ -159,23 +160,12 @@ export default function FormsView({
 
   return (
     <div data-forms className="max-w-4xl px-4 pb-16">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[16px] font-semibold text-neutral-900">フォーム</h2>
-          <p className="mt-0.5 text-[13px] text-neutral-500">
-            入力フォームから回答を受け取り、プロジェクトにタスクを自動で作成します。
-          </p>
-        </div>
-        <button
-          type="button"
-          data-form-new
-          disabled={!canConfigure}
-          onClick={startCreate}
-          className="flex h-8 shrink-0 items-center gap-1 rounded-md border border-[#e1e1e1] bg-white px-3 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50"
-        >
-          <span className="text-[15px] leading-none">＋</span> フォームを作成
-        </button>
-      </div>
+      <ProjectViewToolbar>
+        <ViewAddButton data-form-new disabled={!canConfigure} onClick={startCreate}>フォームを作成</ViewAddButton>
+      </ProjectViewToolbar>
+      <p className="mt-4 text-[13px] text-neutral-500">
+        入力フォームから回答を受け取り、プロジェクトにタスクを自動で作成します。
+      </p>
 
       {message && (
         <p className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-[13px] text-green-800">

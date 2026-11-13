@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectViewToolbar, ViewAddButton, viewToolbarControlClass, viewToolbarActionClass } from "@/components/view/ProjectViewToolbar";
 import { isImeComposing } from "@/lib/ime-keyboard";
 
 import { useEffect, type Dispatch, type SetStateAction } from "react";
@@ -16,8 +17,7 @@ import ListGroupMenu from "./ListGroupMenu";
 import ListOptionsDrawer, { type ListColumnOption } from "./ListOptionsDrawer";
 import ListSortMenu from "./ListSortMenu";
 
-const toolbarBtn =
-  "flex h-7 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700";
+const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
 const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
 const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
@@ -219,18 +219,17 @@ export default function ListToolbar({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1 border-b py-2 text-sm">
+      <ProjectViewToolbar>
         <span className="relative flex">
-          <button
-            onClick={focusAdd}
-            className="flex h-7 items-center gap-1 rounded-l-md border bg-white px-2.5 text-[12px] text-neutral-800 hover:bg-neutral-50"
-          >
-            <span className="text-[14px] leading-none text-neutral-500">＋</span> タスクを追加
-          </button>
+          <ViewAddButton data-list-add onClick={focusAdd} disabled={!canEdit} className="rounded-r-none" />
           <button
             onClick={toggleAddMenu}
+            disabled={!canEdit}
+            type="button"
+            aria-expanded={addMenu}
+            aria-haspopup="menu"
             title="その他の追加方法"
-            className="flex h-7 items-center rounded-r-md border border-l-0 bg-white px-1.5 text-neutral-600 hover:bg-neutral-50"
+            className={`${viewToolbarActionClass} rounded-l-none border-l-0 px-1.5`}
           >
             ▾
           </button>
@@ -379,7 +378,7 @@ export default function ListToolbar({
         >
           <OptionsIcon /> オプション
         </button>
-      </div>
+      </ProjectViewToolbar>
 
       <ListOptionsDrawer
         open={optionsOpen}

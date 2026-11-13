@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectViewToolbar, ViewAddButton } from "@/components/view/ProjectViewToolbar";
 import { useEffect, useState } from "react";
 import type { ProjectMessage } from "@/lib/data";
 import { renderMarkdown } from "@/lib/markdown";
@@ -41,8 +42,11 @@ export default function MessagesView({
 
   return (
     <div className="max-w-3xl px-4 pb-16">
-      {open ? (
-        <div className="rounded-lg border p-3">
+      <ProjectViewToolbar>
+        <ViewAddButton data-message-new onClick={() => setOpen(true)} disabled={open}>メッセージを作成</ViewAddButton>
+      </ProjectViewToolbar>
+      {open && (
+        <div className="mt-4 rounded-lg border p-3">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -74,16 +78,6 @@ export default function MessagesView({
             </button>
           </div>
         </div>
-      ) : (
-        <button
-          onClick={() => setOpen(true)}
-          className="flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm text-neutral-500 hover:bg-neutral-50"
-        >
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-400 text-[10px] font-bold text-neutral-900">
-            管
-          </span>
-          メンバーにメッセージを送信
-        </button>
       )}
       <div className="mt-4">
         {initial.length === 0 ? (
