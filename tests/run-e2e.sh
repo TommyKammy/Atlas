@@ -119,7 +119,7 @@ if [[ "$suite" == browser || "$suite" == knowledge || "$suite" == knowledge-ai |
       --grep 'changing membership project|membership picker waits for client handlers' --repeat-each "$timeline_repeat" \
       --workers "$timeline_workers" --retries=0 --trace retain-on-failure --output "$browser_output"
   elif [[ "$suite" == knowledge-ai ]]; then
-    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/knowledge-ai.spec.ts --workers 1 --output "$browser_output"
+    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/knowledge-ai.spec.ts tests/browser/project-partner.spec.ts tests/browser/partner-workflows.spec.ts --workers 1 --output "$browser_output"
   elif [[ "$suite" == knowledge ]]; then
     require_e2e_target
     docker exec "$E2E_APP_ID" mkdir -p /app/tests

@@ -4,6 +4,8 @@ import type { ProjectKnowledge } from "@/lib/data";
 import { renderMarkdown } from "@/lib/markdown";
 import KnowledgeActionMenu, { KnowledgeIcon, knowledgeAction, knowledgeActionBase, knowledgePrimaryAction, knowledgeMenuItem } from "./KnowledgeActionMenu";
 
+import { ProjectPartnerPanel, useProjectPartner } from "../project/ProjectPartner";
+
 type Operation = "summary" | "improve";
 type Connection = { id: string; revision: number };
 type Result = { text: string; token: string; source_text: string; source_revision: number; stale: boolean; operation: Operation };
@@ -15,10 +17,11 @@ async function api(url: string, init?: RequestInit) {
   return value;
 }
 
-export default function KnowledgeAi({ note, onSaved, enabled = true, children }: {
-  note: ProjectKnowledge; onSaved: (note: ProjectKnowledge) => void; enabled?: boolean;
+export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, children }: {
+  projectId: number; note: ProjectKnowledge; onSaved: (note: ProjectKnowledge) => void; enabled?: boolean;
   children: (trigger: ReactNode, panel: ReactNode) => ReactNode;
 }) {
+  const partner = useProjectPartner(projectId);
   const [open, setOpen] = useState(false), [connections, setConnections] = useState<Connection[]>([]);
   const [loaded, setLoaded] = useState(false), [loading, setLoading] = useState(false);
   const [operation, setOperation] = useState<Operation>("summary");
@@ -42,7 +45,8 @@ export default function KnowledgeAi({ note, onSaved, enabled = true, children }:
     finally { if (!abort.signal.aborted) setLoading(false); }
   };
   const generate = async (next: Operation) => {
-    if (!selected || pending.current || loading) return;
+    if (!selected || pending.current || loading || partner.locked) return;
+    partner.close();
     setOperation(next); setOpen(true);
     pending.current = true; setBusy(true); setError(""); setNotice("");
     const abort = new AbortController(); controller.current = abort;
@@ -72,8 +76,11 @@ export default function KnowledgeAi({ note, onSaved, enabled = true, children }:
         {loading && <p role="status" className="px-3 py-2 text-sm text-neutral-600">準備中…</p>}
         {error && !open && <p role="alert" className="px-3 py-2 text-sm text-red-700">{error}</p>}
         {loaded && !loading && !selected && !error && <p className="px-3 py-2 text-sm text-neutral-600">このノートではAIアシストを利用できません。管理者にお問い合わせください。</p>}
-        {(["summary", "improve"] as const).map(kind => <button key={kind} role="menuitem" className={knowledgeMenuItem} disabled={!loaded || loading || !selected || busy || saving} onClick={() => void generate(kind)}><KnowledgeIcon name={kind === "summary" ? "summary" : "edit"} />{labels[kind]}を生成</button>)}
-        {(busy || Object.values(proposals).some(Boolean)) && <button role="menuitem" className={`${knowledgeMenuItem} border-t border-neutral-100`} onClick={() => setOpen(true)}>結果パネルを表示</button>}
+        {(["summary", "improve"] as const).map(kind => <button key={kind} role="menuitem" className={knowledgeMenuItem} disabled={!loaded || loading || !selected || busy || saving || partner.locked} onClick={() => void generate(kind)}><KnowledgeIcon name={kind === "summary" ? "summary" : "edit"} />{labels[kind]}を生成</button>)}
+        <p className="mt-1 border-t border-neutral-100 px-3 pt-3 pb-1 text-xs text-neutral-500">プロジェクトパートナー</p>
+        <button role="menuitem" className={knowledgeMenuItem} disabled={!loaded || loading || !selected || busy || saving || partner.locked} onClick={() => { setOpen(false); void partner.generate("action_extract", note); }}><KnowledgeIcon name="summary" />アクションを抽出</button>
+        {partner.result && !partner.open && <button role="menuitem" className={knowledgeMenuItem} onClick={() => { setOpen(false); partner.show(); }}>アクション候補を表示</button>}
+        {(busy || Object.values(proposals).some(Boolean)) && <button role="menuitem" className={`${knowledgeMenuItem} border-t border-neutral-100`} disabled={partner.locked} onClick={() => { partner.close(); setOpen(true); }}>結果パネルを表示</button>}
     </KnowledgeActionMenu>
   </span> : null;
   const panel = enabled && open ? <section aria-label="ノートのAIアシスト" data-ai-panel className="min-w-0 border-t border-neutral-200 pt-5 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5" onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); closePanel(); } }}>
@@ -107,5 +114,5 @@ export default function KnowledgeAi({ note, onSaved, enabled = true, children }:
       </div>}
     </div>
   </section> : null;
-  return children(trigger, panel);
+  return children(trigger, enabled && partner.open ? <ProjectPartnerPanel partner={partner} onClose={() => triggerContainer.current?.querySelector<HTMLButtonElement>("button")?.focus()} /> : panel);
 }

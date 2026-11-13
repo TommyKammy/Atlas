@@ -1,5 +1,7 @@
 import { getProjectKnowledge, type DataActor } from "../services/authorized-data";
 import { cache } from "react";
+import { db } from "../db";
+import { projectTaskScope } from "./scope";
 import { getDashboardTasks, getDashboardWidgets } from "../dashboard";
 import { getProjectRules } from "../automation/repository";
 import {
@@ -91,8 +93,11 @@ export async function getCalendarViewData(projectId: number) {
 }
 
 export async function getOverviewViewData(projectId: number) {
-  const [stats, activity] = await Promise.all([getProjectStats(projectId), getProjectActivity(projectId)]);
-  return { stats, activity };
+  const [stats, activity, milestones] = await Promise.all([getProjectStats(projectId), getProjectActivity(projectId),
+    db.query(`SELECT t.id,t.name,t.due_on::text AS due_on,t.completed FROM tasks t
+      WHERE ${projectTaskScope("t")} AND t.deleted_at IS NULL AND t.parent_task_id IS NULL AND t.is_milestone
+      ORDER BY t.completed,t.due_on NULLS LAST,t.id LIMIT 5`, [projectId])]);
+  return { stats, activity, milestones: milestones.rows as { id: number; name: string; due_on: string | null; completed: boolean }[] };
 }
 
 export async function getDashboardViewData(projectId: number) {

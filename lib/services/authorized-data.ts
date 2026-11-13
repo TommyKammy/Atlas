@@ -8,6 +8,7 @@ import { assertDataActor, projectDataAccess, type DataActor } from "../data-acto
 import type { ProjectKnowledge } from "../repositories/projects";
 
 export type { DataActor } from "../data-actor";
+export { readPartnerSnapshot } from "./authorized-project-context";
 export {
   getSearchCustomFields, searchTasksAdvanced, searchProjectsGlobal, searchMessagesGlobal,
   searchKnowledgeGlobal, searchFilesGlobal,

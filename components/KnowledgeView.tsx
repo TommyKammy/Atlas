@@ -138,15 +138,14 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
   const links = notes.map(note => ({ title: note.title, href: `/projects/${projectId}?view=knowledge&note=${note.id}` }));
 
   return <div data-knowledge className="px-4 pb-12 text-neutral-900">
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div><h2 className="text-xl font-semibold">プロジェクトの知識</h2><p className="mt-1 text-sm text-neutral-600">決定事項、議事録、手順をチームに残す</p></div>
-      {canEdit && <div className="flex gap-2">
+    <div className="mb-5 flex flex-wrap items-start justify-between gap-3 py-2">
+      {canEdit && <>
+        <button data-knowledge-new disabled={busy} onClick={() => create()} className="flex h-7 items-center gap-1 rounded-md border border-[#e1e1e1] bg-white px-2.5 text-[13px] font-medium text-neutral-800 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50"><span className="text-[15px] leading-none">＋</span> ノートを追加</button>
         <button className={button} disabled={busy} aria-pressed={trashOpen} onClick={() => void action(async () => {
           if (!await leave()) return;
           close(); setHistory(null); setNotice(""); setTrashOpen(value => !value);
         })}>{trashOpen ? "ノート一覧に戻る" : "ゴミ箱"}</button>
-        <button data-knowledge-new disabled={busy} onClick={() => create()} className={knowledgeAction}>＋ ノートを追加</button>
-      </div>}
+      </>}
     </div>
     {error && <p role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {notice && <p role="status" className="mb-4 text-sm text-neutral-700">{notice}</p>}
@@ -175,7 +174,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
         </div>}
       </aside>
       <section aria-label="ノート" className={`min-w-0 ${editing ? "max-w-4xl" : ""}`}>
-        {editing ? <KnowledgeComposer key={editing.key} note={editing.note} template={editing.template} projectId={projectId} viewerId={viewerId} links={links} guardRef={guard} onSaved={saved} onClose={close} /> : selected ? <KnowledgeAi key={`ai:${selected.id}:${selected.revision}`} note={selected} enabled={canEdit} onSaved={note => {
+        {editing ? <KnowledgeComposer key={editing.key} note={editing.note} template={editing.template} projectId={projectId} viewerId={viewerId} links={links} guardRef={guard} onSaved={saved} onClose={close} /> : selected ? <KnowledgeAi projectId={projectId} key={`ai:${selected.id}:${selected.revision}`} note={selected} enabled={canEdit} onSaved={note => {
           saved(note);
           const url = new URL(window.location.href); url.searchParams.set("note", String(note.id));
           window.history.replaceState(null, "", url);

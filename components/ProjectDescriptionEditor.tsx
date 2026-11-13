@@ -10,10 +10,14 @@ export default function ProjectDescriptionEditor({
   projectId,
   initial,
   canEdit,
+  heading = "プロジェクトの説明",
+  className = "mt-6",
 }: {
   projectId: number;
   initial: string;
   canEdit: boolean;
+  heading?: string;
+  className?: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -40,9 +44,9 @@ export default function ProjectDescriptionEditor({
   };
 
   return (
-    <section id="description" data-project-description className="mt-6">
+    <section id="description" data-project-description className={className}>
       <div className="flex items-center gap-2">
-        <h2 className="text-base font-semibold">プロジェクトの説明</h2>
+        <h2 className="text-base font-semibold">{heading}</h2>
         {canEdit && !editing && (
           <button
             type="button"

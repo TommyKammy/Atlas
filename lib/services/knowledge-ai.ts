@@ -8,7 +8,7 @@ import { completeLlm, llmJson, localEndpoint, normalizeLlmUrl, type LlmEndpoint 
 import { decryptLlmKey, encryptLlmKey, llmKeyReady, signLlmResult, verifyLlmResult } from "../llm-security";
 import { literalResultDoc, llmNoteText } from "../llm-note-text";
 
-type Config = LlmEndpoint & {
+export type Config = LlmEndpoint & {
   id: string; name: string; key_cipher: string | null; enabled: boolean; external_allowed: boolean;
   project_ids: number[]; max_input_chars: number; daily_limit: number; revision: number;
 };
@@ -27,7 +27,7 @@ function publicConfig(c: Config) {
   const { key_cipher, ...safe } = hydrateConfig(c);
   return { ...safe, key_configured: Boolean(key_cipher), local: localEndpoint(c.base_url) };
 }
-async function config(id: unknown): Promise<Config> {
+export async function config(id: unknown): Promise<Config> {
   if (!uuid(id)) throw badRequest("接続IDが無効です");
   const result = await db.query("SELECT * FROM llm_connections WHERE id = $1", [id]);
   if (!result.rows[0]) throw notFound("接続設定が見つかりません");
@@ -98,10 +98,10 @@ async function access(noteId: number, uid: number) {
   const note = await readKnowledge(noteId, { userId: uid });
   return { projectId: row.rows[0].project_id as number, note };
 }
-function allowed(c: Config, projectId: number) {
+export function allowed(c: Config, projectId: number) {
   if (!c.enabled || !c.project_ids.includes(projectId) || (!localEndpoint(c.base_url) && !c.external_allowed)) throw forbidden("このプロジェクトでは接続が無効になっています");
 }
-async function assignedConfig(projectId: number): Promise<Config | null> {
+export async function assignedConfig(projectId: number): Promise<Config | null> {
   const rows = (await db.query("SELECT * FROM llm_connections WHERE enabled AND $1=ANY(project_ids) LIMIT 2", [projectId])).rows as Config[];
   if (rows.length > 1) throw conflict("AI接続が複数指定されています。管理者が使用する接続を保存し直してください");
   return rows[0] ? hydrateConfig(rows[0]) : null;
@@ -111,6 +111,18 @@ export async function listNoteLlm(noteId: number, uid: number) {
   const c = await assignedConfig(projectId);
   if (!c || (!localEndpoint(c.base_url) && !c.external_allowed)) return [];
   return [{ id: c.id, revision: c.revision, name: c.name, model: c.model, local: localEndpoint(c.base_url), max_input_chars: c.max_input_chars }];
+}
+export async function reserveLlmRun(c: Config, uid: number, projectId: number, requestId: string, operation: string, noteId: number | null, noteRevision: number) {
+  await withTransaction(async q => {
+    await q.query("SELECT pg_advisory_xact_lock(7241, $1::integer)", [uid]);
+    const counts = (await q.query(`SELECT count(*) FILTER (WHERE created_at > now()-interval '24 hours')::int AS total,
+      count(*) FILTER (WHERE status='running' AND deadline > now())::int AS active FROM llm_runs WHERE user_id=$1`, [uid])).rows[0];
+    if (counts.active >= 1 || counts.total >= c.daily_limit) throw new ApiError(429, "実行中の生成があるか、過去24時間の利用上限に達しました");
+    const run = await q.query(`INSERT INTO llm_runs(id,connection_id,connection_revision,user_id,project_id,note_id,note_revision,operation,model,status,deadline)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'running',now()+($10::int+10)*interval '1 second') ON CONFLICT DO NOTHING RETURNING id`,
+      [requestId, c.id, c.revision, uid, projectId, noteId, noteRevision, operation, c.model, c.timeout_seconds]);
+    if (!run.rowCount) throw conflict("この生成は既に実行されています");
+  });
 }
 export async function generateNoteLlm(noteId: number, uid: number, value: unknown, signal: AbortSignal) {
   const v = record(value), { projectId, note } = await access(noteId, uid);
@@ -130,16 +142,7 @@ export async function generateNoteLlm(noteId: number, uid: number, value: unknow
   // Fail before reserving/sending if the encryption/signing key is missing.
   if (!llmKeyReady()) throw new ApiError(503, "LLM専用の暗号化キーが設定されていません");
   const key = decryptLlmKey(c.key_cipher, c.id);
-  await withTransaction(async q => {
-    await q.query("SELECT pg_advisory_xact_lock(7241, $1::integer)", [uid]);
-    const counts = (await q.query(`SELECT count(*) FILTER (WHERE created_at > now()-interval '24 hours')::int AS total,
-      count(*) FILTER (WHERE status='running' AND deadline > now())::int AS active FROM llm_runs WHERE user_id=$1`, [uid])).rows[0];
-    if (counts.active >= 1 || counts.total >= c.daily_limit) throw new ApiError(429, "実行中の生成があるか、過去24時間の利用上限に達しました");
-    const run = await q.query(`INSERT INTO llm_runs(id,connection_id,connection_revision,user_id,project_id,note_id,note_revision,operation,model,status,deadline)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'running',now()+($10::int+10)*interval '1 second') ON CONFLICT DO NOTHING RETURNING id`,
-      [v.request_id, c.id, c.revision, uid, projectId, noteId, note.revision, v.operation, c.model, c.timeout_seconds]);
-    if (!run.rowCount) throw conflict("この生成は既に実行されています");
-  });
+  await reserveLlmRun(c, uid, projectId, v.request_id, v.operation, noteId, note.revision);
   const started = Date.now();
   try {
     // Recheck immediately before the outbound request, after quota reservation.

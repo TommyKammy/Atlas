@@ -261,6 +261,9 @@ export default async function ProjectPage(props: {
           <LazyOverviewView
             projectId={projectId}
             stats={overviewData.stats}
+            milestones={overviewData.milestones}
+            ownerId={project.owner_id ?? null}
+            dueOn={project.due_on ?? null}
             members={members.map((m) => ({ id: m.id, name: m.name, role: m.role ?? null }))}
             projectStatus={project.status}
             projectStatusColor={project.status_color ?? null}
