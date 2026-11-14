@@ -42,8 +42,13 @@ for (const width of [1440, 390]) test(`project actions align across pages at ${w
     await page.screenshot({ path: test.info().outputPath(`${view}-${width}.png`) });
   }
   await page.goto("/projects/1?view=messages");
-  await page.locator("[data-message-new]").click();
-  await expect(page.getByPlaceholder("件名（任意）")).toBeVisible();
+  const subject = page.getByPlaceholder("件名（任意）");
+  // The SSR toolbar can appear before its client handlers are ready. Opening
+  // the composer is idempotent and writes no data, so use it as a readiness probe.
+  await expect(async () => {
+    if (!await subject.isVisible()) await page.locator("[data-message-new]").click();
+    await expect(subject).toBeVisible({ timeout: 500 });
+  }).toPass();
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
   await expect(page.getByPlaceholder("件名（任意）")).toHaveCount(0);
 });
