@@ -170,7 +170,7 @@ export function useListView({
     projectId,
     sections,
     refresh,
-    onAddTask: setAddingTo,
+    onAddTask: id => quick?.create("task", id),
     onDragStart: () => setHint(null),
   });
   const [fieldMenuAnchor, setFieldMenuAnchor] = useState<{
@@ -229,8 +229,8 @@ export function useListView({
 
 
   const focusAdd = () => {
-    if (groupBy === "section" && sections[0]) setAddingTo(sections[0].id);
-    else if (groupBy !== "section" && groupOrder[0]) setAddingTo(`g:${groupOrder[0][0]}`);
+    if (groupBy === "section") quick?.create("task");
+    else if (groupOrder[0]) setAddingTo(`g:${groupOrder[0][0]}`);
     requestAnimationFrame(() => document.querySelector<HTMLInputElement>("input[data-add-task]")?.focus());
   };
   useEffect(() => {
@@ -554,6 +554,7 @@ export function useListView({
       customFields={customFields}
       totals={footerTotals(items)}
       onAdd={onClick}
+      disabled={!canEdit}
     />
   );
 

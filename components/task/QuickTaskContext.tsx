@@ -11,7 +11,7 @@ import { isImeComposing } from "@/lib/ime-keyboard";
 type Kind = "task" | "approval" | "milestone";
 type Draft = { task: TaskRow; text: string; editing: boolean; creating: boolean; saving: boolean; error: string; ready: Promise<void> };
 type Context = {
-  drafts: Draft[]; create: (kind?: Kind) => void; change: (draft: Draft, text: string) => void;
+  drafts: Draft[]; create: (kind?: Kind, sectionId?: number | null) => void; change: (draft: Draft, text: string) => void;
   finish: (draft: Draft) => Promise<void>; edit: (draft: Draft) => void; canEdit: boolean;
 };
 const QuickContext = createContext<Context | null>(null);
@@ -47,14 +47,14 @@ export function QuickTaskProvider({ projectId, sections, view, canEdit, children
       draft.editing = true;
     } finally { draft.saving = false; redraw(); }
   };
-  const create = (kind: Kind = "task") => {
+  const create = (kind: Kind = "task", sectionId: number | null = sections[0]?.id ?? null) => {
     if (!canEdit) return;
     const today = todayISO();
     const dated = view === "timeline" || view === "calendar";
     const stamp = new Date().toISOString();
     const task: TaskRow = {
-      id: nextId.current--, project_id: projectId, section_id: sections[0]?.id ?? null,
-      eff_section_id: sections[0]?.id ?? null, parent_task_id: null, name: "", description: "",
+      id: nextId.current--, project_id: projectId, section_id: sectionId,
+      eff_section_id: sectionId, parent_task_id: null, name: "", description: "",
       assignee_id: null, assignee_name: null, created_by: null, creator_name: null,
       completed: false, completed_at: null, start_on: dated ? today : null,
       due_on: dated ? (view === "timeline" && kind !== "milestone" ? shiftDay(today, 4) : today) : null,
@@ -112,7 +112,8 @@ export function QuickTaskName({ task, children }: { task: { id: number; name: st
   const context = useQuickTask();
   const draft = context?.drafts.find(item => item.task.id === task.id);
   const input = useRef<HTMLInputElement>(null);
-  const editingId = draft?.editing ? draft.task.id : null;
+  const isLatestDraft = context?.drafts.at(-1) === draft;
+  const editingId = draft?.editing && isLatestDraft ? draft.task.id : null;
   useEffect(() => {
     if (editingId === null) return;
     const frame = requestAnimationFrame(() => {
@@ -126,7 +127,7 @@ export function QuickTaskName({ task, children }: { task: { id: number; name: st
   return <span className="relative block min-w-[100px] flex-1" data-quick-task={task.id}
     onClick={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()}
     onKeyDown={event => event.stopPropagation()} draggable={false} onDragStart={event => { event.preventDefault(); event.stopPropagation(); }}>
-    <input ref={input} autoFocus aria-label="新しいタスク名" placeholder="タスク名を入力" maxLength={1000}
+    <input ref={input} autoFocus={isLatestDraft} aria-label="新しいタスク名" placeholder="タスク名を入力" maxLength={1000}
       readOnly={draft.saving} aria-busy={draft.saving} value={draft.text} onChange={event => context.change(draft, event.target.value)}
       className="pointer-events-auto h-6 w-full min-w-0 rounded border border-blue-500 bg-white px-1 text-[13px] text-neutral-900 outline-none focus:ring-1 focus:ring-blue-500"
       onFocus={event => event.target.scrollIntoView({ block: "nearest", inline: "nearest" })}

@@ -1,6 +1,6 @@
 "use client";
 
-import { QuickTaskProvider, useQuickTasks } from "@/components/task/QuickTaskContext";
+import { QuickTaskProvider, useQuickTasks, useQuickTask } from "@/components/task/QuickTaskContext";
 
 import ProjectTaskCreateButton from "@/components/task/ProjectTaskCreateButton";
 import { isImeComposing } from "@/lib/ime-keyboard";
@@ -80,6 +80,7 @@ function BoardViewContent({
   };
 }) {
   const tasks = useQuickTasks(serverTasks);
+  const quick = useQuickTask();
   const refresh = useApiRefresh();
   const router = useRouter();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -758,7 +759,9 @@ function BoardViewContent({
               </div>
             ) : (
               <button
-                onClick={() => setAddingTo(g.key)}
+                onClick={() => effectiveGroupBy === "section"
+                  ? quick?.create("task", g.key === "s-none" ? null : g.sectionId)
+                  : setAddingTo(g.key)}
                 disabled={!canEdit}
                 data-add-task-open
                 className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-neutral-600 hover:bg-neutral-200/60 hover:text-neutral-700"

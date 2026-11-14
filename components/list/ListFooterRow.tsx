@@ -17,6 +17,7 @@ export default function ListFooterRow({
   customFields,
   totals,
   onAdd,
+  disabled = false,
   children,
 }: {
   variant: "ghost" | "add";
@@ -25,6 +26,7 @@ export default function ListFooterRow({
   customFields: CustomField[];
   totals: ListFooterTotals;
   onAdd?: () => void;
+  disabled?: boolean;
   children?: ReactNode;
 }) {
   const footerCell = (key: string) => {
@@ -56,6 +58,7 @@ export default function ListFooterRow({
         <div className="min-w-0">
           <button
             onClick={onAdd}
+            disabled={disabled}
             data-add-task-open
             className="flex h-9 w-full items-center rounded pr-2 pl-12 text-left text-[13px] whitespace-nowrap text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
           >

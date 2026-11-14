@@ -1,6 +1,6 @@
 "use client";
 
-import { isImeComposing } from "@/lib/ime-keyboard";
+import { useQuickTask } from "../task/QuickTaskContext";
 
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import type { Section, TaskRow } from "@/lib/data";
@@ -65,6 +65,7 @@ export type ListGroupsProps = {
  * existing data-* contracts.
  */
 export default function ListGroups({ groups, render, composer, dnd }: ListGroupsProps) {
+  const quick = useQuickTask();
   const { groupBy, group2, groupOrder, orderedSections, bySection, collapsedGroups, rowLimitFor } =
     groups;
   const { groupHeader, rowCtx, splitGroups, showMoreRows, addRow, ghostRow } = render;
@@ -76,7 +77,6 @@ export default function ListGroups({ groups, render, composer, dnd }: ListGroups
     groupSections,
     setGroupSections,
     sections,
-    commitSectionTask,
     commitGroupedTask,
     cancelAddTask,
   } = composer;
@@ -188,36 +188,7 @@ export default function ListGroups({ groups, render, composer, dnd }: ListGroups
                     renderGroupHeader={groupHeader}
                   />
                   {showMoreRows(key, items.length, shownItems.length)}
-                  {addingTo === section.id
-                    ? addRow(
-                        <>
-                          <input
-                            value={drafts[section.id] ?? ""}
-                            onChange={(event) =>
-                              setDrafts((current) => ({
-                                ...current,
-                                [section.id]: event.target.value,
-                              }))
-                            }
-                            onKeyDown={(event) => {
-                              if (isImeComposing(event)) return;
-                              if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-                                event.preventDefault();
-                                void commitSectionTask(section.id);
-                              }
-                              if (event.key === "Escape") cancelAddTask(section.id);
-                            }}
-                            onBlur={() => void commitSectionTask(section.id)}
-                            placeholder="タスク名を入力"
-                            data-add-task
-                            data-add-task-section={section.id}
-                            autoFocus
-                            className="w-full max-w-md rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
-                          />
-                        </>,
-                        items,
-                      )
-                    : ghostRow(() => setAddingTo(section.id), items)}
+                  {ghostRow(() => quick?.create("task", section.id), items)}
                 </>
               </ListSectionBlock>
             );
@@ -226,7 +197,10 @@ export default function ListGroups({ groups, render, composer, dnd }: ListGroups
         total={looseItems.length}
         tasks={shownLoose}
         rowCtx={rowCtx}
-        footer={showMoreRows("none", looseItems.length, shownLoose.length)}
+        footer={<>
+          {showMoreRows("none", looseItems.length, shownLoose.length)}
+          {groupBy === "section" && ghostRow(() => quick?.create("task", null), looseItems)}
+        </>}
       />
     </>
   );

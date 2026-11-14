@@ -133,13 +133,7 @@ export function useListSections({
   const addTaskToSection = (id: number) => {
     setSectionMenu(null);
     onAddTask(id);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const input = document.querySelector<HTMLInputElement>(`input[data-add-task-section="${id}"]`);
-        input?.scrollIntoView({ block: "nearest" });
-        input?.focus();
-      });
-    });
+
   };
 
   const openSectionMenu = (event: React.MouseEvent, id: number) => {

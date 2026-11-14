@@ -18,7 +18,7 @@ export default function ListUngroupedSection({
 }) {
   if (total === 0) return null;
   return (
-    <div>
+    <div data-list-unsectioned>
       <div className="flex h-[37px] items-center pl-[56px] text-[14px] font-semibold text-neutral-500">
         （セクションなし）
       </div>
