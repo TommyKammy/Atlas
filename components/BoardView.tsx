@@ -8,21 +8,21 @@ import { isImeComposing } from "@/lib/ime-keyboard";
 import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { api } from "@/lib/api-client";
-import { patchTask, TaskConflictError } from "@/lib/task-client";
-import { Fragment, useCallback, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { groupBoardTasks, type BoardGroup } from "@/lib/board-group";
 import type { Section, TaskRow, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
-import { groupBoardTasks, type BoardGroup } from "@/lib/board-group";
 import { isQuickTask } from "@/lib/quick-task";
-import { useLive } from "@/lib/use-live";
+import { parseListDateFilter, parseListGroupBy, parseListSortKey, taskMatchesListFilters, type ListDateFilter, type ListFilters, type ListGroupBy, type ListSortKey } from "@/lib/list-view";
+import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useApiRefresh } from "@/lib/use-api-refresh";
-import EmptyState from "./EmptyState";
+import { useLive } from "@/lib/use-live";
 import { usePersistedViewState } from "@/lib/view-state-client";
-import BoardToolbar, { type BoardCardFields } from "./board/BoardToolbar";
+import { useRouter } from "next/navigation";
+import { Fragment, useCallback, useRef, useState } from "react";
 import BoardCard from "./board/BoardCard";
 import BoardSectionAdd from "./board/BoardSectionAdd";
-import { taskMatchesListFilters, parseListDateFilter, parseListGroupBy, parseListSortKey, type ListDateFilter, type ListFilters, type ListGroupBy, type ListSortKey } from "@/lib/list-view";
+import BoardToolbar, { type BoardCardFields } from "./board/BoardToolbar";
+import EmptyState from "./EmptyState";
 
 
 
@@ -520,12 +520,12 @@ function BoardViewContent({
       const fields: Record<string, unknown> = {};
       if ((moved.assignee_id ?? null) !== (g.assigneeId ?? null)) fields.assignee_id = g.assigneeId;
       if (position !== undefined && moved.project_id === projectId) fields.position = position;
-      if (Object.keys(fields).length > 0) await patchTask(taskId, fields);
+      if (Object.keys(fields).length > 0) await patchTaskFields(taskId, fields);
     } else if (g.status !== undefined) {
       const fields: Record<string, unknown> = {};
       if (moved.status !== g.status) fields.status = g.status;
       if (position !== undefined && moved.project_id === projectId) fields.position = position;
-      if (Object.keys(fields).length > 0) await patchTask(taskId, fields);
+      if (Object.keys(fields).length > 0) await patchTaskFields(taskId, fields);
     }
   };
 

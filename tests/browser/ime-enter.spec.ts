@@ -109,7 +109,7 @@ test("EV08 IME confirmation does not create list tasks or sections until a subse
   const sectionId = await add.getAttribute("data-section-add-task");
   await page.locator(`[data-list-section-header][data-section-id="${sectionId}"]`).hover();
   await add.click();
-  const taskName = page.locator(`[data-add-task-section="${sectionId}"]`);
+  const taskName = page.locator(`[data-list-section-block="${sectionId}"]`).getByRole("textbox", { name: "新しいタスク名", exact: true });
   await taskName.fill("日本語タスク作成");
   await confirmComposition(taskName, page);
   await expect(taskName).toBeFocused();

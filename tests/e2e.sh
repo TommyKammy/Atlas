@@ -1965,9 +1965,10 @@ for v in overview dashboard list board timeline calendar messages knowledge file
 done
 [[ "$ALLVIEWS" == "1" ]] && ok "all project views render" || bad "all project views render"
 EMPTYVIEWS=1
-for v in dashboard list board timeline messages knowledge files forms; do
+for v in dashboard list board timeline messages files forms; do
   grep -q "data-empty-state=\"$v\"" "$TMPD/v04-$v.html" || EMPTYVIEWS=0
 done
+grep -q 'ノートはまだありません' "$TMPD/v04-knowledge.html" || EMPTYVIEWS=0
 grep -q 'data-calendar-day=' "$TMPD/v04-calendar.html" || EMPTYVIEWS=0
 [[ "$EMPTYVIEWS" == "1" ]] && ok "empty states across views" || bad "empty states across views"
 [[ ! -f 'app/projects/[id]/loading.tsx' ]] && grep -q 'ErrorState' 'app/projects/[id]/error.tsx' && grep -q 'import ListView from "@/components/ListView"' 'app/projects/[id]/page.tsx' && grep -q 'dynamic(() => import("../BoardView"))' components/project/LazyViews.tsx && grep -q 'dynamic(() => import("../TimelineView"))' components/project/LazyViews.tsx && ok "project error boundary + view code splitting" || bad "project error boundary + view code splitting"

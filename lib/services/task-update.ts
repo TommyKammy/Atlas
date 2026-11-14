@@ -1,21 +1,24 @@
-import { NextResponse } from "next/server";
-import { db, withTransaction } from "@/lib/db";
-import { logEvent } from "@/lib/data";
-import { notifyProject, notifyTask } from "@/lib/notify";
+import { getTaskProjectContext, getTaskProjectId } from "@/lib/api-project-auth";
 import { audit } from "@/lib/audit";
-import { badRequest, conflict } from "@/lib/api/errors";
-import { getTaskProjectContext, getTaskProjectId, requireProjectPermission } from "@/lib/api-project-auth";
 import { runAutomations } from "@/lib/automation-runner";
+import { logEvent } from "@/lib/data";
+import { db, withTransaction } from "@/lib/db";
 import { emitTaskEvent } from "@/lib/domain/events";
-import { validateRichTextDoc } from "@/lib/rich-text-validation";
 import { normalizeMentionLabels } from "@/lib/mentions";
+import { notifyProject, notifyTask } from "@/lib/notify";
 import { docToMarkdown } from "@/lib/rich-text-markdown";
-import { validateTaskPatch } from "@/lib/services/task-write";
+import { validateRichTextDoc } from "@/lib/rich-text-validation";
 import { recordTaskCompletion, TASK_COMPLETION_COLUMNS, type TaskCompletionRow } from "@/lib/services/task-completion";
 import { mutateTaskTrees } from "@/lib/services/task-tree-mutation";
+import { validateTaskPatch } from "@/lib/services/task-write";
 import { assertOrdinaryTaskMutation } from "./task-approval-guard";
+import { TaskMutationFailure } from "./task-mutation-failure";
 
-type TaskHandlerContext = { taskId: number; uid: number; projectId: number | null };
+type TaskMutationContext = { taskId: number; uid: number; projectId: number | null };
+type TaskUpdateContext = TaskMutationContext & {
+  /** The caller must authorize every additional source/destination project. */
+  authorizeProject: (projectId: number) => Promise<void>;
+};
 type TaskBeforePatch = {
   name: string;
   completed: boolean;
@@ -46,13 +49,10 @@ const PATCHABLE = new Set([
 ]);
 
 export async function updateTask(
-  req: Request,
-  { taskId, uid, projectId: currentProjectId }: TaskHandlerContext,
-): Promise<Response> {
-  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 });
-  }
+  input: Record<string, unknown>,
+  { taskId, uid, projectId: currentProjectId, authorizeProject }: TaskUpdateContext,
+): Promise<{ id: number }> {
+  const body = { ...input };
 
   const currentRow = await db.query(
     `SELECT project_id, start_on::text AS start_on, due_on::text AS due_on
@@ -60,7 +60,7 @@ export async function updateTask(
     [taskId],
   );
   const current = currentRow.rows[0];
-  if (!current) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!current) throw new TaskMutationFailure("missing", "not found");
   const primaryProjectId = current.project_id as number | null;
 
   // The project that grants permission to edit shared fields may be a
@@ -72,18 +72,16 @@ export async function updateTask(
   if (editsPrimaryLayout) {
     const sourceProjectId = primaryProjectId ?? await getTaskProjectId(taskId);
     if (sourceProjectId !== null && sourceProjectId !== currentProjectId) {
-      const sourceAuth = await requireProjectPermission(req, sourceProjectId, "edit");
-      if (!sourceAuth.ok) return NextResponse.json({ error: sourceAuth.error }, { status: sourceAuth.status });
+      await authorizeProject(sourceProjectId);
     }
   }
   const defaultTargetProjectId = editsPrimaryLayout ? primaryProjectId ?? currentProjectId : currentProjectId;
   const targetProjectId = rawProject === undefined ? defaultTargetProjectId : Number(rawProject);
   if (targetProjectId === null || !Number.isInteger(targetProjectId) || targetProjectId <= 0) {
-    return NextResponse.json({ error: "project_id is required" }, { status: 400 });
+    throw new TaskMutationFailure("invalid", "project_id is required");
   }
   if (rawProject !== undefined && targetProjectId !== currentProjectId) {
-    const targetAuth = await requireProjectPermission(req, targetProjectId, "edit");
-    if (!targetAuth.ok) return NextResponse.json({ error: targetAuth.error }, { status: targetAuth.status });
+    await authorizeProject(targetProjectId);
   }
   const movesPrimary = rawProject !== undefined && targetProjectId !== primaryProjectId;
   if (movesPrimary) {
@@ -98,18 +96,17 @@ export async function updateTask(
     } else {
       const sectionId = Number(rawSection);
       if (!Number.isInteger(sectionId) || sectionId <= 0) {
-        return NextResponse.json({ error: "invalid section_id" }, { status: 400 });
+        throw new TaskMutationFailure("invalid", "invalid section_id");
       }
       const section = await db.query("SELECT project_id FROM sections WHERE id = $1::bigint", [sectionId]);
       if (section.rowCount === 0 || (rawProject !== undefined && section.rows[0].project_id !== targetProjectId)) {
-        return NextResponse.json({ error: "section does not belong to project" }, { status: 400 });
+        throw new TaskMutationFailure("invalid", "section does not belong to project");
       }
       sectionProjectId = section.rows[0].project_id as number;
       body.section_id = sectionId;
     }
     if (sectionProjectId !== currentProjectId && sectionProjectId !== targetProjectId) {
-      const sectionAuth = await requireProjectPermission(req, sectionProjectId, "edit");
-      if (!sectionAuth.ok) return NextResponse.json({ error: sectionAuth.error }, { status: sectionAuth.status });
+      await authorizeProject(sectionProjectId);
     }
   }
   const changesSecondarySection = "section_id" in body && rawProject === undefined && sectionProjectId !== primaryProjectId;
@@ -120,11 +117,11 @@ export async function updateTask(
     } else {
       const parentId = Number(rawParent);
       if (!Number.isInteger(parentId) || parentId <= 0 || parentId === taskId) {
-        return NextResponse.json({ error: "invalid parent_task_id" }, { status: 400 });
+        throw new TaskMutationFailure("invalid", "invalid parent_task_id");
       }
       const parentProjectId = await getTaskProjectId(parentId);
       if (parentProjectId !== targetProjectId) {
-        return NextResponse.json({ error: "parent task is in another project" }, { status: 400 });
+        throw new TaskMutationFailure("invalid", "parent task is in another project");
       }
       body.parent_task_id = parentId;
     }
@@ -136,11 +133,11 @@ export async function updateTask(
     } else {
       const assigneeId = Number(rawAssignee);
       if (!Number.isInteger(assigneeId) || assigneeId <= 0) {
-        return NextResponse.json({ error: "invalid assignee_id" }, { status: 400 });
+        throw new TaskMutationFailure("invalid", "invalid assignee_id");
       }
       const user = await db.query("SELECT id FROM users WHERE id = $1 AND deactivated_at IS NULL", [assigneeId]);
       if (user.rowCount === 0) {
-        return NextResponse.json({ error: "assignee not found" }, { status: 400 });
+        throw new TaskMutationFailure("invalid", "assignee not found");
       }
       body.assignee_id = assigneeId;
     }
@@ -158,7 +155,7 @@ export async function updateTask(
         maxDepth: 20,
       });
       if (!parsed.ok) {
-        return NextResponse.json({ error: `invalid description_doc: ${parsed.error}` }, { status: 400 });
+        throw new TaskMutationFailure("invalid", `invalid description_doc: ${parsed.error}`);
       }
       const normalized = await normalizeMentionLabels(parsed.doc, targetProjectId);
       body.description_doc = normalized;
@@ -174,7 +171,7 @@ export async function updateTask(
     due_on: (current.due_on as string | null) ?? null,
   });
   if (!validated.ok) {
-    return NextResponse.json({ error: validated.error }, { status: 400 });
+    throw new TaskMutationFailure("invalid", validated.error);
   }
   Object.assign(body, validated.values);
 
@@ -198,14 +195,14 @@ export async function updateTask(
     sets.push(body.completed ? "completed_at = CASE WHEN completed THEN completed_at ELSE now() END" : "completed_at = NULL");
   }
   if (sets.length === 0 && !changesSecondarySection) {
-    return NextResponse.json({ error: "no patchable fields" }, { status: 400 });
+    throw new TaskMutationFailure("invalid", "no patchable fields");
   }
   const expected = body.expected_updated_at;
-  const conflictResponse = async () => {
+  const rejectConflict = async (): Promise<never> => {
     const cur = await db.query("SELECT project_id, updated_at::text AS u FROM tasks WHERE id = $1::bigint", [taskId]);
-    if (cur.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+    if (cur.rowCount === 0) throw new TaskMutationFailure("missing", "not found");
     if (cur.rows[0].project_id !== primaryProjectId) {
-      return NextResponse.json({ error: "task primary project changed" }, { status: 409 });
+      throw new TaskMutationFailure("conflict", "task primary project changed");
     }
     const snap = await db.query(
       `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
@@ -216,15 +213,14 @@ export async function updateTask(
        WHERE t.id = $1::bigint`,
       [taskId],
     );
-    return NextResponse.json(
-      { error: "conflict", updated_at: cur.rows[0].u, current: snap.rows[0] ?? null },
-      { status: 409 },
-    );
+    throw new TaskMutationFailure("conflict", "conflict", {
+      updated_at: cur.rows[0].u, current: snap.rows[0] ?? null,
+    });
   };
   if (typeof expected === "string" && expected !== "") {
     const cur = await db.query("SELECT updated_at::text AS u FROM tasks WHERE id = $1::bigint", [taskId]);
-    if (cur.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-    if (cur.rows[0].u !== expected) return conflictResponse();
+    if (cur.rowCount === 0) throw new TaskMutationFailure("missing", "not found");
+    if (cur.rows[0].u !== expected) return rejectConflict();
   }
   values.push(taskId);
   let where = `id = $${values.length}::bigint`;
@@ -248,7 +244,7 @@ export async function updateTask(
          ) SELECT 1 FROM ancestors WHERE id = $1::bigint LIMIT 1`,
         [taskId, body.parent_task_id],
       );
-      if ((cycle.rowCount ?? 0) > 0) throw badRequest("parent task cycle");
+      if ((cycle.rowCount ?? 0) > 0) throw new TaskMutationFailure("invalid", "parent task cycle", { code: "bad_request" });
     }
     const before = await q.query<TaskBeforePatch>(
       `SELECT name, completed, assignee_id, status, section_id, start_on::text AS start_on,
@@ -268,7 +264,7 @@ export async function updateTask(
     if (!task) return null;
     if (!editsPrimaryLayout && currentProjectId !== null && currentProjectId !== primaryProjectId) {
       const context = await getTaskProjectContext(taskId, q);
-      if (!context?.projectIds.includes(currentProjectId)) throw conflict("task membership changed");
+      if (!context?.projectIds.includes(currentProjectId)) throw new TaskMutationFailure("conflict", "task membership changed", { code: "conflict" });
     }
     let previousSection = previousTask.section_id;
     if (changesSecondarySection) {
@@ -277,7 +273,7 @@ export async function updateTask(
          WHERE task_id = $1::bigint AND project_id = $2::bigint FOR UPDATE`,
         [taskId, sectionProjectId],
       );
-      if (membership.rowCount === 0) throw badRequest("section project is not a task membership");
+      if (membership.rowCount === 0) throw new TaskMutationFailure("invalid", "section project is not a task membership", { code: "bad_request" });
       previousSection = membership.rows[0].section_id as number | null;
       await q.query(
         `UPDATE task_project_memberships SET section_id = $3::bigint
@@ -358,7 +354,7 @@ export async function updateTask(
     }
     return { previousTask };
   });
-  if (result === null) return conflictResponse();
+  if (result === null) return rejectConflict();
   const log = (kind: string, summary: string) =>
     logEvent(taskId, uid, kind, summary).catch(() => undefined);
   const b = body as Record<string, unknown>;
@@ -406,18 +402,17 @@ export async function updateTask(
   await notifyTask(taskId);
   if (changesSecondarySection) await notifyProject(sectionProjectId);
   await audit(uid, "task.update", { entity: "task", entityId: taskId, summary: Object.keys(b).join(",") });
-  return NextResponse.json({ id: taskId });
+  return { id: taskId };
 }
 
 export async function deleteTask(
-  req: Request,
-  { taskId, uid, projectId }: TaskHandlerContext,
-): Promise<Response> {
-  const force = new URL(req.url).searchParams.get("force") === "1";
+  { force }: { force: boolean },
+  { taskId, uid, projectId }: TaskMutationContext,
+): Promise<{ deleted: number }> {
   const deleted = await mutateTaskTrees(new Map([[taskId, projectId]]), force ? "purge" : "trash");
-  if (deleted === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (deleted === 0) throw new TaskMutationFailure("missing", "not found");
   await notifyTask(taskId);
   await audit(uid, force ? "task.purge" : "task.delete", { entity: "task", entityId: taskId, projectId: projectId ?? undefined });
   if (!force) await logEvent(taskId, uid, "deleted", "タスクをゴミ箱に入れました").catch(() => undefined);
-  return NextResponse.json({ deleted: taskId });
+  return { deleted: taskId };
 }

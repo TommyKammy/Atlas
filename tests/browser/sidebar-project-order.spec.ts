@@ -79,6 +79,7 @@ test("project names retain clicks with small movement, modifier clicks and keybo
   const f = await fixture(page);
   let writes = 0;
   page.on("request", request => { if (request.method() === "POST" && request.url().endsWith(endpoint)) writes++; });
+  await item(page, f.ids[1]).scrollIntoViewIfNeeded();
   const bounds = (await item(page, f.ids[1]).locator("[data-reorder-label]").boundingBox())!;
   await page.mouse.move(bounds.x + 30, bounds.y + bounds.height / 2); await page.mouse.down();
   await page.mouse.move(bounds.x + 33, bounds.y + bounds.height / 2); await page.mouse.up();

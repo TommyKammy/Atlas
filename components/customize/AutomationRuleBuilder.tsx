@@ -1,136 +1,26 @@
 "use client";
 
-import { useState, type SetStateAction } from "react";
 import { api, ApiError } from "@/lib/api-client";
+import type {
+RuleDescriptors,
+} from "@/lib/automation/descriptors";
 import { ruleEditorDefinition, ruleEditorDraft, toggleRuleBranches, type RuleEditorDraft } from "@/lib/automation/editor-draft";
 import { configuredTaskId, hasTaskSubject } from "@/lib/automation/task-target";
 import type {
-  DescriptorOption,
-  DescriptorParam,
-  RuleDescriptors,
-} from "@/lib/automation/descriptors";
-import type {
-  ProjectRule,
-  RuleAction,
-  RuleCondition,
-  RuleDefinition,
-  RuleTrigger,
+ProjectRule,
+RuleAction,
+RuleCondition,
+RuleDefinition,
+RuleTrigger,
 } from "@/lib/automation/types";
 import { toast } from "@/lib/ui-feedback";
+import { useState, type SetStateAction } from "react";
 import Dialog from "../ui/Dialog";
-import AutomationCustomFieldValue from "./AutomationCustomFieldValue";
+import AutomationActionEditor, { defaultParams } from "./AutomationActionEditor";
 
 const inputClass =
   "mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[12px] outline-none focus:border-[#2c60b8]";
-const areaClass =
-  "mt-1 min-h-[68px] w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[12px] outline-none focus:border-[#2c60b8]";
-
-function actionWithParam(action: RuleAction, name: string, value: unknown): RuleAction {
-  const params = { ...action.params, [name]: value };
-  if (action.capability === "task.set_custom_field" && name === "field_id") params.value = undefined;
-  return { ...action, params };
-}
-
-function ActionParamField({ action, descriptors, param, value, onChange }: {
-  action: RuleAction;
-  descriptors: RuleDescriptors;
-  param: DescriptorParam;
-  value: unknown;
-  onChange: (value: unknown) => void;
-}) {
-  if (action.capability === "task.set_custom_field" && param.name === "value") {
-    const field = descriptors.customFields.find((entry) => entry.id === Number(action.params.field_id));
-    return (
-      <div>
-        <AutomationCustomFieldValue key={field?.id ?? "none"} field={field} value={value} onChange={onChange}
-          users={descriptors.conditionFields.find((entry) => entry.id === "task.assignee_id")?.options ?? []} />
-        {field && <button type="button" className="mt-1 text-[11px] text-neutral-500 hover:text-neutral-800"
-          onClick={() => onChange(null)}>値をクリア</button>}
-        {value === null && <p className="mt-1 text-[11px] text-neutral-500">実行すると値をクリアします。</p>}
-      </div>
-    );
-  }
-  return <ParamField param={param} value={value} onChange={onChange} />;
-}
-
 type RuleSuggestion = { name: string; description: string; definition: RuleDefinition };
-
-function defaultParams(paramDefs: DescriptorParam[]): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const param of paramDefs) {
-    if (param.type === "select" && param.options && param.options.length > 0) {
-      result[param.name] = param.options[0].value;
-    } else if (param.type === "number") {
-      result[param.name] = "";
-    } else {
-      result[param.name] = "";
-    }
-  }
-  return result;
-}
-
-function ParamField({
-  param,
-  value,
-  onChange,
-}: {
-  param: DescriptorParam;
-  value: unknown;
-  onChange: (value: unknown) => void;
-}) {
-  const label = (
-    <span className="block text-[11px] font-medium text-neutral-600">
-      {param.label}
-      {param.required ? <span className="ml-0.5 text-rose-500">*</span> : null}
-    </span>
-  );
-  if (param.type === "textarea") {
-    return (
-      <label className="block">
-        {label}
-        <textarea
-          value={String(value ?? "")}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={param.placeholder}
-          className={areaClass}
-        />
-        {param.help && <span className="mt-0.5 block text-[10px] text-neutral-400">{param.help}</span>}
-      </label>
-    );
-  }
-  if (param.type === "select") {
-    return (
-      <label className="block">
-        {label}
-        <select
-          value={String(value ?? "")}
-          onChange={(event) => onChange(event.target.value)}
-          className={inputClass}
-        >
-          {!param.required && <option value="">指定なし</option>}
-          {(param.options ?? []).map((option: DescriptorOption) => (
-            <option key={String(option.value)} value={String(option.value)}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-    );
-  }
-  return (
-    <label className="block">
-      {label}
-      <input
-        type={param.type === "number" || param.type === "date" || param.type === "password" ? param.type : "text"}
-        value={String(value ?? "")}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={param.placeholder}
-        className={inputClass}
-      />
-      {param.help && <span className="mt-0.5 block text-[10px] text-neutral-400">{param.help}</span>}
-    </label>
-  );
-}
 
 export default function AutomationRuleBuilder({
   projectId,
@@ -187,16 +77,6 @@ export default function AutomationRuleBuilder({
   const taskTriggersOnly = triggers.every((trigger) => hasTaskSubject(trigger.event));
   const needsTaskTarget = (requiresTask: boolean, taskId?: unknown) =>
     requiresTask && !taskTriggersOnly && configuredTaskId(taskId) === null;
-  const actionOptions = (current: RuleAction) => descriptors.actions.map((entry) => {
-    const taskId = entry.id === current.capability ? current.params.task_id : undefined;
-    const disabled = needsTaskTarget(entry.requiresTask, taskId);
-    return (
-      <option key={entry.id} value={entry.id} disabled={disabled}>
-        {entry.label}{disabled ? "（タスクが必要）" : ""}
-      </option>
-    );
-  });
-
   const addTrigger = () => {
     if (triggers.length >= descriptors.limits.triggersPerRule) return;
     setTriggers((current) => [...current, { event: "task.created" }]);
@@ -232,17 +112,6 @@ export default function AutomationRuleBuilder({
         actions: [blankAction()],
       },
     ]);
-  };
-
-  const setAction = (index: number, capability: string) => {
-    const descriptor = actionDescriptor(capability);
-    setActions((current) =>
-      current.map((action, actionIndex) =>
-        actionIndex === index
-          ? { capability, params: descriptor ? defaultParams(descriptor.params) : {} }
-          : action,
-      ),
-    );
   };
 
   const suggest = async () => {
@@ -894,94 +763,16 @@ export default function AutomationRuleBuilder({
                     </button>
                   </div>
                   <div className="mt-1 space-y-1.5">
-                    {branch.actions.map((action, actionIndex) => {
-                      const descriptor = actionDescriptor(action.capability);
-                      return (
-                        <div
-                          key={`branch-${branchIndex}-action-${actionIndex}`}
-                          className="rounded border border-neutral-100 bg-neutral-50 p-2"
-                        >
-                          <div className="flex items-end gap-2">
-                            <select
-                              value={action.capability}
-                              onChange={(event) => {
-                                const next = actionDescriptor(event.target.value);
-                                setBranches((current) =>
-                                  current.map((entry, entryIndex) =>
-                                    entryIndex === branchIndex
-                                      ? {
-                                          ...entry,
-                                          actions: entry.actions.map((item, itemIndex) =>
-                                            itemIndex === actionIndex
-                                              ? {
-                                                  capability: event.target.value,
-                                                  params: next ? defaultParams(next.params) : {},
-                                                }
-                                              : item,
-                                          ),
-                                        }
-                                      : entry,
-                                  ),
-                                );
-                              }}
-                              className={inputClass}
-                            >
-                              {actionOptions(action)}
-                            </select>
-                            <button
-                              type="button"
-                              aria-label="アクションを削除"
-                              onClick={() =>
-                                setBranches((current) =>
-                                  current.map((entry, entryIndex) =>
-                                    entryIndex === branchIndex
-                                      ? {
-                                          ...entry,
-                                          actions: entry.actions.filter(
-                                            (_, itemIndex) => itemIndex !== actionIndex,
-                                          ),
-                                        }
-                                      : entry,
-                                  ),
-                                )
-                              }
-                              className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
-                            >
-                              ×
-                            </button>
-                          </div>
-                          {descriptor && descriptor.params.length > 0 && (
-                            <div className="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                              {descriptor.params.map((param) => (
-                                <ActionParamField
-                                  key={param.name}
-                                  action={action}
-                                  descriptors={descriptors}
-                                  param={param}
-                                  value={action.params[param.name]}
-                                  onChange={(value) =>
-                                    setBranches((current) =>
-                                      current.map((entry, entryIndex) =>
-                                        entryIndex === branchIndex
-                                          ? {
-                                              ...entry,
-                                              actions: entry.actions.map((item, itemIndex) =>
-                                                itemIndex === actionIndex
-                                                  ? actionWithParam(item, param.name, value)
-                                                  : item,
-                                              ),
-                                            }
-                                          : entry,
-                                      ),
-                                    )
-                                  }
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {branch.actions.map((action, actionIndex) => (
+                      <AutomationActionEditor key={`branch-${branchIndex}-action-${actionIndex}`}
+                        action={action} descriptors={descriptors} taskTriggersOnly={taskTriggersOnly} compact
+                        onUpdate={(update) => setBranches((current) => current.map((entry, index) => index === branchIndex
+                          ? { ...entry, actions: entry.actions.map((item, index) => index === actionIndex ? update(item) : item) }
+                          : entry))}
+                        onRemove={() => setBranches((current) => current.map((entry, index) => index === branchIndex
+                          ? { ...entry, actions: entry.actions.filter((_, index) => index !== actionIndex) }
+                          : entry))} />
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1012,65 +803,12 @@ export default function AutomationRuleBuilder({
             </button>
           </div>
           <div className="mt-2 space-y-2">
-            {actions.map((action, index) => {
-              const descriptor = actionDescriptor(action.capability);
-              return (
-                <div
-                  key={`action-${index}`}
-                  className="rounded-lg border border-neutral-200 bg-white p-3"
-                >
-                  <div className="flex items-end gap-2">
-                    <label className="min-w-0 flex-1 text-[11px] text-neutral-600">
-                      アクション
-                      <select
-                        value={action.capability}
-                        onChange={(event) => setAction(index, event.target.value)}
-                        className={inputClass}
-                      >
-                        {actionOptions(action)}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      aria-label="アクションを削除"
-                      onClick={() =>
-                        setActions((current) =>
-                          current.filter((_, entryIndex) => entryIndex !== index),
-                        )
-                      }
-                      className="mb-0.5 flex h-8 w-8 items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  {descriptor && descriptor.params.length > 0 && (
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {descriptor.params.map((param) => (
-                        <ActionParamField
-                          key={param.name}
-                          action={action}
-                          descriptors={descriptors}
-                          param={param}
-                          value={action.params[param.name]}
-                          onChange={(value) =>
-                            setActions((current) =>
-                              current.map((entry, entryIndex) =>
-                                entryIndex === index
-                                  ? actionWithParam(entry, param.name, value)
-                                  : entry,
-                              ),
-                            )
-                          }
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {descriptor?.description && (
-                    <p className="mt-1 text-[10px] text-neutral-400">{descriptor.description}</p>
-                  )}
-                </div>
-              );
-            })}
+            {actions.map((action, index) => (
+              <AutomationActionEditor key={`action-${index}`} action={action} descriptors={descriptors}
+                taskTriggersOnly={taskTriggersOnly}
+                onUpdate={(update) => setActions((current) => current.map((entry, entryIndex) => entryIndex === index ? update(entry) : entry))}
+                onRemove={() => setActions((current) => current.filter((_, entryIndex) => entryIndex !== index))} />
+            ))}
           </div>
         </section>
         )}

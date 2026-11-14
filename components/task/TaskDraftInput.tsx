@@ -51,6 +51,7 @@ export default function TaskDraftInput({ taskId, field, value, updatedAt, recove
       readOnly={readOnly || !ready}
       aria-label={label}
       data-task-draft-field={field}
+      data-task-draft-version={current.baseUpdatedAt}
       data-task-draft-ready={ready ? "true" : "false"}
       placeholder={placeholder}
       className={className}

@@ -1,10 +1,10 @@
-import { db } from "../db";
-import { PROJECT_STATUS_COLORS } from "../project-status";
-import { CONDITION_OPERATORS, RULE_LIMITS } from "./types";
 import { isCustomFieldType, isReadOnlyFieldType, normalizeCustomFieldConfig, type CustomField } from "../custom-fields";
+import { db } from "../db";
 import { canEditFieldValue } from "../field-access";
-import { SCHEDULED_TRIGGER_DEFAULTS } from "./trigger-defaults";
+import { PROJECT_STATUS_COLORS } from "../project-status";
 import { customConditionType, type ConditionType } from "./condition-schema";
+import { SCHEDULED_TRIGGER_DEFAULTS } from "./trigger-defaults";
+import { CONDITION_OPERATORS, RULE_LIMITS } from "./types";
 
 export type DescriptorOption = { value: string | number; label: string };
 
@@ -102,22 +102,24 @@ export type ActionCapability = {
  * Single source of truth for action ids, labels and required params.
  * The rule builder's dynamic params and API validation both derive from this.
  */
-export const ACTION_CAPABILITIES: ActionCapability[] = [
-  { id: "task.assign", label: "担当者を変更", description: "タスクの担当者を設定・変更します。", requiresTask: true, requiredParams: ["user_id"] },
-  { id: "task.set_status", label: "Statusを変更", description: "タスクのStatusを変更します。", requiresTask: true, requiredParams: ["status"] },
-  { id: "task.set_due_date", label: "期日を変更", description: "期日を指定日付、または今日からの日数で設定します。", requiresTask: true, requiredParams: [] },
-  { id: "task.move_section", label: "セクションを移動", description: "タスクを指定セクションに移動します。", requiresTask: true, requiredParams: ["section_id"] },
-  { id: "task.complete", label: "タスクを完了", description: "タスクを完了状態にします。", requiresTask: true, requiredParams: [] },
-  { id: "task.create", label: "タスクを作成", description: "プロジェクトに新しいタスクを作成します。", requiresTask: false, requiredParams: ["name"] },
-  { id: "task.add_comment", label: "コメントを追加", description: "タスクにコメントを投稿します。変数が使えます。", requiresTask: true, requiredParams: ["body"] },
-  { id: "task.create_subtask", label: "サブタスクを作成", description: "対象タスクの下にサブタスクを作成します。", requiresTask: true, requiredParams: ["name"] },
-  { id: "task.set_custom_field", label: "カスタムフィールドを設定", description: "指定フィールドに値を設定します。", requiresTask: true, requiredParams: ["field_id"] },
-  { id: "project.set_status", label: "プロジェクトステータスを更新", description: "プロジェクトの現在ステータスを更新します。", requiresTask: false, requiredParams: ["status"] },
-  { id: "task.add_to_project", label: "別プロジェクトに追加", description: "タスクを別プロジェクトにマルチホームします。", requiresTask: true, requiredParams: ["project_id"] },
-  { id: "webhook.post", label: "Webhookを送信", description: "外部URLへJSONをPOSTします。", requiresTask: false, requiredParams: ["url"] },
-];
+export const ACTION_CAPABILITIES = [
+  { id: "task.assign" as const, label: "担当者を変更", description: "タスクの担当者を設定・変更します。", requiresTask: true, requiredParams: ["user_id"] },
+  { id: "task.set_status" as const, label: "Statusを変更", description: "タスクのStatusを変更します。", requiresTask: true, requiredParams: ["status"] },
+  { id: "task.set_due_date" as const, label: "期日を変更", description: "期日を指定日付、または今日からの日数で設定します。", requiresTask: true, requiredParams: [] },
+  { id: "task.move_section" as const, label: "セクションを移動", description: "タスクを指定セクションに移動します。", requiresTask: true, requiredParams: ["section_id"] },
+  { id: "task.complete" as const, label: "タスクを完了", description: "タスクを完了状態にします。", requiresTask: true, requiredParams: [] },
+  { id: "task.create" as const, label: "タスクを作成", description: "プロジェクトに新しいタスクを作成します。", requiresTask: false, requiredParams: ["name"] },
+  { id: "task.add_comment" as const, label: "コメントを追加", description: "タスクにコメントを投稿します。変数が使えます。", requiresTask: true, requiredParams: ["body"] },
+  { id: "task.create_subtask" as const, label: "サブタスクを作成", description: "対象タスクの下にサブタスクを作成します。", requiresTask: true, requiredParams: ["name"] },
+  { id: "task.set_custom_field" as const, label: "カスタムフィールドを設定", description: "指定フィールドに値を設定します。", requiresTask: true, requiredParams: ["field_id"] },
+  { id: "project.set_status" as const, label: "プロジェクトステータスを更新", description: "プロジェクトの現在ステータスを更新します。", requiresTask: false, requiredParams: ["status"] },
+  { id: "task.add_to_project" as const, label: "別プロジェクトに追加", description: "タスクを別プロジェクトにマルチホームします。", requiresTask: true, requiredParams: ["project_id"] },
+  { id: "webhook.post" as const, label: "Webhookを送信", description: "外部URLへJSONをPOSTします。", requiresTask: false, requiredParams: ["url"] },
+] satisfies ActionCapability[];
 
-export const ACTION_IDS = new Set(ACTION_CAPABILITIES.map((action) => action.id));
+export type ActionCapabilityId = (typeof ACTION_CAPABILITIES)[number]["id"];
+
+export const ACTION_IDS = new Set<string>(ACTION_CAPABILITIES.map((action) => action.id));
 
 export function requiredActionParams(capability: string): string[] {
   return ACTION_CAPABILITIES.find((action) => action.id === capability)?.requiredParams ?? [];

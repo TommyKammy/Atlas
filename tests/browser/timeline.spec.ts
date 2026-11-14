@@ -30,12 +30,22 @@ test("timeline end resize keeps the left edge fixed", async ({ page }) => {
 
   try {
     await page.goto(`/projects/1?view=timeline&zoom=2`);
+    // SSR bars can be visible before their pointer handlers have hydrated.
+    const drawer = page.locator("[data-project-customize-drawer]");
+    await expect(async () => {
+      if (!await drawer.isVisible()) await page.locator("[data-project-customize]").click();
+      await expect(drawer).toBeVisible({ timeout: 500 });
+    }).toPass({ timeout: 5000 });
+    await drawer.getByRole("button", { name: "閉じる", exact: true }).click();
     const row = page.locator(`[data-timeline-row="${id}"]`);
     const bar = row.locator(`[data-timeline-bar="${id}"]`);
     await expect(bar).toBeVisible();
     await bar.scrollIntoViewIfNeeded();
+    // Single-day bars expose resize handles only while their marker is hovered.
+    await bar.hover();
     const startHandle = row.locator('[data-timeline-handle="start"]');
     const endHandle = row.locator('[data-timeline-handle="end"]');
+    await expect(endHandle).toHaveCSS("pointer-events", "auto");
     const startBefore = await startHandle.boundingBox();
     const endBefore = await endHandle.boundingBox();
     expect(startBefore).not.toBeNull();
@@ -87,12 +97,22 @@ test("timeline start resize keeps the right edge fixed", async ({ page }) => {
 
   try {
     await page.goto(`/projects/1?view=timeline&zoom=2`);
+    // SSR bars can be visible before their pointer handlers have hydrated.
+    const drawer = page.locator("[data-project-customize-drawer]");
+    await expect(async () => {
+      if (!await drawer.isVisible()) await page.locator("[data-project-customize]").click();
+      await expect(drawer).toBeVisible({ timeout: 500 });
+    }).toPass({ timeout: 5000 });
+    await drawer.getByRole("button", { name: "閉じる", exact: true }).click();
     const row = page.locator(`[data-timeline-row="${id}"]`);
     const bar = row.locator(`[data-timeline-bar="${id}"]`);
     await expect(bar).toBeVisible();
     await bar.scrollIntoViewIfNeeded();
+    // Single-day bars expose resize handles only while their marker is hovered.
+    await bar.hover();
     const startHandle = row.locator('[data-timeline-handle="start"]');
     const endHandle = row.locator('[data-timeline-handle="end"]');
+    await expect(endHandle).toHaveCSS("pointer-events", "auto");
     const startBefore = await startHandle.boundingBox();
     const endBefore = await endHandle.boundingBox();
     expect(startBefore).not.toBeNull();
@@ -143,10 +163,19 @@ test("task context menu supports arrow navigation and Escape", async ({ page }) 
 
   try {
     await page.goto(`/projects/1?view=timeline&zoom=2`);
+    // SSR bars can be visible before their pointer handlers have hydrated.
+    const drawer = page.locator("[data-project-customize-drawer]");
+    await expect(async () => {
+      if (!await drawer.isVisible()) await page.locator("[data-project-customize]").click();
+      await expect(drawer).toBeVisible({ timeout: 500 });
+    }).toPass({ timeout: 5000 });
+    await drawer.getByRole("button", { name: "閉じる", exact: true }).click();
     const row = page.locator(`[data-timeline-row="${id}"]`);
     const bar = row.locator(`[data-timeline-bar="${id}"]`);
     await expect(bar).toBeVisible();
     await bar.scrollIntoViewIfNeeded();
+    // Single-day bars expose resize handles only while their marker is hovered.
+    await bar.hover();
     await bar.click({ button: "right" });
 
     const menu = page.locator("[data-task-context-menu]");

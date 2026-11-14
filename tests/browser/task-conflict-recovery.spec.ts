@@ -135,12 +135,16 @@ for (const field of ["name", "progress"] as const) {
     page.on("response", (response) => {
       if (response.url().endsWith(`/api/tasks/${taskId}`) && response.request().method() === "PATCH") writes.push(response.status());
     });
+    const previousVersion = await input.getAttribute("data-task-draft-version");
     await input.fill(raw);
     const saved = page.waitForResponse((response) => response.url().endsWith(`/api/tasks/${taskId}`) && response.request().method() === "PATCH");
     await input.blur();
     expect((await saved).status()).toBe(200);
     await expect(input).toHaveValue(normalized);
     await expect(async () => expect(String((await readTask(page, projectId, taskId))[field])).toBe(normalized)).toPass();
+    // Normalization is immediate, but it does not acknowledge the save's lock version.
+    // Wait for the server refresh to reach the editor before testing a second blur.
+    await expect(input).not.toHaveAttribute("data-task-draft-version", previousVersion!);
     await input.focus();
     await input.blur();
     await expect(pane.getByRole("button", { name: "破棄して最新表示", exact: true })).toHaveCount(0);

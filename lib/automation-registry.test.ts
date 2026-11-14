@@ -31,3 +31,14 @@ test("every required param is a declared action param name", () => {
     }
   }
 });
+
+// Runtime coverage supplements the compile-time registry check.
+test("every advertised capability has exactly one server executor", async () => {
+  const { CAPABILITY_HANDLERS } = await import("./capabilities/handlers");
+  assert.deepEqual(Object.keys(CAPABILITY_HANDLERS).sort(), [...ACTION_IDS].sort());
+  const { executeCapability } = await import("./capabilities");
+  await assert.rejects(() => executeCapability("toString", {}, {
+    actorId: 1, source: "manual", projectId: 1, chainDepth: 0,
+    q: { query: async () => { throw new Error("unexpected query"); } },
+  }), /unknown capability: toString/);
+});
