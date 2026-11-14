@@ -179,7 +179,17 @@ test("touch name drag works on a narrow screen without horizontal overflow", asy
     const b = (await mobile.locator(`[data-note-row="${f.ids[2]}"]`).boundingBox())!;
     const session = await context.newCDPSession(mobile);
     await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: a.x + 10, y: a.y + 10 }] });
-    await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: b.x + 30, y: b.y + b.height - 8 }] });
+    // Send a paced drag, not an instantaneous full-row jump. Linux Chromium
+    // otherwise consumes the following tap instead of generating its click.
+    const start = { x: a.x + 10, y: a.y + 10 };
+    const end = { x: b.x + 30, y: b.y + b.height - 8 };
+    for (let step = 1; step <= 10; step++) {
+      await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{
+        x: start.x + (end.x - start.x) * step / 10,
+        y: start.y + (end.y - start.y) * step / 10,
+      }] });
+      await mobile.waitForTimeout(40);
+    }
     await expect(mobile.locator("[data-note-drop]")).toHaveCount(1);
     await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect(mobile.locator("[data-note-order-status]")).toHaveText("並び順を保存しました");
