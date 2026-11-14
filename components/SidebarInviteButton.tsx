@@ -11,7 +11,7 @@ export default function SidebarInviteButton() {
         type="button"
         data-sidebar-invite
         onClick={() => setOpen(true)}
-        className="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-white/15 bg-white/5 px-2 text-center text-[13px] text-neutral-200 hover:bg-white/10"
+        className="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-[#424242] bg-white/5 px-2 text-center text-[14px] text-[#F3F3F3] hover:bg-white/10"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5">
           <circle cx="9" cy="8" r="3" />

@@ -10,7 +10,7 @@ import { taskSectionId } from "./task-section";
 import { TIMELINE_AXIS_HEIGHT, TIMELINE_ROW_PITCH } from "./timeline-metrics";
 import type { TimelineSortKey } from "./use-timeline-filters";
 
-export type TimelineDraftPosition = { sectionId: number | null } | null;
+export type TimelineDraftPosition = { sectionId: number | null; lane: number } | null;
 
 export type TimelineGroup = {
   section: Section;
@@ -137,7 +137,7 @@ export function useTimelineLayout({
       // The section header shares the first lane; each additional lane adds a row.
       const height = isCollapsed
         ? TIMELINE_ROW_PITCH
-        : lanes * TIMELINE_ROW_PITCH + (hasDraft ? TIMELINE_ROW_PITCH : 0);
+        : lanes * TIMELINE_ROW_PITCH;
       const occupantsByLane = new Map<number, number[]>();
       for (const [id, lane] of laneById) {
         const occupants = occupantsByLane.get(lane) ?? [];

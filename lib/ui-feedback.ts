@@ -6,10 +6,16 @@ export type ConfirmOptions = {
   cancelLabel?: string;
 };
 
+export type ToastOptions = {
+  actionLabel?: string;
+  action?: () => void;
+  duration?: number;
+};
+
 /** Fire a global toast (rendered by FeedbackHost). */
-export function toast(message: string): void {
+export function toast(message: string, options: ToastOptions = {}): void {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent("atlas:toast", { detail: { message } }));
+  window.dispatchEvent(new CustomEvent("atlas:toast", { detail: { message, ...options } }));
 }
 
 /** Show a global confirmation dialog and resolve to the user's choice. */

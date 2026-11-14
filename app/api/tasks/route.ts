@@ -17,10 +17,7 @@ export const POST = withUser(async (req, { uid }) => {
     }
     isMilestone = body.is_milestone;
   }
-  if (body.quick_add !== undefined && typeof body.quick_add !== "boolean") {
-    return NextResponse.json({ error: "quick_add must be a boolean" }, { status: 400 });
-  }
-  if (typeof name !== "string" || (!body.quick_add && name.trim() === "")) {
+  if (typeof name !== "string" || name.trim() === "") {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
   if (project_id === null || project_id === undefined || project_id === "") {
@@ -64,7 +61,7 @@ export const POST = withUser(async (req, { uid }) => {
   const start = dateOrNull(start_on);
   const due = dateOrNull(due_on);
   const id = await withTransaction(q => insertTask(q, {
-    projectId, sectionId, parentId, name: name.trim(), start, due, assigneeId, uid, isMilestone, prepend: body.quick_add === true,
+    projectId, sectionId, parentId, name: name.trim(), start, due, assigneeId, uid, isMilestone,
   }));
   await afterTaskCreated(projectId, id, uid, name);
   const stamp = await db.query("SELECT updated_at::text AS updated_at FROM tasks WHERE id = $1", [id]);

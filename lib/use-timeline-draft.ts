@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatDay } from "./calendar";
 import { toast } from "./ui-feedback";
 
-export type TimelineDraft = { sectionId: number | null; day: number; key: number } | null;
+export type TimelineDraft = { sectionId: number | null; day: number; lane: number; key: number } | null;
 
 /** Inline timeline draft: focus management, creation and reveal-on-create. */
 export function useTimelineDraft({
@@ -29,10 +29,10 @@ export function useTimelineDraft({
     return () => cancelAnimationFrame(raf);
   }, [draft?.key, draft]);
 
-  const openDraft = (sectionId: number | null, day: number) => {
+  const openDraft = (sectionId: number | null, day: number, lane: number) => {
     expandSection(sectionId);
     seq.current += 1;
-    const next: TimelineDraft = { sectionId, day, key: seq.current };
+    const next: TimelineDraft = { sectionId, day, lane, key: seq.current };
     draftRef.current = next;
     setDraft(next);
   };
@@ -61,6 +61,16 @@ export function useTimelineDraft({
         return;
       }
       const created = await res.json();
+      // Asana keeps a click-created task in the row the user clicked. Rows
+      // below the first lane are explicit placements, so pin them; lane 0 is
+      // the automatic packing row and needs no pin.
+      if (current.lane > 0 && typeof created.id === "number") {
+        await fetch(`/api/tasks/${created.id}/timeline-row`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ project_id: projectId, row_index: current.lane }),
+        }).catch(() => undefined);
+      }
       onCreated(typeof created.id === "number" ? created.id : null);
       refresh();
     })();

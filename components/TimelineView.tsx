@@ -269,8 +269,8 @@ function TimelineViewContent({
     onCreated: setRevealBarId,
   });
 
-  const openDraft = (sectionId: number | null, day: number) => {
-    openDraftBase(sectionId, day);
+  const openDraft = (sectionId: number | null, day: number, lane: number) => {
+    openDraftBase(sectionId, day, lane);
     setHover(null);
   };
 
@@ -455,7 +455,13 @@ function TimelineViewContent({
     if (y < AXIS_H) return;
     const group = sectionAtY(y);
     if (!group) return;
-    openDraft(group.sectionId, dayAtX(e.clientX));
+    // Match Asana: the inline composer opens in the clicked lane, not always
+    // in a new row below the section.
+    const lane = Math.min(
+      Math.max(0, Math.floor((y - group.top) / ROW_PITCH)),
+      Math.max(0, group.laneCount - 1),
+    );
+    openDraft(group.sectionId, dayAtX(e.clientX), lane);
   };
 
   const onCanvasMove = (e: React.PointerEvent) => {
@@ -756,7 +762,6 @@ function TimelineViewContent({
                     data-timeline-lane-spacer={`${group.section.id}-${index}`}
                   />
                 ))}
-              {group.hasDraft && <div className="h-10" />}
               <span data-timeline-group-line className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[#e1e1e1]" />
             </div>
           ))}
@@ -855,12 +860,12 @@ function TimelineViewContent({
                   })}
                 {group.hasDraft && draft && (
                   <div
-                    className="absolute inset-x-0 h-10"
-                    style={{ top: group.laneCount * ROW_PITCH }}
+                    className="absolute inset-x-0 z-20 h-10"
+                    style={{ top: Math.min(draft.lane, Math.max(0, group.laneCount - 1)) * ROW_PITCH }}
                     data-timeline-draft
                   >
                     <div
-                      className="tl-bar absolute top-[3px] z-10 flex items-center rounded-[4px] bg-white px-2 text-[13px] text-[#050505] ring-2 ring-[#2c60b8]"
+                      className="tl-bar absolute top-[3px] z-10 flex items-center rounded-[4px] bg-white px-2 text-[13px] text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]"
                       style={{
                         height: BAR_H,
                         left: pct(draft.day),

@@ -2,6 +2,7 @@
 import { QuickTaskName } from "../task/QuickTaskContext";
 
 import { isImeComposing } from "@/lib/ime-keyboard";
+import { isQuickTask } from "@/lib/quick-task";
 
 import { Fragment, useRef, useState } from "react";
 import type { CustomField, CustomValue } from "@/lib/custom-fields";
@@ -281,11 +282,13 @@ export default function TaskListRow({
         if (dragId) moveTask(dragId, t, before);
       }}
       className={`group grid min-h-[37px] cursor-pointer items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-[#eaeaea] border-b border-[#eaeaea] px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${compactCells} ${
-        selected.has(t.id)
+        isQuickTask(t)
           ? "bg-[#eff4fd]"
-          : t.id === activeTaskId
+          : selected.has(t.id)
             ? "bg-[#eff4fd]"
-            : "hover:bg-neutral-50"
+            : t.id === activeTaskId
+              ? "bg-[#eff4fd]"
+              : "hover:bg-neutral-50"
       } ${
         dropHint?.id === t.id
           ? dropHint.before

@@ -163,6 +163,13 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
     box-shadow: none !important;
   }
 
+  /* Asana parity: inline timeline drafts rely on the caret and hairline bar,
+     not the global keyboard focus ring. */
+  [data-timeline-draft] input:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   :where(button, a, summary, [tabindex]):not(:disabled) {
     cursor: pointer;
   }

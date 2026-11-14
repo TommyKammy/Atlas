@@ -106,13 +106,13 @@ export default async function SidebarNav() {
   const recents = me ? await getRecentProjects(me.id) : [];
 
   const item =
-    "flex h-8 items-center gap-2 rounded-md px-2 text-[14px] text-neutral-300 hover:bg-white/10";
-  const label = "px-2 pt-4 pb-1 text-[11px] font-medium tracking-wide text-neutral-400";
+    "flex h-8 items-center gap-2 rounded-md px-2 text-[14px] leading-[22px] text-[#E5E5E5] hover:bg-white/10";
+  const label = "px-2 pt-4 pb-1 text-[12px] font-normal tracking-normal text-[#A0A0A0]";
   const favoriteIds = new Set(favorites.map((f) => f.id));
 
   return (
     <>
-      <div className="flex h-10 shrink-0 items-center px-3 text-[12px] font-medium text-neutral-400">
+      <div className="flex h-10 shrink-0 items-center px-3 text-[14px] font-normal text-[#F3F3F3]">
         <span className="truncate">{ws?.name ?? "Atlas"}</span>
       </div>
       <nav data-reorder-scroll data-sidebar-navigation className="flex-1 overflow-y-auto px-2 pb-4 text-sm">
@@ -120,6 +120,7 @@ export default async function SidebarNav() {
           <NavLink key={entry.key} item={entry} className={item} unread={entry.key === "inbox" ? unread : 0} />
         ))}
         {me?.is_admin && <NavLink item={ADMIN_NAV} className={item} />}
+        <div aria-hidden className="my-2 border-t border-[#505050]" />
         {favorites.length > 0 && (
           <>
             <div className={label}>{NAV_LABELS.favorites}</div>
@@ -143,7 +144,7 @@ export default async function SidebarNav() {
                 key={p.id}
                 project={p}
                 href={`/projects/${p.id}`}
-                className={`${item} text-neutral-300`}
+                className={item}
                 starred={favoriteIds.has(p.id)}
               />
             ))}
@@ -158,7 +159,7 @@ export default async function SidebarNav() {
         {projects.length === 0 && <div className="px-3 py-1.5 text-neutral-500">（なし）</div>}
       </nav>
       {me?.is_admin && (
-        <div className="border-t border-white/10 p-2">
+        <div className="border-t border-[#333333] p-2">
           <SidebarInviteButton />
         </div>
       )}

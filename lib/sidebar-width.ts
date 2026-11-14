@@ -1,5 +1,5 @@
 export const SIDEBAR_WIDTH_COOKIE = "atlas_sidebar_width";
-export const SIDEBAR_DEFAULT_WIDTH = 244;
+export const SIDEBAR_DEFAULT_WIDTH = 252;
 export const SIDEBAR_MIN_WIDTH = 220;
 export const SIDEBAR_MAX_WIDTH = 480;
 export const SIDEBAR_CONTENT_MIN_WIDTH = 480;

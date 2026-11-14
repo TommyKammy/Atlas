@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { hasTaskUndo, undoLastTaskDeletion } from "@/lib/task-undo";
 import Dialog from "./Dialog";
 
-type ToastItem = { id: number; message: string };
+type ToastItem = { id: number; message: string; actionLabel?: string; action?: () => void };
 type ConfirmRequest = {
   message: string;
   title?: string;
@@ -20,12 +21,22 @@ export default function FeedbackHost() {
 
   useEffect(() => {
     const onToast = (event: Event) => {
-      const detail = (event as CustomEvent<{ message?: string }>).detail;
+      const detail = (event as CustomEvent<{
+        message?: string;
+        actionLabel?: string;
+        action?: unknown;
+        duration?: number;
+      }>).detail;
       const message = typeof detail?.message === "string" ? detail.message : "";
       if (message === "") return;
-      setToastItem({ id: Date.now(), message });
+      const action = typeof detail.action === "function" ? detail.action as () => void : undefined;
+      const actionLabel = action && typeof detail.actionLabel === "string" ? detail.actionLabel : undefined;
+      setToastItem({ id: Date.now(), message, action, actionLabel });
       if (toastTimer.current) window.clearTimeout(toastTimer.current);
-      toastTimer.current = window.setTimeout(() => setToastItem(null), 2800);
+      const duration = typeof detail.duration === "number" && detail.duration > 0
+        ? detail.duration
+        : action ? 6000 : 2800;
+      toastTimer.current = window.setTimeout(() => setToastItem(null), duration);
     };
     const onConfirm = (event: Event) => {
       const detail = (event as CustomEvent<ConfirmRequest>).detail;
@@ -44,10 +55,33 @@ export default function FeedbackHost() {
     };
   }, []);
 
+  useEffect(() => {
+    const onUndo = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.isComposing) return;
+      if (event.key.toLowerCase() !== "z" || !hasTaskUndo()) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      void undoLastTaskDeletion();
+    };
+    window.addEventListener("keydown", onUndo);
+    return () => window.removeEventListener("keydown", onUndo);
+  }, []);
+
   const finish = (ok: boolean) => {
     const request = confirmRequest;
     setConfirmRequest(null);
     request?.resolve(ok);
+  };
+
+  const runToastAction = () => {
+    const action = toastItem?.action;
+    setToastItem(null);
+    if (toastTimer.current) {
+      window.clearTimeout(toastTimer.current);
+      toastTimer.current = null;
+    }
+    action?.();
   };
 
   return (
@@ -57,16 +91,26 @@ export default function FeedbackHost() {
           key={toastItem.id}
           role="status"
           data-toast
-          className="fixed bottom-6 left-1/2 z-[140] -translate-x-1/2 rounded-md bg-neutral-900 px-4 py-2 text-sm text-white shadow-lg"
+          className="fixed bottom-6 left-1/2 z-[140] flex -translate-x-1/2 items-center gap-3 rounded-md bg-neutral-900 px-4 py-2 text-sm text-white shadow-lg"
         >
-          {toastItem.message}
+          <span>{toastItem.message}</span>
+          {toastItem.action && (
+            <button
+              type="button"
+              data-toast-action
+              onClick={runToastAction}
+              className="shrink-0 rounded px-1.5 py-0.5 text-sm font-medium text-[#8ab4f8] underline-offset-2 hover:bg-white/10 hover:underline"
+            >
+              {toastItem.actionLabel ?? "元に戻す"}
+            </button>
+          )}
         </div>
       )}
       <Dialog
         open={confirmRequest !== null}
         onClose={() => finish(false)}
         title={confirmRequest?.title ?? "確認"}
-        backdropClassName="fixed inset-0 z-[130] flex items-center justify-center bg-black/30 p-4"
+        backdropClassName="fixed inset-0 z-[200] flex items-center justify-center bg-black/30 p-4"
         panelClassName="w-[min(440px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
       >
         <div className="p-5">

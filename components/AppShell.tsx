@@ -35,12 +35,12 @@ export default async function AppShell({
       </header>
       <div className="flex min-h-0 flex-1">
         <ResizableSidebar collapsed={collapsed} initialWidth={sidebarWidth}>
-          <div className="flex w-16 shrink-0 flex-col border-r border-white/10">
+          <div className="flex w-16 shrink-0 flex-col">
             <SidebarRail collapsed={collapsed} />
             <SidebarRailFooter />
           </div>
           {!collapsed && (
-            <div id="atlas-sidebar-content" className="flex min-w-0 flex-1 flex-col">
+            <div id="atlas-sidebar-content" className="flex min-w-0 flex-1 flex-col rounded-tl-[12px] border-t border-l border-[#505050]">
               <Suspense fallback={<div className="p-4 text-sm text-neutral-500">読み込み中…</div>}>
                 <SidebarNav />
               </Suspense>

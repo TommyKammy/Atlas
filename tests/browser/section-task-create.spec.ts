@@ -64,12 +64,18 @@ for (const width of [1440, 390]) for (const view of ["list", "board"]) test(`${v
 });
 for (const view of ["list", "board"]) test(`${view}: empty section and unsectioned bucket keep their destinations`, async ({ page }) => {
   const f = await fixture(page); await open(page, f.id, view);
+  let posts = 0;
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().endsWith("/api/tasks")) posts += 1;
+  });
   const empty = section(page, view, f.sections[2].id);
   await empty.locator("[data-add-task-open]").click();
   await expect(newName(empty)).toBeFocused();
-  await expect.poll(async () => (await tasks(page, f.id)).filter(t => t.name === "").length).toBe(1);
+  expect(posts).toBe(0);
+  expect((await tasks(page, f.id)).filter(t => t.name === "")).toHaveLength(0);
   await newName(empty).press("Escape");
-  expect((await tasks(page, f.id)).find(t => t.name === "")?.section_id).toBe(f.sections[2].id);
+  await expect(newName(empty)).toHaveCount(0);
+  expect(posts).toBe(0);
   expect((await page.request.post("/api/tasks", { data: { project_id: f.id, section_id: null, name: "既存のセクションなし" } })).status()).toBe(201);
   await page.reload(); const loose = section(page, view, null);
   await loose.locator("[data-add-task-open]").click(); await expect(newName(loose)).toBeFocused();
@@ -130,6 +136,6 @@ test("viewer section add buttons are disabled in list and board", async ({ page,
       const buttons = actor.locator("[data-add-task-open]"); expect(await buttons.count()).toBeGreaterThan(0);
       for (const button of await buttons.all()) await expect(button).toBeDisabled();
     }
-    expect((await context.request.post("/api/tasks", { data: { project_id: f.id, section_id: f.sections[1].id, name: "", quick_add: true } })).status()).toBe(403);
+    expect((await context.request.post("/api/tasks", { data: { project_id: f.id, section_id: f.sections[1].id, name: "viewer attempt" } })).status()).toBe(403);
   } finally { await context.close(); }
 });

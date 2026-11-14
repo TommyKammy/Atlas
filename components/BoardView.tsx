@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import type { Section, TaskRow, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { groupBoardTasks, type BoardGroup } from "@/lib/board-group";
+import { isQuickTask } from "@/lib/quick-task";
 import { useLive } from "@/lib/use-live";
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import EmptyState from "./EmptyState";
@@ -205,6 +206,10 @@ function BoardViewContent({
       return a.localeCompare(b) * dir;
     };
     return [...items].sort((a, b) => {
+      const aQuick = isQuickTask(a);
+      const bQuick = isQuickTask(b);
+      if (aQuick !== bQuick) return aQuick ? 1 : -1;
+      if (aQuick && bQuick) return a.position - b.position || a.id - b.id;
       if (sortKey === "position") return a.position - b.position || a.id - b.id;
       if (sortKey === "start") return date(a.start_on, b.start_on);
       if (sortKey === "due") return date(a.due_on, b.due_on);

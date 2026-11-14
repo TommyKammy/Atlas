@@ -104,30 +104,30 @@ test.describe("resizable sidebar", () => {
       // must not refresh the current page; unrelated prefetches are harmless.
       if (request.headers().rsc === "1" && new URL(request.url()).pathname === "/") refreshes.push(request.url());
     });
-    await expectWidth(page, 244);
+    await expectWidth(page, 252);
     const { x, y } = await startDrag(page);
     await page.mouse.move(x + 116, y + 150, { steps: 8 });
-    await expectWidth(page, 360);
+    await expectWidth(page, 368);
     expect(await preference(page)).toBeUndefined();
     await page.mouse.up();
     await expect(sidebar(page)).not.toHaveAttribute("data-sidebar-resizing");
-    expect(await preference(page)).toBe("360");
+    expect(await preference(page)).toBe("368");
     expect(refreshes).toEqual([]);
     await expect(page.locator("[data-sidebar-invite]")).toBeVisible();
     const main = (await page.getByRole("main").boundingBox())!;
-    expect(main.x).toBe(360);
-    expect(main.width).toBe(1080);
+    expect(main.x).toBe(368);
+    expect(main.width).toBe(1072);
     await page.locator("#atlas-sidebar-content").getByRole("link", { name: "マイタスク", exact: true }).click();
     await expect(page).toHaveURL(/\/my-tasks/);
-    await expectWidth(page, 360);
+    await expectWidth(page, 368);
     await page.reload();
-    await expectWidth(page, 360);
+    await expectWidth(page, 368);
     // The saved width must also be used by SSR, before JavaScript runs.
     const ssr = await page.context().browser()!.newContext({ javaScriptEnabled: false, viewport: { width: 1440, height: 900 }, storageState: await page.context().storageState() });
     try {
       const serverPage = await ssr.newPage();
       await serverPage.goto(page.url());
-      await expectWidth(serverPage, 360);
+      await expectWidth(serverPage, 368);
     } finally { await ssr.close(); }
   });
 
@@ -140,9 +140,9 @@ test.describe("resizable sidebar", () => {
     await page.mouse.move(0, point.y); await page.mouse.up();
     await expectWidth(page, 220);
     await handle(page).dblclick();
-    await expectWidth(page, 244);
+    await expectWidth(page, 252);
     await handle(page).focus();
-    for (const [key, width] of [["ArrowRight", 254], ["Shift+ArrowRight", 304], ["ArrowLeft", 294], ["Home", 220], ["End", 480], ["Enter", 244]] as const) {
+    for (const [key, width] of [["ArrowRight", 262], ["Shift+ArrowRight", 312], ["ArrowLeft", 302], ["Home", 220], ["End", 480], ["Enter", 252]] as const) {
       await handle(page).press(key);
       await expectWidth(page, width);
       await expect(handle(page)).toHaveAttribute("aria-valuenow", String(width));
@@ -156,21 +156,21 @@ test.describe("resizable sidebar", () => {
     test(`${cancel} restores the saved width and cleans up an active drag`, async ({ page }) => {
       await page.goto("/");
       await handle(page).press("Shift+ArrowRight");
-      await expectWidth(page, 294);
+      await expectWidth(page, 302);
       const { x, y } = await startDrag(page);
       await page.mouse.move(x + 60, y, { steps: 5 });
-      await expectWidth(page, 354);
+      await expectWidth(page, 362);
       if (cancel === "Escape") await page.keyboard.press("Escape");
       else if (cancel === "blur") await page.evaluate(() => window.dispatchEvent(new Event("blur")));
       else if (cancel === "resize") await page.setViewportSize({ width: 1300, height: 900 });
       else await handle(page).dispatchEvent(cancel, { pointerId: 1 });
       await page.mouse.up();
-      await expectWidth(page, 294);
-      expect(await preference(page)).toBe("294");
+      await expectWidth(page, 302);
+      expect(await preference(page)).toBe("302");
       await expect(sidebar(page)).not.toHaveAttribute("data-sidebar-resizing");
       expect(await page.evaluate(() => [document.documentElement.style.cursor, document.body.style.userSelect])).toEqual(["", ""]);
       await handle(page).press("ArrowRight");
-      await expectWidth(page, 304);
+      await expectWidth(page, 312);
     });
   }
 
@@ -182,8 +182,8 @@ test.describe("resizable sidebar", () => {
     await handle(page).dispatchEvent("lostpointercapture", { pointerId: 2, isPrimary: false });
     await expect(sidebar(page)).toHaveAttribute("data-sidebar-resizing", "true");
     await page.mouse.up();
-    await expectWidth(page, 304);
-    expect(await preference(page)).toBe("304");
+    await expectWidth(page, 312);
+    expect(await preference(page)).toBe("312");
   });
 
   test("collapse preserves the custom width and responsive bounds keep the main area usable", async ({ page }) => {
@@ -191,7 +191,7 @@ test.describe("resizable sidebar", () => {
     await handle(page).press("End");
     await expectWidth(page, 480);
     await page.locator("[data-sidebar-toggle]").click();
-    await expectWidth(page, 64);
+    await expectWidth(page, 65);
     await expect(handle(page)).toHaveCount(0);
     await page.locator("[data-sidebar-toggle]").click();
     await expectWidth(page, 480);

@@ -52,7 +52,7 @@ export default function SidebarProjectList({ workspaceId, projects, favoriteIds 
           {target && <span data-project-drop={target} className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded bg-blue-400 ${target === "before" ? "top-0" : "bottom-0"}`} />}
           <SidebarProjectLink project={project} href={`/projects/${project.id}`} starred={favoriteIds.includes(project.id)}
             reorderProps={{ ...itemProps<HTMLAnchorElement>(project.id, project.name), "aria-describedby": instructions }}
-            className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-[14px] text-neutral-300 focus-visible:outline-2 focus-visible:outline-blue-400" />
+            className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-[14px] leading-[22px] text-[#E5E5E5] focus-visible:outline-2 focus-visible:outline-blue-400" />
         </div>;
       })}
     </div>

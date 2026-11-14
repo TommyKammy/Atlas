@@ -102,6 +102,12 @@ export function filterListTasks(tasks: TaskRow[], input: ListFilterInput): TaskR
 }
 
 export function compareListTasks(a: TaskRow, b: TaskRow, sortKey: ListSortKey, sortDir: "asc" | "desc"): number {
+  // An inline composer belongs below the saved rows, regardless of the active
+  // sort, so it cannot jump above existing tasks while the user is typing.
+  const aQuick = isQuickTask(a);
+  const bQuick = isQuickTask(b);
+  if (aQuick !== bQuick) return aQuick ? 1 : -1;
+  if (aQuick && bQuick) return a.position - b.position || a.id - b.id;
   const dir = sortDir === "asc" ? 1 : -1;
   const text = (av: string | null | undefined, bv: string | null | undefined) => {
     const left = av ?? "";

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useQuickTask } from "@/components/task/QuickTaskContext";
 import { ApiError, api } from "./api-client";
 import type { CustomField } from "./custom-fields";
 import type { Section, TaskRow } from "./data";
 import { patchTask, TaskConflictError } from "./task-client";
-import { confirmAction, toast as toastMessage } from "./ui-feedback";
+import { rememberTaskDeletion, undoLastTaskDeletion } from "./task-undo";
+import { toast as toastMessage } from "./ui-feedback";
 
 /**
  * Row editing and add-task/subtask mutations for the list view.
@@ -24,6 +26,7 @@ export function useListTaskActions({
   sections: Section[];
   groupSections: Record<string, number | null>;
 }) {
+  const quick = useQuickTask();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [subAdding, setSubAdding] = useState<number | null>(null);
   const [subDraft, setSubDraft] = useState("");
@@ -79,8 +82,13 @@ export function useListTaskActions({
   };
 
   const remove = async (task: TaskRow) => {
-    if (!(await confirmAction(`「${task.name}」を削除しますか？`))) return;
     await api(`/api/tasks/${task.id}`, "DELETE");
+    quick?.forget(task.id);
+    rememberTaskDeletion(task.id, refresh);
+    toastMessage("タスクを削除しました", {
+      actionLabel: "元に戻す",
+      action: () => void undoLastTaskDeletion(),
+    });
     refresh();
   };
 

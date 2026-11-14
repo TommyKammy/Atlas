@@ -8,8 +8,10 @@ import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api-client";
 import type { TaskRow } from "@/lib/data";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
-import { confirmAction, toast } from "@/lib/ui-feedback";
+import { toast, type ToastOptions } from "@/lib/ui-feedback";
 import { useMenuKeyboard } from "@/lib/use-menu-keyboard";
+import { rememberTaskDeletion, undoLastTaskDeletion } from "@/lib/task-undo";
+import { useQuickTask } from "./QuickTaskContext";
 import {
   convertTask,
   copyTaskLink,
@@ -179,6 +181,7 @@ export default function ProjectTaskContextMenu({
   canEdit: boolean;
 }) {
   const router = useRouter();
+  const quick = useQuickTask();
   const [request, setRequest] = useState<MenuRequest | null>(null);
   const [subtaskFor, setSubtaskFor] = useState<ContextTask | null>(null);
   const [subtaskName, setSubtaskName] = useState("");
@@ -290,12 +293,12 @@ export default function ProjectTaskContextMenu({
     close();
   };
 
-  const run = async (action: () => Promise<void>, message: string) => {
+  const run = async (action: () => Promise<void>, message: string, toastOptions?: ToastOptions) => {
     if (busy) return;
     setBusy(true);
     try {
       await action();
-      toast(message);
+      toast(message, toastOptions);
       refresh();
     } catch (caught) {
       if (caught instanceof TaskConflictError) {
@@ -407,10 +410,18 @@ export default function ProjectTaskContextMenu({
 
   const remove = async () => {
     if (!task) return;
-    if (!(await confirmAction(`タスク「${task.name}」を削除しますか？`))) return;
+    // Asana deletes from the context menu immediately. Close the menu before
+    // the request so it never overlaps another surface, and forget any
+    // optimistic row so a deleted quick task cannot be re-inserted.
+    close();
     void run(async () => {
       await deleteTask(task.id);
-    }, "タスクを削除しました");
+      quick?.forget(task.id);
+      rememberTaskDeletion(task.id, () => router.refresh());
+    }, "タスクを削除しました", {
+      actionLabel: "元に戻す",
+      action: () => void undoLastTaskDeletion(),
+    });
   };
 
   const left = request ? Math.max(8, Math.min(request.x, window.innerWidth - 300)) : 0;

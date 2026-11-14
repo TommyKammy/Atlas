@@ -4,7 +4,7 @@ import { clampSidebarWidth, parseSidebarWidth, sidebarMaxWidth } from "./sidebar
 
 test("sidebar preference rejects malformed and unbounded cookie input", () => {
   for (const value of [undefined, "", "NaN", "Infinity", "-100", "300.5", " 300", "300px", "10000", "1e3", "<script>"]) {
-    assert.equal(parseSidebarWidth(value), 244, value);
+    assert.equal(parseSidebarWidth(value), 252, value);
   }
   assert.equal(parseSidebarWidth("360"), 360);
   assert.equal(parseSidebarWidth("0"), 220);

@@ -19,7 +19,7 @@ export default async function SidebarRailFooter() {
           )
         ).rows[0];
   return (
-    <div className="mt-auto flex flex-col items-center gap-3 border-t border-white/10 pb-2 pt-2">
+    <div className="mt-auto flex flex-col items-center gap-3 pb-2 pt-2">
       <SidebarHelpButton />
       {user && <SidebarUserMenu user={user} />}
     </div>

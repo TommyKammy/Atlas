@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { confirmAction, toast as toastMessage } from "./ui-feedback";
 import { ApiError, api } from "./api-client";
 import { patchTask, TaskConflictError } from "./task-client";
+import { rememberTaskDeletion, undoLastTaskDeletion } from "./task-undo";
 import { copyTaskLink as copyTaskLinkAction, deleteTask } from "./task-actions";
 import type { TaskRow, User } from "./data";
 import type { RichTextDoc } from "./rich-text-types";
@@ -246,8 +247,14 @@ export function useTaskPane({
   };
 
   const remove = async () => {
-    if (!(await confirmAction(`「${task.name}」を削除しますか？`))) return;
-    if (await mutate("delete", "タスクの削除", () => deleteTask(task.id))) router.push(closeHref);
+    if (await mutate("delete", "タスクの削除", () => deleteTask(task.id))) {
+      rememberTaskDeletion(task.id, () => router.refresh());
+      toastMessage("タスクを削除しました", {
+        actionLabel: "元に戻す",
+        action: () => void undoLastTaskDeletion(),
+      });
+      router.push(closeHref);
+    }
   };
 
   const copyTaskLink = async () => {
@@ -394,8 +401,13 @@ export function useTaskPane({
   };
 
   const deleteSubtask = async (subtask: TaskRow) => {
-    if (!(await confirmAction(`サブタスク「${subtask.name}」を削除しますか？`))) return;
-    await mutate(`subtask:${subtask.id}`, "サブタスクの削除", () => api(`/api/tasks/${subtask.id}`, "DELETE"));
+    if (await mutate(`subtask:${subtask.id}`, "サブタスクの削除", () => api(`/api/tasks/${subtask.id}`, "DELETE"))) {
+      rememberTaskDeletion(subtask.id, () => router.refresh());
+      toastMessage("サブタスクを削除しました", {
+        actionLabel: "元に戻す",
+        action: () => void undoLastTaskDeletion(),
+      });
+    }
   };
 
   return {
