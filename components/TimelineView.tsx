@@ -1,5 +1,9 @@
 "use client";
 
+import { useQuickTask } from "@/components/task/QuickTaskContext";
+import { QuickTaskProvider, useQuickTasks } from "@/components/task/QuickTaskContext";
+
+import ProjectTaskCreateButton from "@/components/task/ProjectTaskCreateButton";
 import { resolveTimelineKeyboardDrop, timelineInsertionPlacements, type TimelineRowPlacement } from "@/lib/timeline-row-drop";
 
 import { isImeComposing } from "@/lib/ime-keyboard";
@@ -66,7 +70,7 @@ const TimelineBarPlaceholder = memo(function TimelineBarPlaceholder({
   );
 });
 
-export default function TimelineView({
+function TimelineViewContent({
   projectId,
   sections,
   taskPayload,
@@ -101,7 +105,11 @@ export default function TimelineView({
   statusFieldEnabled: boolean;
   statusOptions: string[];
 }) {
-  const tasks = useMemo(() => taskPayload.map(decodeTimelineTask), [taskPayload]);
+  const decodedTasks = useMemo(() => taskPayload.map(decodeTimelineTask), [taskPayload]);
+  const tasks = useQuickTasks(decodedTasks);
+  const quick = useQuickTask();
+  const quickId = quick?.drafts.at(-1)?.task.id;
+
   const router = useRouter();
   const refresh = useCallback(() => router.refresh(), [router]);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -182,7 +190,7 @@ export default function TimelineView({
     gridLines,
   } = useTimelineViewport({
     dated,
-    startOverride,
+    startOverride: quickId === undefined ? startOverride : null,
     initialZoom: typeof stored.zoom === "number" ? stored.zoom : 2,
     scrollRef,
     contentRef,
@@ -213,6 +221,14 @@ export default function TimelineView({
   const [undatedOpen, setUndatedOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [collapsedHydrated, setCollapsedHydrated] = useState(false);
+  useEffect(() => {
+    if (quickId === undefined) return;
+    const frame = requestAnimationFrame(() => {
+      setCollapsed(new Set());
+      setRevealBarId(quickId);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [quickId]);
   const [zoomMenu, setZoomMenu] = useState(false);
   const [showWeekends, setShowWeekends] = useState(stored.weekends !== false);
   const [showDependencies, setShowDependencies] = useState(stored.dependencies !== false);
@@ -399,15 +415,6 @@ export default function TimelineView({
     q.set("task", String(id));
     router.push(`/projects/${projectId}?${q.toString()}`);
   }, [projectId, router]);
-
-  const addToday = () => {
-    if (!canEdit) return;
-    if (sections.length === 0) {
-      sectionAddRef.current?.start();
-      return;
-    }
-    openDraft(sections[0].id, Math.min(max, Math.max(min, todayDay)));
-  };
 
   const toggleSection = (id: number) => {
     if (draftRef.current?.sectionId === (id === 0 ? null : id)) finishDraft(draftInputRef.current?.value ?? "");
@@ -669,7 +676,6 @@ export default function TimelineView({
         min={min}
         navigationDays={navigationDays}
         linkDay={linkDay}
-        addToday={addToday}
         undatedCount={undated.length}
         undatedOpen={undatedOpen}
         setUndatedOpen={setUndatedOpen}
@@ -694,7 +700,6 @@ export default function TimelineView({
         viewIcon={viewIcon}
         viewTabId={viewTabId}
         canEdit={canEdit}
-        canAddTask={canEdit && (sections.length > 0 || canConfigure)}
         showWeekends={showWeekends}
         setShowWeekends={setShowWeekends}
         showDependencies={showDependencies}
@@ -708,13 +713,7 @@ export default function TimelineView({
           title="タイムラインにタスクがありません"
           description="タスクを追加すると、日付に沿ってここに表示されます。"
           action={canEdit && (sections.length > 0 || canConfigure) ? (
-            <button
-              type="button"
-              onClick={addToday}
-              className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium text-white hover:bg-[#24529c]"
-            >
-              ＋ 今日のタスク
-            </button>
+            <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} disabled={!canEdit} />
           ) : undefined}
         />
       )}
@@ -829,7 +828,7 @@ export default function TimelineView({
                     const lane = group.laneById.get(t.id) ?? 0;
                     const top = lane * ROW_PITCH;
                     const position = pos.get(t.id)!;
-                    const keepMounted = t.id === focusedBarId || t.id === revealBarId ||
+                    const keepMounted = t.id === quickId || t.id === focusedBarId || t.id === revealBarId ||
                       t.id === drag?.id || t.id === depLink?.fromId || t.id === depTargetId;
                     if (renderWindow && !keepMounted &&
                         !isTimelineBarInWindow(renderWindow, position, group.top + top, ROW_PITCH)) {
@@ -987,4 +986,10 @@ export default function TimelineView({
       <ProjectTaskContextMenu projectId={projectId} tasks={tasks} canEdit={canEdit} />
     </div>
   );
+}
+
+export default function TimelineView(props: Parameters<typeof TimelineViewContent>[0]) {
+  return <QuickTaskProvider key={props.projectId} projectId={props.projectId} sections={props.sections} view="timeline" canEdit={props.canEdit}>
+    <TimelineViewContent {...props} />
+  </QuickTaskProvider>;
 }

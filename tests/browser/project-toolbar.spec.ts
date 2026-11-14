@@ -47,33 +47,17 @@ for (const width of [1440, 390]) test(`project actions align across pages at ${w
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
   await expect(page.getByPlaceholder("件名（任意）")).toHaveCount(0);
 });
-for (const mode of ["section", "empty", "assignee"]) test(`board toolbar creates a task and cancels without writing: ${mode}`, async ({ page }) => {
+for (const mode of ["section", "empty", "assignee"]) test(`board toolbar creates inline: ${mode}`, async ({ page }) => {
   const f = await fixture(page, mode === "empty");
   await page.goto(`/projects/${f.id}?view=board&group=${mode === "assignee" ? "assignee" : "section"}`);
-  const writes: unknown[] = [];
-  page.on("request", r => { if (r.method() === "POST" && new URL(r.url()).pathname === "/api/tasks") writes.push(r.postDataJSON()); });
-  const start = page.locator("[data-board-add]");
-  await expect(async () => { await start.click(); await expect(page.locator("[data-add-task]")).toBeFocused({ timeout: 500 }); }).toPass();
-  await page.locator("[data-add-task]").fill("キャンセルする草稿");
-  await page.keyboard.press("Escape");
-  expect(writes).toHaveLength(0);
-  await start.click();
-  await page.locator("[data-add-task]").fill("ツールバーから追加");
-  const response = page.waitForResponse(r => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/tasks");
-  await page.keyboard.press("Enter");
-  expect((await response).status()).toBe(201);
-  expect(writes).toHaveLength(1);
-  expect(writes[0]).toMatchObject({ project_id: f.id, section_id: f.section, name: "ツールバーから追加" });
+  await page.locator("[data-board-add]").click();
+  const input = page.getByRole("textbox", { name: "新しいタスク名", exact: true });
+  await expect(input).toBeFocused(); await input.fill("ツールバーから追加"); await input.press("Enter");
+  await expect(input).toHaveCount(0);
   await expect(page.locator("[data-board-card]")).toContainText(["ツールバーから追加"]);
 });
-test("board toolbar keeps failed drafts and prevents viewer writes", async ({ page, browser }) => {
+test("board toolbar prevents viewer writes", async ({ page, browser }) => {
   const f = await fixture(page);
-  await page.goto(`/projects/${f.id}?view=board`);
-  await expect(async () => { await page.locator("[data-board-add]").click(); await expect(page.locator("[data-add-task]")).toBeVisible({ timeout: 500 }); }).toPass();
-  await page.route("**/api/tasks", route => route.request().method() === "POST" ? route.fulfill({ status: 500, json: { error: "保存失敗の検証" } }) : route.continue());
-  await page.locator("[data-add-task]").fill("失敗時の草稿"); await page.keyboard.press("Enter");
-  await expect(page.getByText("保存失敗の検証", { exact: true })).toBeVisible();
-  await expect(page.locator("[data-add-task]")).toHaveValue("失敗時の草稿");
   expect((await page.request.post(`/api/projects/${f.id}/members`, { data: { user_id: 2, role: "viewer" } })).status()).toBe(201);
   const actor = await browser.newContext();
   try {

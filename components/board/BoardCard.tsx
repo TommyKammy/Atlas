@@ -1,4 +1,5 @@
 "use client";
+import { QuickTaskName } from "../task/QuickTaskContext";
 
 import Link from "next/link";
 import type { DragEvent, MouseEvent } from "react";
@@ -73,14 +74,14 @@ export default function BoardCard({
           {...(task.approval ? { "aria-label": "承認タスクの完了は承認操作から行います" } : {})}
           className="mt-0.5"
         />
-        <Link
+        <QuickTaskName task={task}><Link
           href={`/projects/${projectId}?view=board&task=${task.id}`}
           title={task.name}
           dir="auto"
           className={`line-clamp-2 break-words ${task.completed ? "text-neutral-500 line-through" : ""}`}
         >
-          {task.name}
-        </Link>
+          {task.name || "タスク名を入力"}
+        </Link></QuickTaskName>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
         {task.approval && <TaskApprovalBadge approval={task.approval} href={`/projects/${projectId}?view=board&task=${task.id}&approval=1`} />}

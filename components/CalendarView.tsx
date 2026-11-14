@@ -1,5 +1,7 @@
 "use client";
 
+import { QuickTaskProvider, useQuickTasks, useQuickTask } from "@/components/task/QuickTaskContext";
+
 import { isImeComposing } from "@/lib/ime-keyboard";
 
 import { toast as toastMessage } from "@/lib/ui-feedback";
@@ -54,9 +56,9 @@ function monthLabel(month: string): string {
   return `${y}年${m}月`;
 }
 
-export default function CalendarView({
+function CalendarViewContent({
   projectId,
-  tasks,
+  tasks: serverTasks,
   sections,
   users,
   customFields,
@@ -91,6 +93,9 @@ export default function CalendarView({
   viewTabId: number | null;
   canEdit: boolean;
 }) {
+  const tasks = useQuickTasks(serverTasks);
+  const quick = useQuickTask();
+  const quickId = quick?.drafts.at(-1)?.task.id;
   const weekMode = week !== null;
   const router = useRouter();
   const refresh = () => router.refresh();
@@ -175,16 +180,18 @@ export default function CalendarView({
 
   const statusOptions = [...new Set([...projectStatusOptions, ...tasks.map((t) => t.status).filter(Boolean)])];
   const weekdayOrder = weekStart === 1 ? [1, 2, 3, 4, 5, 6, 0] : ALL_DAYS;
-  const visibleDays = showWeekends
+  const revealWeekends = showWeekends || quickId !== undefined;
+  const visibleDays = revealWeekends
     ? ALL_DAYS
     : weekStart === 1
       ? [0, 1, 2, 3, 4]
       : WEEKDAYS_ONLY;
-  const cols = !showWeekends
+  const todayWeekday = new Date(`${today}T12:00:00`).getDay();
+  const cols = !revealWeekends
     ? "repeat(5, minmax(0, 1fr))"
-    : weekStart === 1
-      ? "repeat(5, minmax(0, 1fr)) 44px 44px"
-      : "44px repeat(5, minmax(0, 1fr)) 44px";
+    : weekdayOrder.map(day => day === 0 || day === 6
+      ? quickId !== undefined && day === todayWeekday ? "minmax(180px, 1fr)" : "44px"
+      : "minmax(0, 1fr)").join(" ");
 
   const colorKeyFor = (task: TaskRow): string => {
     if (colorBy === "default") {
@@ -261,6 +268,16 @@ export default function CalendarView({
   const todayHref = weekMode
     ? href(`&zoom=week&week=${today}`)
     : href(`&month=${today.slice(0, 7)}`);
+  useEffect(() => {
+    if (quickId === undefined) return;
+    const frame = requestAnimationFrame(() => {
+      setExpandedDays(current => new Set([...current, today]));
+    if ((!weekMode && month !== today.slice(0, 7)) || (weekMode && week !== today)) router.replace(todayHref);
+    });
+    return () => cancelAnimationFrame(frame);
+    // Only a newly inserted task moves the calendar, never normal filter edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickId]);
   const weekHref = href(`&zoom=week&week=${weekMode ? week! : `${month}-01`}`);
   const monthHref = href(`&month=${anchor.slice(0, 7)}`);
 
@@ -505,25 +522,6 @@ export default function CalendarView({
     refresh();
   };
 
-  const addToday = async () => {
-    const res = await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        project_id: projectId,
-        section_id: sections[0]?.id ?? null,
-        name: "新規タスク",
-        due_on: today,
-      }),
-    });
-    if (!res.ok) {
-      toastMessage(`作成に失敗しました: ${res.status}`);
-      return;
-    }
-    const created = await res.json();
-    openTask(created.id);
-  };
-
   const commit = (patch: Record<string, string | null>) => {
     const next: Record<string, string | null> = {
       completed: completedFilter,
@@ -715,7 +713,8 @@ export default function CalendarView({
       data-calendar-creator={creatorFilter}
     >
       <CalendarToolbar
-        addToday={addToday}
+        projectId={projectId}
+        sections={sections}
         prevHref={prevHref}
         todayHref={todayHref}
         nextHref={nextHref}
@@ -931,4 +930,10 @@ function monthLabelShift(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+export default function CalendarView(props: Parameters<typeof CalendarViewContent>[0]) {
+  return <QuickTaskProvider key={props.projectId} projectId={props.projectId} sections={props.sections} view="calendar" canEdit={props.canEdit}>
+    <CalendarViewContent {...props} />
+  </QuickTaskProvider>;
 }

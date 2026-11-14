@@ -1,5 +1,8 @@
 "use client";
 
+import { QuickTaskProvider, useQuickTasks } from "@/components/task/QuickTaskContext";
+
+import ProjectTaskCreateButton from "@/components/task/ProjectTaskCreateButton";
 import { isImeComposing } from "@/lib/ime-keyboard";
 
 import { toast as toastMessage } from "@/lib/ui-feedback";
@@ -23,10 +26,10 @@ import { taskMatchesListFilters, parseListDateFilter, parseListGroupBy, parseLis
 
 
 
-export default function BoardView({
+function BoardViewContent({
   projectId,
   sections,
-  tasks,
+  tasks: serverTasks,
   users,
   viewerId,
   initialGroup,
@@ -76,6 +79,7 @@ export default function BoardView({
     show_meta?: boolean;
   };
 }) {
+  const tasks = useQuickTasks(serverTasks);
   const refresh = useApiRefresh();
   const router = useRouter();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -273,20 +277,6 @@ export default function BoardView({
   // Reveal newly added columns without changing the user's empty-group setting.
   groups = groups.filter((g) => showEmptyGroups || g.items.length > 0 ||
     g.sectionId !== undefined && createdSectionIds.has(g.sectionId));
-  // Keep an input available even when there are no columns or filters hide every group.
-  if (addingTo === "toolbar-draft") {
-    groups = [...groups, {
-      key: "toolbar-draft",
-      label: sections[0]?.name ?? "セクションなし",
-      sectionId: sections[0]?.id,
-      items: [],
-    }];
-  }
-  const startAddingTask = () => {
-    if (!canEdit) return;
-    setAddingTo(groups[0]?.key ?? "toolbar-draft");
-    requestAnimationFrame(() => addInputRef.current?.focus());
-  };
   const activeFilters =
     (hideCompleted ? 1 : 0) +
     (completedOnly ? 1 : 0) +
@@ -581,7 +571,8 @@ export default function BoardView({
       data-board-show-empty={showEmptyGroups}
     >
       <BoardToolbar
-        onAddTask={startAddingTask}
+        projectId={projectId}
+        sections={sections}
         users={users}
         statusFieldEnabled={statusFieldEnabled}
         statusFieldName={statusFieldName}
@@ -627,14 +618,7 @@ export default function BoardView({
           title="カードがありません"
           description="列にカードを追加してボードを始めましょう。"
           action={
-            <button
-              type="button"
-              onClick={startAddingTask}
-              disabled={!canEdit}
-              className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium text-white hover:bg-[#24529c]"
-            >
-              ＋ タスクを追加
-            </button>
+            <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} disabled={!canEdit} />
           }
         />
       )}
@@ -797,4 +781,10 @@ export default function BoardView({
       </div>
     </div>
   );
+}
+
+export default function BoardView(props: Parameters<typeof BoardViewContent>[0]) {
+  return <QuickTaskProvider key={props.projectId} projectId={props.projectId} sections={props.sections} view="board" canEdit={props.canEdit}>
+    <BoardViewContent {...props} />
+  </QuickTaskProvider>;
 }

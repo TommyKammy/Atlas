@@ -1,3 +1,4 @@
+import { isQuickTask } from "./quick-task";
 import type { TaskRow } from "./data";
 import {
   COLUMN_FUNCTION_LABELS,
@@ -61,7 +62,7 @@ export function filterListTasks(tasks: TaskRow[], input: ListFilterInput): TaskR
 
   return tasks.filter(
     (task) =>
-      (completedOnly ? task.completed : !hideCompleted || !task.completed) &&
+      isQuickTask(task) || (completedOnly ? task.completed : !hideCompleted || !task.completed) &&
       (!mineOnly || task.assignee_id === viewerId) &&
       (assigneeFilter === "" ||
         (assigneeFilter === "none"

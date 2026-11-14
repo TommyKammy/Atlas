@@ -1,6 +1,7 @@
 "use client";
 
-import { ProjectViewToolbar, ViewAddButton, viewToolbarControlClass, viewToolbarActionClass } from "@/components/view/ProjectViewToolbar";
+import ProjectTaskCreateButton from "@/components/task/ProjectTaskCreateButton";
+import { ProjectViewToolbar, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
 import { isImeComposing } from "@/lib/ime-keyboard";
 
 import { useEffect, type Dispatch, type SetStateAction } from "react";
@@ -63,9 +64,6 @@ export default function ListToolbar({
   statusFieldName,
   statusOptions,
   customFields,
-  focusAdd,
-  toggleAddMenu,
-  addMenu,
   addTemplates,
   instantiateTemplate,
   activeFilterCount,
@@ -220,39 +218,8 @@ export default function ListToolbar({
   return (
     <>
       <ProjectViewToolbar>
-        <span className="relative flex">
-          <ViewAddButton data-list-add onClick={focusAdd} disabled={!canEdit} className="rounded-r-none" />
-          <button
-            onClick={toggleAddMenu}
-            disabled={!canEdit}
-            type="button"
-            aria-expanded={addMenu}
-            aria-haspopup="menu"
-            title="その他の追加方法"
-            className={`${viewToolbarActionClass} rounded-l-none border-l-0 px-1.5`}
-          >
-            ▾
-          </button>
-          {addMenu && (
-            <div className="absolute top-full left-0 z-40 mt-1 w-64 rounded-lg border bg-white py-1 text-sm shadow-lg">
-              <div className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">
-                テンプレートから作成
-              </div>
-              {addTemplates.length === 0 && (
-                <div className="px-3 py-1 text-xs text-neutral-500">テンプレートなし</div>
-              )}
-              {addTemplates.map((template) => (
-                <button
-                  key={template.id}
-                  className="flex w-full items-center gap-1 rounded px-3 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-neutral-100"
-                  onClick={() => instantiateTemplate(template.id)}
-                >
-                  {template.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </span>
+        <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} data-list-add disabled={!canEdit}
+          templates={addTemplates} onTemplate={instantiateTemplate} />
         <span className="ml-auto" />
 
         <span className="relative">

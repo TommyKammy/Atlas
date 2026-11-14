@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuickTask } from "@/components/task/QuickTaskContext";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
@@ -213,6 +214,15 @@ export function useListView({
     subtasksCollapsed,
   } = listFilters;
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const quick = useQuickTask();
+  const quickId = quick?.drafts.at(-1)?.task.id;
+  useEffect(() => {
+    if (quickId === undefined) return;
+    const frame = requestAnimationFrame(() => {
+      setCollapsedGroups(new Set());
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [quickId]);
   const [menuCol, setMenuCol] = useState<string | null>(null);
   const [rowLimits, setRowLimits] = useState<Record<string, number>>({});
   const [customFilter, setCustomFilter] = useState<Record<number, string>>({});

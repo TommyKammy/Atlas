@@ -1,6 +1,7 @@
 "use client";
 
-import { ProjectViewToolbar, ViewAddButton, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
+import ProjectTaskCreateButton from "@/components/task/ProjectTaskCreateButton";
+import { ProjectViewToolbar, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
@@ -27,7 +28,6 @@ export default function TimelineToolbar({
   min,
   navigationDays,
   linkDay,
-  addToday,
   undatedCount,
   undatedOpen,
   setUndatedOpen,
@@ -52,7 +52,6 @@ export default function TimelineToolbar({
   viewIcon,
   viewTabId,
   canEdit,
-  canAddTask,
   showWeekends,
   setShowWeekends,
   showDependencies,
@@ -64,7 +63,6 @@ export default function TimelineToolbar({
   min: number;
   navigationDays: number;
   linkDay: (day: number) => string;
-  addToday: () => void;
   undatedCount: number;
   undatedOpen: boolean;
   setUndatedOpen: Dispatch<SetStateAction<boolean>>;
@@ -89,7 +87,6 @@ export default function TimelineToolbar({
   viewIcon: string | null;
   viewTabId: number | null;
   canEdit: boolean;
-  canAddTask: boolean;
   showWeekends: boolean;
   setShowWeekends: (value: boolean) => void;
   showDependencies: boolean;
@@ -180,7 +177,7 @@ export default function TimelineToolbar({
   return (
     <>
       <ProjectViewToolbar className="px-4">
-        <ViewAddButton onClick={addToday} data-timeline-add disabled={!canAddTask} />
+        <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} data-timeline-add disabled={!canEdit} />
         <a
           href={`/projects/${projectId}?view=timeline&from=${linkDay(min - navigationDays)}`}
           aria-label="前の期間"

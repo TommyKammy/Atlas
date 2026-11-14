@@ -95,9 +95,6 @@ test("large timelines reveal offscreen bars for scroll, keyboard focus, and crea
     await expect(previousBar).toBeFocused();
     await expect(previousBar).toBeInViewport();
 
-    await timeline.locator("[data-timeline-add]").click();
-    const input = timeline.getByRole("textbox", { name: "新しいタスク名" });
-    await input.fill("Created outside viewport");
     let releaseCreate = () => {};
     let markCreated!: (id: number) => void;
     const created = new Promise<number>((resolve) => { markCreated = resolve; });
@@ -112,12 +109,18 @@ test("large timelines reveal offscreen bars for scroll, keyboard focus, and crea
       await route.fulfill({ response });
     });
     try {
+      await timeline.locator("[data-timeline-add]").click();
+      const input = page.getByRole("textbox", { name: "新しいタスク名", exact: true });
+      await input.fill("Created outside viewport");
       await input.press("Enter");
       const createdId = await created;
       await main.evaluate((node) => { node.scrollTop = 0; });
       await scroller.evaluate((node) => { node.scrollLeft = 0; });
       releaseCreate();
-      await expect(timeline.locator(`[data-timeline-bar="${createdId}"]`)).toBeInViewport();
+      const addedBar = page.locator(`[data-timeline-bar="${createdId}"]`);
+      await expect(addedBar).toContainText("Created outside viewport");
+      await expect(addedBar).toBeInViewport();
+      await expect(page.locator("[data-task-pane]")).toHaveCount(0);
     } finally {
       releaseCreate();
     }

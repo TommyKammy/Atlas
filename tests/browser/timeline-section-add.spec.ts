@@ -288,27 +288,21 @@ test("timeline 503 shows an inline warning, retains the draft and supports retry
   expect(errors).toEqual([]);
 });
 
-test("an empty timeline starts a section from the task toolbar and then creates tasks normally", async ({ page }) => {
+test("an empty timeline can draft an unsectioned task without first creating a section", async ({ page }) => {
   const { projectId } = await fixture(page, true);
   await openTimeline(page, projectId);
-  const addTask = page.locator("[data-timeline-add]");
   await expect(async () => {
-    await addTask.click();
-    await expect(editor(page).input).toBeVisible({ timeout: 500 });
+    await page.locator("[data-timeline-add]").click();
+    await expect(page.getByRole("textbox", { name: "新しいタスク名", exact: true })).toBeVisible({ timeout: 500 });
   }).toPass({ timeout: 5000 });
-  await expect(editor(page).input).toBeFocused();
-  await expect(page.locator("[data-timeline-draft]")).toHaveCount(0);
-  await editor(page).input.fill("最初の工程");
+  await page.getByRole("textbox", { name: "新しいタスク名", exact: true }).press("Escape");
+  expect(await sections(page, projectId)).toEqual([]);
+  const e = await startSection(page);
+  await e.input.fill("最初の工程");
   const created = sectionResponse(page);
-  await editor(page).input.press("Enter");
+  await e.submit.click();
   const { id: sectionId } = await (await created).json() as { id: number };
   await expect(page.locator(`[data-timeline-section-row="${sectionId}"]`)).toHaveText("最初の工程");
-  await expect(page.locator('[data-timeline-section-row="0"]')).toHaveText("セクションなし");
-  await addTask.click();
-  const taskName = page.getByRole("textbox", { name: "新しいタスク名", exact: true });
-  await expect(taskName).toBeFocused();
-  await expect(editor(page).input).toHaveCount(0);
-  await taskName.press("Escape");
 });
 
 test("opening the section editor preserves the task draft's normal blur save", async ({ page }) => {
@@ -316,7 +310,7 @@ test("opening the section editor preserves the task draft's normal blur save", a
   await openTimeline(page, projectId);
   const taskName = page.getByRole("textbox", { name: "新しいタスク名", exact: true });
   await expect(async () => {
-    await page.locator("[data-timeline-add]").click();
+    await page.locator("[data-timeline-canvas]").click({ position: { x: 100, y: 65 } });
     await expect(taskName).toBeVisible({ timeout: 500 });
   }).toPass({ timeout: 5000 });
   await taskName.fill("工程追加前のタスク");
@@ -351,7 +345,7 @@ for (const role of ["editor", "viewer"] as const) {
         await expect(actor.locator("[data-timeline-section-add]")).toHaveCount(0);
         await expect(actor.locator("[data-add-section-input]")).toHaveCount(0);
         const addTask = actor.locator("[data-timeline-add]");
-        if (role === "editor" && !empty) {
+        if (role === "editor") {
           await expect(addTask).toBeEnabled();
           await expect(async () => {
             await addTask.click();

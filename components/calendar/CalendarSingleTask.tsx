@@ -1,4 +1,5 @@
 "use client";
+import { QuickTaskName } from "../task/QuickTaskContext";
 
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { TaskRow } from "@/lib/data";
@@ -56,7 +57,7 @@ export default function CalendarSingleTask({
       {completion}
       {avatars}
       <span title={task.name} dir="auto" className={`min-w-0 flex-1 truncate ${task.completed ? "line-through" : ""}`}>
-        {task.name}
+        <QuickTaskName task={task}>{task.name || "タスク名を入力"}</QuickTaskName>
       </span>
       {meta}
     </div>

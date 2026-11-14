@@ -1,3 +1,4 @@
+import { isQuickTask } from "./quick-task";
 export type ListSortKey =
   | "position"
   | "start"
@@ -167,6 +168,7 @@ export function taskMatchesListFilters(
     dayOffset: (days: number) => string;
   },
 ): boolean {
+  if (isQuickTask(task)) return true;
   const { today, viewerId, statusFieldEnabled, dayOffset } = options;
   if (filters.completed_only) {
     if (!task.completed) return false;

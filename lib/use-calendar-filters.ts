@@ -1,5 +1,6 @@
 "use client";
 
+import { isQuickTask } from "./quick-task";
 import { useState } from "react";
 import type { TaskRow } from "./data";
 import type { CustomValue } from "./custom-fields";
@@ -50,6 +51,7 @@ export function filterCalendarTasks({
     return day >= todayDay - (days - 1) && day <= todayDay;
   };
   return tasks.filter((t) => {
+    if (isQuickTask(t)) return true;
     if (filters.completed === "open" && t.completed) return false;
     if (filters.completed === "done" && !t.completed) return false;
     if (filters.assignee === "none" && t.assignee_id !== null) return false;

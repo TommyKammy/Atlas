@@ -1,4 +1,5 @@
 "use client";
+import { QuickTaskName } from "../task/QuickTaskContext";
 
 import { memo, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { TaskTimelineRow } from "@/lib/timeline-task-payload";
@@ -130,7 +131,7 @@ function TimelineBar({
       } ${task.completed ? "line-through" : ""} ${labelHidden ? "opacity-0" : ""}`}
       style={{ maxWidth: 172 }}
     >
-      {task.name}
+      <QuickTaskName task={task}>{task.name || "タスク名を入力"}</QuickTaskName>
     </span>
   );
   const dependencyHandleClass = (visible: boolean) =>
@@ -217,7 +218,7 @@ function TimelineBar({
                 dir="auto"
                 className={`pointer-events-none min-w-0 flex-1 truncate ${task.completed ? "line-through" : ""}`}
               >
-                {task.name}
+                <QuickTaskName task={task}>{task.name || "タスク名を入力"}</QuickTaskName>
               </span>
             )}
             {outsideLabel}
@@ -226,9 +227,9 @@ function TimelineBar({
           <span
             data-timeline-bar-name={task.id}
             dir="auto"
-            className={`pointer-events-none line-clamp-2 min-w-0 flex-1 leading-[14px] ${task.completed ? "line-through" : ""}`}
+            className={`line-clamp-2 min-w-0 flex-1 leading-[14px] ${task.completed ? "line-through" : ""}`}
           >
-            {task.name}
+            <QuickTaskName task={task}>{task.name || "タスク名を入力"}</QuickTaskName>
           </span>
         )}
         {!skinny && showSubtasks && !milestone && (

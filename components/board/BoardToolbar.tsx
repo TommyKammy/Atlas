@@ -1,11 +1,12 @@
 "use client";
 
-import { ProjectViewToolbar, ViewAddButton, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
+import ProjectTaskCreateButton from "@/components/task/ProjectTaskCreateButton";
+import { ProjectViewToolbar, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { toast } from "@/lib/ui-feedback";
-import type { User } from "@/lib/data";
+import type { Section, User } from "@/lib/data";
 import {
   LIST_GROUP_LABELS,
   LIST_SORT_LABELS,
@@ -33,7 +34,8 @@ export type BoardCardFields = {
 };
 
 export default function BoardToolbar({
-  onAddTask,
+  projectId,
+  sections,
   users,
   statusFieldEnabled,
   statusFieldName,
@@ -63,7 +65,8 @@ export default function BoardToolbar({
   cardFields,
   onToggleCardField,
 }: {
-  onAddTask: () => void;
+  projectId: number;
+  sections: Section[];
   users: User[];
   statusFieldEnabled: boolean;
   statusFieldName: string;
@@ -152,7 +155,7 @@ export default function BoardToolbar({
   return (
     <>
       <ProjectViewToolbar className="px-4">
-        <ViewAddButton data-board-add onClick={onAddTask} disabled={!canEdit} />
+        <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} data-board-add disabled={!canEdit} />
         <span className="ml-auto" />
 
         <span className="relative">

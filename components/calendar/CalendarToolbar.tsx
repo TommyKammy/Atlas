@@ -1,12 +1,13 @@
 "use client";
 
-import { ProjectViewToolbar, ViewAddButton, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
+import ProjectTaskCreateButton from "@/components/task/ProjectTaskCreateButton";
+import { ProjectViewToolbar, viewToolbarControlClass } from "@/components/view/ProjectViewToolbar";
 import Link from "next/link";
 import { useEffect, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { toast } from "@/lib/ui-feedback";
-import type { TaskRow, User } from "@/lib/data";
+import type { Section, TaskRow, User } from "@/lib/data";
 import type { CustomField } from "@/lib/custom-fields";
 import { parseListDateFilter, type ListFilters } from "@/lib/list-view";
 import ListFilterMenu from "../list/ListFilterMenu";
@@ -20,7 +21,8 @@ const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
 const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-white shadow-lg";
 
 export default function CalendarToolbar({
-  addToday,
+  projectId,
+  sections,
   prevHref,
   todayHref,
   nextHref,
@@ -75,7 +77,8 @@ export default function CalendarToolbar({
   viewTabId,
   canEdit,
 }: {
-  addToday: () => void;
+  projectId: number;
+  sections: Section[];
   prevHref: string;
   todayHref: string;
   nextHref: string;
@@ -199,7 +202,7 @@ export default function CalendarToolbar({
   return (
     <>
       <ProjectViewToolbar>
-        <ViewAddButton onClick={addToday} data-calendar-add disabled={!canEdit} />
+        <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} data-calendar-add disabled={!canEdit} />
         <Link
           href={prevHref}
           aria-label={weekMode ? "前週" : "前月"}

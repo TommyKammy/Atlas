@@ -1,4 +1,5 @@
 "use client";
+import { QuickTaskName } from "../task/QuickTaskContext";
 
 import { isImeComposing } from "@/lib/ime-keyboard";
 
@@ -323,7 +324,7 @@ export default function TaskListRow({
         <TaskCompletionToggle completed={t.completed} milestone={t.is_milestone} onToggle={() => void toggle(t)}
           disabled={Boolean(t.approval)} title={t.approval ? "承認の状態はタスク詳細から変更してください" : undefined}
           {...(t.approval ? { "aria-label": "承認タスクの完了は承認操作から行います" } : {})} />
-        {editing?.id === t.id && editing.field === "name" ? (
+        <QuickTaskName task={t}>{editing?.id === t.id && editing.field === "name" ? (
           <input
             autoFocus
             value={editVal}
@@ -363,9 +364,10 @@ export default function TaskListRow({
             dir="auto"
             className="w-fit max-w-full min-w-0 flex-none cursor-text truncate rounded hover:bg-neutral-100"
           >
-            {t.name}
+            {t.name || "タスク名を入力"}
           </span>
         )}
+        </QuickTaskName>
         {t.approval && <TaskApprovalBadge approval={t.approval} onClick={() => openTask(t.id)} />}
         {t.recurrence && t.recurrence !== "none" && (
           <span title="繰り返しタスク" className="shrink-0 text-xs text-neutral-500">
