@@ -397,3 +397,38 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
 .knowledge-document ul[data-type="taskList"] > li > label { flex: 0 0 auto; margin-top: 0.25rem; }
 .knowledge-document ul[data-type="taskList"] > li > div { flex: 1; min-width: 0; }
 .knowledge-document ul[data-type="taskList"] > li p { margin: 0; }
+
+/* Native modals keep the page inert and preserve the root scrollbar. */
+.atlas-dialog {
+  margin: auto;
+  padding: 0;
+  border: 0;
+  max-inline-size: calc(100vw - 2rem);
+  max-block-size: calc(100dvh - 2rem);
+  background: transparent;
+  color: inherit;
+}
+.atlas-dialog > div {
+  max-inline-size: 100%;
+}
+.atlas-dialog:modal {
+  overscroll-behavior: contain;
+}
+.atlas-dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+/* Semantic text colors must follow the surface, including editor content. */
+html[data-theme="dark"] .atlas-rich-text { color: #dedede; }
+html[data-theme="dark"] .atlas-rich-text :is(h1, h2, h3) { color: #ededed; }
+html[data-theme="dark"] .atlas-rich-text blockquote { color: #bdbdbd; border-color: #737373; }
+html[data-theme="dark"] .atlas-rich-text :is(pre, code) { background: #303030; }
+html[data-theme="dark"] .atlas-rich-text pre code { background: transparent; }
+html[data-theme="dark"] .atlas-rich-text a { color: #a9ccff; }
+html[data-theme="dark"] .atlas-rich-text mark { color: #171717; }
+html[data-theme="dark"] .atlas-rich-text .atlas-mention { background: #20344f; color: #b8d4ff; }
+
+/* Keep Knowledge table headers and selected cells on dark surfaces too. */
+html[data-theme="dark"] .knowledge-document th { background: #303030; }
+html[data-theme="dark"] .knowledge-document .selectedCell { background: #20344f; }

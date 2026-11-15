@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { authenticationFailureMessage } from "@/lib/auth-client-feedback";
@@ -9,6 +9,7 @@ type SamlMode = "off" | "optional" | "required" | "members_only";
 
 export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
   const router = useRouter();
+  const formId = useId();
   const [email, setEmail] = useState("admin@example.com");
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");
@@ -100,7 +101,11 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
   return (
     <form onSubmit={submit} aria-busy={busy} className="flex w-80 flex-col gap-3 rounded-lg border bg-white p-6 shadow" data-login-form>
       <h1 className="text-lg font-bold">Atlas にログイン</h1>
+      <label htmlFor={`${formId}-email`} className="text-sm font-medium">メールアドレス</label>
       <input
+        id={`${formId}-email`}
+        name="email"
+        required
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -108,7 +113,11 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
         autoComplete="email"
         className={field}
       />
+      <label htmlFor={`${formId}-password`} className="text-sm font-medium">パスワード</label>
       <input
+        id={`${formId}-password`}
+        name="password"
+        required
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
@@ -119,8 +128,14 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
       {twoFactorRequired && (
         <div className="rounded border border-blue-200 bg-blue-50 p-2" data-login-two-factor>
           <p className="text-[11px] text-blue-900">二要素認証が必要です。</p>
+          <label htmlFor={`${formId}-verification`} className="mt-2 block text-sm font-medium">
+            {useRecovery ? "リカバリーコード" : "認証アプリのコード"}
+          </label>
           {!useRecovery ? (
             <input
+              id={`${formId}-verification`}
+              name="totp"
+              required
               value={totp}
               onChange={(e) => setTotp(e.target.value)}
               inputMode="numeric"
@@ -132,6 +147,9 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
             />
           ) : (
             <input
+              id={`${formId}-verification`}
+              name="recovery_code"
+              required
               value={recoveryCode}
               onChange={(e) => setRecoveryCode(e.target.value)}
               placeholder="リカバリーコード"

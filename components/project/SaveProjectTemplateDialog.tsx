@@ -50,7 +50,7 @@ export default function SaveProjectTemplateDialog({
       open
       onClose={onClose}
       title="テンプレートとして保存"
-      backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
+      backdropClassName="backdrop:bg-black/25"
       panelClassName="w-[min(540px,94vw)] rounded-xl bg-white text-sm shadow-2xl"
     >
       <div data-project-template-dialog className="p-6">

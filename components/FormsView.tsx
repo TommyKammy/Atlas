@@ -3,11 +3,11 @@
 import { ProjectViewToolbar, ViewAddButton } from "@/components/view/ProjectViewToolbar";
 import { confirmAction } from "@/lib/ui-feedback";
 
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FormField, FormFieldType, ProjectForm } from "@/lib/forms";
 import { DEFAULT_FORM_FIELDS, FORM_FIELD_TYPES } from "@/lib/forms";
 import { useApiRefresh } from "@/lib/use-api-refresh";
-import { useFocusTrap } from "@/lib/use-focus-trap";
+import Dialog from "./ui/Dialog";
 import EmptyState from "./EmptyState";
 
 type Builder = {
@@ -31,6 +31,8 @@ export default function FormsView({
   canConfigure?: boolean;
 }) {
   const refresh = useApiRefresh();
+  const formId = useId();
+  const [invalidField, setInvalidField] = useState<string | null>(null);
   const [builder, setBuilder] = useState<Builder | null>(null);
   const [answering, setAnswering] = useState<ProjectForm | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -39,8 +41,21 @@ export default function FormsView({
   const [message, setMessage] = useState("");
   const builderRef = useRef<HTMLFormElement>(null);
   const answerRef = useRef<HTMLFormElement>(null);
-  useFocusTrap(builderRef, builder !== null, () => setBuilder(null));
-  useFocusTrap(answerRef, answering !== null, () => setAnswering(null));
+  const errorFormRef = builder ? builderRef : answerRef;
+  useEffect(() => {
+    if (!error) return;
+    const form = errorFormRef.current;
+    const field = invalidField ? form?.elements.namedItem(invalidField) : null;
+    if (field instanceof HTMLElement) field.focus();
+    else form?.querySelector<HTMLElement>("[data-form-error]")?.focus();
+  }, [error, invalidField, errorFormRef]);
+
+  const clearError = (event: React.FormEvent<HTMLFormElement>) => {
+    const control = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    if (invalidField && control.name !== invalidField) return;
+    setError("");
+    setInvalidField(null);
+  };
 
   const startCreate = () => {
     if (!canConfigure) return;
@@ -73,10 +88,13 @@ export default function FormsView({
     event.preventDefault();
     if (!builder || busy) return;
     if (!builder.name.trim()) {
+      setInvalidField("form-name");
       setError("フォーム名を入力してください");
       return;
     }
-    if (builder.fields.some((field) => !field.label.trim())) {
+    const missingLabel = builder.fields.findIndex((field) => !field.label.trim());
+    if (missingLabel !== -1) {
+      setInvalidField(`field-${missingLabel}-label`);
       setError("すべての項目にラベルを入力してください");
       return;
     }
@@ -132,6 +150,7 @@ export default function FormsView({
   const openAnswer = (form: ProjectForm) => {
     setAnswers({});
     setError("");
+    setInvalidField(null);
     setAnswering(form);
   };
 
@@ -147,7 +166,10 @@ export default function FormsView({
         body: JSON.stringify({ answers }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? `送信に失敗しました (${res.status})`);
+      if (!res.ok) {
+        setInvalidField(typeof data.field === "string" ? data.field : null);
+        throw new Error(data.error ?? `送信に失敗しました (${res.status})`);
+      }
       setAnswering(null);
       setMessage("回答を送信し、タスクを作成しました");
       refresh();
@@ -168,12 +190,12 @@ export default function FormsView({
       </p>
 
       {message && (
-        <p className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-[13px] text-green-800">
+        <p role="status" className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-[13px] text-green-800">
           {message}
         </p>
       )}
       {error && !builder && !answering && (
-        <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
+        <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
           {error}
         </p>
       )}
@@ -264,16 +286,17 @@ export default function FormsView({
       </div>
 
       {builder && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 pt-12" role="dialog" aria-modal="true">
+        <Dialog open onClose={() => setBuilder(null)} titleId={`${formId}-builder-title`} panelClassName="w-[min(560px,94vw)] rounded-lg bg-white">
           <form
             ref={builderRef}
             tabIndex={-1}
             onSubmit={save}
+            onInput={clearError}
             data-form-builder
-            className="max-h-[80vh] w-[560px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
+            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold text-neutral-900">
+              <h2 id={`${formId}-builder-title`} className="text-[15px] font-semibold text-neutral-900">
                 {builder.id === null ? "フォームを作成" : "フォームを編集"}
               </h2>
               <button
@@ -288,6 +311,10 @@ export default function FormsView({
             <label className="mt-4 block text-[12px] font-medium text-neutral-600">
               フォーム名
               <input
+                name="form-name"
+                required
+                aria-invalid={invalidField === "form-name" || undefined}
+                aria-describedby={invalidField === "form-name" ? `${formId}-builder-error` : undefined}
                 value={builder.name}
                 onChange={(event) => setBuilder({ ...builder, name: event.target.value })}
                 data-form-name
@@ -336,6 +363,11 @@ export default function FormsView({
                 <div key={`${field.key}-${index}`} data-form-field={index} className="rounded-md border border-neutral-200 p-2.5">
                   <div className="flex items-center gap-2">
                     <input
+                      name={`field-${index}-label`}
+                      required
+                      aria-label={`項目${index + 1}の名前`}
+                      aria-invalid={invalidField === `field-${index}-label` || undefined}
+                      aria-describedby={invalidField === `field-${index}-label` ? `${formId}-builder-error` : undefined}
                       value={field.label}
                       onChange={(event) => updateField(index, { label: event.target.value })}
                       data-form-field-label={index}
@@ -405,7 +437,7 @@ export default function FormsView({
                 </div>
               ))}
             </div>
-            {error && <p className="mt-3 text-[12px] text-red-600">{error}</p>}
+            {error && <p id={`${formId}-builder-error`} role="alert" tabIndex={-1} data-form-error className="mt-3 text-[12px] text-red-600">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
@@ -424,21 +456,22 @@ export default function FormsView({
               </button>
             </div>
           </form>
-        </div>
+        </Dialog>
       )}
 
       {answering && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 pt-12" role="dialog" aria-modal="true">
+        <Dialog open onClose={() => setAnswering(null)} titleId={`${formId}-answer-heading`} panelClassName="w-[min(520px,94vw)] rounded-lg bg-white">
           <form
             ref={answerRef}
             tabIndex={-1}
             onSubmit={submit}
+            onInput={clearError}
             data-form-answer-form
-            className="max-h-[80vh] w-[520px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
+            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
           >
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-[15px] font-semibold text-neutral-900">{answering.name}</h2>
+                <h2 id={`${formId}-answer-heading`} className="text-[15px] font-semibold text-neutral-900">{answering.name}</h2>
                 {answering.description && (
                   <p className="mt-0.5 text-[12px] text-neutral-500">{answering.description}</p>
                 )}
@@ -454,11 +487,16 @@ export default function FormsView({
             </div>
             <div className="mt-4 space-y-3">
               {answering.fields.map((field) => (
-                <label key={field.key} className="block text-[12px] font-medium text-neutral-600">
+                <label key={field.key} htmlFor={`${formId}-answer-field-${field.key}`} className="block text-[12px] font-medium text-neutral-600">
                   {field.label}
                   {field.required && <span className="ml-1 text-red-500">*</span>}
                   {field.type === "textarea" ? (
                     <textarea
+                      id={`${formId}-answer-field-${field.key}`}
+                      name={field.key}
+                      required={field.required}
+                      aria-invalid={invalidField === field.key || undefined}
+                      aria-describedby={invalidField === field.key ? `${formId}-answer-error` : undefined}
                       value={answers[field.key] ?? ""}
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
@@ -467,6 +505,11 @@ export default function FormsView({
                     />
                   ) : field.type === "select" ? (
                     <select
+                      id={`${formId}-answer-field-${field.key}`}
+                      name={field.key}
+                      required={field.required}
+                      aria-invalid={invalidField === field.key || undefined}
+                      aria-describedby={invalidField === field.key ? `${formId}-answer-error` : undefined}
                       value={answers[field.key] ?? ""}
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
@@ -482,6 +525,11 @@ export default function FormsView({
                   ) : (
                     <input
                       type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"}
+                      id={`${formId}-answer-field-${field.key}`}
+                      name={field.key}
+                      required={field.required}
+                      aria-invalid={invalidField === field.key || undefined}
+                      aria-describedby={invalidField === field.key ? `${formId}-answer-error` : undefined}
                       value={answers[field.key] ?? ""}
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
@@ -491,7 +539,7 @@ export default function FormsView({
                 </label>
               ))}
             </div>
-            {error && <p className="mt-3 text-[12px] text-red-600">{error}</p>}
+            {error && <p id={`${formId}-answer-error`} role="alert" tabIndex={-1} data-form-error className="mt-3 text-[12px] text-red-600">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
@@ -510,7 +558,7 @@ export default function FormsView({
               </button>
             </div>
           </form>
-        </div>
+        </Dialog>
       )}
     </div>
   );

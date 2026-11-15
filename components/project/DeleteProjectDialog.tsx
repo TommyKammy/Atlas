@@ -49,7 +49,7 @@ export default function DeleteProjectDialog({
       open
       onClose={onClose}
       title="プロジェクトを削除"
-      backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
+      backdropClassName="backdrop:bg-black/25"
       panelClassName="w-[min(540px,94vw)] rounded-xl bg-white text-sm shadow-2xl"
     >
       <div data-project-delete-dialog className="p-6">
@@ -89,7 +89,8 @@ export default function DeleteProjectDialog({
         </label>
         {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" className={PROJECT_DIALOG_SECONDARY} onClick={onClose} disabled={busy}>
+          <button type="button" autoFocus
+              className={PROJECT_DIALOG_SECONDARY} onClick={onClose} disabled={busy}>
             キャンセル
           </button>
           <button

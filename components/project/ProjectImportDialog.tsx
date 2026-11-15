@@ -60,7 +60,7 @@ export default function ProjectImportDialog({
       open
       onClose={onClose}
       title="インポート"
-      backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
+      backdropClassName="backdrop:bg-black/25"
       panelClassName="w-[min(560px,94vw)] rounded-xl bg-white text-sm shadow-2xl"
     >
       <div data-project-import-dialog data-import-mode={initialMode} className="p-6">

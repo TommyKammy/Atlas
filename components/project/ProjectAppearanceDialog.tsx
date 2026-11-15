@@ -28,7 +28,7 @@ export default function ProjectAppearanceDialog({
       open
       onClose={onClose}
       title="カラーとアイコンを設定"
-      backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
+      backdropClassName="backdrop:bg-black/25"
       panelClassName="max-h-[90vh] w-[min(480px,90vw)] overflow-y-auto rounded-lg bg-white text-sm shadow-xl"
     >
       <div data-project-appearance-dialog className="p-5">

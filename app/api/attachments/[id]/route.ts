@@ -8,6 +8,8 @@ import { audit } from "@/lib/audit";
 import { withAttachmentTask } from "@/lib/api/route";
 import { pruneUnreferencedAttachment, UPLOAD_DIR } from "@/lib/attachment-files.mjs";
 
+import { TEXT_PREVIEW_TYPES, TEXT_PREVIEW_BYTES } from "@/lib/attachment-preview";
+
 const INLINE_TYPES = new Set([
   "image/png",
   "image/jpeg",
@@ -21,19 +23,39 @@ const INLINE_TYPES = new Set([
 
 export const GET = withAttachmentTask("view", async (req, { params }) => {
   const id = params.id;
-  const inline = new URL(req.url).searchParams.get("inline") === "1";
+  const query = new URL(req.url).searchParams;
+  const inline = query.get("inline") === "1";
+  const preview = query.get("preview") === "1";
   const r = await db.query(
     "SELECT file_name, stored_name, mime_type, size_bytes, task_id FROM task_attachments WHERE id = $1::bigint",
     [id],
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const row = r.rows[0];
+  if (preview && !TEXT_PREVIEW_TYPES.has(row.mime_type)) {
+    return NextResponse.json({ error: "text preview unavailable" }, { status: 400 });
+  }
   const full = path.join(UPLOAD_DIR, path.basename(row.stored_name));
   let file;
   try {
     file = await open(full, "r");
   } catch {
     return NextResponse.json({ error: "file missing on disk" }, { status: 410 });
+  }
+  if (preview) {
+    try {
+      const buffer = Buffer.alloc(TEXT_PREVIEW_BYTES);
+      const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
+      return new NextResponse(new Uint8Array(buffer.subarray(0, bytesRead)), {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": String(bytesRead),
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    } finally {
+      await file.close();
+    }
   }
   // The adapter counts chunks by default, so explicitly bound its queue.
   const body = Readable.toWeb(file.createReadStream(), { strategy: { highWaterMark: 1 } }) as ReadableStream<Uint8Array>;

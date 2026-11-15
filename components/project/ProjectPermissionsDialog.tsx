@@ -79,7 +79,7 @@ export default function ProjectPermissionsDialog({
       open
       onClose={onClose}
       title="プロジェクト権限"
-      backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
+      backdropClassName="backdrop:bg-black/25"
       panelClassName="flex max-h-[90vh] w-[min(760px,94vw)] flex-col overflow-hidden rounded-xl bg-white text-sm shadow-2xl"
     >
       <div data-project-permissions-dialog className="flex min-h-0 flex-1 flex-col">

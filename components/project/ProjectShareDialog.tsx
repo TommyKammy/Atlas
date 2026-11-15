@@ -39,7 +39,7 @@ export default function ProjectShareDialog({
       open
       onClose={onClose}
       title={title ?? `${projectName}を共有`}
-      backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
+      backdropClassName="backdrop:bg-black/25"
       panelClassName="max-h-[90vh] w-[min(560px,90vw)] overflow-y-auto rounded-lg bg-white text-sm shadow-xl"
     >
       <div className="p-5" data-project-share-dialog>

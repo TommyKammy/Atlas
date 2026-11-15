@@ -40,17 +40,17 @@ export const POST = withResourceProject("view", "project_forms", async (_req, { 
     const raw = values[field.key];
     const value = typeof raw === "string" ? raw.trim() : raw === undefined || raw === null ? "" : String(raw).trim();
     if (field.required && value === "") {
-      return NextResponse.json({ error: `${field.label} is required` }, { status: 400 });
+      return NextResponse.json({ error: `${field.label} is required`, field: field.key }, { status: 400 });
     }
     if (value === "") continue;
     if (field.type === "select" && field.options.length > 0 && !field.options.includes(value)) {
-      return NextResponse.json({ error: `${field.label} has an invalid option` }, { status: 400 });
+      return NextResponse.json({ error: `${field.label} has an invalid option`, field: field.key }, { status: 400 });
     }
     if (field.type === "date" && dateValue(value) === null) {
-      return NextResponse.json({ error: `${field.label} has an invalid date` }, { status: 400 });
+      return NextResponse.json({ error: `${field.label} has an invalid date`, field: field.key }, { status: 400 });
     }
     if (field.type === "number" && Number.isNaN(Number(value))) {
-      return NextResponse.json({ error: `${field.label} must be a number` }, { status: 400 });
+      return NextResponse.json({ error: `${field.label} must be a number`, field: field.key }, { status: 400 });
     }
     cleaned[field.key] = value;
   }

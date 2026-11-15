@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useFocusTrap } from "@/lib/use-focus-trap";
 
 export default function Dialog({
   open,
@@ -11,7 +10,7 @@ export default function Dialog({
   titleId,
   children,
   panelClassName = "w-[min(560px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl",
-  backdropClassName = "fixed inset-0 z-[90] flex items-center justify-center bg-black/25 p-4",
+  backdropClassName = "backdrop:bg-black/25",
 }: {
   open: boolean;
   onClose: () => void;
@@ -21,40 +20,53 @@ export default function Dialog({
   panelClassName?: string;
   backdropClassName?: string;
 }) {
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const pressedOutside = useRef(false);
   const [mounted, setMounted] = useState(false);
-  useFocusTrap(dialogRef, open, onClose);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setMounted(true));
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [open]);
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || !open) return;
+    dialog.showModal();
+    // Closing before removal also restores focus when the owner unmounts us.
+    return () => { if (dialog.open) dialog.close(); };
+  }, [open, mounted]);
 
   if (!open || !mounted) return null;
+
+  const outside = (event: { clientX: number; clientY: number }) => {
+    const rect = dialogRef.current!.getBoundingClientRect();
+    return event.clientX < rect.left || event.clientX > rect.right ||
+      event.clientY < rect.top || event.clientY > rect.bottom;
+  };
+
   return createPortal(
-    <div className={backdropClassName} onMouseDown={onClose}>
-      <div
-        ref={dialogRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        aria-labelledby={titleId}
-        className={panelClassName}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>,
+    <dialog
+      ref={dialogRef}
+      className={`atlas-dialog ${backdropClassName}`}
+      aria-label={titleId ? undefined : title}
+      aria-labelledby={titleId}
+      {...({ closedby: "any" } as Record<string, string>)}
+      onClose={(event) => { if (open && !event.currentTarget.open) onClose(); }}
+      onPointerDown={(event) => {
+        // Safari does not yet support closedby; require both ends outside so
+        // selecting text and releasing over the backdrop cannot dismiss it.
+        if (!("closedBy" in event.currentTarget)) pressedOutside.current = outside(event);
+      }}
+      onPointerUp={(event) => {
+        if (!("closedBy" in event.currentTarget) && pressedOutside.current && outside(event)) {
+          event.currentTarget.close();
+        }
+        pressedOutside.current = false;
+      }}
+    >
+      <div className={panelClassName}>{children}</div>
+    </dialog>,
     document.body,
   );
 }

@@ -42,6 +42,15 @@ export async function proxy(req: NextRequest) {
   const nonce = crypto.randomUUID();
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
+  // Production SSR reads the nonce from the incoming CSP. In next dev,
+  // forwarding this per-request header makes Turbopack Fast Refresh reload
+  // continuously; its development renderer already receives the response CSP.
+  // Keep the enforced response policy in both modes and discard client CSP.
+  if (process.env.NODE_ENV === "development") {
+    requestHeaders.delete("Content-Security-Policy");
+  } else {
+    requestHeaders.set("Content-Security-Policy", securityHeaders(nonce)["Content-Security-Policy"]);
+  }
 
   const next = () => NextResponse.next({ request: { headers: requestHeaders } });
   const publicPath =

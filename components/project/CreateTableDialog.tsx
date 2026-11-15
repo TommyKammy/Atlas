@@ -49,7 +49,7 @@ export default function CreateTableDialog({
       open
       onClose={onClose}
       title="プロジェクトからテーブルを作成"
-      backdropClassName="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 p-4"
+      backdropClassName="backdrop:bg-black/25"
       panelClassName="w-[min(540px,94vw)] rounded-xl bg-white text-sm shadow-2xl"
     >
       <div data-project-table-dialog className="p-6">

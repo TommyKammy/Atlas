@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import type { Attachment } from "@/lib/data";
 import AttachmentPreview from "../AttachmentPreview";
 import TaskSectionHeading from "./TaskSectionHeading";
@@ -25,6 +26,7 @@ export default function TaskAttachmentsSection({
   onDelete: (id: number) => void;
   canEdit?: boolean;
 }) {
+  const uploadId = useId();
   return (
     <section className="mt-5" data-task-attachments>
       <TaskSectionHeading
@@ -32,7 +34,8 @@ export default function TaskAttachmentsSection({
         count={attachments.length}
         action={
           canEdit ? <label
-            className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded text-[16px] ${
+            htmlFor={`${uploadId}-header`}
+            className={`flex h-6 w-6 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] justify-center rounded text-[16px] ${
               uploading
                 ? "cursor-wait text-neutral-300"
                 : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
@@ -41,8 +44,10 @@ export default function TaskAttachmentsSection({
           >
             ＋
             <input
+              id={`${uploadId}-header`}
               type="file"
-              className="hidden"
+              aria-label="添付を追加"
+              className="sr-only"
               disabled={uploading}
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -55,12 +60,14 @@ export default function TaskAttachmentsSection({
       />
 
       {attachments.length === 0 ? (
-        canEdit ? <label className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600">
+        canEdit ? <label htmlFor={`${uploadId}-empty`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600">
           <span className="text-base leading-none">＋</span>
           <span>{uploading ? "アップロード中…" : "添付を追加"}</span>
           <input
+            id={`${uploadId}-empty`}
             type="file"
-            className="hidden"
+            aria-label="添付を追加"
+            className="sr-only"
             disabled={uploading}
             onChange={(event) => {
               const file = event.target.files?.[0];
@@ -94,7 +101,7 @@ export default function TaskAttachmentsSection({
                 {canEdit && <button
                   type="button"
                   onClick={() => onDelete(attachment.id)}
-                  className="invisible shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 group-hover/att:visible"
+                  className="opacity-0 shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 group-hover/att:opacity-100 group-focus-within/att:opacity-100 focus:opacity-100"
                   title="添付を削除"
                   aria-label={`${attachment.file_name} を削除`}
                 >
@@ -111,12 +118,14 @@ export default function TaskAttachmentsSection({
               </div>
             </div>
           ))}
-          {canEdit && <label className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700">
+          {canEdit && <label htmlFor={`${uploadId}-footer`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700">
             <span className="text-sm leading-none">＋</span>
             {uploading ? "アップロード中…" : "ファイルを追加"}
             <input
+              id={`${uploadId}-footer`}
               type="file"
-              className="hidden"
+              aria-label="ファイルを追加"
+              className="sr-only"
               disabled={uploading}
               onChange={(event) => {
                 const file = event.target.files?.[0];

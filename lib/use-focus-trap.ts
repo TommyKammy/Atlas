@@ -37,6 +37,8 @@ export function useFocusTrap(
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (isImeComposing(event)) return;
+      // A nested native modal owns focus and dismissal while the pane is inert.
+      if (document.querySelector("dialog:modal")) return;
       if (event.key === "Escape" && escapeRef.current) {
         const target = event.target as HTMLElement | null;
         if (

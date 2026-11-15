@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 const IMAGE = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
-const TEXTY = new Set(["text/plain", "text/markdown", "text/csv", "application/json"]);
+import { TEXT_PREVIEW_TYPES, TEXT_PREVIEW_CHARACTERS } from "@/lib/attachment-preview";
 
 export default function AttachmentPreview({
   id,
@@ -14,17 +14,19 @@ export default function AttachmentPreview({
   mime: string;
   name: string;
 }) {
-  const [text, setText] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ id: number; text: string } | null>(null);
   useEffect(() => {
-    if (!TEXTY.has(mime)) return;
-    let live = true;
-    fetch(`/api/attachments/${id}?inline=1`)
+    if (!TEXT_PREVIEW_TYPES.has(mime)) return;
+    const controller = new AbortController();
+    fetch(`/api/attachments/${id}?inline=1&preview=1`, { signal: controller.signal })
       .then((r) => (r.ok ? r.text() : Promise.reject(r.status)))
-      .then((t) => live && setText(t.slice(0, 800)))
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
+      .then((text) => {
+        if (!controller.signal.aborted) setPreview({ id, text: text.slice(0, TEXT_PREVIEW_CHARACTERS) });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setPreview({ id, text: "プレビューを読み込めませんでした" });
+      });
+    return () => controller.abort();
   }, [id, mime]);
 
   if (IMAGE.has(mime)) {
@@ -40,12 +42,12 @@ export default function AttachmentPreview({
       </a>
     );
   }
-  if (TEXTY.has(mime)) {
+  if (TEXT_PREVIEW_TYPES.has(mime)) {
     return (
       <div className="max-w-full overflow-hidden rounded border bg-neutral-50 p-2">
         <div className="truncate text-xs font-semibold text-neutral-600">{name}</div>
         <pre className="mt-1 max-h-24 overflow-auto text-xs whitespace-pre-wrap text-neutral-700">
-          {text ?? "読込中…"}
+          {preview?.id === id ? preview.text : "読込中…"}
         </pre>
       </div>
     );

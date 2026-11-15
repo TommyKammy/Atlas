@@ -110,7 +110,7 @@ export default function FeedbackHost() {
         open={confirmRequest !== null}
         onClose={() => finish(false)}
         title={confirmRequest?.title ?? "確認"}
-        backdropClassName="fixed inset-0 z-[200] flex items-center justify-center bg-black/30 p-4"
+        backdropClassName="backdrop:bg-black/30"
         panelClassName="w-[min(440px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
       >
         <div className="p-5">
@@ -121,6 +121,7 @@ export default function FeedbackHost() {
           <div className="mt-5 flex justify-end gap-2">
             <button
               type="button"
+              autoFocus
               data-confirm-cancel
               onClick={() => finish(false)}
               className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
