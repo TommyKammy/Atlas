@@ -62,11 +62,32 @@ for (const width of [1440, 390]) test(`AI summary, improvements, copy and separa
   expect(notes).toHaveLength(2); expect(notes[1].body_doc.content[0].content[0].type).toBe("text");
   await expect(page.locator(".knowledge-document img")).toHaveCount(0);
 });
+test("toolbar controls wait for client initialization before accepting keyboard input", async ({ page }) => {
+  const f = await fixture(page);
+  let releaseScripts!: () => void;
+  const scripts = new Promise<void>(resolve => { releaseScripts = resolve; });
+  await page.route(/\.js(?:\?|$)/, async route => { await scripts; await route.continue(); });
+  const more = page.getByRole("button", { name: "ノートのその他の操作" });
+  const ai = page.getByRole("button", { name: "AIアシスト", exact: true });
+  try {
+    await page.goto(`/projects/${f.id}?view=knowledge&note=${f.note.id}`, { waitUntil: "commit" });
+    await expect(more).toBeVisible();
+    await expect(more).toBeDisabled();
+    await expect(ai).toBeDisabled();
+  } finally { releaseScripts(); }
+  await expect(more).toBeEnabled();
+  await more.focus(); await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("menuitem", { name: "履歴", exact: true })).toBeFocused();
+  await page.keyboard.press("Escape"); await expect(more).toBeFocused();
+  await ai.click();
+  await expect(page.getByRole("menuitem", { name: "要約を生成", exact: true })).toBeEnabled();
+});
 test("toolbar menus support keyboard navigation and note switches cancel in-flight output", async ({ page }) => {
   const f = await fixture(page, "slow");
   const other = await (await page.request.post("/api/knowledge", { data: { project_id: f.id, title: "切り替え先", body: "別のノートです。" } })).json();
   await page.goto(`/projects/${f.id}?view=knowledge&note=${f.note.id}`);
   const more = page.getByRole("button", { name: "ノートのその他の操作" });
+  await expect(more).toBeEnabled();
   await more.focus(); await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "履歴", exact: true })).toBeFocused();
   await page.keyboard.press("ArrowDown");

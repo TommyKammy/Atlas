@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+
+const subscribeReady = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 export const knowledgeActionBase = "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50";
 export const knowledgeAction = `${knowledgeActionBase} border-neutral-200 text-neutral-700 hover:bg-neutral-50`;
@@ -29,6 +33,7 @@ export default function KnowledgeActionMenu({ label, children, className = knowl
   children: ReactNode;
 }) {
   const id = useId(), trigger = useRef<HTMLButtonElement>(null), menu = useRef<HTMLDivElement>(null);
+  const ready = useSyncExternalStore(subscribeReady, clientReady, serverReady);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   useEffect(() => {
@@ -50,7 +55,7 @@ export default function KnowledgeActionMenu({ label, children, className = knowl
     menu.current.showPopover(); menu.current.focus(); onOpen?.();
   };
   return <>
-    <button ref={trigger} type="button" className={className} aria-label={label} aria-haspopup="menu" aria-controls={id} aria-expanded={open} disabled={disabled} onClick={show}
+    <button ref={trigger} type="button" className={className} aria-label={label} aria-haspopup="menu" aria-controls={id} aria-expanded={open} disabled={disabled || !ready} onClick={show}
       onKeyDown={event => { if (event.key === "ArrowDown") { event.preventDefault(); if (!open) show(); menu.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus(); } }}>{icon}</button>
     <div ref={menu} id={id} popover="auto" role="menu" tabIndex={-1} aria-label={label} className="fixed m-0 w-[248px] max-w-[calc(100vw-24px)] rounded-lg border border-neutral-200 bg-white p-1.5 text-neutral-900 shadow-sm outline-none" style={{ ...position, maxHeight: "60vh", overflowY: "auto" }}
       onClickCapture={event => { if ((event.target as HTMLElement).closest('button[role="menuitem"]:not(:disabled)')) close(); }}
