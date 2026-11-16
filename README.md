@@ -16,6 +16,9 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+For reliable Fast Refresh in a Docker development environment, see the
+[source synchronization setup](docs/docker-development.md).
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 For the production server, set `APP_ORIGIN` to the browser-facing URL when Atlas
