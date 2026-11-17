@@ -42,19 +42,21 @@ export default async function AppShell({
     <div className="flex h-screen flex-col overflow-hidden bg-white text-neutral-900">
       <div className="flex min-h-0 flex-1">
         <ResizableSidebar collapsed={collapsed} initialWidth={sidebarWidth}>
-          <div className="flex w-16 shrink-0 flex-col">
-            <SidebarRail
-              collapsed={collapsed}
-              showPortfolio={showPortfolio}
-              canCreateProject={canCreateProject}
-              showActions={showActions}
-            />
-            <SidebarRailFooter theme={theme} />
-          </div>
-          {!collapsed && (
-            <div id="atlas-sidebar-content" className="flex min-w-0 flex-1 flex-col rounded-tl-[12px] border-t border-l border-[#505050]">
+          {collapsed ? (
+            <div className="flex w-16 shrink-0 flex-col">
+              <SidebarRail
+                collapsed
+                showPortfolio={showPortfolio}
+                canCreateProject={canCreateProject}
+                showActions={showActions}
+              />
+              <SidebarRailFooter theme={theme} />
+            </div>
+          ) : (
+            <div id="atlas-sidebar-content" className="flex min-w-0 flex-1 flex-col">
               <Suspense fallback={<div className="p-4 text-sm text-neutral-500">読み込み中…</div>}>
                 <SidebarNav
+                  theme={theme}
                   showPortfolio={showPortfolio}
                   canCreateProject={canCreateProject}
                   showActions={showActions}

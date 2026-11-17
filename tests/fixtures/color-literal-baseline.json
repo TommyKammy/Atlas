@@ -22,7 +22,7 @@
     "app/trash/page.tsx": 2,
     "components/AdminConsole.tsx": 17,
     "components/AdminPanel.tsx": 52,
-    "components/AppShell.tsx": 6,
+    "components/AppShell.tsx": 5,
     "components/ArchivedProjects.tsx": 3,
     "components/AttachmentPreview.tsx": 3,
     "components/BoardView.tsx": 14,

@@ -34,11 +34,14 @@ test("sidebar actions replace the global header and stay reachable at every widt
   const sidebar = page.locator("[data-sidebar]");
   const sidebarActions = page.locator("[data-sidebar-actions]");
   const mobileActions = page.locator("[data-mobile-actions]");
-  const theme = page.locator("[data-sidebar-rail-footer] [data-theme-toggle]");
+  const theme = page.locator("[data-sidebar-footer] [data-theme-toggle]");
   const projectOption = page.getByRole("button", { name: "プロジェクト", exact: true });
 
   await expect(page.getByRole("banner")).toHaveCount(0);
   await expect(page.locator("[data-global-search]")).toHaveCount(0);
+  await expect(page.locator("[data-sidebar-rail]")).toHaveCount(0);
+  await expect(page.locator("[data-sidebar-rail-footer]")).toHaveCount(0);
+  await expect(page.locator("[data-sidebar-footer]")).toBeVisible();
   await expect(theme).toBeVisible();
 
   for (const width of [1440, 768, 375]) {
@@ -92,16 +95,29 @@ test("collapsed rail keeps create and search without duplicating expanded contro
   await page.goto("/");
   const sidebar = page.locator("[data-sidebar]");
   const sidebarActions = page.locator("[data-sidebar-actions]");
+  const rail = page.locator("[data-sidebar-rail]");
+  const railFooter = page.locator("[data-sidebar-rail-footer]");
+  const footer = page.locator("[data-sidebar-footer]");
   const railActions = page.locator("[data-sidebar-rail-actions]");
   const projectOption = page.getByRole("button", { name: "プロジェクト", exact: true });
 
   await expect(sidebar).toHaveAttribute("data-sidebar-collapsed", "false");
   await expect(sidebarActions).toBeVisible();
+  await expect(rail).toHaveCount(0);
+  await expect(railFooter).toHaveCount(0);
   await expect(railActions).toHaveCount(0);
+  await expect(footer).toBeVisible();
+  await expect(footer.locator("[data-theme-toggle]")).toBeVisible();
 
   await page.locator("[data-sidebar-toggle]").click();
   await expect(sidebar).toHaveAttribute("data-sidebar-collapsed", "true");
   await expect(sidebarActions).toHaveCount(0);
+  await expect(footer).toHaveCount(0);
+  await expect(rail).toBeVisible();
+  await expect(railFooter).toBeVisible();
+  await expect(railFooter.locator("[data-theme-toggle]")).toBeVisible();
+  await expect(railFooter.locator("[data-sidebar-help]")).toBeVisible();
+  await expect(railFooter.locator("[data-sidebar-user-menu]")).toBeVisible();
 
   const create = railActions.getByRole("button", { name: "作成", exact: true });
   const search = railActions.getByRole("button", { name: /^検索/ });
@@ -124,6 +140,10 @@ test("collapsed rail keeps create and search without duplicating expanded contro
   await page.locator("[data-sidebar-toggle]").click();
   await expect(sidebar).toHaveAttribute("data-sidebar-collapsed", "false");
   await expect(sidebarActions).toBeVisible();
+  await expect(rail).toHaveCount(0);
+  await expect(railFooter).toHaveCount(0);
+  await expect(footer).toBeVisible();
+  await expect(footer.locator("[data-theme-toggle]")).toBeVisible();
 });
 
 test.describe("resizable sidebar", () => {

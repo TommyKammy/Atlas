@@ -7,6 +7,8 @@ import SidebarProjectList from "./SidebarProjectList";
 import { getSidebarProjects } from "@/lib/repositories/sidebar-projects";
 import SidebarAddProject from "./SidebarAddProject";
 import SidebarInviteButton from "./SidebarInviteButton";
+import SidebarRailFooter from "./SidebarRailFooter";
+import SidebarToggle from "./SidebarToggle";
 import CreateMenu from "./CreateMenu";
 import OpenCommandPaletteButton from "./OpenCommandPaletteButton";
 import {
@@ -98,10 +100,12 @@ function NavLink({
 }
 
 export default async function SidebarNav({
+  theme,
   showPortfolio,
   canCreateProject,
   showActions,
 }: {
+  theme: "light" | "dark";
   showPortfolio: boolean;
   canCreateProject: boolean;
   showActions: boolean;
@@ -122,8 +126,9 @@ export default async function SidebarNav({
 
   return (
     <>
-      <div className="flex h-10 shrink-0 items-center px-3 text-[14px] font-normal text-[#F3F3F3]">
-        <span className="truncate">{ws?.name ?? "Atlas"}</span>
+      <div className="flex h-10 shrink-0 items-center gap-2 pl-3 pr-1 text-[14px] font-normal text-[#F3F3F3]">
+        <span className="min-w-0 flex-1 truncate">{ws?.name ?? "Atlas"}</span>
+        <SidebarToggle initialCollapsed={false} />
       </div>
       {showActions && (
         <div data-sidebar-actions className="flex shrink-0 items-center gap-1.5 px-2 pb-2">
@@ -174,11 +179,14 @@ export default async function SidebarNav({
         {ws && me && <SidebarProjectList key={`${ws.id}:${me.id}`} workspaceId={ws.id} projects={projects} favoriteIds={[...favoriteIds]} />}
         {projects.length === 0 && <div className="px-3 py-1.5 text-neutral-500">（なし）</div>}
       </nav>
-      {me?.is_admin && (
-        <div className="border-t border-[#333333] p-2">
-          <SidebarInviteButton />
-        </div>
-      )}
+      <div data-sidebar-footer className="border-t border-[#333333] p-2">
+        {me?.is_admin && (
+          <div className="pb-2">
+            <SidebarInviteButton />
+          </div>
+        )}
+        <SidebarRailFooter theme={theme} variant="panel" />
+      </div>
     </>
   );
 }

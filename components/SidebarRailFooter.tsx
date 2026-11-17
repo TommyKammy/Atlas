@@ -4,7 +4,14 @@ import SidebarHelpButton from "./SidebarHelpButton";
 import SidebarUserMenu from "./SidebarUserMenu";
 import ThemeToggle from "./ThemeToggle";
 
-export default async function SidebarRailFooter({ theme }: { theme: "light" | "dark" }) {
+export default async function SidebarRailFooter({
+  theme,
+  variant = "rail",
+}: {
+  theme: "light" | "dark";
+  /** "rail" is the collapsed icon column; "panel" is the expanded sidebar footer row. */
+  variant?: "rail" | "panel";
+}) {
   const uid = await getCurrentUserId();
   const user =
     uid === null
@@ -19,6 +26,15 @@ export default async function SidebarRailFooter({ theme }: { theme: "light" | "d
             [uid],
           )
         ).rows[0];
+  if (variant === "panel") {
+    return (
+      <div className="flex items-center gap-2 px-1 pb-1">
+        <ThemeToggle initialTheme={theme} />
+        <SidebarHelpButton />
+        {user && <SidebarUserMenu user={user} />}
+      </div>
+    );
+  }
   return (
     <div data-sidebar-rail-footer className="mt-auto flex flex-col items-center gap-3 pb-2 pt-2">
       <ThemeToggle initialTheme={theme} />
