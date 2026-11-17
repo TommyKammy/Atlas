@@ -39,7 +39,7 @@ import { QUICK_REACTIONS, useTaskPane } from "@/lib/use-task-pane";
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-h-9 items-start gap-2 rounded-md px-1 py-1 hover:bg-neutral-50">
-      <span className="w-[88px] shrink-0 truncate pt-1.5 text-[12px] text-neutral-500" title={label}>
+      <span className="w-[88px] shrink-0 truncate pt-1.5 text-[12px] text-muted" title={label}>
         {label}
       </span>
       <div className="min-w-0 flex-1">{children}</div>
@@ -229,10 +229,10 @@ export default function TaskPane({
       return (
         <div className="flex flex-wrap gap-x-3 gap-y-1 py-1" key={`cf-${task.id}-${field.id}`}>
           {users.length === 0 ? (
-            <span className="text-[12px] text-neutral-400">メンバーがいません</span>
+            <span className="text-[12px] text-subtle">メンバーがいません</span>
           ) : (
             users.map((user) => (
-              <label key={user.id} className="flex cursor-pointer items-center gap-1 text-[12px] text-neutral-600">
+              <label key={user.id} className="flex cursor-pointer items-center gap-1 text-[12px] text-secondary">
                 <input
                   type="checkbox"
                   checked={selected.includes(user.id)}
@@ -281,10 +281,10 @@ export default function TaskPane({
       return (
         <div className="flex flex-wrap gap-x-3 gap-y-1 py-1" key={`cf-${task.id}-${field.id}`}>
           {field.options.length === 0 ? (
-            <span className="text-[12px] text-neutral-400">選択肢がありません</span>
+            <span className="text-[12px] text-subtle">選択肢がありません</span>
           ) : (
             field.options.map((option) => (
-              <label key={option} className="flex cursor-pointer items-center gap-1 text-[12px] text-neutral-600">
+              <label key={option} className="flex cursor-pointer items-center gap-1 text-[12px] text-secondary">
                 <input
                   type="checkbox"
                   checked={selected.includes(option)}
@@ -387,9 +387,9 @@ export default function TaskPane({
 
         <div className="px-4 pb-8 pt-3">
           <TaskSaveStatus states={saveStates} reloading={reloading} onReload={reloadTask} />
-          {!canEdit && <p role="status" data-task-readonly className="mb-2 text-[12px] text-neutral-600">タスクの項目は閲覧のみです。変更には編集権限が必要です。</p>}
+          {!canEdit && <p role="status" data-task-readonly className="mb-2 text-[12px] text-secondary">タスクの項目は閲覧のみです。変更には編集権限が必要です。</p>}
           {conflict && (
-            <div className="mb-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm">
+            <div className="mb-3 rounded-lg border border-red-300 bg-danger-soft p-3 text-sm">
               <div className="font-semibold text-red-700">他のユーザーが先に更新しました</div>
               <div className="mt-1 space-y-0.5">
                 {Object.keys(conflict.attempted)
@@ -474,7 +474,7 @@ export default function TaskPane({
                     <EmptyCellIcon kind="assignee" />
                   )}
                   <span className="truncate">{assignee?.name ?? "未割り当て"}</span>
-                  <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0 text-subtle" fill="none" stroke="currentColor" strokeWidth="1.3">
                     <path d="m3.5 6 4.5 4 4.5-4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
@@ -520,12 +520,12 @@ export default function TaskPane({
                         {membership.section_name ? ` / ${membership.section_name}` : ""}
                       </span>
                       {isPrimary ? (
-                        <span className="shrink-0 text-[10px] text-neutral-400">主</span>
+                        <span className="shrink-0 text-[10px] text-subtle">主</span>
                       ) : (
                         <button
                           type="button"
                           onClick={() => removeMembership(membership.id)}
-                          className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
+                          className="shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-neutral-100 hover:text-red-600"
                           title="所属を外す"
                           aria-label={`${membership.name} から外す`}
                         >
@@ -539,7 +539,7 @@ export default function TaskPane({
                   <button
                     type="button"
                     onClick={openAddProject}
-                    className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+                    className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
                   >
                     <span className="text-sm leading-none">＋</span>
                     プロジェクトを追加
@@ -549,7 +549,7 @@ export default function TaskPane({
                     <select
                       value={newMemberProject}
                       onChange={(event) => onPickMemberProject(event.target.value)}
-                      className="h-8 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                      className="h-8 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-[#4075cf]"
                       aria-label="プロジェクトを選択"
                     >
                       <option value="">プロジェクトを選択</option>
@@ -566,7 +566,7 @@ export default function TaskPane({
                         <select
                           value={newMemberSection}
                           onChange={(event) => setNewMemberSection(event.target.value)}
-                          className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                          className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-[#4075cf]"
                           aria-label="セクションを選択"
                         >
                           <option value="">セクションなし</option>
@@ -588,7 +588,7 @@ export default function TaskPane({
                     <button
                       type="button"
                       onClick={closeAddProject}
-                      className="self-start rounded px-1 py-0.5 text-[11px] text-neutral-500 hover:bg-neutral-100"
+                      className="self-start rounded px-1 py-0.5 text-[11px] text-muted hover:bg-neutral-100"
                     >
                       キャンセル
                     </button>
@@ -614,8 +614,8 @@ export default function TaskPane({
                   label="進捗"
                   className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
                 />
-                <span className="text-[10px] text-neutral-400">%</span>
-                <span className="h-1.5 w-28 overflow-hidden rounded-full bg-neutral-200">
+                <span className="text-[10px] text-subtle">%</span>
+                <span className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-strong">
                   <span className="block h-full rounded-full bg-green-500" style={{ width: `${task.progress}%` }} />
                 </span>
               </div>
@@ -627,7 +627,7 @@ export default function TaskPane({
                   <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
                     <TaskStatusChip status={task.status} />
                   </summary>
-                  <div className="absolute left-0 top-full z-[130] mt-1 w-44 rounded-lg border border-neutral-200 bg-white p-1 text-[12px] shadow-xl">
+                  <div className="absolute left-0 top-full z-[130] mt-1 w-44 rounded-lg border border-neutral-200 bg-surface p-1 text-[12px] shadow-xl">
                     {statusChoices.map((choice) => (
                       <button
                         key={choice}

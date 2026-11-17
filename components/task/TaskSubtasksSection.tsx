@@ -55,7 +55,7 @@ export default function TaskSubtasksSection({
               onClick={onStartAdd}
               title="サブタスクを追加"
               aria-label="サブタスクを追加"
-              className="flex h-6 w-6 items-center justify-center rounded text-[16px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+              className="flex h-6 w-6 items-center justify-center rounded text-[16px] text-muted hover:bg-neutral-100 hover:text-neutral-800"
             >
               ＋
             </button>
@@ -66,7 +66,7 @@ export default function TaskSubtasksSection({
                 className={`ml-auto rounded px-1.5 py-0.5 text-[11px] ${
                   hideDone
                     ? "bg-blue-50 text-blue-700"
-                    : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+                    : "text-muted hover:bg-neutral-100 hover:text-neutral-700"
                 }`}
                 title="サブタスクの絞り込み"
               >
@@ -94,7 +94,7 @@ export default function TaskSubtasksSection({
             <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}`}
               className={`min-w-0 flex-1 truncate hover:text-blue-700 hover:underline ${
-                subtask.completed ? "text-neutral-400 line-through" : "text-neutral-800"
+                subtask.completed ? "text-subtle line-through" : "text-neutral-800"
               }`}
               title={subtask.name}
             >
@@ -103,14 +103,14 @@ export default function TaskSubtasksSection({
             {subtask.assignee_name && (
               <TaskAvatar name={subtask.assignee_name} className="h-5 w-5" textClassName="text-[9px]" />
             )}
-            {dueLabel && <span className="shrink-0 text-[11px] text-neutral-500">{dueLabel}</span>}
+            {dueLabel && <span className="shrink-0 text-[11px] text-muted">{dueLabel}</span>}
             <button
               type="button"
               disabled={!canEdit}
               onClick={() => onDelete(subtask)}
               title="サブタスクを削除"
               aria-label={`${subtask.name} を削除`}
-              className="invisible shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 group-hover/sub:visible"
+              className="invisible shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-neutral-100 hover:text-red-600 group-hover/sub:visible"
             >
               ×
             </button>
@@ -130,7 +130,7 @@ export default function TaskSubtasksSection({
             }}
             placeholder="サブタスク名を入力"
             autoFocus
-            className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+            className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-[#4075cf]"
           />
           <button
             type="button"
@@ -143,7 +143,7 @@ export default function TaskSubtasksSection({
           <button
             type="button"
             onClick={onCancelAdd}
-            className="shrink-0 rounded px-2 text-[11px] text-neutral-500 hover:bg-neutral-100"
+            className="shrink-0 rounded px-2 text-[11px] text-muted hover:bg-neutral-100"
           >
             キャンセル
           </button>
@@ -153,11 +153,11 @@ export default function TaskSubtasksSection({
           type="button"
           disabled={!canEdit}
           onClick={onStartAdd}
-          className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
+          className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-subtle hover:bg-neutral-50 hover:text-neutral-600"
         >
           <span className="text-base leading-none">＋</span>
           <span className="min-w-0 flex-1 truncate">サブタスクを追加</span>
-          <span className="flex shrink-0 items-center gap-1 text-neutral-400">
+          <span className="flex shrink-0 items-center gap-1 text-subtle">
             <span className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed" title="担当者">
               <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.1">
                 <circle cx="8" cy="5.5" r="2.3" />

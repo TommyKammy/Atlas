@@ -49,7 +49,7 @@ export default function TaskDueDateField({
         } hover:bg-neutral-100`}
         aria-label="期日を設定"
       >
-        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.3">
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.3">
           <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" />
           <path d="M5 2v3M11 2v3M2.5 6.5h11" />
         </svg>
@@ -61,7 +61,7 @@ export default function TaskDueDateField({
           onClick={() => onPatch({ start_on: null, due_on: null })}
           aria-label="期日をクリアする"
           title="期日をクリアする"
-          className="ml-0.5 rounded p-0.5 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="ml-0.5 rounded p-0.5 text-[12px] text-subtle hover:bg-neutral-100 hover:text-neutral-700"
         >
           ×
         </button>

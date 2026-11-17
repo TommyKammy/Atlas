@@ -29,10 +29,10 @@ export default function TaskDependenciesSection({
 
   return (
     <div className="flex min-h-9 items-start gap-2 rounded-md px-1 py-1 hover:bg-neutral-50">
-      <span className="w-[88px] shrink-0 pt-1.5 text-[12px] text-neutral-500">依存関係</span>
+      <span className="w-[88px] shrink-0 pt-1.5 text-[12px] text-muted">依存関係</span>
       <div className="min-w-0 flex-1">
         {dependencies.length === 0 && !adding && (
-          <span className="flex h-7 items-center text-[13px] text-neutral-400">依存関係なし</span>
+          <span className="flex h-7 items-center text-[13px] text-subtle">依存関係なし</span>
         )}
         {dependencies.map((dependency) => (
           <div key={dependency.id} className="flex min-h-7 items-center gap-1.5 text-[13px]">
@@ -49,7 +49,7 @@ export default function TaskDependenciesSection({
             <button
               type="button"
               onClick={() => onRemove(dependency.id)}
-              className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
+              className="shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-neutral-100 hover:text-red-600"
               title="依存を外す"
               aria-label={`${dependency.name} の依存を外す`}
             >
@@ -64,7 +64,7 @@ export default function TaskDependenciesSection({
               <select
                 value={draft}
                 onChange={(event) => onDraftChange(event.target.value)}
-                className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-[#4075cf]"
                 aria-label="依存関係を追加"
               >
                 <option value="">このタスクの前に…</option>
@@ -91,7 +91,7 @@ export default function TaskDependenciesSection({
             <button
               type="button"
               onClick={() => setAdding(false)}
-              className="self-start rounded px-1 py-0.5 text-[11px] text-neutral-500 hover:bg-neutral-100"
+              className="self-start rounded px-1 py-0.5 text-[11px] text-muted hover:bg-neutral-100"
             >
               キャンセル
             </button>
@@ -100,7 +100,7 @@ export default function TaskDependenciesSection({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
           >
             <span className="text-sm leading-none">＋</span>
             依存関係を追加

@@ -7,8 +7,8 @@ import type { TaskApprovalAction, TaskApprovalResponse, TaskApprovalSummary } fr
 import { TASK_APPROVAL_ACTION_LABELS, TASK_APPROVAL_STATUS_LABELS } from "@/lib/task-approval";
 import TaskApprovalBadge from "./TaskApprovalBadge";
 
-const inputClass = "w-full rounded border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-500 focus:border-[#2c60b8] focus:outline-none focus:ring-1 focus:ring-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500";
-const secondaryButton = "rounded border border-neutral-300 bg-white px-3 py-1.5 text-[12px] font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8] disabled:cursor-not-allowed disabled:opacity-50";
+const inputClass = "w-full rounded border border-line-strong bg-white px-2.5 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-500 focus:border-[#2c60b8] focus:outline-none focus:ring-1 focus:ring-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500";
+const secondaryButton = "rounded border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8] disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function TaskApprovalSection({ task, viewerId, canEdit, openSignal, onSummaryChange, onChanged }: {
   task: TaskRow;
@@ -220,14 +220,14 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
       {displayError && <button type="button" disabled={busy || loading} onClick={() => void load(true)} className={`${secondaryButton} mt-2`}>最新の承認情報を読み込む</button>}
     </div>}
     <div id={`task-approval-${task.id}`} hidden={!expanded} className="mt-3 space-y-3">
-      {loading && <p role="status" className="text-[12px] text-neutral-600">承認情報を読み込んでいます…</p>}
+      {loading && <p role="status" className="text-[12px] text-secondary">承認情報を読み込んでいます…</p>}
       {approval && <dl className="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-2 gap-y-1 text-[12px] leading-5">
-        <dt className="text-neutral-600">状態</dt><dd>{TASK_APPROVAL_STATUS_LABELS[approval.status]} · 第{approval.round}回</dd>
-        <dt className="text-neutral-600">承認者</dt><dd className="break-words">{approval.approver_name ?? "未設定（再指定が必要です）"}</dd>
-        <dt className="text-neutral-600">申請者</dt><dd className="break-words">{approval.requester_name ?? "削除されたユーザー"}</dd>
+        <dt className="text-secondary">状態</dt><dd>{TASK_APPROVAL_STATUS_LABELS[approval.status]} · 第{approval.round}回</dd>
+        <dt className="text-secondary">承認者</dt><dd className="break-words">{approval.approver_name ?? "未設定（再指定が必要です）"}</dd>
+        <dt className="text-secondary">申請者</dt><dd className="break-words">{approval.requester_name ?? "削除されたユーザー"}</dd>
       </dl>}
-      {approval?.status === "approved" && <p className="text-[12px] leading-5 text-neutral-600">内容を変更して再確認が必要な場合は、再申請してください。</p>}
-      {!approval && data && !data.can_request && <p className="text-[12px] leading-5 text-neutral-600">承認の申請には、主プロジェクトの編集権限が必要です。マイルストーンと繰り返しタスクは承認タスクにできません。</p>}
+      {approval?.status === "approved" && <p className="text-[12px] leading-5 text-secondary">内容を変更して再確認が必要な場合は、再申請してください。</p>}
+      {!approval && data && !data.can_request && <p className="text-[12px] leading-5 text-secondary">承認の申請には、主プロジェクトの編集権限が必要です。マイルストーンと繰り返しタスクは承認タスクにできません。</p>}
       {canConfigure && <div className="space-y-2">
         <label className="block text-[12px] font-medium text-neutral-700">承認者を検索
           <input type="search" aria-label="承認者を検索" value={query} disabled={disabled} onChange={(event) => setQuery(event.target.value)} placeholder="名前で検索" className={`${inputClass} mt-1`} />
@@ -239,32 +239,32 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
             {visibleCandidates.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
           </select>
         </label>
-        {candidates.length === 0 ? <p className="text-[12px] text-neutral-600">選択できる承認者がいません。主プロジェクトに編集権限のある別のメンバーが必要です。</p>
-          : visibleCandidates.length === 0 && query && <p className="text-[12px] text-neutral-600">検索に一致する承認者がいません。</p>}
+        {candidates.length === 0 ? <p className="text-[12px] text-secondary">選択できる承認者がいません。主プロジェクトに編集権限のある別のメンバーが必要です。</p>
+          : visibleCandidates.length === 0 && query && <p className="text-[12px] text-secondary">検索に一致する承認者がいません。</p>}
       </div>}
       {data && (canConfigure || data.can_decide) && <div className="space-y-2">
         <label className="block text-[12px] font-medium text-neutral-700">コメント・理由
           <textarea ref={commentRef} aria-label="承認のコメント・理由" value={comment} maxLength={2000} rows={3} disabled={disabled} onChange={(event) => setComment(event.target.value)} placeholder="申請の説明、判断の理由など" className={`${inputClass} mt-1 resize-y`} />
         </label>
-        {data.can_decide && <p className="text-[11px] text-neutral-600">却下・差し戻しには理由が必要です。</p>}
+        {data.can_decide && <p className="text-[11px] text-secondary">却下・差し戻しには理由が必要です。</p>}
         <div className="flex flex-wrap gap-2">
-          {!approval && data.can_request && <button type="button" disabled={disabled || !selected} onClick={() => void submit("request")} className="rounded bg-[#2c60b8] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#244f99] disabled:opacity-50">承認を申請</button>}
+          {!approval && data.can_request && <button type="button" disabled={disabled || !selected} onClick={() => void submit("request")} className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#244f99] disabled:opacity-50">承認を申請</button>}
           {approval?.status === "pending" && data.can_decide && <>
             <button type="button" disabled={disabled} onClick={() => void submit("approve")} className="rounded bg-green-700 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-green-800 disabled:opacity-50">承認する</button>
             <button type="button" disabled={disabled} onClick={() => void submit("request_changes")} className={secondaryButton}>差し戻す</button>
             <button type="button" disabled={disabled} onClick={() => void submit("reject")} className={`${secondaryButton} text-rose-700`}>却下する</button>
           </>}
           {approval?.status === "pending" && data.can_manage && <button type="button" disabled={disabled || !selected || selected.id === approval.approver_id} onClick={() => void submit("reassign")} className={secondaryButton}>承認者を変更</button>}
-          {approval && approval.status !== "pending" && data.can_manage && <button type="button" disabled={disabled || !selected} onClick={() => void submit("resubmit")} className="rounded bg-[#2c60b8] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#244f99] disabled:opacity-50">再申請する</button>}
+          {approval && approval.status !== "pending" && data.can_manage && <button type="button" disabled={disabled || !selected} onClick={() => void submit("resubmit")} className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#244f99] disabled:opacity-50">再申請する</button>}
         </div>
       </div>}
-      {approval?.status === "pending" && data && !data.can_decide && <p className="text-[12px] text-neutral-600">判断できるのは指定された承認者だけです。</p>}
+      {approval?.status === "pending" && data && !data.can_decide && <p className="text-[12px] text-secondary">判断できるのは指定された承認者だけです。</p>}
       {data && data.history.length > 0 && <details className="border-t border-neutral-100 pt-3">
         <summary className="cursor-pointer text-[12px] font-semibold text-neutral-700">承認履歴（{data.history.length}件）</summary>
         <ol data-approval-history className="mt-2 space-y-3">
           {data.history.map((entry) => <li key={entry.id} data-approval-history-action={entry.action} className="border-l-2 border-neutral-200 pl-3 text-[12px] leading-5 text-neutral-700">
-            <p><span className="font-medium">{entry.actor_name}</span>が{TASK_APPROVAL_ACTION_LABELS[entry.action]} <span className="text-neutral-600">· 第{entry.round}回</span></p>
-            <p className="text-[11px] text-neutral-600">承認者: {entry.approver_name} · {new Date(entry.created_at).toLocaleString("ja-JP")}</p>
+            <p><span className="font-medium">{entry.actor_name}</span>が{TASK_APPROVAL_ACTION_LABELS[entry.action]} <span className="text-secondary">· 第{entry.round}回</span></p>
+            <p className="text-[11px] text-secondary">承認者: {entry.approver_name} · {new Date(entry.created_at).toLocaleString("ja-JP")}</p>
             {entry.comment && <p className="mt-1 whitespace-pre-wrap break-words">{entry.comment}</p>}
           </li>)}
         </ol>

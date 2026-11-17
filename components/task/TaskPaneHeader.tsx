@@ -67,7 +67,7 @@ export default function TaskPaneHeader({
   };
 
   const iconButton =
-    "flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800";
+    "flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-neutral-100 hover:text-neutral-800";
   const collaboratorTitle = collaborators.map((person) => person.name).join("・");
 
   return (
@@ -81,7 +81,7 @@ export default function TaskPaneHeader({
         className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium ${
           task.completed
             ? "border-green-700 bg-green-700 text-white hover:bg-green-800"
-            : "border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
+            : "border-line-strong bg-surface text-neutral-700 hover:bg-neutral-50"
         }`}
       >
         {task.is_milestone ? (
@@ -99,7 +99,7 @@ export default function TaskPaneHeader({
       </button>
 
       {showTitle ? (
-        <span className="ml-1 hidden min-w-0 flex-1 truncate text-[12px] text-neutral-600 md:block" title={task.name}>
+        <span className="ml-1 hidden min-w-0 flex-1 truncate text-[12px] text-secondary md:block" title={task.name}>
           {task.name}
         </span>
       ) : (
@@ -124,7 +124,7 @@ export default function TaskPaneHeader({
         onClick={onShare}
         title="共有"
         aria-label="共有"
-        className="flex h-7 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50"
+        className="flex h-7 items-center gap-1 rounded-md border border-line-strong bg-surface px-2 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50"
       >
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.3">
           <circle cx="6" cy="8" r="2.2" />
@@ -191,7 +191,7 @@ export default function TaskPaneHeader({
             <circle cx="13" cy="8" r="1.1" />
           </svg>
         </summary>
-        <div className="absolute right-0 top-full z-[140] mt-1 w-52 rounded-lg border border-neutral-200 bg-white p-1 text-[12px] shadow-xl">
+        <div className="absolute right-0 top-full z-[140] mt-1 w-52 rounded-lg border border-neutral-200 bg-surface p-1 text-[12px] shadow-xl">
           <button
             type="button"
             onClick={(event) => {
@@ -220,7 +220,7 @@ export default function TaskPaneHeader({
               closeMenu(event);
               onRemove();
             }}
-            className="flex w-full rounded px-2.5 py-1.5 text-left text-red-600 hover:bg-red-50"
+            className="flex w-full rounded px-2.5 py-1.5 text-left text-danger hover:bg-red-50"
           >
             タスクを削除
           </button>
@@ -229,7 +229,7 @@ export default function TaskPaneHeader({
 
       <Link
         href={closeHref}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-neutral-100 hover:text-neutral-900"
         title="詳細を閉じる"
         aria-label="詳細を閉じる"
       >

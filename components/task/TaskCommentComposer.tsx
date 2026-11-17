@@ -120,13 +120,13 @@ export default function TaskCommentComposer({
 
   const keepFocus = (event: MouseEvent) => event.preventDefault();
   const iconButton =
-    "flex h-6 w-6 items-center justify-center rounded text-[13px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800";
+    "flex h-6 w-6 items-center justify-center rounded text-[13px] text-muted hover:bg-neutral-100 hover:text-neutral-800";
 
   return (
-    <div className="shrink-0 border-t border-neutral-200 bg-white px-3 py-2.5" data-task-composer>
+    <div className="shrink-0 border-t border-neutral-200 bg-surface px-3 py-2.5" data-task-composer>
       <div
-        className={`rounded-lg border bg-white transition-shadow ${
-          focused ? "border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]" : "border-neutral-300"
+        className={`rounded-lg border bg-surface transition-shadow ${
+          focused ? "border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]" : "border-line-strong"
         }`}
         onFocusCapture={() => setFocused(true)}
         onBlurCapture={(event) => {
@@ -153,7 +153,7 @@ export default function TaskCommentComposer({
             onReady={setEditor}
           />
         ) : (
-          <div className="min-h-[34px] animate-pulse rounded bg-neutral-50" aria-hidden />
+          <div className="min-h-[34px] animate-pulse rounded bg-surface-subtle" aria-hidden />
         )}
 
         {emojiOpen && (
@@ -219,7 +219,7 @@ export default function TaskCommentComposer({
             </svg>
           </button>
 
-          <span className="ml-auto text-[10px] text-neutral-400">
+          <span className="ml-auto text-[10px] text-subtle">
             {draftState === "saving"
               ? "下書きを保存中…"
               : draftState === "saved"

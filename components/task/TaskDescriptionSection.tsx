@@ -97,7 +97,7 @@ export default function TaskDescriptionSection({
           <button
             type="button"
             onClick={start}
-            className="rounded px-1.5 py-0.5 text-[11px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+            className="rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
           >
             編集
           </button>
@@ -123,12 +123,12 @@ export default function TaskDescriptionSection({
             onSubmit={() => void save()}
           />
           <div className="mt-1.5 flex items-center justify-between gap-2">
-            <span className="text-[10px] text-neutral-400">⌘+Enter で保存</span>
+            <span className="text-[10px] text-subtle">⌘+Enter で保存</span>
             <div className="flex gap-1.5">
               <button
                 type="button"
                 onClick={cancel}
-                className="rounded px-2.5 py-1 text-[12px] text-neutral-600 hover:bg-neutral-100"
+                className="rounded px-2.5 py-1 text-[12px] text-secondary hover:bg-neutral-100"
               >
                 キャンセル
               </button>
@@ -157,11 +157,11 @@ export default function TaskDescriptionSection({
         <button
           type="button"
           onClick={start}
-          className="min-h-[132px] w-full rounded-lg px-2 py-2 text-left text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-500"
+          className="min-h-[132px] w-full rounded-lg px-2 py-2 text-left text-[13px] text-subtle hover:bg-neutral-50 hover:text-neutral-500"
         >
           このタスクの内容を入力します
         </button>
-      ) : <p className="min-h-12 px-2 py-2 text-[13px] text-neutral-500">説明はありません</p>}
+      ) : <p className="min-h-12 px-2 py-2 text-[13px] text-muted">説明はありません</p>}
     </section>
   );
 }

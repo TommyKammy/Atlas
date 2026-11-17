@@ -86,7 +86,7 @@ function CommentEditForm({
           type="button"
           data-comment-edit-cancel={comment.id}
           onClick={onCancel}
-          className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100"
+          className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100"
         >
           キャンセル
         </button>
@@ -166,9 +166,9 @@ export default function TaskFeedSection({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[12px]">
             <span className="font-semibold text-neutral-800">{comment.author_name ?? "–"}</span>
-            <span className="text-neutral-400">{formatWhen(comment.created_at)}</span>
+            <span className="text-subtle">{formatWhen(comment.created_at)}</span>
             {comment.edited_at && (
-              <span data-comment-edited={comment.id} className="text-[10px] text-neutral-400">
+              <span data-comment-edited={comment.id} className="text-[10px] text-subtle">
                 編集済み
               </span>
             )}
@@ -178,7 +178,7 @@ export default function TaskFeedSection({
                   type="button"
                   data-comment-edit={comment.id}
                   onClick={() => setEditingCommentId(comment.id)}
-                  className="text-[10px] text-neutral-500 hover:text-neutral-800 hover:underline"
+                  className="text-[10px] text-muted hover:text-neutral-800 hover:underline"
                 >
                   編集
                 </button>
@@ -227,7 +227,7 @@ export default function TaskFeedSection({
                 className={`rounded-full border px-1.5 py-0.5 text-[11px] ${
                   reaction.mine
                     ? "border-blue-400 bg-blue-50 text-blue-700"
-                    : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
+                    : "border-neutral-200 bg-surface text-secondary hover:bg-neutral-50"
                 }`}
               >
                 {reaction.emoji} {reaction.n}
@@ -243,7 +243,7 @@ export default function TaskFeedSection({
                   data-comment-reaction-add={emoji}
                   onClick={() => onToggleReaction(comment.id, emoji)}
                   title="リアクションする"
-                  className="rounded-full border border-dashed border-neutral-200 px-1.5 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
+                  className="rounded-full border border-dashed border-neutral-200 px-1.5 py-0.5 text-[11px] text-subtle hover:bg-neutral-50 hover:text-neutral-600"
                 >
                   {emoji} ＋
                 </button>
@@ -259,8 +259,8 @@ export default function TaskFeedSection({
       <Avatar name={event.actor_name} className="h-6 w-6" />
       <div className="min-w-0 flex-1 text-[12px] leading-5">
         <span className="font-medium text-neutral-700">{event.actor_name ?? "システム"}</span>{" "}
-        <span className="text-neutral-500">{event.summary}</span>
-        <span className="ml-1.5 text-[10px] text-neutral-400">{formatWhen(event.created_at)}</span>
+        <span className="text-muted">{event.summary}</span>
+        <span className="ml-1.5 text-[10px] text-subtle">{formatWhen(event.created_at)}</span>
       </div>
     </div>
   );
@@ -282,7 +282,7 @@ export default function TaskFeedSection({
           className={`rounded-full px-2.5 py-1 text-[12px] ${
             feedTab === "comments"
               ? "bg-blue-50 font-semibold text-blue-800"
-              : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+              : "text-muted hover:bg-neutral-100 hover:text-neutral-700"
           }`}
         >
           コメント{comments.length > 0 ? ` ${comments.length}` : ""}
@@ -293,7 +293,7 @@ export default function TaskFeedSection({
           className={`rounded-full px-2.5 py-1 text-[12px] ${
             feedTab === "activity"
               ? "bg-blue-50 font-semibold text-blue-800"
-              : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+              : "text-muted hover:bg-neutral-100 hover:text-neutral-700"
           }`}
         >
           すべてのアクティビティ
@@ -301,7 +301,7 @@ export default function TaskFeedSection({
         <button
           type="button"
           onClick={() => setOldestFirst((value) => !value)}
-          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
           title="並べ替え"
         >
           <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.2">
@@ -313,7 +313,7 @@ export default function TaskFeedSection({
       </div>
 
       {items.length === 0 ? (
-        <div className="py-4 text-center text-[12px] text-neutral-400">
+        <div className="py-4 text-center text-[12px] text-subtle">
           {feedTab === "comments" ? "まだコメントはありません" : "アクティビティはまだありません"}
         </div>
       ) : feedTab === "comments" ? (
