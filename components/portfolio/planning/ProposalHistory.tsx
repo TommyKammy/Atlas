@@ -6,18 +6,25 @@ import {
   periodLabel,
   quarterStartMonth,
 } from "@/lib/planning/format";
-import { proposalStatusLabel } from "@/lib/planning/approvals";
+import { proposalReviewOutcomeLabel, proposalStatusLabel } from "@/lib/planning/approvals";
 import type {
   PlanningPeriodSummary,
   PlanningProposal,
   PlanningProposalStatus,
 } from "@/lib/planning/types";
 import PlanningDialog from "./PlanningDialog";
+import ProposalReviewForm, { type ProposalReviewInput } from "./ProposalReviewForm";
 import ScenarioSnapshotView from "./ScenarioSnapshot";
 import { buttonQuiet, buttonSecondary, EmptyPanel, Notice, Tag } from "./ui";
 
 function statusTone(status: PlanningProposalStatus): "neutral" | "blue" | "good" | "warn" | "bad" {
-  if (status === "submitted" || status === "under_review") return "blue";
+  if (
+    status === "submitted" ||
+    status === "under_review" ||
+    status === "pending_decision"
+  ) {
+    return "blue";
+  }
   if (status === "approved") return "good";
   if (status === "returned" || status === "rejected") return "bad";
   return "neutral";
@@ -30,11 +37,23 @@ function proposalTitle(proposal: PlanningProposal): string {
 function ProposalDetail({
   proposal,
   currentRevision,
+  currentUserId,
+  canReview,
+  onReview,
 }: {
   proposal: PlanningProposal;
   currentRevision: number;
+  currentUserId: number;
+  canReview: boolean;
+  onReview: (input: ProposalReviewInput) => Promise<void>;
 }) {
   const snapshot = proposal.snapshot;
+  const canReviewThis =
+    canReview &&
+    proposal.status === "under_review" &&
+    proposal.reviewerUserId === currentUserId &&
+    !proposal.restricted;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -67,6 +86,22 @@ function ProposalDetail({
           <dd className="font-medium text-neutral-800">{proposal.reviewerName ?? "レビューなし"}</dd>
         </div>
         <div>
+          <dt className="text-neutral-500">レビュー結果</dt>
+          <dd className="font-medium text-neutral-800">
+            {proposal.reviewOutcome
+              ? proposalReviewOutcomeLabel(proposal.reviewOutcome)
+              : proposal.status === "under_review"
+                ? "確認待ち"
+                : "未レビュー"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-neutral-500">レビュー日時</dt>
+          <dd className="font-medium text-neutral-800">
+            {proposal.reviewedAt ? formatDecisionDate(proposal.reviewedAt) : "—"}
+          </dd>
+        </div>
+        <div>
           <dt className="text-neutral-500">提出時の計画の版 / 現在の版</dt>
           <dd className="font-medium text-neutral-800">
             {proposal.periodRevision} / {currentRevision}
@@ -77,6 +112,13 @@ function ProposalDetail({
           <dd className="font-medium text-neutral-800">{formatManYen(proposal.budgetYen)} 万円</dd>
         </div>
       </dl>
+
+      {proposal.reviewNote && !proposal.restricted && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] text-blue-900">
+          <div className="text-[11px] font-semibold text-blue-800">レビューコメント</div>
+          <p className="mt-0.5 whitespace-pre-wrap">{proposal.reviewNote}</p>
+        </div>
+      )}
 
       {proposal.restricted || !snapshot ? (
         <Notice tone="warn">
@@ -108,6 +150,33 @@ function ProposalDetail({
           </div>
         </>
       )}
+
+      {canReviewThis && (
+        <ProposalReviewForm
+          key={`review-${proposal.id}`}
+          reviewerName={proposal.reviewerName ?? ""}
+          onReview={onReview}
+        />
+      )}
+      {proposal.status === "under_review" && !canReviewThis && (
+        <Notice tone="info">
+          レビュー担当（{proposal.reviewerName ?? "未設定"}）の確認待ちです。割り当てられた担当者のみが確認または差し戻せます。
+        </Notice>
+      )}
+      {proposal.status === "pending_decision" && (
+        <Notice tone={proposal.reviewOutcome === "passed" ? "success" : "info"}>
+          {proposal.reviewOutcome === "passed"
+            ? "レビューを確認済みです。最終承認者の決裁待ちです。"
+            : proposal.reviewOutcome === "not_required"
+              ? "レビュー不要のため、最終承認者の決裁待ちです。"
+              : "最終承認者の決裁待ちです。"}
+        </Notice>
+      )}
+      {proposal.status === "returned" && (
+        <Notice tone="warn">
+          この提案は差し戻されました。内容を見直し、同じ四半期に新しい版の提案を提出できます。
+        </Notice>
+      )}
     </div>
   );
 }
@@ -118,12 +187,18 @@ export default function ProposalHistory({
   approvalEnabled,
   selectedId,
   onSelect,
+  currentUserId,
+  canReview,
+  onReview,
 }: {
   proposals: PlanningProposal[];
   period: PlanningPeriodSummary;
   approvalEnabled: boolean;
   selectedId: number | null;
   onSelect: (proposalId: number | null) => void;
+  currentUserId: number;
+  canReview: boolean;
+  onReview: (proposalId: number, input: ProposalReviewInput) => Promise<void>;
 }) {
   const selected = proposals.find((proposal) => proposal.id === selectedId) ?? null;
 
@@ -171,6 +246,9 @@ export default function ProposalHistory({
                       {proposal.submitterName} ・ {formatDecisionDate(proposal.submittedAt)} ・
                       最終承認者 {proposal.finalApproverName}
                       {proposal.reviewerName ? ` ・ レビュー ${proposal.reviewerName}` : ""}
+                      {proposal.reviewOutcome
+                        ? ` ・ ${proposalReviewOutcomeLabel(proposal.reviewOutcome)}`
+                        : ""}
                     </p>
                   </div>
                   <button
@@ -179,7 +257,11 @@ export default function ProposalHistory({
                     onClick={() => onSelect(proposal.id)}
                     aria-haspopup="dialog"
                   >
-                    提案の詳細を見る
+                    {proposal.status === "under_review" &&
+                    canReview &&
+                    proposal.reviewerUserId === currentUserId
+                      ? "レビューする"
+                      : "提案の詳細を見る"}
                   </button>
                 </div>
 
@@ -220,7 +302,13 @@ export default function ProposalHistory({
         }
       >
         {selected && (
-          <ProposalDetail proposal={selected} currentRevision={period.revision} />
+          <ProposalDetail
+            proposal={selected}
+            currentRevision={period.revision}
+            currentUserId={currentUserId}
+            canReview={canReview}
+            onReview={(input) => onReview(selected.id, input)}
+          />
         )}
       </PlanningDialog>
     </section>

@@ -28,6 +28,7 @@ import PlanningHeader from "./PlanningHeader";
 import RolesDialog from "./RolesDialog";
 import ViewersDialog from "./ViewersDialog";
 import type { ProposalSubmitInput } from "./SubmitProposalDialog";
+import type { ProposalReviewInput } from "./ProposalReviewForm";
 import { isStaleRevisionError, planningErrorMessage } from "./errors";
 import { buttonPrimary, EmptyPanel, Notice, buttonSecondary } from "./ui";
 
@@ -290,6 +291,19 @@ export default function PlanningWorkspace({
     toast(`投資提案を提出しました（版${result.version}）`);
   };
 
+  const reviewProposal = async (proposalId: number, input: ProposalReviewInput) => {
+    const result = await mutate<{ status: string }>(
+      `/api/portfolios/${portfolioId}/planning/proposals/${proposalId}/review`,
+      "POST",
+      input,
+    );
+    toast(
+      result.status === "returned"
+        ? "投資提案を差し戻しました。新しい版を提出できます"
+        : "レビューを確認し、最終決裁待ちにしました",
+    );
+  };
+
   const saveApprovalSettings = async (input: ApprovalSettingsInput) => {
     await api(`/api/portfolios/${portfolioId}/planning/approval-settings`, "PUT", input);
     await load(periodKey, true);
@@ -435,6 +449,7 @@ export default function PlanningWorkspace({
             onToggle={toggleScenario}
             onAdopt={(slot) => setAdoptSlot(slot)}
             onSubmitProposal={submitProposal}
+            onReviewProposal={reviewProposal}
             onEditBudget={() => setBudgetDialog(true)}
             onNavigate={switchView}
           />

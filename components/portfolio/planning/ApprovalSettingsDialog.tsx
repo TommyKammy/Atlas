@@ -123,7 +123,7 @@ export default function ApprovalSettingsDialog({
     >
       <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-4">
         <p className="text-[12px] leading-5 text-neutral-600">
-          承認を有効にすると、比較画面でA案・B案を直接採用せず、選んだ案と理由を投資提案として提出します。提出時点の両案は固定され、最終承認者が決定します。
+          承認を有効にすると、比較画面でA案・B案を直接採用せず、選んだ案と理由を投資提案として提出します。提出時点の両案は固定され、最終承認者が決定します。レビュー担当を設定した提案は、その担当者の確認後に最終決裁へ進みます。
         </p>
 
         {locked && (

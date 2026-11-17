@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   approvalSettingsChanged,
+  effectiveProposalStatus,
   isOpenProposalStatus,
+  proposalInitialReviewOutcome,
+  proposalInitialStatus,
+  proposalReviewOutcome,
+  proposalReviewOutcomeLabel,
+  proposalStatusAfterReview,
   proposalStatusLabel,
   proposalSubmissionBlock,
   type ApprovalSettingsValues,
@@ -85,9 +91,34 @@ test("material approval setting changes are detected while identical saves are n
 test("open proposal statuses and display labels stay explicit", () => {
   assert.equal(isOpenProposalStatus("submitted"), true);
   assert.equal(isOpenProposalStatus("under_review"), true);
+  assert.equal(isOpenProposalStatus("pending_decision"), true);
   assert.equal(isOpenProposalStatus("returned"), false);
   assert.equal(isOpenProposalStatus("approved"), false);
-  assert.equal(proposalStatusLabel("submitted"), "最終承認待ち");
+  assert.equal(proposalStatusLabel("under_review"), "レビュー待ち");
+  assert.equal(proposalStatusLabel("pending_decision"), "最終承認待ち");
   assert.equal(proposalStatusLabel("returned"), "差し戻し");
   assert.equal(proposalStatusLabel("approved"), "承認済み");
+});
+
+test("review assignment chooses the review path while no reviewer goes straight to decision", () => {
+  assert.equal(proposalInitialStatus(9), "under_review");
+  assert.equal(proposalInitialReviewOutcome(9), null);
+  assert.equal(proposalInitialStatus(null), "pending_decision");
+  assert.equal(proposalInitialReviewOutcome(null), "not_required");
+});
+
+test("review outcomes keep pass and skipped paths explicit for the final decision", () => {
+  assert.equal(proposalReviewOutcome("pass"), "passed");
+  assert.equal(proposalStatusAfterReview("pass"), "pending_decision");
+  assert.equal(proposalReviewOutcome("return"), "returned");
+  assert.equal(proposalStatusAfterReview("return"), "returned");
+  assert.equal(proposalReviewOutcomeLabel("passed"), "確認済み（決裁へ）");
+  assert.equal(proposalReviewOutcomeLabel("not_required"), "レビュー不要");
+});
+
+test("legacy submitted rows follow their reviewer assignment without rewriting payload", () => {
+  assert.equal(effectiveProposalStatus("submitted", 9), "under_review");
+  assert.equal(effectiveProposalStatus("submitted", null), "pending_decision");
+  assert.equal(effectiveProposalStatus("under_review", 9), "under_review");
+  assert.equal(effectiveProposalStatus("returned", 9), "returned");
 });

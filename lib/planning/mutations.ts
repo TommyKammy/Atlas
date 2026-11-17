@@ -1,5 +1,5 @@
 import { withTransaction, type Queryable } from "../db";
-import { ApiError, badRequest, conflict, notFound } from "../api/errors";
+import { ApiError, badRequest, conflict, forbidden, notFound } from "../api/errors";
 import {
   assertPeriodFullyVisible,
   assertPortfolioFullyVisible,
@@ -7,13 +7,28 @@ import {
   loadEligiblePlanParticipants,
   lockPlanningPeriod,
   lockPlanningPortfolio,
+  requirePlanningAccess,
   requirePlanningEditor,
   resolveLinkableProject,
   visibleProjectIds,
 } from "./access";
-import { approvalSettingsChanged, proposalSubmissionBlock } from "./approvals";
+import {
+  approvalSettingsChanged,
+  effectiveProposalStatus,
+  proposalInitialReviewOutcome,
+  proposalInitialStatus,
+  proposalReviewOutcome,
+  proposalStatusAfterReview,
+  proposalSubmissionBlock,
+  type ProposalReviewAction,
+} from "./approvals";
 import { buildDecisionSnapshot, type CalculationInitiative } from "./calculations";
-import { hashPlanningSnapshot } from "./decision-snapshot";
+import {
+  hashPlanningSnapshot,
+  isPlanningDecisionSnapshot,
+  snapshotProjectIds,
+} from "./decision-snapshot";
+import { transitionProposalStatus } from "./proposal-transition";
 import {
   planInitiativeOwnerChange,
   resolveActiveInitiativeOwner,
@@ -25,7 +40,12 @@ import {
   loadRoles,
   loadScenarios,
 } from "./repository";
-import type { PlanningInitiativeKind, PlanningQuarter } from "./types";
+import type {
+  PlanningInitiativeKind,
+  PlanningProposalReviewOutcome,
+  PlanningProposalStatus,
+  PlanningQuarter,
+} from "./types";
 import {
   parseName,
   parseRoleEdits,
@@ -75,7 +95,7 @@ async function countOpenProposals(
     `SELECT COUNT(*)::int AS n
      FROM portfolio_plan_proposals
      WHERE portfolio_id = $1::bigint
-       AND status IN ('submitted', 'under_review')
+       AND status IN ('submitted', 'under_review', 'pending_decision')
        AND ($2::bigint IS NULL OR period_id = $2::bigint)`,
     [portfolioId, periodId],
   );
@@ -927,7 +947,13 @@ export async function submitProposal(input: {
   reason: string;
   reviewerUserId?: number | null;
   requestId: string;
-}): Promise<{ id: number; version: number; idempotent: boolean; submittedAt: string }> {
+}): Promise<{
+  id: number;
+  version: number;
+  status: PlanningProposalStatus;
+  idempotent: boolean;
+  submittedAt: string;
+}> {
   try {
     return await withTransaction(async (q) => {
       await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
@@ -940,7 +966,7 @@ export async function submitProposal(input: {
       );
 
       const previous = await q.query(
-        `SELECT id, version, submitted_by, recommended_slot, reason, reviewer_user_id,
+        `SELECT id, version, status, submitted_by, recommended_slot, reason, reviewer_user_id,
            submitted_at::text AS submitted_at
          FROM portfolio_plan_proposals
          WHERE period_id = $1::bigint AND request_id = $2`,
@@ -967,6 +993,10 @@ export async function submitProposal(input: {
         return {
           id: Number(row.id),
           version: Number(row.version),
+          status: effectiveProposalStatus(
+            String(row.status) as PlanningProposalStatus,
+            previousReviewerId,
+          ),
           idempotent: true,
           submittedAt: String(row.submitted_at),
         };
@@ -1085,22 +1115,25 @@ export async function submitProposal(input: {
         [input.periodId],
       );
       const version = Number(versionResult.rows[0].version);
+      const initialStatus = proposalInitialStatus(reviewerId);
+      const initialReviewOutcome = proposalInitialReviewOutcome(reviewerId);
       const inserted = await q.query(
         `INSERT INTO portfolio_plan_proposals
            (workspace_id, portfolio_id, period_id, version, status, recommended_slot,
             reason, request_id, submitted_by, submitted_by_name, submitted_at,
             final_approver_user_id, final_approver_name, reviewer_user_id, reviewer_name,
-            period_revision, budget_yen, snapshot, snapshot_sha256)
-         VALUES ($1::bigint, $2::bigint, $3::bigint, $4::int, 'submitted', $5::smallint,
-                 $6, $7, $8::bigint, $9, now(),
-                 $10::bigint, $11, $12::bigint, $13,
-                 $14::int, $15::bigint, $16::jsonb, $17)
+            review_outcome, period_revision, budget_yen, snapshot, snapshot_sha256)
+         VALUES ($1::bigint, $2::bigint, $3::bigint, $4::int, $5, $6::smallint,
+                 $7, $8, $9::bigint, $10, now(),
+                 $11::bigint, $12, $13::bigint, $14,
+                 $15, $16::int, $17::bigint, $18::jsonb, $19)
          RETURNING id, submitted_at::text AS submitted_at`,
         [
           input.workspaceId,
           input.portfolioId,
           input.periodId,
           version,
+          initialStatus,
           input.chosenSlot,
           input.reason,
           input.requestId,
@@ -1110,6 +1143,7 @@ export async function submitProposal(input: {
           approver.name,
           reviewerId,
           reviewerName,
+          initialReviewOutcome,
           period.revision,
           period.budgetYen,
           JSON.stringify(snapshot),
@@ -1119,6 +1153,7 @@ export async function submitProposal(input: {
       return {
         id: Number(inserted.rows[0].id),
         version,
+        status: initialStatus,
         idempotent: false,
         submittedAt: String(inserted.rows[0].submitted_at),
       };
@@ -1137,6 +1172,152 @@ export async function submitProposal(input: {
     }
     throw error;
   }
+}
+
+export async function reviewProposal(input: {
+  workspaceId: number;
+  portfolioId: number;
+  userId: number;
+  proposalId: number;
+  action: ProposalReviewAction;
+  note: string;
+  requestId: string | null;
+  expectedStatus: PlanningProposalStatus | null;
+}): Promise<{
+  id: number;
+  version: number;
+  status: PlanningProposalStatus;
+  outcome: PlanningProposalReviewOutcome;
+  reviewedAt: string;
+  idempotent: boolean;
+}> {
+  return withTransaction(async (q) => {
+    await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
+    await requirePlanningAccess(q, input.portfolioId, input.workspaceId, input.userId);
+
+    const active = await q.query(
+      "SELECT id FROM users WHERE id = $1::bigint AND deactivated_at IS NULL",
+      [input.userId],
+    );
+    if (active.rowCount === 0) throw forbidden("実行者が存在しないか無効です");
+
+    const loaded = await q.query(
+      `SELECT id, version, status, reviewer_user_id, review_outcome, review_note,
+         reviewed_at::text AS reviewed_at, review_request_id, snapshot, snapshot_sha256
+       FROM portfolio_plan_proposals
+       WHERE id = $1::bigint
+         AND portfolio_id = $2::bigint
+         AND workspace_id = $3::bigint
+       FOR UPDATE`,
+      [input.proposalId, input.portfolioId, input.workspaceId],
+    );
+    if (loaded.rowCount === 0) throw notFound("投資提案が見つかりません");
+    const row = loaded.rows[0];
+    const reviewerUserId =
+      row.reviewer_user_id === null || row.reviewer_user_id === undefined
+        ? null
+        : Number(row.reviewer_user_id);
+    const rawStatus = String(row.status) as PlanningProposalStatus;
+    const status = effectiveProposalStatus(rawStatus, reviewerUserId);
+    const outcome = proposalReviewOutcome(input.action);
+
+    if (input.requestId !== null && row.review_request_id === input.requestId) {
+      if (
+        reviewerUserId !== input.userId ||
+        String(row.review_note ?? "") !== input.note ||
+        row.review_outcome !== outcome ||
+        row.reviewed_at === null ||
+        row.reviewed_at === undefined
+      ) {
+        throw new ApiError(
+          409,
+          "同じリクエストIDが別のレビュー内容で使用されています",
+          "request_id_reused",
+        );
+      }
+      return {
+        id: Number(row.id),
+        version: Number(row.version),
+        status,
+        outcome,
+        reviewedAt: String(row.reviewed_at),
+        idempotent: true,
+      };
+    }
+
+    if (
+      input.expectedStatus !== null &&
+      input.expectedStatus !== status &&
+      input.expectedStatus !== rawStatus
+    ) {
+      throw new ApiError(
+        409,
+        "提案の状態が変わりました。最新の内容を確認してください",
+        "proposal_status_changed",
+        { currentStatus: status },
+      );
+    }
+    if (status !== "under_review") {
+      throw new ApiError(
+        409,
+        "この提案はレビュー待ちではありません。最新の内容を確認してください",
+        "proposal_status_changed",
+        { currentStatus: status },
+      );
+    }
+    if (reviewerUserId === null) {
+      throw conflict("この提案にはレビュー担当者が設定されていません", "reviewer_unassigned");
+    }
+    if (reviewerUserId !== input.userId) {
+      throw forbidden("この提案をレビューできるのは、割り当てられたレビュー担当者だけです");
+    }
+
+    const snapshot = row.snapshot;
+    if (
+      !isPlanningDecisionSnapshot(snapshot) ||
+      hashPlanningSnapshot(snapshot) !== String(row.snapshot_sha256)
+    ) {
+      throw conflict("提案の内容を確認できませんでした", "proposal_snapshot_invalid");
+    }
+    const projectIds = snapshotProjectIds(snapshot);
+    const visible = await visibleProjectIds(q, input.userId, input.workspaceId, projectIds);
+    if (projectIds.some((projectId) => !visible.has(projectId))) {
+      throw forbidden(
+        "閲覧権限のない元プロジェクトが含まれるため、この提案をレビューできません。全案件の元プロジェクト閲覧権限が必要です",
+      );
+    }
+
+    const nextStatus = proposalStatusAfterReview(input.action);
+    const transitioned = await transitionProposalStatus(q, {
+      proposalId: input.proposalId,
+      workspaceId: input.workspaceId,
+      portfolioId: input.portfolioId,
+      expectedStatuses: ["submitted", "under_review"],
+      nextStatus,
+      reviewerUserId: input.userId,
+      reviewOutcome: outcome,
+      reviewNote: input.note,
+      reviewRequestId: input.requestId,
+      markReviewed: true,
+    });
+    if (!transitioned) {
+      throw new ApiError(
+        409,
+        "提案の状態が変わりました。最新の内容を確認してください",
+        "proposal_status_changed",
+        { currentStatus: status },
+      );
+    }
+
+    return {
+      id: transitioned.id,
+      version: transitioned.version,
+      status: transitioned.status,
+      outcome,
+      reviewedAt: transitioned.reviewedAt ?? new Date().toISOString(),
+      idempotent: false,
+    };
+  });
 }
 
 export async function adoptScenario(input: {
@@ -1294,7 +1475,7 @@ export async function removePlanViewer(input: {
        JOIN portfolios pf ON pf.id = p.portfolio_id
        LEFT JOIN users u ON u.id = $2::bigint
        WHERE p.portfolio_id = $1::bigint
-         AND p.status IN ('submitted', 'under_review')
+         AND p.status IN ('submitted', 'under_review', 'pending_decision')
          AND (p.final_approver_user_id = $2::bigint OR p.reviewer_user_id = $2::bigint)
          AND NOT (COALESCE(u.is_admin, FALSE) OR pf.owner_id = $2::bigint)
        LIMIT 1`,

@@ -212,11 +212,14 @@ export type PlanningDecision = PlanningDecisionRestricted | PlanningDecisionComp
 export type PlanningProposalStatus =
   | "submitted"
   | "under_review"
+  | "pending_decision"
   | "returned"
   | "approved"
   | "rejected"
   | "withdrawn"
   | "superseded";
+
+export type PlanningProposalReviewOutcome = "passed" | "returned" | "not_required";
 
 export type PlanningApprovalParticipant = {
   id: number;
@@ -245,8 +248,14 @@ type PlanningProposalBase = {
   submittedAt: string;
   periodRevision: number;
   budgetYen: number;
+  finalApproverUserId: number;
   finalApproverName: string;
+  reviewerUserId: number | null;
   reviewerName: string | null;
+  reviewOutcome: PlanningProposalReviewOutcome | null;
+  reviewedAt: string | null;
+  /** Null while restricted, matching the existing reason/snapshot redaction. */
+  reviewNote: string | null;
   restricted: boolean;
 };
 
@@ -276,6 +285,8 @@ export type PlanningAccess = {
   canEdit: boolean;
   canManageViewers: boolean;
   canEditData: boolean;
+  /** Assigned reviewer on an in-flight proposal; workflow only, never plan edit. */
+  canReview: boolean;
 };
 
 export type PlanningState = {

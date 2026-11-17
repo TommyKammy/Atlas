@@ -1,5 +1,10 @@
 import { badRequest } from "../api/errors";
-import type { PlanningInitiativeKind, PlanningMonth, PlanningQuarter } from "./types";
+import type {
+  PlanningInitiativeKind,
+  PlanningMonth,
+  PlanningProposalStatus,
+  PlanningQuarter,
+} from "./types";
 import { PLANNING_QUARTERS } from "./types";
 import { parsePeriodKey } from "./format";
 
@@ -174,6 +179,37 @@ export function parseRequestId(value: unknown): string {
     throw badRequest("リクエストIDが正しくありません");
   }
   return requestId;
+}
+
+export type ParsedProposalReviewAction = "pass" | "return";
+
+export function parseProposalReviewAction(value: unknown): ParsedProposalReviewAction {
+  const action = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (action === "pass" || action === "passed" || action === "approve" || action === "confirm") {
+    return "pass";
+  }
+  if (
+    action === "return" ||
+    action === "returned" ||
+    action === "request_changes" ||
+    action === "send_back"
+  ) {
+    return "return";
+  }
+  throw badRequest("レビューの操作が正しくありません");
+}
+
+export function parseProposalReviewNote(value: unknown): string {
+  const note = typeof value === "string" ? value.trim() : "";
+  if (note === "") throw badRequest("レビューのコメント・差し戻し理由を入力してください");
+  if (note.length > 2000) throw badRequest("レビューのコメントは2000文字以内で入力してください");
+  return note;
+}
+
+export function parseExpectedProposalStatus(value: unknown): PlanningProposalStatus | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") throw badRequest("提案の想定状態が正しくありません");
+  return value.trim() as PlanningProposalStatus;
 }
 
 export function parseIdList(value: unknown): number[] {

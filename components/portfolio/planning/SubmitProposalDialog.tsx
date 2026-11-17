@@ -230,7 +230,7 @@ export default function SubmitProposalDialog({
             ))}
           </select>
           <span className="mt-1 block text-[11px] font-normal text-neutral-500">
-            設定した既定のレビュー担当を変更できます。レビューは任意で、最終決定は最終承認者が行います。
+            設定した既定のレビュー担当を変更できます。レビュー担当を設定すると、その担当者の確認後に最終決裁へ進みます。未設定の場合は直接、最終決裁待ちになります。
           </span>
         </label>
 

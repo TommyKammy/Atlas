@@ -19,6 +19,12 @@ export function planningErrorMessage(error: unknown): string {
     if (body?.code === "project_link_exists") {
       return "この元プロジェクトは既に別の案件に紐付いています。";
     }
+    if (body?.code === "proposal_status_changed") {
+      return "提案の状態が変わりました。最新の内容を確認してください。";
+    }
+    if (body?.code === "request_id_reused") {
+      return "同じ操作が別の内容で送信されています。最新の内容を確認して、もう一度お試しください。";
+    }
     return error.message;
   }
   if (error instanceof TypeError) {

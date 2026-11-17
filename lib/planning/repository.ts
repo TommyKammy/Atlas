@@ -6,6 +6,7 @@ import {
   snapshotProjectIds,
 } from "./decision-snapshot";
 import { periodLabel, quarterStartMonth } from "./format";
+import { effectiveProposalStatus } from "./approvals";
 import {
   requirePlanningAccess,
   loadEligiblePlanParticipants,
@@ -24,6 +25,7 @@ import type {
   PlanningOwnerCandidate,
   PlanningPeriodSummary,
   PlanningProposal,
+  PlanningProposalReviewOutcome,
   PlanningProposalStatus,
   PlanningRole,
   PlanningScenario,
@@ -42,6 +44,17 @@ function nullableNumber(value: unknown): number | null {
 
 function stringOrNull(value: unknown): string | null {
   return value === null || value === undefined ? null : String(value);
+}
+
+function reviewOutcomeValue(
+  value: unknown,
+  status: PlanningProposalStatus,
+): PlanningProposalReviewOutcome | null {
+  if (value === "passed" || value === "returned" || value === "not_required") return value;
+  if (value === null || value === undefined) {
+    return status === "pending_decision" ? "not_required" : null;
+  }
+  return null;
 }
 
 export async function loadPeriods(
@@ -328,7 +341,7 @@ export async function loadApprovalSettings(
          SELECT COUNT(*)::int
          FROM portfolio_plan_proposals p
          WHERE p.portfolio_id = portfolios.id
-           AND p.status IN ('submitted', 'under_review')
+           AND p.status IN ('submitted', 'under_review', 'pending_decision')
        ) AS open_proposal_count
      FROM portfolios
      LEFT JOIN portfolio_plan_approval_settings s ON s.portfolio_id = portfolios.id
@@ -370,7 +383,9 @@ export async function loadProposals(
 ): Promise<PlanningProposal[]> {
   const result = await q.query(
     `SELECT id, version, status, recommended_slot, reason, submitted_by_name,
-       submitted_at::text AS submitted_at, final_approver_name, reviewer_name,
+       submitted_at::text AS submitted_at, final_approver_user_id, final_approver_name,
+       reviewer_user_id, reviewer_name, review_outcome,
+       reviewed_at::text AS reviewed_at, review_note,
        period_revision, budget_yen, snapshot, snapshot_sha256
      FROM portfolio_plan_proposals
      WHERE period_id = $1::bigint
@@ -397,10 +412,17 @@ export async function loadProposals(
 
   return parsed.map(({ row, snapshot, recommendedSlot }) => {
     const hidden = snapshotProjectIds(snapshot).some((id) => !visible.has(id));
+    const reviewerUserId = nullableNumber(row.reviewer_user_id);
+    const status = effectiveProposalStatus(
+      String(row.status) as PlanningProposalStatus,
+      reviewerUserId,
+    );
+    const reviewOutcome = reviewOutcomeValue(row.review_outcome, status);
+    const reviewNote = stringOrNull(row.review_note);
     const base = {
       id: number(row.id),
       version: number(row.version),
-      status: String(row.status) as PlanningProposalStatus,
+      status,
       recommendedSlot,
       recommendedScenarioName:
         snapshot.scenarios[recommendedSlot]?.name ?? (recommendedSlot === 0 ? "A案" : "B案"),
@@ -408,12 +430,18 @@ export async function loadProposals(
       submittedAt: String(row.submitted_at),
       periodRevision: number(row.period_revision),
       budgetYen: number(row.budget_yen),
+      finalApproverUserId: number(row.final_approver_user_id),
       finalApproverName: String(row.final_approver_name),
+      reviewerUserId,
       reviewerName: stringOrNull(row.reviewer_name),
+      reviewOutcome,
+      reviewedAt: stringOrNull(row.reviewed_at),
+      reviewNote,
     };
     if (hidden) {
       return {
         ...base,
+        reviewNote: null,
         restricted: true as const,
         reason: null,
         snapshot: null,
@@ -606,6 +634,7 @@ export async function loadPlanningState(input: {
         canEdit: access.canEdit,
         canManageViewers: access.canManageViewers,
         canEditData: access.canEdit && !restricted && selectedPeriod !== null,
+        canReview: access.canReview,
       },
       periods,
       selectedPeriod,

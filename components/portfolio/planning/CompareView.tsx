@@ -15,6 +15,7 @@ import type {
 import DecisionHistory from "./DecisionHistory";
 import PlanningTable from "./PlanningTable";
 import ProposalHistory from "./ProposalHistory";
+import type { ProposalReviewInput } from "./ProposalReviewForm";
 import SubmitProposalDialog, { type ProposalSubmitInput } from "./SubmitProposalDialog";
 import { planningErrorMessage } from "./errors";
 import {
@@ -304,6 +305,7 @@ export default function CompareView({
   onToggle,
   onAdopt,
   onSubmitProposal,
+  onReviewProposal,
   onEditBudget,
   onNavigate,
 }: {
@@ -311,6 +313,7 @@ export default function CompareView({
   onToggle: (slot: 0 | 1, initiativeId: number, checked: boolean) => Promise<void>;
   onAdopt: (slot: 0 | 1) => void;
   onSubmitProposal: (input: ProposalSubmitInput) => Promise<void>;
+  onReviewProposal: (proposalId: number, input: ProposalReviewInput) => Promise<void>;
   onEditBudget: () => void;
   onNavigate: (view: PlanningView) => void;
 }) {
@@ -348,6 +351,13 @@ export default function CompareView({
       (candidate) => candidate.id === approval.finalApprover?.id,
     );
   const canSubmitProposal = canEdit && submissionBlock === null && !approverIneligible;
+  const canReviewOpenProposal =
+    openProposal !== null &&
+    openProposal.status === "under_review" &&
+    state.access.canReview &&
+    openProposal.reviewerUserId === state.currentUserId;
+  const latestReturned =
+    state.proposals.find((proposal) => proposal.status === "returned") ?? null;
   const proposalResult = proposalSlot === null ? null : scenarioCalculation(state, proposalSlot);
 
   const toggle = async (slot: 0 | 1, initiativeId: number, checked: boolean) => {
@@ -424,15 +434,24 @@ export default function CompareView({
             <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
               <span>
                 この四半期の提案（版{openProposal.version}）は
-                <b>{openProposal.recommendedScenarioName}</b>の推奨で提出済みです。最終承認者の決定を待っています。
+                <b>{openProposal.recommendedScenarioName}</b>の推奨で提出済みです。
+                {openProposal.status === "under_review"
+                  ? canReviewOpenProposal
+                    ? "あなたがレビュー担当です。提出時点の内容を確認してください。"
+                    : `レビュー担当（${openProposal.reviewerName ?? "未設定"}）の確認待ちです。`
+                  : openProposal.finalApproverUserId === state.currentUserId
+                    ? "あなたが最終承認者です。最終決裁待ちです。"
+                    : "最終承認者の決定を待っています。"}
               </span>
               <button type="button" className={buttonQuiet} onClick={() => setProposalDetailId(openProposal.id)}>
-                提案の詳細を開く
+                {canReviewOpenProposal ? "レビューする" : "提案の詳細を開く"}
               </button>
             </div>
           ) : (
             <p className="mt-1.5 text-[11px] text-blue-800">
-              採用する案を選び、理由を添えて投資提案として提出します。提出時点のA案・B案が固定され、最終承認者が決定します。直接採用はできません。
+              {latestReturned
+                ? `前回の提案（版${latestReturned.version}）は差し戻されました。内容を見直して新しい提案を提出できます。`
+                : "採用する案を選び、理由を添えて投資提案として提出します。提出時点のA案・B案が固定され、最終承認者が決定します。直接採用はできません。"}
             </p>
           )}
           {submissionBlock === "self_approval" && !openProposal && (
@@ -474,7 +493,9 @@ export default function CompareView({
           actionLabel={
             approval.enabled
               ? openProposal
-                ? `${scenarioA.name}の提案を確認`
+                ? canReviewOpenProposal
+                  ? `${scenarioA.name}の提案をレビュー`
+                  : `${scenarioA.name}の提案を確認`
                 : `${scenarioA.name}で提案…`
               : `${scenarioA.name}を採用…`
           }
@@ -494,7 +515,9 @@ export default function CompareView({
           actionLabel={
             approval.enabled
               ? openProposal
-                ? `${scenarioB.name}の提案を確認`
+                ? canReviewOpenProposal
+                  ? `${scenarioB.name}の提案をレビュー`
+                  : `${scenarioB.name}の提案を確認`
                 : `${scenarioB.name}で提案…`
               : `${scenarioB.name}を採用…`
           }
@@ -650,6 +673,9 @@ export default function CompareView({
           approvalEnabled={approval.enabled}
           selectedId={proposalDetailId}
           onSelect={setProposalDetailId}
+          currentUserId={state.currentUserId}
+          canReview={state.access.canReview}
+          onReview={onReviewProposal}
         />
       )}
 

@@ -1,6 +1,10 @@
-import type { PlanningProposalStatus } from "./types";
+import type { PlanningProposalReviewOutcome, PlanningProposalStatus } from "./types";
 
-export const OPEN_PROPOSAL_STATUSES = ["submitted", "under_review"] as const;
+export const OPEN_PROPOSAL_STATUSES = [
+  "submitted",
+  "under_review",
+  "pending_decision",
+] as const;
 
 export function isOpenProposalStatus(status: PlanningProposalStatus): boolean {
   return OPEN_PROPOSAL_STATUSES.some((openStatus) => openStatus === status);
@@ -9,9 +13,11 @@ export function isOpenProposalStatus(status: PlanningProposalStatus): boolean {
 export function proposalStatusLabel(status: PlanningProposalStatus): string {
   switch (status) {
     case "submitted":
-      return "最終承認待ち";
+      return "提出済み";
     case "under_review":
-      return "レビュー中";
+      return "レビュー待ち";
+    case "pending_decision":
+      return "最終承認待ち";
     case "returned":
       return "差し戻し";
     case "approved":
@@ -23,6 +29,52 @@ export function proposalStatusLabel(status: PlanningProposalStatus): string {
     case "superseded":
       return "新版に置換";
   }
+}
+
+export function proposalReviewOutcomeLabel(outcome: PlanningProposalReviewOutcome): string {
+  switch (outcome) {
+    case "passed":
+      return "確認済み（決裁へ）";
+    case "returned":
+      return "差し戻し";
+    case "not_required":
+      return "レビュー不要";
+  }
+}
+
+export type ProposalReviewAction = "pass" | "return";
+
+export function proposalReviewOutcome(
+  action: ProposalReviewAction,
+): Extract<PlanningProposalReviewOutcome, "passed" | "returned"> {
+  return action === "pass" ? "passed" : "returned";
+}
+
+export function proposalStatusAfterReview(action: ProposalReviewAction): PlanningProposalStatus {
+  return action === "pass" ? "pending_decision" : "returned";
+}
+
+export function proposalInitialStatus(reviewerUserId: number | null): PlanningProposalStatus {
+  return reviewerUserId === null ? "pending_decision" : "under_review";
+}
+
+export function proposalInitialReviewOutcome(
+  reviewerUserId: number | null,
+): PlanningProposalReviewOutcome | null {
+  return reviewerUserId === null ? "not_required" : null;
+}
+
+/**
+ * Phase 1 stored every submission as 'submitted'. Treat it as the workflow
+ * status it actually represents so existing in-flight rows and fixtures keep
+ * working without rewriting submission columns.
+ */
+export function effectiveProposalStatus(
+  status: PlanningProposalStatus,
+  reviewerUserId: number | null,
+): PlanningProposalStatus {
+  if (status !== "submitted") return status;
+  return reviewerUserId === null ? "pending_decision" : "under_review";
 }
 
 export type ProposalSubmissionBlock =

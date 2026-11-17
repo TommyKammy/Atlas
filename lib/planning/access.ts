@@ -24,7 +24,14 @@ export async function loadPlanningAccess(
        EXISTS (
          SELECT 1 FROM portfolio_plan_viewers v
          WHERE v.portfolio_id = p.id AND v.user_id = $3
-       ) AS explicit_viewer
+       ) AS explicit_viewer,
+       EXISTS (
+         SELECT 1
+         FROM portfolio_plan_proposals pp
+         WHERE pp.portfolio_id = p.id
+           AND pp.status IN ('submitted', 'under_review')
+           AND pp.reviewer_user_id = $3
+       ) AS can_review
      FROM portfolios p
      WHERE p.id = $1::bigint AND p.workspace_id = $2::bigint`,
     [portfolioId, workspaceId, userId],
@@ -41,6 +48,7 @@ export async function loadPlanningAccess(
     canEdit,
     canManageViewers: canEdit,
     canEditData: canEdit,
+    canReview: row.can_review === true,
   };
 }
 
