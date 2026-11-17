@@ -267,6 +267,7 @@ type PlanningProposalBase = {
   reviewerUserId: number | null;
   reviewerName: string | null;
   reviewOutcome: PlanningProposalReviewOutcome | null;
+  invalidReview: boolean;
   reviewedAt: string | null;
   decisionAction: PlanningProposalDecisionAction | null;
   decisionId: number | null;
@@ -327,6 +328,8 @@ export type PlanningState = {
   comparison: PlanningComparisonProjection | null;
   decisions: PlanningDecision[];
   approval: PlanningApprovalSettings;
+  pendingApprovalChange: { id: number; requester: string; description: string; canConfirm: boolean } | null;
+  settingsHistory: { id: number; actor: string; action: string; summary: string; at: string }[];
   proposals: PlanningProposal[];
   /** Editor-only eligible full-visibility members for approval settings. */
   approvalCandidates: PlanningApprovalCandidate[] | null;

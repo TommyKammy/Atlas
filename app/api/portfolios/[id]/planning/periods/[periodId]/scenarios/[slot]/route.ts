@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api/route";
-import { audit } from "@/lib/audit";
 import {
   parsePortfolioId,
   readObjectBody,
@@ -30,11 +29,6 @@ export const PUT = withUser(async (req, { uid, params }) => {
     slot,
     revision,
     initiativeIds,
-  });
-  await audit(uid, "portfolio_plan.scenario_update", {
-    entity: "portfolio_plan_period",
-    entityId: periodId,
-    summary: slot === 0 ? "A案" : "B案",
   });
   return NextResponse.json(result);
 });

@@ -44,6 +44,9 @@ function proposalTitle(proposal: PlanningProposal): string {
 }
 
 function actionNeeded(proposal: PlanningProposal, currentUserId: number): string {
+  if (isOpenProposalStatus(proposal.status) && proposal.invalidReview) {
+    return "レビュー担当の割当が不正です。提案を取り下げ、設定に従って再提出してください。";
+  }
   if (proposal.status === "under_review") {
     return proposal.reviewerUserId === currentUserId
       ? "あなたのレビューが必要です。"
@@ -132,12 +135,12 @@ function ProposalDetail({
   onDecide: (input: ProposalDecisionInput) => Promise<void>;
   onWithdraw: (input: ProposalWithdrawInput) => Promise<void>;
 }) {
-  const canReviewThis =
+  const canReviewThis = !proposal.invalidReview &&
     canReview &&
     proposal.status === "under_review" &&
     proposal.reviewerUserId === currentUserId &&
     !proposal.restricted;
-  const canDecideThis =
+  const canDecideThis = !proposal.invalidReview &&
     !proposal.restricted &&
     proposal.status === "pending_decision" &&
     proposal.finalApproverUserId === currentUserId;
@@ -442,11 +445,11 @@ export default function ProposalHistory({
                     onClick={() => onSelect(proposal.id)}
                     aria-haspopup="dialog"
                   >
-                    {proposal.status === "under_review" &&
+                    {!proposal.invalidReview && proposal.status === "under_review" &&
                     canReview &&
                     proposal.reviewerUserId === currentUserId
                       ? "レビューする"
-                      : proposal.status === "pending_decision" &&
+                      : !proposal.invalidReview && proposal.status === "pending_decision" &&
                           proposal.finalApproverUserId === currentUserId
                         ? "決裁する"
                         : "提案の詳細を見る"}

@@ -1,3 +1,5 @@
+import { audit } from "../audit";
+import type { PlanActor } from "./settings-policy";
 import { withTransaction, type Queryable } from "../db";
 import { ApiError, badRequest, conflict, forbidden, notFound } from "../api/errors";
 import {
@@ -13,7 +15,7 @@ import {
   visibleProjectIds,
 } from "./access";
 import {
-  approvalSettingsChanged,
+  invalidProposalReview,
   effectiveProposalStatus,
   isOpenProposalStatus,
   proposalInitialReviewOutcome,
@@ -59,6 +61,13 @@ import {
   type ParsedDemandInput,
   type ParsedRoleEdit,
 } from "./validation";
+
+async function recordPlanAction(q: Queryable, actor: PlanActor, action: string, entity: string, entityId: number, detail = "") {
+  await audit(actor.userId, "portfolio_plan." + action, {
+    workspaceId: actor.workspaceId, entity, entityId,
+    summary: ["ポートフォリオ #" + actor.portfolioId, detail].filter(Boolean).join(" / "),
+  }, q);
+}
 
 async function bumpAllPeriodRevisions(q: Queryable, portfolioId: number): Promise<void> {
   await q.query(
@@ -271,6 +280,7 @@ export async function createPlanningPeriod(input: {
       );
     }
 
+    await recordPlanAction(q, input, "period_create", "portfolio_plan_period", periodId, String(input.year) + "-Q" + input.quarter);
     return {
       periodId,
       revision: Number(inserted.rows[0].revision),
@@ -305,6 +315,7 @@ export async function updatePeriodBudget(input: {
       `UPDATE portfolio_plan_periods SET budget_yen = $2::bigint WHERE id = $1::bigint`,
       [input.periodId, input.budgetYen],
     );
+    await recordPlanAction(q, input, "budget_update", "portfolio_plan_period", input.periodId, period.budgetYen + "円 → " + input.budgetYen + "円");
     return { revision };
   });
 }
@@ -374,6 +385,7 @@ export async function saveRoleEdits(input: {
       }
     }
     await bumpAllPeriodRevisions(q, input.portfolioId);
+    await recordPlanAction(q, input, "roles_update", "portfolio", input.portfolioId);
     return { revision: await currentRevision(q, input.periodId, input.portfolioId) };
   });
 }
@@ -430,6 +442,7 @@ export async function saveCapacities(input: {
       );
     }
     const revision = await bumpPeriodRevision(q, input.periodId, input.portfolioId);
+    await recordPlanAction(q, input, "capacity_update", "portfolio_plan_period", input.periodId);
     return { revision };
   });
 }
@@ -520,6 +533,7 @@ export async function createInitiative(input: InitiativeMutationInput): Promise<
       demands: input.demands,
     });
     const revision = await bumpPeriodRevision(q, input.periodId, input.portfolioId);
+    await recordPlanAction(q, input, "initiative_create", "portfolio_initiative", initiativeId, name);
     return { id: initiativeId, revision };
   });
 }
@@ -630,6 +644,7 @@ export async function updateInitiative(
       demands: input.demands,
     });
     await bumpAllPeriodRevisions(q, input.portfolioId);
+    await recordPlanAction(q, input, "initiative_update", "portfolio_initiative", input.initiativeId, name);
     return { revision: await currentRevision(q, input.periodId, input.portfolioId) };
   });
 }
@@ -706,6 +721,7 @@ export async function attachInitiativeToPeriod(input: {
       [input.periodId, input.initiativeId, input.workspaceId, input.portfolioId, previousKind],
     );
     const revision = await bumpPeriodRevision(q, input.periodId, input.portfolioId);
+    await recordPlanAction(q, input, "initiative_attach", "portfolio_initiative", input.initiativeId);
     return { revision };
   });
 }
@@ -764,6 +780,7 @@ export async function removeInitiativeFromPeriod(input: {
       );
     }
     await bumpAllPeriodRevisions(q, input.portfolioId);
+    await recordPlanAction(q, input, "initiative_remove", "portfolio_initiative", input.initiativeId);
     return { revision: await currentRevision(q, input.periodId, input.portfolioId) };
   });
 }
@@ -827,113 +844,8 @@ export async function saveScenarioSelection(input: {
       );
     }
     const revision = await bumpPeriodRevision(q, input.periodId, input.portfolioId);
+    await recordPlanAction(q, input, "scenario_update", "portfolio_plan_period", input.periodId, input.slot === 0 ? "A案" : "B案");
     return { revision };
-  });
-}
-
-export async function updateApprovalSettings(input: {
-  workspaceId: number;
-  portfolioId: number;
-  userId: number;
-  enabled: boolean;
-  finalApproverUserId: number | null;
-  reviewerUserId: number | null;
-}): Promise<{
-  enabled: boolean;
-  finalApproverUserId: number | null;
-  reviewerUserId: number | null;
-}> {
-  return withTransaction(async (q) => {
-    await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
-    await requirePlanningEditor(q, input.portfolioId, input.workspaceId, input.userId);
-
-    const current = await loadApprovalSettings(q, input.portfolioId);
-    const next = input.enabled
-      ? {
-          enabled: true,
-          finalApproverUserId: input.finalApproverUserId,
-          reviewerUserId: input.reviewerUserId,
-        }
-      : { enabled: false, finalApproverUserId: null, reviewerUserId: null };
-    const changed = approvalSettingsChanged(
-      {
-        enabled: current.enabled,
-        finalApproverUserId: current.finalApprover?.id ?? null,
-        reviewerUserId: current.reviewer?.id ?? null,
-      },
-      next,
-    );
-    if (!changed) {
-      return {
-        enabled: current.enabled,
-        finalApproverUserId: current.finalApprover?.id ?? null,
-        reviewerUserId: current.reviewer?.id ?? null,
-      };
-    }
-
-    const openProposalCount = await countOpenProposals(q, input.portfolioId, null);
-    if (openProposalCount > 0) {
-      throw new ApiError(
-        409,
-        `未解決の投資提案が${openProposalCount}件あるため、承認の有効・無効や担当者は変更できません。先に提案を承認または差し戻してください`,
-        "approval_settings_locked",
-        { openProposalCount },
-      );
-    }
-
-    if (next.enabled) {
-      if (next.finalApproverUserId === null) {
-        throw badRequest("最終承認者を選択してください");
-      }
-      const candidates = await loadEligiblePlanParticipants(
-        q,
-        input.portfolioId,
-        input.workspaceId,
-      );
-      const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
-      const approver = byId.get(next.finalApproverUserId);
-      if (!approver) {
-        throw badRequest(
-          "最終承認者として選択できるのは、この投資計画を完全に閲覧できる有効なメンバーだけです",
-        );
-      }
-      if (next.reviewerUserId !== null) {
-        const reviewer = byId.get(next.reviewerUserId);
-        if (!reviewer) {
-          throw badRequest(
-            "レビュー担当として選択できるのは、この投資計画を完全に閲覧できる有効なメンバーだけです",
-          );
-        }
-      }
-    }
-
-    await q.query(
-      `INSERT INTO portfolio_plan_approval_settings
-         (portfolio_id, workspace_id, approvals_enabled, final_approver_user_id,
-          default_reviewer_user_id, updated_by, updated_at)
-       VALUES ($1::bigint, $2::bigint, $3, $4::bigint, $5::bigint, $6::bigint, now())
-       ON CONFLICT (portfolio_id) DO UPDATE SET
-         workspace_id = EXCLUDED.workspace_id,
-         approvals_enabled = EXCLUDED.approvals_enabled,
-         final_approver_user_id = EXCLUDED.final_approver_user_id,
-         default_reviewer_user_id = EXCLUDED.default_reviewer_user_id,
-         updated_by = EXCLUDED.updated_by,
-         updated_at = now()`,
-      [
-        input.portfolioId,
-        input.workspaceId,
-        next.enabled,
-        next.enabled ? next.finalApproverUserId : null,
-        next.enabled ? next.reviewerUserId : null,
-        input.userId,
-      ],
-    );
-
-    return {
-      enabled: next.enabled,
-      finalApproverUserId: next.enabled ? next.finalApproverUserId : null,
-      reviewerUserId: next.enabled ? next.reviewerUserId : null,
-    };
   });
 }
 
@@ -1072,6 +984,9 @@ export async function submitProposal(input: {
         input.reviewerUserId === undefined
           ? (settings.reviewer?.id ?? null)
           : input.reviewerUserId;
+      if (invalidProposalReview(reviewerId, input.userId, approverId, settings.reviewer?.id ?? null)) {
+        throw conflict("申請者・最終承認者から独立したレビュー担当が必要です。設定済みの担当は変更できません");
+      }
       let reviewerName: string | null = null;
       if (reviewerId !== null) {
         const reviewer = byId.get(reviewerId);
@@ -1155,6 +1070,8 @@ export async function submitProposal(input: {
           snapshotHash,
         ],
       );
+      await recordPlanAction(q, input, "proposal_submit", "portfolio_plan_proposal", Number(inserted.rows[0].id),
+        "v" + version + " / " + (input.chosenSlot === 0 ? "A案" : "B案"));
       return {
         id: Number(inserted.rows[0].id),
         version,
@@ -1207,7 +1124,8 @@ export async function reviewProposal(input: {
     if (active.rowCount === 0) throw forbidden("実行者が存在しないか無効です");
 
     const loaded = await q.query(
-      `SELECT id, version, status, reviewer_user_id, review_outcome, review_note,
+      `SELECT (SELECT default_reviewer_user_id FROM portfolio_plan_approval_settings
+                 WHERE portfolio_id = $2::bigint) AS required_reviewer_id, id, version, status, reviewer_user_id, submitted_by, final_approver_user_id, review_outcome, review_note,
          reviewed_at::text AS reviewed_at, review_request_id, snapshot, snapshot_sha256
        FROM portfolio_plan_proposals
        WHERE id = $1::bigint
@@ -1233,6 +1151,12 @@ export async function reviewProposal(input: {
       throw forbidden("この提案をレビューできるのは、割り当てられたレビュー担当者だけです");
     }
 
+    if (isOpenProposalStatus(status) && invalidProposalReview(
+      reviewerUserId, Number(row.submitted_by), Number(row.final_approver_user_id),
+      row.required_reviewer_id === null ? null : Number(row.required_reviewer_id),
+    )) {
+      throw conflict("レビュー担当の割当が不正です。提案を取り下げ、別の担当者で再提出してください");
+    }
     const snapshot = row.snapshot;
     if (
       !isPlanningDecisionSnapshot(snapshot) ||
@@ -1315,6 +1239,7 @@ export async function reviewProposal(input: {
       );
     }
 
+    await recordPlanAction(q, input, "proposal_review", "portfolio_plan_proposal", input.proposalId, "v" + transitioned.version + " / " + outcome);
     return {
       id: transitioned.id,
       version: transitioned.version,
@@ -1362,7 +1287,8 @@ export async function decideProposal(input: {
       if (actor.rowCount === 0) throw forbidden("実行者が存在しないか無効です");
 
       const loaded = await q.query(
-        `SELECT id, version, status, period_id, recommended_slot, submitted_by,
+        `SELECT (SELECT default_reviewer_user_id FROM portfolio_plan_approval_settings
+                 WHERE portfolio_id = $2::bigint) AS required_reviewer_id, id, version, status, period_id, recommended_slot, submitted_by,
            final_approver_user_id, reviewer_user_id, review_outcome,
            decision_action, decision_note,
            decision_request_id, decision_id, decided_at::text AS decided_at,
@@ -1396,6 +1322,12 @@ export async function decideProposal(input: {
         throw forbidden("申請者自身はこの提案を決裁できません");
       }
 
+      if (isOpenProposalStatus(status) && invalidProposalReview(
+        reviewerUserId, Number(row.submitted_by), Number(row.final_approver_user_id),
+        row.required_reviewer_id === null ? null : Number(row.required_reviewer_id),
+      )) {
+        throw conflict("レビュー担当の割当が不正です。提案を取り下げ、別の担当者で再提出してください");
+      }
       const snapshot = row.snapshot;
       const recommendedSlot = Number(row.recommended_slot) === 1 ? (1 as const) : (0 as const);
       if (
@@ -1589,6 +1521,8 @@ export async function decideProposal(input: {
             "proposal_status_changed",
           );
         }
+        await recordPlanAction(q, input, "proposal_decide", "portfolio_plan_proposal", input.proposalId, "v" + row.version + " / " + nextStatus);
+        await recordPlanAction(q, input, "adopt", "portfolio_plan_decision", decisionId, "提案 #" + input.proposalId + " から採用");
         return {
           id: input.proposalId,
           version: Number(updated.rows[0].version),
@@ -1632,6 +1566,7 @@ export async function decideProposal(input: {
           "proposal_status_changed",
         );
       }
+      await recordPlanAction(q, input, "proposal_decide", "portfolio_plan_proposal", input.proposalId, "v" + row.version + " / " + nextStatus);
       return {
         id: input.proposalId,
         version: Number(updated.rows[0].version),
@@ -1803,6 +1738,7 @@ export async function withdrawProposal(input: {
           "proposal_status_changed",
         );
       }
+      await recordPlanAction(q, input, "proposal_withdraw", "portfolio_plan_proposal", input.proposalId, "v" + row.version + " / 取下げ");
       return {
         id: input.proposalId,
         version: Number(updated.rows[0].version),
@@ -1933,6 +1869,7 @@ export async function adoptScenario(input: {
         snapshotHash,
       ],
     );
+    await recordPlanAction(q, input, "adopt", "portfolio_plan_decision", Number(inserted.rows[0].id), "承認フロー外で採用 / " + (input.chosenSlot === 0 ? "A案" : "B案"));
     return {
       id: Number(inserted.rows[0].id),
       idempotent: false,
@@ -1961,6 +1898,7 @@ export async function addPlanViewer(input: {
        ON CONFLICT DO NOTHING`,
       [input.portfolioId, input.viewerId, input.userId],
     );
+    await recordPlanAction(q, input, "viewer_add", "portfolio", input.portfolioId, "閲覧者 #" + input.viewerId);
   });
 }
 
@@ -1996,5 +1934,6 @@ export async function removePlanViewer(input: {
        WHERE portfolio_id = $1::bigint AND user_id = $2::bigint`,
       [input.portfolioId, input.viewerId],
     );
+    await recordPlanAction(q, input, "viewer_remove", "portfolio", input.portfolioId, "閲覧者 #" + input.viewerId);
   });
 }

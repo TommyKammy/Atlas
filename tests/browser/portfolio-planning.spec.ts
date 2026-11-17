@@ -100,19 +100,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterEach(async ({ page }, info) => {
-  info.setTimeout(15_000);
-  const portfolioId = portfoliosToRemove.get(page);
-  if (portfolioId === undefined) return;
-  try {
-    const response = await page.request.delete(`/api/portfolios/${portfolioId}`, { timeout: 10_000 });
-    expect(response.status()).toBe(200);
-  } catch (error) {
-    if (info.status === info.expectedStatus) throw error;
-    info.annotations.push({
-      type: "cleanup",
-      description: `Portfolio cleanup after the original failure: ${String(error)}`,
-    });
-  }
+  const id = portfoliosToRemove.get(page);
+  if (id === undefined || info.status !== "passed") return;
+  const deletion = await page.request.delete("/api/portfolios/" + id);
+  expect(deletion.status()).toBe(409);
+  expect(await deletion.json()).toMatchObject({ code: "history_retained" });
 });
 
 function escapeRegExp(value: string): string {
@@ -410,6 +402,7 @@ async function expectFrozenDecision(page: Page): Promise<void> {
   const item = items.first();
   await expect(item.getByRole("heading", { name: "B案を採用", exact: true })).toBeVisible();
   await expect(item).toContainText(REASON);
+  await expect(item).toContainText("承認フロー外で採用");
   await expect(item).toContainText("予算 1,000 万円");
 
   const details = item.locator("details");

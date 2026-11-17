@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api/route";
-import { audit } from "@/lib/audit";
 import { parsePortfolioId, readObjectBody, requireWorkspaceId } from "@/lib/planning/http";
-import { updateApprovalSettings } from "@/lib/planning/mutations";
-import { parseBoolean, parseNullablePositiveId } from "@/lib/planning/validation";
+import { resolveApprovalChange, updateApprovalSettings } from "@/lib/planning/approval-settings";
+import { parseBoolean, parseNullablePositiveId, parsePositiveId } from "@/lib/planning/validation";
 
 export const PUT = withUser(async (req, { uid, params }) => {
   const workspaceId = await requireWorkspaceId();
@@ -25,16 +24,22 @@ export const PUT = withUser(async (req, { uid, params }) => {
     workspaceId,
     portfolioId,
     userId: uid,
+    requestChange: body.requestChange === true,
     enabled,
     finalApproverUserId,
     reviewerUserId,
   });
-  await audit(uid, "portfolio_plan.approval_settings_update", {
-    entity: "portfolio",
-    entityId: portfolioId,
-    summary: enabled
-      ? `enabled:approver:${finalApproverUserId ?? "none"}:reviewer:${reviewerUserId ?? "none"}`
-      : "disabled",
-  });
-  return NextResponse.json(result);
+  return NextResponse.json(result, { status: result.pendingId ? 202 : 200 });
+});
+
+export const POST = withUser(async (req, { uid, params }) => {
+  const workspaceId = await requireWorkspaceId();
+  const portfolioId = parsePortfolioId(params.id);
+  const body = await readObjectBody(req);
+  if (body.action !== "confirm" && body.action !== "cancel") {
+    return NextResponse.json({ error: "設定変更の操作が不正です" }, { status: 400 });
+  }
+  await resolveApprovalChange({ workspaceId, portfolioId, userId: uid },
+    parsePositiveId(body.changeId, "変更申請"), body.action);
+  return NextResponse.json({ ok: true });
 });

@@ -4,6 +4,14 @@ import type {
   PlanningProposalStatus,
 } from "./types";
 
+export function reviewerConflicts(reviewer: number | null, submitter: number | null, approver: number | null): boolean {
+  return reviewer !== null && (reviewer === submitter || reviewer === approver);
+}
+
+export function invalidProposalReview(reviewer: number | null, submitter: number, approver: number, required: number | null) {
+  return reviewerConflicts(reviewer, submitter, approver) || (required !== null && reviewer !== required);
+}
+
 export const OPEN_PROPOSAL_STATUSES = [
   "submitted",
   "under_review",

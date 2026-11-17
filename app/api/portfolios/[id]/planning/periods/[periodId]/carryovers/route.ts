@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api/route";
-import { audit } from "@/lib/audit";
 import {
   parsePortfolioId,
   readObjectBody,
@@ -23,10 +22,6 @@ export const POST = withUser(async (req, { uid, params }) => {
     periodId,
     initiativeId,
     revision,
-  });
-  await audit(uid, "portfolio_plan.initiative_attach", {
-    entity: "portfolio_initiative",
-    entityId: initiativeId,
   });
   return NextResponse.json(result);
 });

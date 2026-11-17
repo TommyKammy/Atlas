@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   approvalSettingsChanged,
   effectiveProposalStatus,
+  reviewerConflicts,
   isOpenProposalStatus,
   proposalDecisionActionLabel,
   proposalDecisionStageLabel,
@@ -148,4 +149,14 @@ test("workflow stages distinguish skipped review from pending and decided stages
   assert.equal(proposalDecisionStageLabel("approved"), "承認済み");
   assert.equal(proposalDecisionStageLabel("deferred"), "今期は見送り");
   assert.equal(proposalDecisionStageLabel("withdrawn"), "取下げ");
+});
+
+test("review cannot be assigned to the submitter", () => {
+  assert.equal(reviewerConflicts(1, 1, 2), true);
+  assert.equal(reviewerConflicts(null, 1, 2), false);
+});
+
+test("reviewer and final approver must be independent", () => {
+  assert.equal(reviewerConflicts(2, null, 2), true);
+  assert.equal(reviewerConflicts(3, 1, 2), false);
 });

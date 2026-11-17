@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api/route";
-import { audit } from "@/lib/audit";
 import {
   parsePortfolioId,
   readObjectBody,
@@ -43,11 +42,6 @@ export const PATCH = withUser(async (req, { uid, params }) => {
     costYen: parseNullableCostYen(body.costYen),
     demands: parseDemandInputs(body.demands),
   });
-  await audit(uid, "portfolio_plan.initiative_update", {
-    entity: "portfolio_initiative",
-    entityId: initiativeId,
-    summary: String(body.name),
-  });
   return NextResponse.json(result);
 });
 
@@ -65,10 +59,6 @@ export const DELETE = withUser(async (req, { uid, params }) => {
     periodId,
     initiativeId,
     revision,
-  });
-  await audit(uid, "portfolio_plan.initiative_remove", {
-    entity: "portfolio_initiative",
-    entityId: initiativeId,
   });
   return NextResponse.json(result);
 });

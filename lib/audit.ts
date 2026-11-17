@@ -1,15 +1,15 @@
 import { db, type Queryable } from "./db";
 
-// Workspace audit trail (best-effort; never fails the mutation itself).
+// Workspace audit trail. Transactional callers require the audit write to succeed.
 export async function audit(
   actorId: number,
   action: string,
-  opts: { entity: string; entityId?: number | string | null; projectId?: number | string | null; summary?: string },
+  opts: { entity: string; entityId?: number | string | null; projectId?: number | string | null; workspaceId?: number; summary?: string },
   q?: Queryable,
 ) {
   const writer = q ?? db;
   try {
-    let workspaceId: number | null = null;
+    let workspaceId: number | null = opts.workspaceId ?? null;
     let projectId: number | null =
       opts.projectId === undefined || opts.projectId === null ? null : Number(opts.projectId);
     if (projectId === null && opts.entity === "task" && opts.entityId != null) {

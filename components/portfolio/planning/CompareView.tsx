@@ -360,8 +360,13 @@ export default function CompareView({
     !state.approvalCandidates.some(
       (candidate) => candidate.id === approval.finalApprover?.id,
     );
-  const canSubmitProposal = canEdit && submissionBlock === null && !approverIneligible;
-  const canReviewOpenProposal =
+  const reviewerUnavailable = approval.reviewer !== null && (
+    approval.reviewer.id === state.currentUserId || approval.reviewer.id === approval.finalApprover?.id ||
+    (state.approvalCandidates !== null && !state.approvalCandidates.some(member => member.id === approval.reviewer?.id))
+  );
+  const canSubmitProposal = !reviewerUnavailable && canEdit && submissionBlock === null && !approverIneligible;
+  const conflictInProposal = openProposal?.invalidReview === true;
+  const canReviewOpenProposal = !conflictInProposal &&
     openProposal !== null &&
     openProposal.status === "under_review" &&
     state.access.canReview &&
@@ -479,7 +484,7 @@ export default function CompareView({
                   ? canReviewOpenProposal
                     ? "あなたがレビュー担当です。提出時点の内容を確認してください。"
                     : `レビュー担当（${openProposal.reviewerName ?? "未設定"}）の確認待ちです。`
-                  : openProposal.finalApproverUserId === state.currentUserId
+                  : !conflictInProposal && openProposal.finalApproverUserId === state.currentUserId
                     ? "あなたが最終承認者です。最終決裁待ちです。"
                     : "最終承認者の決定を待っています。"}
               </span>
@@ -487,7 +492,7 @@ export default function CompareView({
                 {canReviewOpenProposal
                   ? "レビューする"
                   : openProposal.status === "pending_decision" &&
-                      openProposal.finalApproverUserId === state.currentUserId
+                      !conflictInProposal && openProposal.finalApproverUserId === state.currentUserId
                     ? "決裁する"
                     : "提案の詳細を開く"}
               </button>
@@ -498,6 +503,9 @@ export default function CompareView({
                 ? `前回の提案（版${latestClosed.version}・${proposalStatusLabel(latestClosed.status)}）は終了しました。内容を見直して新しい提案を提出できます。`
                 : "採用する案を選び、理由を添えて投資提案として提出します。提出時点のA案・B案が固定され、最終承認者が決定します。直接採用はできません。"}
             </p>
+          )}
+          {(conflictInProposal || (!openProposal && reviewerUnavailable && canEdit)) && (
+            <p>申請者・最終承認者から独立した有効なレビュー担当が必要です。担当が設定と異なる提案は取り下げてください。</p>
           )}
           {submissionBlock === "self_approval" && !openProposal && (
             <p className="mt-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
@@ -541,7 +549,7 @@ export default function CompareView({
                 ? canReviewOpenProposal
                   ? `${scenarioA.name}の提案をレビュー`
                   : openProposal.status === "pending_decision" &&
-                      openProposal.finalApproverUserId === state.currentUserId
+                      !conflictInProposal && openProposal.finalApproverUserId === state.currentUserId
                     ? `${scenarioA.name}の提案を決裁`
                     : `${scenarioA.name}の提案を確認`
                 : `${scenarioA.name}で提案…`
@@ -566,7 +574,7 @@ export default function CompareView({
                 ? canReviewOpenProposal
                   ? `${scenarioB.name}の提案をレビュー`
                   : openProposal.status === "pending_decision" &&
-                      openProposal.finalApproverUserId === state.currentUserId
+                      !conflictInProposal && openProposal.finalApproverUserId === state.currentUserId
                     ? `${scenarioB.name}の提案を決裁`
                     : `${scenarioB.name}の提案を確認`
                 : `${scenarioB.name}で提案…`
@@ -755,7 +763,7 @@ export default function CompareView({
           result={proposalResult}
           period={period}
           settings={approval}
-          candidates={state.approvalCandidates ?? []}
+          candidates={(state.approvalCandidates ?? []).filter(candidate => candidate.id !== state.currentUserId && candidate.id !== approval.finalApprover?.id)}
           block={submissionBlock}
           onSubmit={async (input) => {
             await onSubmitProposal(input);

@@ -1,3 +1,4 @@
+import { canConfirmChange, pendingChange, describeSettings } from "./settings-policy";
 import { withTransaction, type Queryable } from "../db";
 import { getPortfolioProjects } from "../repositories/portfolios";
 import {
@@ -6,7 +7,7 @@ import {
   snapshotProjectIds,
 } from "./decision-snapshot";
 import { periodLabel, quarterStartMonth } from "./format";
-import { effectiveProposalStatus } from "./approvals";
+import { effectiveProposalStatus, invalidProposalReview, isOpenProposalStatus } from "./approvals";
 import {
   requirePlanningAccess,
   loadEligiblePlanParticipants,
@@ -383,12 +384,12 @@ export async function loadApprovalSettings(
   return {
     enabled: row.approvals_enabled === true,
     finalApprover:
-      approverId !== null && row.final_approver_name !== null
-        ? { id: approverId, name: String(row.final_approver_name) }
+      approverId !== null
+        ? { id: approverId, name: row.final_approver_name ?? ("削除済み #" + approverId) }
         : null,
     reviewer:
-      reviewerId !== null && row.reviewer_name !== null
-        ? { id: reviewerId, name: String(row.reviewer_name) }
+      reviewerId !== null
+        ? { id: reviewerId, name: row.reviewer_name ?? ("削除済み #" + reviewerId) }
         : null,
     openProposalCount: number(row.open_proposal_count ?? 0),
   };
@@ -405,6 +406,7 @@ export async function loadProposals(
     portfolioId: number;
     periodId: number;
     userId: number;
+    requiredReviewerId: number | null;
   },
 ): Promise<PlanningProposal[]> {
   const result = await q.query(
@@ -459,6 +461,9 @@ export async function loadProposals(
       reviewerUserId,
       reviewerName: stringOrNull(row.reviewer_name),
       reviewOutcome,
+      invalidReview: isOpenProposalStatus(status) && invalidProposalReview(
+        reviewerUserId, number(row.submitted_by), number(row.final_approver_user_id), input.requiredReviewerId,
+      ),
       reviewedAt: stringOrNull(row.reviewed_at),
       decisionAction: decisionActionValue(row.decision_action),
       decisionId: nullableNumber(row.decision_id),
@@ -584,6 +589,27 @@ export async function loadPlanningState(input: {
     const projects = await getPortfolioProjects(input.portfolioId, input.userId, q);
     const approval = await loadApprovalSettings(q, input.portfolioId);
 
+    const change = await pendingChange(q, input.portfolioId);
+    const pendingApprovalChange = change ? {
+      id: change.id,
+      requester: [change.requesterName, "#" + change.requestedBy].filter(Boolean).join(" "),
+      description: describeSettings(change, { approver: change.approverName, reviewer: change.reviewerName }),
+      canConfirm: await canConfirmChange(q, input, approval, change),
+    } : null;
+    const settingsLog = await q.query(
+      `SELECT a.id, a.actor_id, u.name, a.action, a.summary, a.created_at::text AS at
+       FROM audit_log a LEFT JOIN users u ON u.id = a.actor_id
+       WHERE a.workspace_id = $1 AND a.entity = 'portfolio' AND a.entity_id = $2
+         AND a.action IN ('portfolio_plan.approval_settings_update', 'portfolio_plan.approval_settings_request',
+                          'portfolio_plan.approval_settings_cancel')
+       ORDER BY a.id DESC LIMIT 20`,
+      [input.workspaceId, input.portfolioId],
+    );
+    const settingsHistory = settingsLog.rows.map(row => ({
+      id: Number(row.id), actor: row.name ?? (row.actor_id ? "#" + row.actor_id : "削除済み"), action: row.action,
+      summary: row.summary, at: row.at,
+    }));
+
     let capacities: PlanningCapacity[] = [];
     let initiatives: PlanningInitiative[] = [];
     let carryovers: PlanningState["carryovers"] = [];
@@ -639,6 +665,7 @@ export async function loadPlanningState(input: {
         userId: input.userId,
       });
       proposals = await loadProposals(q, {
+        requiredReviewerId: approval.reviewer?.id ?? null,
         workspaceId: input.workspaceId,
         portfolioId: input.portfolioId,
         periodId: selectedPeriod.id,
@@ -684,6 +711,8 @@ export async function loadPlanningState(input: {
       comparison,
       decisions,
       approval,
+      pendingApprovalChange,
+      settingsHistory,
       proposals,
       approvalCandidates,
       viewers,

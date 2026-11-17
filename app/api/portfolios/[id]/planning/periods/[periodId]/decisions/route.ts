@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api/route";
-import { audit } from "@/lib/audit";
 import {
   parsePortfolioId,
   readObjectBody,
@@ -34,12 +33,5 @@ export const POST = withUser(async (req, { uid, params }) => {
     reason,
     requestId,
   });
-  if (!result.idempotent) {
-    await audit(uid, "portfolio_plan.adopt", {
-      entity: "portfolio_plan_decision",
-      entityId: result.id,
-      summary: chosenSlot === 0 ? "A案" : "B案",
-    });
-  }
   return NextResponse.json(result, { status: result.idempotent ? 200 : 201 });
 });

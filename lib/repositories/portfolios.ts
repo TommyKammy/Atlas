@@ -3,7 +3,7 @@ import type { Portfolio, PortfolioProject, PortfolioRule } from "../portfolios";
 import { RULE_LIMITS, type RuleDefinition } from "../automation/types";
 import type { ProjectRule } from "../automation/types";
 import { assignWebhookActionIds, redactWebhookDefinition, redactWebhookRun } from "../automation/webhook-credentials";
-import { forbidden } from "../api/errors";
+import { ApiError, forbidden } from "../api/errors";
 import { getProjectPolicyAccess } from "../project-policy-access";
 import { normalizeProjectSettings } from "../project-settings";
 import { canEditProject } from "../project-roles";
@@ -142,6 +142,14 @@ export async function deletePortfolio(portfolioId: number, actorId: number): Pro
   await withTransaction(async (q) => {
     await lockPortfolio(q, portfolioId);
     await assertPortfolioConfiguration(q, portfolioId, actorId);
+    const history = await q.query(
+      `SELECT EXISTS (SELECT 1 FROM portfolio_plan_decisions WHERE portfolio_id = $1)
+           OR EXISTS (SELECT 1 FROM portfolio_plan_proposals WHERE portfolio_id = $1) AS retained`,
+      [portfolioId],
+    );
+    if (history.rows[0].retained) {
+      throw new ApiError(409, "申請・採用履歴があるため削除できません", "history_retained");
+    }
     await q.query("DELETE FROM portfolios WHERE id = $1::bigint", [portfolioId]);
   });
 }

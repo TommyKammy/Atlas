@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getWorkspace } from "@/lib/data";
 import { db } from "@/lib/db";
 import { withAdminPermission } from "@/lib/api/route";
 import { csvResponse, toCsv } from "@/lib/csv";
@@ -9,13 +10,16 @@ export const GET = withAdminPermission("audit.view", async (req) => {
   if (format !== "json" && format !== "csv") {
     return NextResponse.json({ error: "format must be json or csv" }, { status: 400 });
   }
+  const workspace = await getWorkspace();
   const r = await db.query(
     `SELECT a.id, a.created_at::text AS created_at, u.name AS actor_name, a.action,
        a.entity, a.entity_id, p.name AS project_name, a.summary
      FROM audit_log a
      LEFT JOIN users u ON u.id = a.actor_id
      LEFT JOIN projects p ON p.id = a.project_id
+     WHERE a.workspace_id = $1 OR (a.workspace_id IS NULL AND NOT starts_with(a.action, 'portfolio_plan.'))
      ORDER BY a.id DESC LIMIT 5000`,
+    [workspace?.id ?? null],
   );
   if (format === "json") {
     return new NextResponse(JSON.stringify({ exported_at: new Date().toISOString(), rows: r.rows }, null, 2), {

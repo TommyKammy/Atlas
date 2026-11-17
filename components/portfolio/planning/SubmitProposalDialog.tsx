@@ -116,7 +116,7 @@ export default function SubmitProposalDialog({
   if (!result) return null;
   const issues = issueSummary(result, period.budgetYen, period.startMonth);
   const blockText = blockMessage(block);
-  const canSubmit = block === null;
+  const canSubmit = block === null && (settings.reviewer === null || defaultReviewerEligible);
   const reviewerIneligible = settings.reviewer !== null && !defaultReviewerEligible;
 
   const submit = async (event: React.FormEvent) => {
@@ -213,13 +213,13 @@ export default function SubmitProposalDialog({
         </div>
 
         <label className={labelClass}>
-          レビュー担当（任意）
+          {settings.reviewer ? "設定済みのレビュー担当" : "レビュー担当（任意）"}
           <select
             value={reviewerId}
             onChange={(event) => setReviewerId(event.target.value)}
             name="reviewerUserId"
             className={`${inputClass} mt-1`}
-            disabled={busy || !canSubmit}
+            disabled={busy || !canSubmit || settings.reviewer !== null}
           >
             <option value="">レビューなし</option>
             {candidates.map((candidate) => (
@@ -256,7 +256,7 @@ export default function SubmitProposalDialog({
         {blockText && <Notice tone="error">{blockText}</Notice>}
         {reviewerIneligible && (
           <Notice tone="warn">
-            既定のレビュー担当が、現在この投資計画の完全な閲覧権限を持たないか無効になっています。別の担当を選ぶか「レビューなし」にしてください。
+            既定のレビュー担当が、現在この投資計画の完全な閲覧権限を持たないか無効になっています。承認設定の変更が必要です。
           </Notice>
         )}
         {error && <FieldError>{error}</FieldError>}

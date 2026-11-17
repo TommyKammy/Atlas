@@ -59,7 +59,7 @@ type PlanningStateForTest = {
   }[];
 };
 
-const seededPortfolios = new WeakMap<Page, number>();
+
 
 async function expectJson<T>(response: APIResponse, status: number): Promise<T> {
   expect(response.status(), await response.text()).toBe(status);
@@ -151,7 +151,7 @@ async function seedApprovalFixture(page: Page): Promise<{
     }),
     201,
   );
-  seededPortfolios.set(page, portfolio.id);
+
 
   for (const member of [reviewer, approver]) {
     await expectJson(
@@ -242,6 +242,19 @@ async function seedApprovalFixture(page: Page): Promise<{
     }),
     200,
   );
+  await openPlanningFromPortfolio(page, { name });
+  await page.getByRole("button", { name: "B案で提案…" }).click();
+  const fixedReviewer = page.getByRole("dialog").locator("select[name=reviewerUserId]");
+  await expect(fixedReviewer).toBeDisabled();
+  await expect(fixedReviewer).toHaveValue(String(reviewer.id));
+  await page.keyboard.press("Escape");
+  for (const reviewerUserId of [null, admin.id, approver.id]) {
+    const bypass = await page.request.post(`/api/portfolios/${portfolio.id}/planning/proposals`, {
+      data: { periodId: period.periodId, revision: scenarioB.revision, chosenSlot: 1, reason: PROPOSAL_REASON,
+        reviewerUserId, requestId: crypto.randomUUID() },
+    });
+    expect(bypass.status()).toBe(409);
+  }
   await expectJson(
     await page.request.post(`/api/portfolios/${portfolio.id}/planning/proposals`, {
       data: {
@@ -279,26 +292,6 @@ async function decisionAttempt(
 
 test.beforeEach(async ({ page }) => {
   await login(page, ADMIN);
-});
-
-test.afterEach(async ({ page }, info) => {
-  info.setTimeout(20_000);
-  const portfolioId = seededPortfolios.get(page);
-  if (portfolioId === undefined) return;
-  try {
-    // The test ends as an approver/viewer; restore an editor for cleanup.
-    await login(page, ADMIN);
-    const response = await page.request.delete(`/api/portfolios/${portfolioId}`, {
-      timeout: 10_000,
-    });
-    expect(response.status()).toBe(200);
-  } catch (error) {
-    if (info.status === info.expectedStatus) throw error;
-    info.annotations.push({
-      type: "cleanup",
-      description: `Portfolio cleanup after the original failure: ${String(error)}`,
-    });
-  }
 });
 
 test("assigned reviewer passes and assigned approver adopts the frozen B snapshot", async ({
@@ -449,4 +442,214 @@ test("assigned reviewer passes and assigned approver adopts the frozen B snapsho
   );
   expect(january?.capacityDays).toBe(20);
   expect(preservedDecision?.snapshot).toEqual(approvedProposal?.snapshot);
+
+  const directDelete = await page.request.delete("/api/portfolios/" + fixture.id);
+  expect(directDelete.status()).toBe(409);
+  await page.goto("/portfolio");
+  await page.getByRole("button", { name: new RegExp(fixture.name) }).click();
+  await page.getByRole("button", { name: "ポートフォリオを削除" }).click();
+  const prompt = page.getByRole("dialog", { name: "確認" });
+  await expect(prompt).toContainText("申請・採用履歴");
+  const blocked = await runWithApiWait(page, "DELETE", "/portfolios/" + fixture.id,
+    () => prompt.getByRole("button", { name: "OK" }).click());
+  expect(blocked.status()).toBe(409);
+  await expect(page.getByRole("status").filter({ hasText: "申請・採用履歴があるため削除できません" })).toBeVisible();
+  await openPlanningFromPortfolio(page, fixture);
+  await expect(page.locator("#decision-history")).toContainText(DECISION_REASON);
+  await expect(page.locator("#proposal-history")).toContainText("承認済み");
+  const retained = await loadPlanningState(page, fixture.id);
+  expect(retained.decisions).toEqual(preserved.decisions);
+  expect(retained.proposals).toEqual(preserved.proposals);
+
+  await page.goto("/audit");
+  for (const action of ["proposal_submit", "proposal_review", "proposal_decide", "adopt"]) {
+    const entry = page.locator("div.grid").filter({ has: page.getByText("portfolio_plan." + action, { exact: true }) })
+      .filter({ hasText: "ポートフォリオ #" + fixture.id + " / " });
+    await expect(entry).toHaveCount(1);
+  }
+});
+
+test("owner cannot bypass approval after withdrawal and changes remain auditable", async ({ page }) => {
+  test.setTimeout(120_000);
+  const directory = await loadDirectory(page);
+  const userId = (email: string) => directory.find(person => person.email === email)!.id;
+  const owner = userId(REVIEWER.email);
+  const final = userId(APPROVER.email);
+  const reviewer = userId(ADMIN.email);
+  await login(page, REVIEWER);
+  const name = "設定統制 " + crypto.randomUUID();
+  const { id } = await expectJson<{ id: number }>(await page.request.post("/api/portfolios", { data: { name } }), 201);
+  const root = "/api/portfolios/" + id + "/planning";
+  const settings = root + "/approval-settings";
+  await expectJson(await page.request.post(root + "/viewers", { data: { userId: final } }), 200);
+  const period = await expectJson<{ periodId: number; revision: number }>(await page.request.post(root + "/periods", {
+    data: { year: 2028, quarter: 2, budgetYen: 250000, roles: ["企画"] },
+  }), 201);
+
+  await expectJson(await page.request.put(settings, {
+    data: { enabled: true, finalApproverUserId: final, reviewerUserId: final },
+  }), 409);
+  await openPlanningFromPortfolio(page, { name });
+  await page.getByRole("button", { name: "承認設定", exact: true }).click();
+  let dialog = page.getByRole("dialog", { name: "投資提案の承認設定" });
+  await dialog.locator("[name=approvalsEnabled]").check();
+  await dialog.locator("[name=finalApproverUserId]").selectOption(String(final));
+  await expect(dialog.locator('[name=reviewerUserId] option[value="' + final + '"]')).toHaveCount(0);
+  await dialog.getByRole("button", { name: "承認設定を保存" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "A案で提案…" }).click();
+  dialog = page.getByRole("dialog");
+  const picker = dialog.locator("select[name=reviewerUserId]");
+  await expect(picker).toBeEnabled();
+  for (const excluded of [owner, final]) {
+    await expect(picker.locator('option[value="' + excluded + '"]')).toHaveCount(0);
+  }
+  await expect(picker.locator('option[value="' + reviewer + '"]')).toHaveCount(1);
+  await page.keyboard.press("Escape");
+
+  const payload = { periodId: period.periodId, revision: period.revision, chosenSlot: 0, reason: "検証用の投資提案" };
+  const submit = (reviewerUserId: number) => page.request.post(root + "/proposals", {
+    data: { ...payload, reviewerUserId, requestId: crypto.randomUUID() },
+  });
+  for (const bad of [owner, final]) await expectJson(await submit(bad), 409);
+  const proposal = await expectJson<{ id: number }>(await submit(reviewer), 201);
+  const proposalsUrl = root + "/proposals/" + proposal.id;
+  await expectJson(await page.request.post(proposalsUrl + "/review", { data: { action: "pass", note: "自己確認" } }), 403);
+  await expectJson(await page.request.put(settings, { data: { enabled: false, requestChange: true } }), 409);
+  await page.reload();
+  await expect(page.locator("#proposal-history").getByRole("button", { name: "レビューする" })).toHaveCount(0);
+  await expectJson(await page.request.post(proposalsUrl + "/withdraw", {
+    data: { reason: "再検討のため取下げ", requestId: crypto.randomUUID() },
+  }), 200);
+  await expectJson(await page.request.delete("/api/portfolios/" + id), 409);
+  const direct = () => page.request.post(root + "/periods/" + period.periodId + "/decisions", {
+    data: { ...payload, requestId: crypto.randomUUID() },
+  });
+  await expectJson(await page.request.put(settings, { data: { enabled: false } }), 409);
+  await expectJson(await page.request.put(settings, { data: { enabled: true, finalApproverUserId: owner } }), 409);
+  await expectJson(await direct(), 409);
+  await page.reload();
+  await page.getByRole("button", { name: "承認設定", exact: true }).click();
+  dialog = page.getByRole("dialog", { name: "投資提案の承認設定" });
+  await dialog.locator("[name=approvalsEnabled]").uncheck();
+  const request = await runWithApiWait(page, "PUT", "/approval-settings", () =>
+    dialog.getByRole("button", { name: "設定変更を申請" }).click());
+  expect(request.status()).toBe(202);
+  const { pendingId } = await request.json() as { pendingId: number };
+  const panel = page.getByRole("region", { name: "承認設定の変更申請" });
+  await expect(panel).toContainText("無効");
+  await expect(panel.getByRole("button", { name: "設定変更を承認" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "A案を採用…" })).toHaveCount(0);
+  const confirm = () => page.request.post(settings, { data: { action: "confirm", changeId: pendingId } });
+  await expectJson(await confirm(), 403);
+  const reopened = await expectJson<{ id: number }>(await submit(reviewer), 201);
+  await login(page, APPROVER);
+  await page.reload();
+  await expect(panel.getByRole("button", { name: "設定変更を承認" })).toBeDisabled();
+  await expectJson(await confirm(), 409);
+  await login(page, REVIEWER);
+  await expectJson(await page.request.post(root + "/proposals/" + reopened.id + "/withdraw", {
+    data: { reason: "設定変更前に提案を取下げ", requestId: crypto.randomUUID() },
+  }), 200);
+  await login(page, ADMIN);
+  await expectJson(await confirm(), 403);
+  await expectJson(await direct(), 409);
+  await login(page, APPROVER);
+  await page.reload();
+  await expect(panel).toContainText("無効");
+  const confirmation = await runWithApiWait(page, "POST", "/approval-settings", () =>
+    panel.getByRole("button", { name: "設定変更を承認" }).click());
+  expect(confirmation.status()).toBe(200);
+  await expect(panel).toHaveCount(0);
+  await expectJson(await confirm(), 409);
+  await expectJson(await page.request.get("/api/admin/audit/export"), 403);
+  await login(page, REVIEWER);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "A案を採用…" })).toBeEnabled();
+  await expectJson(await direct(), 201);
+  await expectJson(await page.request.patch(root + "/periods/" + period.periodId, {
+    data: { revision: period.revision, budgetYen: 200000 },
+  }), 200);
+  await page.reload();
+  await expect(page.locator("#decision-history")).toContainText("承認フロー外で採用");
+  await page.getByText("承認設定の変更履歴（直近20件）", { exact: true }).click();
+  const history = page.locator("details").filter({ has: page.getByText("承認設定の変更履歴（直近20件）", { exact: true }) });
+  await expect(history).toContainText("有効（最終承認者 #" + final + "、レビュー担当 なし） → 無効");
+  await expect(history).toContainText("申請者 #" + owner);
+  await login(page, ADMIN);
+  await page.goto("/audit");
+  const auditRow = page.locator("div.grid").filter({ has: page.getByText("portfolio_plan.approval_settings_update", { exact: true }) })
+    .filter({ hasText: "変更申請 #" + pendingId + "（申請者 #" + owner + "）" });
+  await expect(auditRow).toContainText(directory.find(person => person.id === final)!.name);
+  await expect(auditRow).toContainText("→ 無効");
+  await expect(page.getByText("ポートフォリオ #" + id + " / 250000円 → 200000円", { exact: true })).toBeVisible();
+  type Entry = { entity_id: string; entity: string; action: string; summary: string; actor_name: string };
+  const json = await expectJson<{ rows: Entry[] }>(await page.request.get("/api/admin/audit/export?format=json"), 200);
+  const entries = json.rows.filter(row => row.entity === "portfolio" && Number(row.entity_id) === id);
+  expect(entries.filter(row => row.action === "portfolio_plan.approval_settings_update")).toHaveLength(2);
+  expect(entries.filter(row => row.action === "portfolio_plan.approval_settings_request")).toHaveLength(1);
+  const csv = await page.request.get("/api/admin/audit/export?format=csv");
+  expect(csv.status()).toBe(200);
+  expect(await csv.text()).toContain("250000円 → 200000円");
+  expect(await csv.text()).toContain("変更申請 #" + pendingId + "（申請者 #" + owner + "）");
+  // Portfolios with no proposals or decisions still use ordinary deletion.
+  const empty = await expectJson<{ id: number }>(await page.request.post("/api/portfolios", { data: { name: name + " 空" } }), 201);
+  await expectJson(await page.request.delete("/api/portfolios/" + empty.id), 200);
+});
+
+test("lost assignees require an independently approved replacement", async ({ page }) => {
+  const token = crypto.randomUUID();
+  const users = await loadDirectory(page);
+  const replacement = users.find(person => person.email === APPROVER.email)!;
+  const temporary = async (name: string) => expectJson<{ id: number }>(await page.request.post("/api/admin/users", {
+    data: { name, email: name + "-" + token + "@example.test", password: "Atlas-Test-" + token },
+  }), 201);
+  const reviewer = await temporary("reviewer");
+  const approver = await temporary("approver");
+  await login(page, REVIEWER);
+  const name = "担当者交代 " + token;
+  const { id } = await expectJson<{ id: number }>(await page.request.post("/api/portfolios", { data: { name } }), 201);
+  const root = "/api/portfolios/" + id + "/planning";
+  const settings = root + "/approval-settings";
+  for (const member of [reviewer, approver, replacement]) {
+    await expectJson(await page.request.post(root + "/viewers", { data: { userId: member.id } }), 200);
+  }
+  const period = await expectJson<{ periodId: number; revision: number }>(await page.request.post(root + "/periods", {
+    data: { year: 2028, quarter: 1, budgetYen: 100000, roles: ["検証"] },
+  }), 201);
+  await expectJson(await page.request.put(settings, {
+    data: { enabled: true, finalApproverUserId: approver.id, reviewerUserId: reviewer.id },
+  }), 200);
+  await login(page, ADMIN);
+  await expectJson(await page.request.delete("/api/admin/users/" + reviewer.id), 200);
+  await login(page, REVIEWER);
+  await openPlanningFromPortfolio(page, { name });
+  await expect(page.getByRole("button", { name: "A案で提案…" })).toBeDisabled();
+  await expectJson(await page.request.post(root + "/proposals", {
+    data: { ...period, chosenSlot: 0, reason: "削除された担当者を省略できない", requestId: crypto.randomUUID() },
+  }), 409);
+  await login(page, ADMIN);
+  await expectJson(await page.request.delete("/api/admin/users/" + approver.id), 200);
+  await login(page, REVIEWER);
+  await expectJson(await page.request.put(settings, { data: { enabled: false, requestChange: true } }), 409);
+  const change = () => page.request.put(settings, {
+    data: { enabled: true, finalApproverUserId: replacement.id, reviewerUserId: null, requestChange: true },
+  });
+  const resolve = (changeId: number, action: string) => page.request.post(settings, { data: { changeId, action } });
+  const first = await expectJson<{ pendingId: number }>(await change(), 202);
+  await expectJson(await resolve(first.pendingId, "cancel"), 200);
+  const second = await expectJson<{ pendingId: number }>(await change(), 202);
+  expect(second.pendingId).not.toBe(first.pendingId);
+  expect(await expectJson(await change(), 202)).toMatchObject({ pendingId: second.pendingId });
+  await login(page, APPROVER);
+  await expectJson(await resolve(second.pendingId, "confirm"), 403);
+  await login(page, ADMIN);
+  await expectJson(await resolve(first.pendingId, "confirm"), 409);
+  await page.reload();
+  const panel = page.getByRole("region", { name: "承認設定の変更申請" });
+  await expect(panel).toContainText(replacement.name);
+  await panel.getByRole("button", { name: "設定変更を承認" }).click();
+  await expect(panel).toHaveCount(0);
+  const state = await expectJson(await page.request.get(root), 200);
+  expect(state).toMatchObject({ approval: { enabled: true, finalApprover: { id: replacement.id }, reviewer: null } });
 });

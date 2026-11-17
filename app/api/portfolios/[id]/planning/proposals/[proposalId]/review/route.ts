@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api/route";
-import { audit } from "@/lib/audit";
 import { parsePortfolioId, readObjectBody, requireWorkspaceId } from "@/lib/planning/http";
 import { reviewProposal } from "@/lib/planning/mutations";
 import {
@@ -35,12 +34,5 @@ export const POST = withUser(async (req, { uid, params }) => {
     requestId,
     expectedStatus,
   });
-  if (!result.idempotent) {
-    await audit(uid, "portfolio_plan.proposal_review", {
-      entity: "portfolio_plan_proposal",
-      entityId: result.id,
-      summary: `v${result.version}:${result.outcome}`,
-    });
-  }
   return NextResponse.json(result);
 });

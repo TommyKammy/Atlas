@@ -83,6 +83,7 @@ export default function PlanningWorkspace({
   const [capacityDialog, setCapacityDialog] = useState(false);
   const [rolesDialog, setRolesDialog] = useState(false);
   const [viewersDialog, setViewersDialog] = useState(false);
+  const [resolvingChange, setResolvingChange] = useState(false);
   const [approvalSettingsDialog, setApprovalSettingsDialog] = useState(false);
   const [carryoverDialog, setCarryoverDialog] = useState(false);
   const [adoptSlot, setAdoptSlot] = useState<0 | 1 | null>(null);
@@ -334,9 +335,25 @@ export default function PlanningWorkspace({
   };
 
   const saveApprovalSettings = async (input: ApprovalSettingsInput) => {
-    await api(`/api/portfolios/${portfolioId}/planning/approval-settings`, "PUT", input);
+    const result = await api<{ pendingId: number | null }>(
+      `/api/portfolios/${portfolioId}/planning/approval-settings`, "PUT", { ...input, requestChange: true },
+    );
     await load(periodKey, true);
-    toast(input.enabled ? "承認フローを有効にしました" : "承認フローを無効にしました");
+    toast(result.pendingId ? "承認設定の変更を申請しました" : input.enabled ? "承認フローを有効にしました" : "承認フローを無効にしました");
+  };
+
+  const resolveChange = async (id: number, action: "confirm" | "cancel") => {
+    if (resolvingChange) return;
+    setResolvingChange(true);
+    try {
+      await api(`/api/portfolios/${portfolioId}/planning/approval-settings`, "POST", { changeId: id, action });
+      toast(action === "confirm" ? "承認設定の変更を反映しました" : "設定変更の申請を取り消しました");
+      await load(periodKey, true);
+    } catch (error) {
+      toast(planningErrorMessage(error));
+    } finally {
+      setResolvingChange(false);
+    }
   };
 
   const createPeriod = async (input: {
@@ -393,6 +410,7 @@ export default function PlanningWorkspace({
   const initiative = initiativeDialog?.initiativeId
     ? state.initiatives.find((entry) => entry.id === initiativeDialog.initiativeId)
     : undefined;
+  const pendingChange = state.pendingApprovalChange;
   const adopterResult = adoptSlot === null ? null : scenarioCalculation(state, adoptSlot);
 
   return (
@@ -414,6 +432,34 @@ export default function PlanningWorkspace({
         onApprovalSettings={() => setApprovalSettingsDialog(true)}
       />
 
+      {pendingChange && (
+        <section aria-label="承認設定の変更申請" className="mt-3 space-y-2 rounded border p-3 text-sm">
+          <h2 className="font-semibold">承認設定の変更申請</h2>
+          <p>現在の最終承認者　{state.approval.finalApprover?.name ?? "未設定"}</p>
+          <p>申請者　{pendingChange.requester} ／ 変更後の設定　{pendingChange.description}</p>
+          {pendingChange.canConfirm && (
+            <button type="button" className={buttonPrimary} disabled={resolvingChange || state.approval.openProposalCount > 0}
+              onClick={() => void resolveChange(pendingChange.id, "confirm")}>設定変更を承認</button>
+          )}
+          {(canEdit || pendingChange.canConfirm) && (
+            <button type="button" className={buttonSecondary} disabled={resolvingChange}
+              onClick={() => void resolveChange(pendingChange.id, "cancel")}>変更申請を取り消す</button>
+          )}
+        </section>
+      )}
+      {state.settingsHistory.length > 0 && (
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer">承認設定の変更履歴（直近20件）</summary>
+          <ul className="mt-2 space-y-2">
+            {state.settingsHistory.map(entry => (
+              <li key={entry.id}>
+                <time dateTime={entry.at}>{new Date(entry.at).toLocaleString("ja-JP")}</time>　{entry.actor}　
+                {entry.action.endsWith("_request") ? "申請" : entry.action.endsWith("_cancel") ? "取消" : "反映"}　{entry.summary}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {refreshing && (
         <p role="status" className="mt-3 text-[11px] text-neutral-500">
           最新の内容を読み込み中…

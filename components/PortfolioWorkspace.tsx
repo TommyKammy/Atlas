@@ -98,7 +98,7 @@ export default function PortfolioWorkspace({
   };
 
   const remove = async (portfolio: Portfolio) => {
-    if (!(await confirmAction(`ポートフォリオ「${portfolio.name}」を削除しますか？`))) return;
+    if (!(await confirmAction(`ポートフォリオ「${portfolio.name}」を削除しますか？ 申請・採用履歴がある場合は削除できません。`))) return;
     setBusy(true);
     try {
       await api(`/api/portfolios/${portfolio.id}`, "DELETE");

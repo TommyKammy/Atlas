@@ -28,6 +28,9 @@ export const conflict = (message = "conflict", details?: unknown) =>
 
 export function jsonError(error: unknown): Response {
   const dbError = error as { code?: string; constraint?: string } | null;
+  if (dbError?.constraint === "portfolio_plan_history_retained") {
+    return NextResponse.json({ error: "申請・採用履歴があるため削除できません", code: "history_retained" }, { status: 409 });
+  }
   if (dbError?.code === "23514" && dbError.constraint === "task_project_cascade_guard") {
     return NextResponse.json({ error: "task hierarchy crosses projects", code: "conflict" }, { status: 409 });
   }

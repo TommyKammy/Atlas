@@ -115,7 +115,7 @@ export default function DecisionHistory({
                           ? `${decision.chosenScenarioName}を採用`
                           : "採用案（非表示）"}
                       </h3>
-                      {decision.sourceProposalId !== null && (
+                      {decision.sourceProposalId === null ? <Tag>承認フロー外で採用</Tag> : (
                         <Tag tone="blue">提案から採用</Tag>
                       )}
                       {decision.restricted && <Tag tone="warn">閲覧制限</Tag>}

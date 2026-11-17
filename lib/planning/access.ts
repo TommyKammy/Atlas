@@ -31,6 +31,7 @@ export async function loadPlanningAccess(
          WHERE pp.portfolio_id = p.id
            AND pp.status IN ('submitted', 'under_review')
            AND pp.reviewer_user_id = $3
+           AND pp.submitted_by <> $3 AND pp.final_approver_user_id <> $3
        ) AS can_review
      FROM portfolios p
      WHERE p.id = $1::bigint AND p.workspace_id = $2::bigint`,

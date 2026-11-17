@@ -84,6 +84,10 @@ export default function ApprovalSettingsDialog({
       setError("最終承認者を選択してください");
       return;
     }
+    if (enabled && reviewerId && approverId === reviewerId) {
+      setError("レビュー担当と最終承認者は別の人を指定してください");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -116,7 +120,7 @@ export default function ApprovalSettingsDialog({
             className={buttonPrimary}
             disabled={busy || locked}
           >
-            {busy ? "保存中…" : "承認設定を保存"}
+            {busy ? "保存中…" : settings.enabled ? "設定変更を申請" : "承認設定を保存"}
           </button>
         </>
       }
@@ -126,6 +130,7 @@ export default function ApprovalSettingsDialog({
           承認を有効にすると、比較画面でA案・B案を直接採用せず、選んだ案と理由を投資提案として提出します。提出時点の両案は固定され、最終承認者が決定します。レビュー担当を設定した提案は、その担当者の確認後に最終決裁へ進みます。
         </p>
 
+        {settings.enabled && <Notice tone="info">設定変更は別の編集者が申請し、現行の最終承認者が承認すると反映されます。</Notice>}
         {locked && (
           <Notice tone="warn">
             未解決の投資提案が{settings.openProposalCount}件あるため、承認の有効・無効や担当者は変更できません。提案を承認または差し戻してから変更してください。
@@ -160,7 +165,10 @@ export default function ApprovalSettingsDialog({
               </span>
               <select
                 value={approverId}
-                onChange={(event) => setApproverId(event.target.value)}
+                onChange={(event) => {
+                  setApproverId(event.target.value);
+                  if (event.target.value === reviewerId) setReviewerId("");
+                }}
                 name="finalApproverUserId"
                 className={`${inputClass} mt-1`}
                 disabled={busy || locked}
@@ -186,7 +194,7 @@ export default function ApprovalSettingsDialog({
                 disabled={busy || locked}
               >
                 <option value="">レビューなし</option>
-                {candidates.map((candidate) => (
+                {candidates.filter(candidate => String(candidate.id) !== approverId).map((candidate) => (
                   <option key={candidate.id} value={candidate.id}>
                     {candidate.name}
                     {candidate.email ? `（${candidate.email}）` : ""}
