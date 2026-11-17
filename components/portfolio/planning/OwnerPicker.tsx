@@ -23,7 +23,6 @@ export default function OwnerPicker({
   onChange: (value: OwnerSelection) => void;
 }) {
   const inputId = useId();
-  const helpId = useId();
   const listboxId = useId();
   const listboxRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
@@ -40,6 +39,7 @@ export default function OwnerPicker({
   const selectedCandidate =
     value.type === "member" ? candidates.find((candidate) => candidate.id === value.id) : undefined;
   const selectedIsInactive = value.type === "member" && selectedCandidate === undefined;
+  const hasSelection = value.type !== "none";
   const selfCandidate = candidates.find((candidate) => candidate.id === currentUserId);
   const safeActiveIndex = Math.min(activeIndex, Math.max(0, filtered.length - 1));
   const activeCandidate = open ? filtered[safeActiveIndex] : undefined;
@@ -80,15 +80,12 @@ export default function OwnerPicker({
   return (
     <fieldset className="min-w-0" data-owner-picker>
       <legend className="block text-[12px] font-medium text-neutral-600">起案責任者</legend>
-      <p id={helpId} className="mt-0.5 text-[11px] text-neutral-500">
-        選択しても、計画やプロジェクトの権限は変わりません。
-      </p>
 
       <div aria-live="polite">
         {value.type === "member" ? (
           <div
             data-owner-selected
-            className={`mt-2 rounded-md border px-3 py-2 ${
+            className={`mt-1 rounded-md border px-3 py-2 ${
               selectedIsInactive
                 ? "border-amber-300 bg-amber-50/70"
                 : "border-emerald-300 bg-emerald-50/70"
@@ -111,7 +108,7 @@ export default function OwnerPicker({
         ) : value.type === "legacy" ? (
           <div
             data-owner-legacy
-            className="mt-2 rounded-md border border-amber-300 bg-amber-50/70 px-3 py-2"
+            className="mt-1 rounded-md border border-amber-300 bg-amber-50/70 px-3 py-2"
           >
             <p
               data-owner-legacy-name
@@ -124,9 +121,12 @@ export default function OwnerPicker({
         ) : null}
       </div>
 
-      <div className="mt-2 flex flex-wrap items-end gap-2">
+      <div className={`flex flex-wrap items-end gap-2 ${hasSelection ? "mt-2" : ""}`}>
         <div className="min-w-[220px] flex-1">
-          <label htmlFor={inputId} className="block text-[11px] font-medium text-neutral-600">
+          <label
+            htmlFor={inputId}
+            className={hasSelection ? "block text-[11px] font-medium text-neutral-600" : "sr-only"}
+          >
             {searchLabel}
           </label>
           <div className="relative mt-1">
@@ -139,8 +139,8 @@ export default function OwnerPicker({
               aria-activedescendant={
                 activeCandidate ? `${listboxId}-option-${activeCandidate.id}` : undefined
               }
-              aria-describedby={helpId}
               autoComplete="off"
+              placeholder={hasSelection ? undefined : "名前またはメールで検索"}
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
