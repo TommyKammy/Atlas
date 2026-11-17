@@ -83,7 +83,7 @@ export default function ProjectHeaderStatus({
         data-project-status-button
         data-project-status-current={status}
         aria-label={status ? `現在のステータス: ${status}` : "ステータス未設定"}
-        className="ml-1 hidden h-7 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-xs whitespace-nowrap text-neutral-600 lg:inline-flex"
+        className="ml-1 hidden h-7 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-xs whitespace-nowrap text-neutral-600 md:@min-[700px]:inline-flex"
       >
         {body}
       </span>
@@ -91,7 +91,7 @@ export default function ProjectHeaderStatus({
   }
 
   return (
-    <span className="relative ml-1 hidden shrink-0 whitespace-nowrap lg:inline-flex">
+    <span className="relative ml-1 hidden shrink-0 whitespace-nowrap md:@min-[700px]:inline-flex">
       <button
         type="button"
         data-project-status-button

@@ -75,7 +75,7 @@ export default function ProjectTitle({
   return (
     <h1
       data-project-title={name}
-      className={`min-w-0 truncate text-[18px] leading-7 font-medium md:max-w-[420px] sm:text-[20px] ${
+      className={`min-w-0 truncate text-[18px] leading-7 font-medium md:max-w-[420px] sm:text-[20px] md:@max-[700px]:min-w-[3.75rem] ${
         canEdit ? "cursor-text rounded px-1 -mx-1 hover:bg-neutral-100" : ""
       }`}
       title={name}

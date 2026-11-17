@@ -190,12 +190,12 @@ export default async function ProjectPage(props: {
 
   return (
     <div className="flex min-h-full flex-col md:flex-row">
-      <div className="min-w-0 flex-1">
+      <div className="@container min-w-0 flex-1">
         <div
           data-project-header
-          className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 pt-3 md:flex md:flex-nowrap md:gap-2 md:px-6 md:pb-2 sm:gap-x-3"
+          className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 pt-3 sm:gap-x-3 md:flex md:flex-nowrap md:gap-2 md:px-6 md:pb-2 md:@max-[420px]:gap-1 md:@max-[420px]:px-4"
         >
-          <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2 pl-3 sm:gap-3 sm:pl-6 md:gap-1.5 md:pl-0">
+          <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2 pl-3 sm:gap-3 sm:pl-6 md:gap-1.5 md:pl-0 md:@max-[420px]:gap-1">
             <ProjectIcon
               id={project.id}
               name={project.name}
@@ -234,7 +234,7 @@ export default async function ProjectPage(props: {
               canEdit={canConfigure}
             />
           </div>
-          <div className="col-start-2 row-start-1 flex shrink-0 items-center gap-2 pr-3 sm:pr-6 md:order-3 md:gap-1.5 md:pr-0">
+          <div className="col-start-2 row-start-1 flex shrink-0 items-center gap-2 pr-3 sm:pr-6 md:order-3 md:gap-1.5 md:pr-0 md:@max-[420px]:gap-1">
             <ProjectMemberFacepile
               projectId={projectId}
               projectName={project.name}

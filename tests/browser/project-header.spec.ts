@@ -30,6 +30,36 @@ function overlaps(
   return first.y < second.y + second.height && second.y < first.y + first.height;
 }
 
+type Box = { x: number; y: number; width: number; height: number };
+
+function intersects(first: Box, second: Box) {
+  return (
+    first.x < second.x + second.width &&
+    second.x < first.x + first.width &&
+    first.y < second.y + second.height &&
+    second.y < first.y + first.height
+  );
+}
+
+/** The header's visual row items: the title group, the tab nav, and the actions. */
+async function headerRowBoxes(page: Page): Promise<Box[]> {
+  return page.locator("[data-project-header]").evaluate((header) => {
+    const boxes: Box[] = [];
+    const collect = (element: Element) => {
+      if (getComputedStyle(element).display === "contents") {
+        for (const child of Array.from(element.children)) collect(child);
+        return;
+      }
+      const rect = element.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        boxes.push({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      }
+    };
+    for (const child of Array.from(header.children)) collect(child);
+    return boxes;
+  });
+}
+
 async function expectHeaderControlsInside(page: Page, width: number) {
   const overflow = page.locator("[data-project-tab-overflow]");
   await expect(overflow).toBeVisible();
@@ -228,4 +258,90 @@ test("mobile keeps the existing two-row header", async ({ page }) => {
   expect(titleBox.y + titleBox.height, "tabs start below the name row").toBeLessThanOrEqual(tabsBox.y + 1);
   expect(await tabs.evaluate((element) => getComputedStyle(element).overflowX)).toBe("auto");
   await expect(page.locator("[data-project-tab-overflow]")).toHaveCount(0);
+});
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) {
+  test(`task pane keeps the project header on one row at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/projects/1?view=list");
+    const header = page.locator("[data-project-header]");
+    await expect(header).toBeVisible();
+    const closedHeight = (await header.boundingBox())!.height;
+
+    await page.goto("/projects/1?view=list&task=2");
+    const pane = page.locator("[data-task-pane]");
+    await expect(pane).toBeVisible();
+    const nav = page.locator("[data-project-tabs]");
+    await expect(nav).toBeVisible();
+    // ProjectTabs sets the nav's minimum width from a layout effect. Wait until
+    // that measurement has produced a measurable tab row before sampling boxes.
+    await expect.poll(
+      async () => (await nav.boundingBox())?.width ?? 0,
+      { message: "the tab nav has a measurable width" },
+    ).toBeGreaterThan(0);
+    const activeTab = page.locator('[data-project-header] [aria-current="page"]');
+    await expect(activeTab).toBeVisible();
+    // The overflow button only becomes visible after the tab measurement has
+    // decided which tabs fit, so this also guards against sampling mid-measure.
+    await expect(page.locator("[data-project-tab-overflow]")).toBeVisible();
+    await expect.poll(
+      async () => (await headerRowBoxes(page)).length,
+      { message: "title, tabs, and actions are laid out" },
+    ).toBeGreaterThanOrEqual(3);
+    const paneBox = (await pane.boundingBox())!;
+
+    const boxes = await headerRowBoxes(page);
+    expect(boxes.length, "title, tabs, and actions are laid out").toBeGreaterThanOrEqual(3);
+    for (let first = 0; first < boxes.length; first += 1) {
+      for (let second = first + 1; second < boxes.length; second += 1) {
+        expect(
+          intersects(boxes[first], boxes[second]),
+          `header row items ${first} and ${second} do not overlap`,
+        ).toBe(false);
+      }
+    }
+
+    const title = page.locator("[data-project-title]");
+    const projectName = (await title.getAttribute("data-project-title"))!;
+    await expect(title).toHaveText(projectName);
+    const titleBox = (await title.boundingBox())!;
+    expect(titleBox.width, "the project name keeps its minimum width").toBeGreaterThanOrEqual(60);
+
+    for (const [name, control] of [
+      ["share", page.locator("[data-project-share]")],
+      ["customize", page.locator("[data-project-customize]")],
+    ] as const) {
+      const box = (await control.boundingBox())!;
+      expect(box.x + box.width, `${name} stays left of the task pane`).toBeLessThanOrEqual(paneBox.x + 0.5);
+    }
+
+    const openHeight = (await header.boundingBox())!.height;
+    // The closed header is taller when the member facepile (h-8) is visible.
+    // A narrower header must not grow a second row, and the row items must
+    // still share the same vertical center.
+    expect(
+      openHeight,
+      "opening the task pane does not add a second header row",
+    ).toBeLessThanOrEqual(closedHeight + 2);
+    const centers = boxes.map((box) => box.y + box.height / 2);
+    expect(
+      Math.max(...centers) - Math.min(...centers),
+      "title, tabs, and actions stay on the same row",
+    ).toBeLessThanOrEqual(4);
+    await expect(activeTab).toBeVisible();
+  });
+}
+
+test("the task pane reaches the bottom of the viewport at 1440px", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/projects/1?view=list&task=2");
+  const pane = page.locator("[data-task-pane]");
+  await expect(pane).toBeVisible();
+
+  const paneBox = (await pane.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(
+    Math.abs(paneBox.y + paneBox.height - viewport.height),
+    "the pane meets the bottom edge of the viewport",
+  ).toBeLessThanOrEqual(1);
 });

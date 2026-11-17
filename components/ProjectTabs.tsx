@@ -16,7 +16,6 @@ import ProjectTabAddMenu from "./project/ProjectTabAddMenu";
 import ProjectTabContextMenu, { type ProjectTabMenuAction } from "./project/ProjectTabContextMenu";
 
 const TAB_GAP = 4;
-const NAV_MIN_WIDTH = 176;
 const DEFAULT_ADD_BUTTON_WIDTH = 28;
 const DEFAULT_OVERFLOW_BUTTON_WIDTH = 74;
 
@@ -65,7 +64,10 @@ export default function ProjectTabs({
   const [isWide, setIsWide] = useState(false);
   const [visibleKeys, setVisibleKeys] = useState<string[] | null>(null);
   const [overflowMenu, setOverflowMenu] = useState<{ left: number; top: number } | null>(null);
-  const [navMinWidth, setNavMinWidth] = useState(NAV_MIN_WIDTH);
+  // The tab row shares one line with the title and actions. When the task pane
+  // narrows the column, the real floor is the active tab plus overflow/add, so
+  // start at zero and let the measurement below decide.
+  const [navMinWidth, setNavMinWidth] = useState(0);
 
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -154,16 +156,18 @@ export default function ProjectTabs({
       });
       const measuredOverflowWidth = overflowButtonRef.current?.getBoundingClientRect().width ?? 0;
       const overflowWidth = measuredOverflowWidth > 0 ? measuredOverflowWidth : DEFAULT_OVERFLOW_BUTTON_WIDTH;
-      const measuredAddWidth = canEdit ? (addButtonRef.current?.getBoundingClientRect().width ?? 0) : 0;
+      const addButton = addButtonRef.current;
+      // A container query hides the add button in a very narrow header; do not
+      // reserve space for a control that is not rendered.
+      const addVisible = canEdit && addButton !== null && addButton.getClientRects().length > 0;
+      const measuredAddWidth = addVisible ? addButton.getBoundingClientRect().width : 0;
       const addWidth = measuredAddWidth > 0 ? measuredAddWidth : DEFAULT_ADD_BUTTON_WIDTH;
-      const addReserve = canEdit ? addWidth + TAB_GAP : 0;
+      const addReserve = addVisible ? addWidth + TAB_GAP : 0;
       const overflowReserve = overflowWidth + TAB_GAP;
       const total =
         widths.reduce((sum, width, index) => sum + width + (index > 0 ? TAB_GAP : 0), 0) + addReserve;
       if (total <= available) {
-        if (total <= NAV_MIN_WIDTH) {
-          setNavMinWidth((current) => (current === NAV_MIN_WIDTH ? current : NAV_MIN_WIDTH));
-        }
+        setNavMinWidth((current) => (current === 0 ? current : 0));
         applyVisibleKeys(null);
         return;
       }
@@ -177,10 +181,7 @@ export default function ProjectTabs({
             sum + (widths[order.findIndex((tab) => tab.tab_key === key)] ?? 0) + (index > 0 ? TAB_GAP : 0),
           0,
         );
-      const requiredNavWidth = Math.max(
-        NAV_MIN_WIDTH,
-        Math.ceil(widthOf(pinned) + overflowReserve + addReserve) + 1,
-      );
+      const requiredNavWidth = Math.ceil(widthOf(pinned) + overflowReserve + addReserve) + 1;
       setNavMinWidth((current) => (current === requiredNavWidth ? current : requiredNavWidth));
       const budget = available - overflowReserve - addReserve;
       if (budget <= 0) {
@@ -428,7 +429,7 @@ export default function ProjectTabs({
         ref={navRef}
         data-project-tabs
         style={isWide ? { minWidth: navMinWidth } : undefined}
-        className="relative flex w-full items-center gap-[4px] overflow-x-auto px-6 py-[3px] text-sm whitespace-nowrap md:min-w-[176px] md:w-auto md:flex-1 md:overflow-clip md:px-0 md:py-0 md:[overflow-clip-margin:8px]"
+        className="relative flex w-full items-center gap-[4px] overflow-x-auto px-6 py-[3px] text-sm whitespace-nowrap md:w-auto md:flex-1 md:overflow-clip md:px-0 md:py-0 md:[overflow-clip-margin:8px]"
         onDragOver={(event) => {
           if (dragId !== null) event.preventDefault();
         }}
@@ -586,7 +587,7 @@ export default function ProjectTabs({
             hiddenTabs.length > 0 ? "" : "pointer-events-none invisible absolute top-0 left-0"
           }`}
         >
-          その他
+          <span className="md:@max-[700px]:sr-only">その他</span>
           <svg
             aria-hidden="true"
             viewBox="0 0 24 24"
@@ -613,7 +614,7 @@ export default function ProjectTabs({
               if (addMenu) setAddMenu(null);
               else openAddMenu();
             }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-[rgba(38,38,38,0.03)] hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2c60b8]"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-[rgba(38,38,38,0.03)] hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2c60b8] md:@max-[420px]:hidden"
           >
             <svg
               aria-hidden="true"

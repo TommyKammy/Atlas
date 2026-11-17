@@ -163,14 +163,14 @@ export default function ProjectCustomizeButton({
         aria-expanded={open}
         title="カスタマイズ"
         onClick={toggleDrawer}
-        className={`hidden h-7 shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs whitespace-nowrap md:flex ${
+        className={`hidden h-7 shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs whitespace-nowrap md:flex md:@max-[700px]:w-7 md:@max-[700px]:justify-center md:@max-[700px]:gap-0 md:@max-[700px]:px-0 ${
           open
             ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]"
             : "border-[#e1e1e1] bg-white text-neutral-700 hover:bg-neutral-50"
         }`}
       >
         <PaletteIcon />
-        <span className="hidden xl:inline">カスタマイズ</span>
+        <span className="hidden md:@min-[1000px]:inline">カスタマイズ</span>
       </button>
 
       {open && (

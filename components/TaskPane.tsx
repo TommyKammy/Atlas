@@ -359,7 +359,7 @@ export default function TaskPane({
       className={`taskpane-enter flex w-full shrink-0 flex-col overflow-hidden border-t bg-white ${
         maximized
           ? "fixed inset-0 z-[120]"
-          : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[calc(100dvh-3rem)] md:w-[560px] md:self-start md:border-l md:border-t-0 xl:w-[680px] 2xl:w-[760px]"
+          : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[100dvh] md:w-[560px] md:self-start md:border-l md:border-t-0 xl:w-[680px] 2xl:w-[760px]"
       }`}
     >
       <TaskPaneHeader
