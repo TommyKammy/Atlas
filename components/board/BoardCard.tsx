@@ -62,7 +62,7 @@ export default function BoardCard({
       }}
       onDragEnd={onDragEnd}
       onClick={(event) => onClick(event, task.id)}
-      className="cursor-pointer rounded-lg border border-[#eaeaea] bg-white p-2 text-sm shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-md active:cursor-grabbing"
+      className="cursor-pointer rounded-lg border border-line bg-surface p-2 text-sm shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-md active:cursor-grabbing"
     >
       <div className="flex items-start gap-2">
         <TaskCompletionToggle
@@ -78,15 +78,15 @@ export default function BoardCard({
           href={`/projects/${projectId}?view=board&task=${task.id}`}
           title={task.name}
           dir="auto"
-          className={`line-clamp-2 break-words ${task.completed ? "text-neutral-500 line-through" : ""}`}
+          className={`line-clamp-2 break-words ${task.completed ? "text-muted line-through" : ""}`}
         >
           {task.name || "タスク名を入力"}
         </Link></QuickTaskName>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
         {task.approval && <TaskApprovalBadge approval={task.approval} href={`/projects/${projectId}?view=board&task=${task.id}&approval=1`} />}
         {effectiveGroupBy !== "section" && sectionId !== null && (
-          <span className="rounded bg-neutral-200 px-1.5 py-0.5">
+          <span className="rounded bg-surface-strong px-1.5 py-0.5">
             {sectionName.get(sectionId) ?? ""}
           </span>
         )}
@@ -105,7 +105,7 @@ export default function BoardCard({
                 className={`rounded-full px-1.5 py-0.5 ${
                   !task.completed && task.due_on !== null && task.due_on < today
                     ? "bg-red-100 font-semibold text-red-700"
-                    : "bg-neutral-100 text-neutral-700"
+                    : "bg-surface-muted text-neutral-700"
                 }`}
               >
                 <span className="whitespace-nowrap">{s1}</span>

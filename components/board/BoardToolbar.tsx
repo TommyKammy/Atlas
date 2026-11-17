@@ -21,10 +21,10 @@ import ViewOptionsDrawer from "../view/ViewOptionsDrawer";
 import { FilterIcon, GroupIcon, OptionsIcon, SortIcon } from "../view/ViewToolbarIcons";
 
 const toolbarBtn = viewToolbarControlClass;
-const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
+const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
 const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
 const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
-const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-white shadow-lg";
+const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-surface shadow-lg";
 
 export type BoardCardFields = {
   assignee: boolean;
@@ -371,7 +371,7 @@ export default function BoardToolbar({
         }}
       >
         <div className="mt-3 border-t border-neutral-100 pt-3">
-          <div className="px-2 text-[11px] font-medium text-neutral-500">レイアウトオプション</div>
+          <div className="px-2 text-[11px] font-medium text-muted">レイアウトオプション</div>
           <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
             <input
               type="checkbox"
@@ -392,7 +392,7 @@ export default function BoardToolbar({
           </label>
         </div>
         <div className="mt-2 border-t border-neutral-100 pt-3">
-          <div className="px-2 text-[11px] font-medium text-neutral-500">フィールドを表示 / 非表示</div>
+          <div className="px-2 text-[11px] font-medium text-muted">フィールドを表示 / 非表示</div>
           {(
             [
               ["assignee", "担当者"],

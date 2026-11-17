@@ -58,7 +58,7 @@ export default function HomeTaskComposer({
       onClose={onClose}
       title={mode === "my_tasks" ? "タスクを作成" : "タスクを割り当てる"}
       titleId="home-task-composer-title"
-      panelClassName="w-[min(460px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
+      panelClassName="w-[min(460px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl"
     >
       <div className="p-5">
         <h2 id="home-task-composer-title" className="text-[15px] font-semibold text-neutral-800">
@@ -102,7 +102,7 @@ export default function HomeTaskComposer({
                 ))}
             </select>
           )}
-          {error !== "" && <p className="text-[12px] text-red-600">{error}</p>}
+          {error !== "" && <p className="text-[12px] text-danger">{error}</p>}
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button
@@ -117,7 +117,7 @@ export default function HomeTaskComposer({
             data-home-composer-submit
             disabled={busy || name.trim() === "" || projectId === ""}
             onClick={() => void create()}
-            className="rounded-md bg-[#2c60b8] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
           >
             {busy ? "作成中…" : "作成"}
           </button>

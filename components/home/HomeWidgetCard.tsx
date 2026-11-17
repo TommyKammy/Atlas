@@ -67,7 +67,7 @@ export default function HomeWidgetCard({
       data-home-widget-size={size}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`relative flex min-w-0 flex-col rounded-lg border border-[#e1e1e1] bg-white ${
+      className={`relative flex min-w-0 flex-col rounded-lg border border-[#e1e1e1] bg-surface ${
         dragging ? "opacity-50" : ""
       } ${className}`}
     >
@@ -88,7 +88,7 @@ export default function HomeWidgetCard({
         </span>
         <h2 className="min-w-0 truncate text-[14px] font-semibold text-neutral-800">{title}</h2>
         {locked && (
-          <span title="非公開" className="text-[11px] text-neutral-400">
+          <span title="非公開" className="text-[11px] text-subtle">
             🔒
           </span>
         )}
@@ -100,7 +100,7 @@ export default function HomeWidgetCard({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((value) => !value)}
-          className="flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-subtle hover:bg-neutral-100 hover:text-neutral-700"
         >
           …
         </button>
@@ -109,7 +109,7 @@ export default function HomeWidgetCard({
         <div
           role="menu"
           data-home-widget-menu
-          className="absolute right-2 top-11 z-30 w-56 rounded-lg border border-neutral-200 bg-white py-1 text-[13px] text-neutral-700 shadow-xl"
+          className="absolute right-2 top-11 z-30 w-56 rounded-lg border border-neutral-200 bg-surface py-1 text-[13px] text-neutral-700 shadow-xl"
         >
           {menuItems.map((item, index) => (
             <button
@@ -121,7 +121,7 @@ export default function HomeWidgetCard({
                 item.onClick();
               }}
               className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100 ${
-                item.danger ? "text-red-600 hover:bg-red-50" : ""
+                item.danger ? "text-danger hover:bg-red-50" : ""
               }`}
             >
               <span className="w-4 shrink-0 text-center">

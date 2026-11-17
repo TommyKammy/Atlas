@@ -68,8 +68,8 @@ export default function AssignedTasksWidget({
               aria-pressed={active === item.key}
               className={`rounded-full px-2 py-0.5 text-[12px] ${
                 active === item.key
-                  ? "bg-[#eff4fd] font-medium text-[#2c60b8]"
-                  : "text-neutral-500 hover:bg-neutral-100"
+                  ? "bg-accent-soft font-medium text-accent-text"
+                  : "text-muted hover:bg-neutral-100"
               }`}
             >
               {item.label} ({item.count})
@@ -80,7 +80,7 @@ export default function AssignedTasksWidget({
           type="button"
           data-home-compose
           onClick={onCompose}
-          className="rounded px-1.5 py-0.5 text-[12px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+          className="rounded px-1.5 py-0.5 text-[12px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
         >
           ＋ タスクを割り当てる
         </button>
@@ -88,14 +88,14 @@ export default function AssignedTasksWidget({
       <div className="min-h-[170px] flex-1">
         {items.length === 0 ? (
           <div className="flex h-full min-h-[170px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-300 text-neutral-400">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line-strong text-subtle">
               ✓
             </span>
-            <p className="text-[12px] text-neutral-400">表示するタスクはありません。</p>
+            <p className="text-[12px] text-subtle">表示するタスクはありません。</p>
             <button
               type="button"
               onClick={onCompose}
-              className="text-[12px] text-[#2c60b8] hover:underline"
+              className="text-[12px] text-accent-text hover:underline"
             >
               タスクを割り当てる
             </button>

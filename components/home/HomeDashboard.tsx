@@ -192,19 +192,19 @@ export default function HomeDashboard({
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
         <Link
           href="/my-tasks"
-          className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
+          className="rounded-md border border-neutral-200 bg-surface px-2 py-1 text-neutral-700 hover:bg-neutral-50"
         >
           マイタスク（担当 {myTaskCount}）
         </Link>
         <Link
           href="/inbox"
-          className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
+          className="rounded-md border border-neutral-200 bg-surface px-2 py-1 text-neutral-700 hover:bg-neutral-50"
         >
           受信トレイ（未読 {unreadCount}）
         </Link>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3 border-b border-neutral-200 pb-2 text-[12px] text-neutral-500">
+      <div className="mt-5 flex flex-wrap items-center gap-3 border-b border-neutral-200 pb-2 text-[12px] text-muted">
         <label className="flex items-center gap-1">
           <span>期間</span>
           <select
@@ -249,7 +249,7 @@ export default function HomeDashboard({
           type="button"
           data-home-add-widget-button
           onClick={() => setAddOpen(true)}
-          className="rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[12px] font-medium text-neutral-700 hover:bg-neutral-50"
+          className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-medium text-neutral-700 hover:bg-neutral-50"
         >
           ＋ ウィジェットを追加
         </button>

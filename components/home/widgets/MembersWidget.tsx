@@ -20,8 +20,8 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
           aria-pressed={tab === "week"}
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             tab === "week"
-              ? "bg-[#eff4fd] font-medium text-[#2c60b8]"
-              : "text-neutral-500 hover:bg-neutral-100"
+              ? "bg-accent-soft font-medium text-accent-text"
+              : "text-muted hover:bg-neutral-100"
           }`}
         >
           今週
@@ -33,17 +33,17 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
           aria-pressed={tab === "month"}
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             tab === "month"
-              ? "bg-[#eff4fd] font-medium text-[#2c60b8]"
-              : "text-neutral-500 hover:bg-neutral-100"
+              ? "bg-accent-soft font-medium text-accent-text"
+              : "text-muted hover:bg-neutral-100"
           }`}
         >
           今月
         </button>
-        <span className="ml-2 text-[11px] text-neutral-400">よく追加するコラボレーター</span>
+        <span className="ml-2 text-[11px] text-subtle">よく追加するコラボレーター</span>
       </div>
       <div className="min-h-[170px] flex-1 p-2">
         {members.length === 0 ? (
-          <div className="flex h-full min-h-[150px] items-center justify-center text-[12px] text-neutral-400">
+          <div className="flex h-full min-h-[150px] items-center justify-center text-[12px] text-subtle">
             表示するメンバーがいません。
           </div>
         ) : (
@@ -62,11 +62,11 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
                     <span className="block truncate text-[13px] font-medium text-neutral-800">
                       {member.name}
                     </span>
-                    <span className="block truncate text-[11px] text-neutral-400">
+                    <span className="block truncate text-[11px] text-subtle">
                       {member.title ?? `${member.shared_projects}件の共有プロジェクト`}
                     </span>
                   </span>
-                  <span className="shrink-0 text-[11px] text-neutral-500">{count}件</span>
+                  <span className="shrink-0 text-[11px] text-muted">{count}件</span>
                 </Link>
               );
             })}
@@ -74,7 +74,7 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
         )}
       </div>
       <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/portfolio" className="text-[12px] text-neutral-500 hover:text-neutral-800">
+        <Link href="/portfolio" className="text-[12px] text-muted hover:text-neutral-800">
           メンバーをすべて表示
         </Link>
       </div>

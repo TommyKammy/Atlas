@@ -25,8 +25,8 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
           aria-pressed={active === "published"}
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             active === "published"
-              ? "bg-[#eff4fd] font-medium text-[#2c60b8]"
-              : "text-neutral-500 hover:bg-neutral-100"
+              ? "bg-accent-soft font-medium text-accent-text"
+              : "text-muted hover:bg-neutral-100"
           }`}
         >
           公開中 ({publishedCount})
@@ -38,8 +38,8 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
           aria-pressed={active === "all"}
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             active === "all"
-              ? "bg-[#eff4fd] font-medium text-[#2c60b8]"
-              : "text-neutral-500 hover:bg-neutral-100"
+              ? "bg-accent-soft font-medium text-accent-text"
+              : "text-muted hover:bg-neutral-100"
           }`}
         >
           すべて ({forms.length})
@@ -49,13 +49,13 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
       <div className="min-h-[170px] flex-1 p-2">
         {scoped.length === 0 ? (
           <div className="flex h-full min-h-[150px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-300 text-neutral-400">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line-strong text-subtle">
               📝
             </span>
-            <p className="text-[12px] text-neutral-400">
+            <p className="text-[12px] text-subtle">
               {active === "published" ? "公開中のフォームはありません。" : "フォームはまだありません。"}
             </p>
-            <p className="text-[11px] text-neutral-400">
+            <p className="text-[11px] text-subtle">
               プロジェクトの「フォーム」タブから作成できます。
             </p>
           </div>
@@ -82,14 +82,14 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
                   <span
                     className={`shrink-0 rounded px-1 py-px text-[9px] ${
                       form.published
-                        ? "bg-green-50 text-green-700"
-                        : "bg-neutral-100 text-neutral-500"
+                        ? "bg-green-50 text-success"
+                        : "bg-surface-muted text-muted"
                     }`}
                   >
                     {form.published ? "公開中" : "下書き"}
                   </span>
                 </span>
-                <span className="mt-0.5 block truncate text-[10px] text-neutral-400">
+                <span className="mt-0.5 block truncate text-[10px] text-subtle">
                   {form.project_name} ・ 回答 {form.response_count}件 ・ {formatDateTime(form.updated_at)}
                 </span>
               </span>
@@ -99,7 +99,7 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
       </div>
 
       <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/portfolio" className="text-[12px] text-neutral-500 hover:text-neutral-800">
+        <Link href="/portfolio" className="text-[12px] text-muted hover:text-neutral-800">
           プロジェクトをすべて表示
         </Link>
       </div>

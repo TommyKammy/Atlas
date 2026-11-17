@@ -39,9 +39,9 @@ export default function NotepadWidget({ initial }: { initial: HomeNotepad }) {
   return (
     <>
       <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-1.5">
-        <span className="text-[11px] text-neutral-400">自分だけに表示されます</span>
+        <span className="text-[11px] text-subtle">自分だけに表示されます</span>
         <span className="flex-1" />
-        <span data-home-notepad-status className="text-[11px] text-neutral-400">
+        <span data-home-notepad-status className="text-[11px] text-subtle">
           {state === "saving" ? "保存中…" : state === "saved" ? "保存しました" : ""}
         </span>
       </div>
@@ -59,7 +59,7 @@ export default function NotepadWidget({ initial }: { initial: HomeNotepad }) {
         />
       </div>
 
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right text-[11px] text-neutral-400">
+      <div className="border-t border-neutral-100 px-4 py-1.5 text-right text-[11px] text-subtle">
         {savedAt ? `最終更新 ${formatDateTime(savedAt)}` : "未保存"}
       </div>
     </>

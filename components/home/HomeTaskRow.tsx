@@ -42,19 +42,19 @@ export default function HomeTaskRow({
       </button>
       <Link
         href={`/projects/${task.project_id}?view=list&task=${task.id}`}
-        className={`min-w-0 flex-1 truncate hover:underline ${task.completed ? "text-neutral-400 line-through" : ""}`}
+        className={`min-w-0 flex-1 truncate hover:underline ${task.completed ? "text-subtle line-through" : ""}`}
         title={task.name}
       >
         {task.name}
       </Link>
       {showProject && (
-        <span className="hidden max-w-[130px] shrink-0 truncate text-[11px] text-neutral-400 sm:inline">
+        <span className="hidden max-w-[130px] shrink-0 truncate text-[11px] text-subtle sm:inline">
           {task.project_name ?? "–"}
         </span>
       )}
       <span
         className={`w-[76px] shrink-0 text-right text-[11px] ${
-          overdue ? "font-semibold text-red-600" : "text-neutral-500"
+          overdue ? "font-semibold text-danger" : "text-muted"
         }`}
       >
         {task.due_on ?? "–"}

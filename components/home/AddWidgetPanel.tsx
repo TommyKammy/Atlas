@@ -36,7 +36,7 @@ export default function AddWidgetPanel({
       <div className="fixed inset-0 z-[100] bg-black/15" onClick={onClose} />
       <aside
         data-home-add-widget
-        className="fixed bottom-0 right-0 top-12 z-[101] flex w-[min(380px,94vw)] flex-col border-l border-neutral-200 bg-white shadow-2xl"
+        className="fixed bottom-0 right-0 top-12 z-[101] flex w-[min(380px,94vw)] flex-col border-l border-neutral-200 bg-surface shadow-2xl"
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 px-4">
           <h2 className="text-[16px] font-semibold text-neutral-800">ウィジェットを追加</h2>
@@ -44,7 +44,7 @@ export default function AddWidgetPanel({
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded text-[18px] text-neutral-500 hover:bg-neutral-100"
+            className="flex h-8 w-8 items-center justify-center rounded text-[18px] text-muted hover:bg-neutral-100"
           >
             ×
           </button>
@@ -60,7 +60,7 @@ export default function AddWidgetPanel({
                 className="rounded-lg border border-neutral-200 p-3"
               >
                 <div className="flex items-start gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-[16px] text-neutral-600">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-muted text-[16px] text-secondary">
                     {ICONS[type]}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -70,15 +70,15 @@ export default function AddWidgetPanel({
                         type="button"
                         disabled={added}
                         onClick={() => onAdd(type)}
-                        className="ml-auto rounded px-2 py-0.5 text-[12px] text-[#2c60b8] hover:bg-[#eff4fd] disabled:text-neutral-300"
+                        className="ml-auto rounded px-2 py-0.5 text-[12px] text-accent-text hover:bg-[#eff4fd] disabled:text-neutral-300"
                       >
                         {added ? "追加済み" : "＋ 追加"}
                       </button>
                     </div>
-                    <p className="mt-1 text-[12px] leading-5 text-neutral-500">{meta.description}</p>
+                    <p className="mt-1 text-[12px] leading-5 text-muted">{meta.description}</p>
                     <div className="mt-2 flex gap-1">
-                      <span className="h-2 w-16 rounded-full bg-neutral-100" />
-                      <span className="h-2 w-10 rounded-full bg-neutral-100" />
+                      <span className="h-2 w-16 rounded-full bg-surface-muted" />
+                      <span className="h-2 w-10 rounded-full bg-surface-muted" />
                     </div>
                   </div>
                 </div>

@@ -615,7 +615,7 @@ function BoardViewContent({
           <div
             key={g.key}
             data-board-column={g.key}
-            className="relative w-72 shrink-0 rounded-lg bg-neutral-100 p-2"
+            className="relative w-72 shrink-0 rounded-lg bg-surface-muted p-2"
           >
             {isDragging && (
               <div
@@ -642,7 +642,7 @@ function BoardViewContent({
             )}
             <div className="flex items-baseline gap-2 px-1 py-1">
               <span className="font-semibold">{g.label}</span>
-              <span className="text-sm text-neutral-600">{g.items.length}</span>
+              <span className="text-sm text-secondary">{g.items.length}</span>
             </div>
             <div className="flex flex-col gap-2">
               {(() => {
@@ -657,7 +657,7 @@ function BoardViewContent({
                     {shownItems.map((t, index) => (
                       <Fragment key={t.id}>
                         {hintAt === index && (
-                          <div data-board-drop-line className="h-0.5 -my-0.5 rounded-full bg-[#2c60b8]" />
+                          <div data-board-drop-line className="h-0.5 -my-0.5 rounded-full bg-accent" />
                         )}
                         <BoardCard
                           task={t}
@@ -694,7 +694,7 @@ function BoardViewContent({
                       </Fragment>
                     ))}
                     {hintAt === g.items.length && (
-                      <div data-board-drop-line className="h-0.5 -my-0.5 rounded-full bg-[#2c60b8]" />
+                      <div data-board-drop-line className="h-0.5 -my-0.5 rounded-full bg-accent" />
                     )}
                   </>
                 );
@@ -706,7 +706,7 @@ function BoardViewContent({
                   onClick={() =>
                     setCardLimits((current) => ({ ...current, [g.key]: (current[g.key] ?? 100) + 200 }))
                   }
-                  className="rounded-md border border-[#e1e1e1] bg-white px-2 py-1.5 text-[12px] text-neutral-600 hover:bg-neutral-50"
+                  className="rounded-md border border-[#e1e1e1] bg-surface px-2 py-1.5 text-[12px] text-secondary hover:bg-neutral-50"
                 >
                   さらに表示（{cardLimits[g.key] ?? 100} / {g.items.length} 件）
                 </button>
@@ -751,7 +751,7 @@ function BoardViewContent({
                   : setAddingTo(g.key)}
                 disabled={!canEdit}
                 data-add-task-open
-                className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-neutral-600 hover:bg-neutral-200/60 hover:text-neutral-700"
+                className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-secondary hover:bg-neutral-200/60 hover:text-neutral-700"
               >
                 ＋ タスクを追加
               </button>
