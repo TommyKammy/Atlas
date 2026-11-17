@@ -3,7 +3,7 @@ import { taskSectionId } from "./task-section";
 export type BoardGroup<T> = {
   key: string;
   label: string;
-  sectionId?: number;
+  sectionId?: number | null;
   assigneeId?: number | null;
   status?: string;
   items: T[];
@@ -39,7 +39,7 @@ export function groupBoardTasks<T extends GroupableTask>(
       if (g) g.items.push(t);
       else {
         if (!loose) {
-          loose = { key: "s-none", label: "セクションなし", items: [] };
+          loose = { key: "s-none", label: "セクションなし", sectionId: null, items: [] };
           groups.push(loose);
         }
         loose.items.push(t);

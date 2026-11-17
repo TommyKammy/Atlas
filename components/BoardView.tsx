@@ -282,7 +282,7 @@ function BoardViewContent({
   }
   // Reveal newly added columns without changing the user's empty-group setting.
   groups = groups.filter((g) => showEmptyGroups || g.items.length > 0 ||
-    g.sectionId !== undefined && createdSectionIds.has(g.sectionId));
+    g.sectionId != null && createdSectionIds.has(g.sectionId));
   const activeFilters =
     (hideCompleted ? 1 : 0) +
     (completedOnly ? 1 : 0) +
@@ -486,46 +486,28 @@ function BoardViewContent({
     await applyMove(moved, g, hint);
   };
 
-  const dropPosition = (items: TaskRow[], index: number | null): number | undefined => {
-    if (index === null) return undefined;
-    const before = items[index - 1];
-    const after = items[index];
-    if (!before && !after) return 1000;
-    if (!before) return after.position - 1000;
-    if (!after) return before.position + 1000;
-    return (before.position + after.position) / 2;
-  };
-
   const applyMove = async (moved: TaskRow, g: BoardGroup<TaskRow>, index: number | null = null) => {
-    const taskId = moved.id;
-    const siblings = g.items.filter((t) => t.id !== moved.id);
-    const position = dropPosition(siblings, index);
-    if (g.sectionId !== undefined) {
-      const col = g.items;
-      const maxPos = col.reduce((mm, t) => Math.max(mm, t.position), 0);
-      if (moved.project_id !== null && moved.project_id !== projectId) {
-        await api("/api/memberships", "POST", {
-          task_id: taskId,
-          project_id: projectId,
-          section_id: g.sectionId,
-        });
-        refresh();
-      } else {
-        await patchTaskFields(taskId, {
-          section_id: g.sectionId,
-          position: position ?? maxPos + 1000,
-        });
-      }
-    } else if (g.assigneeId !== undefined) {
-      const fields: Record<string, unknown> = {};
-      if ((moved.assignee_id ?? null) !== (g.assigneeId ?? null)) fields.assignee_id = g.assigneeId;
-      if (position !== undefined && moved.project_id === projectId) fields.position = position;
-      if (Object.keys(fields).length > 0) await patchTaskFields(taskId, fields);
-    } else if (g.status !== undefined) {
-      const fields: Record<string, unknown> = {};
-      if (moved.status !== g.status) fields.status = g.status;
-      if (position !== undefined && moved.project_id === projectId) fields.position = position;
-      if (Object.keys(fields).length > 0) await patchTaskFields(taskId, fields);
+    const fields: Record<string, unknown> = {};
+    if (g.sectionId !== undefined) fields.section_id = g.sectionId;
+    else if (g.assigneeId !== undefined && moved.assignee_id !== g.assigneeId) fields.assignee_id = g.assigneeId;
+    else if (g.status !== undefined && moved.status !== g.status) fields.status = g.status;
+
+    if (index !== null || g.sectionId !== undefined) {
+      const siblings = g.items.filter(task => task.id !== moved.id);
+      const next = index === null ? null : siblings[index];
+      const previous = index === null && !canReorder ? null : siblings.at(-1);
+      fields.placement = {
+        project_id: projectId,
+        anchor_id: next?.id ?? previous?.id ?? null,
+        side: next ? "before" : "after",
+      };
+    }
+    if (Object.keys(fields).length === 0) return;
+    try {
+      await patchTaskFields(moved.id, fields);
+    } catch (error) {
+      toastMessage(error instanceof Error ? error.message : "移動に失敗しました");
+      refresh();
     }
   };
 

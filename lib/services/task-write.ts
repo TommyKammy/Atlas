@@ -83,8 +83,11 @@ export function validateTaskPatch(
   }
 
   if ("position" in input) {
-    const position = integerOrError(input.position, "position", 0, Number.MAX_SAFE_INTEGER);
-    if (typeof position !== "number") return { ok: false, error: position.error };
+    const raw = input.position;
+    const position = typeof raw === "string" && raw.trim() !== "" ? Number(raw) : raw;
+    if (typeof position !== "number" || !Number.isFinite(position)) {
+      return { ok: false, error: "position must be a finite number" };
+    }
     values.position = position;
   }
 

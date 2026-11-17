@@ -70,7 +70,6 @@ test("validateTaskPatch rejects empty name/status and invalid enum values", () =
   assert.equal(validateTaskPatch({ recurrence: "yearly" }, current).ok, false);
   assert.equal(validateTaskPatch({ completed: "true" }, current).ok, false);
   assert.equal(validateTaskPatch({ description: 42 }, current).ok, false);
-  assert.equal(validateTaskPatch({ position: -1 }, current).ok, false);
   assert.equal(validateTaskPatch({ is_milestone: "true" }, current).ok, false);
 });
 
@@ -132,4 +131,13 @@ test("insertNextOccurrence skips non-recurring tasks", async () => {
 
   assert.equal(id, null);
   assert.equal(called, false);
+});
+
+test("manual task positions accept signed fractional ranks and reject non-numeric values", () => {
+  for (const value of [-1000, 1062.5, 0, "-2.75", "1000"]) {
+    assert.deepEqual(validateTaskPatch({ position: value }, current), { ok: true, values: { position: Number(value) } });
+  }
+  for (const value of [null, "", " ", true, [], {}, NaN, Infinity, -Infinity, "Infinity", "abc"]) {
+    assert.equal(validateTaskPatch({ position: value }, current).ok, false);
+  }
 });

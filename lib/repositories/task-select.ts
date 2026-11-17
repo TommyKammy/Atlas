@@ -19,12 +19,12 @@ function subtaskCount(project?: string): string {
  * Shared task projection. Keep this list in sync with `TaskRow`; every task
  * query must return the full row so UI code never sees partial shapes.
  */
-export function taskSelectColumns(project?: string): string {
+export function taskSelectColumns(project?: string, position = "t.position"): string {
   return `
   t.id, t.project_id, t.section_id, t.parent_task_id, t.name, t.description, t.description_doc,
   t.assignee_id, u.name AS assignee_name, t.created_by, cu.name AS creator_name, t.completed,
   t.completed_at::text AS completed_at,
-  t.start_on::text, t.due_on::text, t.progress, t.status, t.is_milestone, t.position,
+  t.start_on::text, t.due_on::text, t.progress, t.status, t.is_milestone, ${position} AS position,
   t.created_at::text AS created_at, t.updated_at::text AS updated_at, t.recurrence,
   p.name AS project_name,
   ${taskApprovalSummary()},
@@ -63,12 +63,12 @@ export const TASK_FROM = `
  * Timeline uses dates, filter inputs, lane metadata and subtask counts.
  * Full descriptions and list aggregates belong to their respective views.
  */
-export function taskTimelineColumns(project?: string): string {
+export function taskTimelineColumns(project?: string, position = "t.position"): string {
   return `
   t.id, t.project_id, t.section_id, t.name,
   t.assignee_id, u.name AS assignee_name, t.created_by, t.completed,
   t.completed_at::text AS completed_at,
-  t.start_on::text, t.due_on::text, t.progress, t.status, t.is_milestone, t.position,
+  t.start_on::text, t.due_on::text, t.progress, t.status, t.is_milestone, ${position} AS position,
   t.created_at::text AS created_at, t.updated_at::text AS updated_at,
   ${subtaskCount(project)},
   ${taskApprovalSummary()}

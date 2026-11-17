@@ -12,6 +12,7 @@ import { recordTaskCompletion, TASK_COMPLETION_COLUMNS, type TaskCompletionRow }
 import { mutateTaskTrees } from "@/lib/services/task-tree-mutation";
 import { validateTaskPatch } from "@/lib/services/task-write";
 import { assertOrdinaryTaskMutation } from "./task-approval-guard";
+import { lockTaskOrder, parseTaskPlacement, resolveTaskPosition } from "./task-placement";
 import { TaskMutationFailure } from "./task-mutation-failure";
 
 type TaskMutationContext = { taskId: number; uid: number; projectId: number | null };
@@ -28,6 +29,8 @@ type TaskBeforePatch = {
   start_on: string | null;
   due_on: string | null;
   is_milestone: boolean;
+  parent_task_id: number | null;
+  deleted_at: string | null;
 };
 
 const PATCHABLE = new Set([
@@ -53,6 +56,13 @@ export async function updateTask(
   { taskId, uid, projectId: currentProjectId, authorizeProject }: TaskUpdateContext,
 ): Promise<{ id: number }> {
   const body = { ...input };
+  const placement = "placement" in body ? parseTaskPlacement(body.placement, taskId) : null;
+  if (placement) {
+    if (Object.keys(body).some(key => !["placement", "section_id", "assignee_id", "status", "expected_updated_at"].includes(key))) {
+      throw new TaskMutationFailure("invalid", "incompatible task placement fields");
+    }
+    if (placement.project_id !== currentProjectId) await authorizeProject(placement.project_id);
+  }
 
   const currentRow = await db.query(
     `SELECT project_id, start_on::text AS start_on, due_on::text AS due_on
@@ -76,7 +86,7 @@ export async function updateTask(
     }
   }
   const defaultTargetProjectId = editsPrimaryLayout ? primaryProjectId ?? currentProjectId : currentProjectId;
-  const targetProjectId = rawProject === undefined ? defaultTargetProjectId : Number(rawProject);
+  const targetProjectId = placement?.project_id ?? (rawProject === undefined ? defaultTargetProjectId : Number(rawProject));
   if (targetProjectId === null || !Number.isInteger(targetProjectId) || targetProjectId <= 0) {
     throw new TaskMutationFailure("invalid", "project_id is required");
   }
@@ -99,7 +109,7 @@ export async function updateTask(
         throw new TaskMutationFailure("invalid", "invalid section_id");
       }
       const section = await db.query("SELECT project_id FROM sections WHERE id = $1::bigint", [sectionId]);
-      if (section.rowCount === 0 || (rawProject !== undefined && section.rows[0].project_id !== targetProjectId)) {
+      if (section.rowCount === 0 || ((placement || rawProject !== undefined) && section.rows[0].project_id !== targetProjectId)) {
         throw new TaskMutationFailure("invalid", "section does not belong to project");
       }
       sectionProjectId = section.rows[0].project_id as number;
@@ -194,7 +204,7 @@ export async function updateTask(
   if (typeof body.completed === "boolean") {
     sets.push(body.completed ? "completed_at = CASE WHEN completed THEN completed_at ELSE now() END" : "completed_at = NULL");
   }
-  if (sets.length === 0 && !changesSecondarySection) {
+  if (sets.length === 0 && !changesSecondarySection && !placement) {
     throw new TaskMutationFailure("invalid", "no patchable fields");
   }
   const expected = body.expected_updated_at;
@@ -232,6 +242,7 @@ export async function updateTask(
   }
   const nextSection = body.section_id as number | null | undefined;
   const result = await withTransaction(async (q) => {
+    if (placement || "position" in body) await lockTaskOrder(q, targetProjectId);
     if (typeof body.parent_task_id === "number") {
       // Parent changes may race with reciprocal changes to other tasks.
       await q.query("SELECT pg_advisory_xact_lock(hashtextextended('atlas:task-parents', 0))");
@@ -248,12 +259,15 @@ export async function updateTask(
     }
     const before = await q.query<TaskBeforePatch>(
       `SELECT name, completed, assignee_id, status, section_id, start_on::text AS start_on,
-         due_on::text AS due_on, is_milestone
+         due_on::text AS due_on, is_milestone, parent_task_id, deleted_at
        FROM tasks WHERE id = $1::bigint AND project_id IS NOT DISTINCT FROM $2::bigint FOR UPDATE`,
       [taskId, primaryProjectId],
     );
     const previousTask = before.rows[0];
     if (!previousTask) return null;
+    if (placement && (previousTask.parent_task_id !== null || previousTask.deleted_at !== null)) {
+      throw new TaskMutationFailure("conflict", "task is no longer in this view");
+    }
     await assertOrdinaryTaskMutation(q, [taskId], body);
     const updated = await q.query<TaskCompletionRow>(
       `UPDATE tasks SET ${[...sets, "updated_at = now()"].join(", ")}
@@ -280,6 +294,24 @@ export async function updateTask(
          WHERE task_id = $1::bigint AND project_id = $2::bigint`,
         [taskId, sectionProjectId, nextSection],
       );
+    }
+    if (placement) {
+      const position = await resolveTaskPosition(q, taskId, placement, nextSection);
+      if (primaryProjectId === targetProjectId) {
+        // Detach inherited secondary ranks before moving the primary placement.
+        await q.query(
+          `UPDATE task_project_memberships m SET position = t.position FROM tasks t
+           WHERE t.id = $1 AND m.task_id = t.id AND m.project_id <> $2 AND m.position IS NULL`,
+          [taskId, targetProjectId],
+        );
+        await q.query("UPDATE tasks SET position = $2 WHERE id = $1", [taskId, position]);
+      } else {
+        const membership = await q.query(
+          "UPDATE task_project_memberships SET position = $3 WHERE task_id = $1 AND project_id = $2",
+          [taskId, targetProjectId, position],
+        );
+        if (!membership.rowCount) throw new TaskMutationFailure("conflict", "task membership changed");
+      }
     }
     if (movesPrimary) {
       // A destination that was a secondary home is now represented by tasks.project_id.
@@ -400,7 +432,7 @@ export async function updateTask(
     }
   }
   await notifyTask(taskId);
-  if (changesSecondarySection) await notifyProject(sectionProjectId);
+  if (changesSecondarySection || (placement && primaryProjectId !== targetProjectId)) await notifyProject(sectionProjectId);
   await audit(uid, "task.update", { entity: "task", entityId: taskId, summary: Object.keys(b).join(",") });
   return { id: taskId };
 }

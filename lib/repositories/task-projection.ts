@@ -42,9 +42,9 @@ export const TASK_PROJECTIONS: Record<TaskProjectionKind, string> = {
   detail: TASK_SELECT_COLS,
 };
 
-export function taskProjection(kind: TaskProjectionKind, project?: string): string {
+export function taskProjection(kind: TaskProjectionKind, project?: string, position?: string): string {
   if (!project) return TASK_PROJECTIONS[kind];
-  return kind === "timeline" ? taskTimelineColumns(project) : taskSelectColumns(project);
+  return kind === "timeline" ? taskTimelineColumns(project, position) : taskSelectColumns(project, position);
 }
 
 export function toTaskSummary(row: TaskRow): TaskSummary {

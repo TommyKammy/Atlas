@@ -77,12 +77,12 @@ export async function exportProject(
        (SELECT string_agg(c.body, E'\\n---\\n' ORDER BY c.id) FROM comments c WHERE c.task_id = t.id) AS comments,
        ${taskCustomValuePairs("$1")}
      FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
-     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1
+     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1 AND t.project_id IS DISTINCT FROM m.project_id
      LEFT JOIN tasks parent ON parent.id = t.parent_task_id AND parent.deleted_at IS NULL
      LEFT JOIN task_project_memberships parent_membership
        ON parent_membership.task_id = parent.id AND parent_membership.project_id = $1
      WHERE ${projectTaskReadScope("t")} AND t.deleted_at IS NULL
-     ORDER BY t.position, t.id`,
+     ORDER BY COALESCE(m.position, t.position), t.id`,
     [projectId],
   );
 

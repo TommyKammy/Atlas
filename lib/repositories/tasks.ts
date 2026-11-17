@@ -23,16 +23,16 @@ import { ensureAutoIdValues } from "../auto-id";
 
 export async function getProjectTasks(projectId: number): Promise<TaskSummary[]> {
   const r = await db.query(
-    `SELECT ${taskProjection("summary", "$1")},
+    `SELECT ${taskProjection("summary", "$1", "COALESCE(m.position, t.position)")},
        CASE WHEN t.project_id = $1 THEN t.section_id ELSE m.section_id END AS eff_section_id,
        tr.row_index AS timeline_row,
        tr.updated_at::text AS timeline_row_updated_at
      ${TASK_FROM}
-     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1
+     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1 AND t.project_id IS DISTINCT FROM m.project_id
      LEFT JOIN task_timeline_rows tr ON tr.task_id = t.id AND tr.project_id = $1
      WHERE t.parent_task_id IS NULL AND t.deleted_at IS NULL
        AND (t.project_id = $1 OR m.task_id IS NOT NULL)
-     ORDER BY t.position, t.id`,
+     ORDER BY position, t.id`,
     [projectId],
   );
   return r.rows.map(toTaskSummary);
@@ -41,16 +41,16 @@ export async function getProjectTasks(projectId: number): Promise<TaskSummary[]>
 /** Lighter projection for the timeline view. */
 export async function getTimelineTasks(projectId: number): Promise<TimelineTaskPayload[]> {
   const r = await db.query(
-    `SELECT ${taskProjection("timeline", "$1")},
+    `SELECT ${taskProjection("timeline", "$1", "COALESCE(m.position, t.position)")},
        CASE WHEN t.project_id = $1 THEN t.section_id ELSE m.section_id END AS eff_section_id,
        tr.row_index AS timeline_row,
        tr.updated_at::text AS timeline_row_updated_at
      FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
-     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1
+     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1 AND t.project_id IS DISTINCT FROM m.project_id
      LEFT JOIN task_timeline_rows tr ON tr.task_id = t.id AND tr.project_id = $1
      WHERE t.parent_task_id IS NULL AND t.deleted_at IS NULL
        AND (t.project_id = $1 OR m.task_id IS NOT NULL)
-     ORDER BY t.position, t.id`,
+     ORDER BY position, t.id`,
     [projectId],
   );
   return r.rows.map(toTimelineTaskPayload);
@@ -62,11 +62,11 @@ export async function getTaskForProject(
   projectId: number,
 ): Promise<TaskDetail | undefined> {
   const r = await db.query(
-    `SELECT ${taskProjection("detail", "$2")},
+    `SELECT ${taskProjection("detail", "$2", "COALESCE(m.position, t.position)")},
        CASE WHEN t.project_id = $2 THEN t.section_id ELSE m.section_id END AS eff_section_id,
        tr.row_index AS timeline_row, tr.updated_at::text AS timeline_row_updated_at
      ${TASK_FROM}
-     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $2
+     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $2 AND t.project_id IS DISTINCT FROM m.project_id
      LEFT JOIN task_timeline_rows tr ON tr.task_id = t.id AND tr.project_id = $2
      WHERE t.id = $1 AND t.deleted_at IS NULL
        AND ${projectTaskReadScope("t", "$2")}`,
@@ -112,8 +112,9 @@ export async function getDependencies(taskId: number) {
 export async function getProjectTaskOptions(projectId: number) {
   const r = await db.query(
     `SELECT t.id, t.name FROM tasks t
-     WHERE ${projectTaskScope("t")} AND t.parent_task_id IS NULL AND t.deleted_at IS NULL
-     ORDER BY t.position, t.id`,
+     LEFT JOIN task_project_memberships m ON m.task_id = t.id AND m.project_id = $1 AND t.project_id IS DISTINCT FROM m.project_id
+     WHERE (t.project_id = $1 OR m.task_id IS NOT NULL) AND t.parent_task_id IS NULL AND t.deleted_at IS NULL
+     ORDER BY COALESCE(m.position, t.position), t.id`,
     [projectId],
   );
   return r.rows as { id: number; name: string }[];

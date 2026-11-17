@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ApiError, api } from "./api-client";
+import { ApiError } from "./api-client";
 import type { TaskRow } from "./data";
-import { positionBetween } from "./order";
+import type { TaskPlacement } from "./order";
 import { patchTask, TaskConflictError } from "./task-client";
 import { taskSectionId } from "./task-section";
 import { toast as toastMessage } from "./ui-feedback";
@@ -47,19 +47,12 @@ export function useListRowDnd({
     }, 0);
   };
 
-  const savePlacement = async (task: TaskRow, sectionId: number | null, position: number) => {
-    const changesSection = taskSectionId(task) !== sectionId;
+  const savePlacement = async (task: TaskRow, sectionId: number | null, anchor: number | null, side: TaskPlacement["side"]) => {
     try {
-      if (task.project_id !== null && task.project_id !== projectId) {
-        if (!changesSection) return;
-        await api("/api/memberships", "POST", {
-          task_id: task.id,
-          project_id: projectId,
-          section_id: sectionId,
-        });
-      } else {
-        await patchTask(task.id, { position, ...(changesSection ? { section_id: sectionId } : {}) }, task.updated_at);
-      }
+      await patchTask(task.id, {
+        section_id: sectionId,
+        placement: { project_id: projectId, anchor_id: anchor, side },
+      }, task.updated_at);
     } catch (error) {
       if (error instanceof TaskConflictError) {
         toastMessage("他のユーザーが先に更新しました。最新を表示します。");
@@ -76,23 +69,14 @@ export function useListRowDnd({
     const column = visible
       .filter((task) => taskSectionId(task) === sectionId && task.id !== dragId)
       .sort((a, b) => a.position - b.position || a.id - b.id);
-    const maxPosition = column.reduce((max, task) => Math.max(max, task.position), 0);
-    await savePlacement(dragged, sectionId, maxPosition + 1000);
+    await savePlacement(dragged, sectionId, column.at(-1)?.id ?? null, "after");
   };
 
   const moveTask = async (dragId: number, target: TaskRow, before: boolean) => {
     if (dragId === target.id) return;
     const dragged = tasks.find((task) => task.id === dragId);
     if (!dragged) return;
-    const sectionKey = taskSectionId(target);
-    const column = visible
-      .filter((task) => taskSectionId(task) === sectionKey && task.id !== dragId)
-      .sort((a, b) => a.position - b.position || a.id - b.id);
-    const index = column.findIndex((task) => task.id === target.id);
-    const at = before ? index : index + 1;
-    const previous = at - 1 >= 0 ? column[at - 1].position : null;
-    const next = at < column.length ? column[at].position : null;
-    await savePlacement(dragged, sectionKey, positionBetween(previous, next));
+    await savePlacement(dragged, taskSectionId(target), target.id, before ? "before" : "after");
   };
 
   return {

@@ -27,13 +27,16 @@ export const GET = withUser(async (req, { uid }) => {
   const r = await db.query(
     `SELECT t.id, t.name, p.name AS project_name, t.completed
      FROM tasks t JOIN projects p ON p.id = t.project_id
+     LEFT JOIN task_project_memberships placement ON cardinality($1::bigint[]) = 1
+       AND placement.task_id = t.id AND placement.project_id = ($1::bigint[])[1]
+       AND t.project_id IS DISTINCT FROM placement.project_id
      WHERE t.deleted_at IS NULL AND t.parent_task_id IS NULL
        AND (t.project_id = ANY($1::bigint[]) OR EXISTS (
          SELECT 1 FROM task_project_memberships m
          WHERE m.task_id = t.id AND m.project_id = ANY($1::bigint[])
        ))
        AND ($2 = '' OR t.name ILIKE '%' || $2 || '%')
-     ORDER BY p.name, t.position, t.id
+     ORDER BY CASE WHEN cardinality($1::bigint[]) > 1 THEN p.name END, COALESCE(placement.position, t.position), t.id
      LIMIT 300`,
     [accessible, query],
   );
