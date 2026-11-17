@@ -20,7 +20,7 @@ export default function ListEmptyState({ onAdd, mode = "project" }: { onAdd: () 
         <button
           type="button"
           onClick={onAdd}
-          className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium text-white hover:bg-[#24529c]"
+          className="h-8 rounded-md bg-accent px-4 text-[13px] font-medium text-white hover:bg-[#24529c]"
         >
           ＋ タスクを追加
         </button>

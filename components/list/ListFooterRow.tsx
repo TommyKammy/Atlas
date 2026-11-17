@@ -37,7 +37,7 @@ export default function ListFooterRow({
     return (
       <span
         key={key}
-        className="flex min-w-0 items-center gap-1 pl-2 text-[11px] text-neutral-500"
+        className="flex min-w-0 items-center gap-1 pl-2 text-[11px] text-muted"
         title={total.label}
       >
         <span className="shrink-0">{total.label}</span>
@@ -48,7 +48,7 @@ export default function ListFooterRow({
 
   return (
     <div
-      className={`grid items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-[#eaeaea] border-b border-[#eaeaea] px-2 text-sm ${
+      className={`grid items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-[#eaeaea] border-b border-line px-2 text-sm ${
         variant === "add" ? "py-1.5" : ""
       }`}
       style={{ gridTemplateColumns: gridCols }}
@@ -60,7 +60,7 @@ export default function ListFooterRow({
             onClick={onAdd}
             disabled={disabled}
             data-add-task-open
-            className="flex h-9 w-full items-center rounded pr-2 pl-12 text-left text-[13px] whitespace-nowrap text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
+            className="flex h-9 w-full items-center rounded pr-2 pl-12 text-left text-[13px] whitespace-nowrap text-muted hover:bg-neutral-50 hover:text-neutral-700"
           >
             タスクを追加
           </button>

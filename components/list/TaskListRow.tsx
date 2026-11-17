@@ -85,11 +85,11 @@ function MultiSelectEditor({
   const [selected, setSelected] = useState<string[]>(initial);
   return (
     <div
-      className="absolute top-full left-0 z-50 mt-1 w-56 rounded-lg border border-neutral-200 bg-white p-2 shadow-xl"
+      className="absolute top-full left-0 z-50 mt-1 w-56 rounded-lg border border-neutral-200 bg-surface p-2 shadow-xl"
       onClick={(event) => event.stopPropagation()}
     >
       <div className="max-h-48 space-y-0.5 overflow-y-auto">
-        {options.length === 0 && <div className="px-1 py-2 text-[11px] text-neutral-400">選択肢がありません</div>}
+        {options.length === 0 && <div className="px-1 py-2 text-[11px] text-subtle">選択肢がありません</div>}
         {options.map((option) => (
           <label key={option} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-neutral-50">
             <input
@@ -108,7 +108,7 @@ function MultiSelectEditor({
         ))}
       </div>
       <div className="mt-2 flex justify-end gap-1.5 border-t border-neutral-100 pt-2">
-        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100">
+        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100">
           キャンセル
         </button>
         <button type="button" onClick={() => onSave(selected)} className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]">
@@ -133,11 +133,11 @@ function PeopleEditor({
   const [selected, setSelected] = useState<number[]>(initial);
   return (
     <div
-      className="absolute top-full left-0 z-50 mt-1 w-60 rounded-lg border border-neutral-200 bg-white p-2 shadow-xl"
+      className="absolute top-full left-0 z-50 mt-1 w-60 rounded-lg border border-neutral-200 bg-surface p-2 shadow-xl"
       onClick={(event) => event.stopPropagation()}
     >
       <div className="max-h-48 space-y-0.5 overflow-y-auto">
-        {users.length === 0 && <div className="px-1 py-2 text-[11px] text-neutral-400">メンバーがいません</div>}
+        {users.length === 0 && <div className="px-1 py-2 text-[11px] text-subtle">メンバーがいません</div>}
         {users.map((user) => (
           <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-neutral-50">
             <input
@@ -156,7 +156,7 @@ function PeopleEditor({
         ))}
       </div>
       <div className="mt-2 flex justify-end gap-1.5 border-t border-neutral-100 pt-2">
-        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100">
+        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100">
           キャンセル
         </button>
         <button type="button" onClick={() => onSave(selected)} className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]">
@@ -281,13 +281,13 @@ export default function TaskListRow({
         const dragId = Number(e.dataTransfer.getData("text/atlas-task"));
         if (dragId) moveTask(dragId, t, before);
       }}
-      className={`group grid min-h-[37px] cursor-pointer items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-[#eaeaea] border-b border-[#eaeaea] px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${compactCells} ${
+      className={`group grid min-h-[37px] cursor-pointer items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-[#eaeaea] border-b border-line px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${compactCells} ${
         isQuickTask(t)
-          ? "bg-[#eff4fd]"
+          ? "bg-accent-soft"
           : selected.has(t.id)
-            ? "bg-[#eff4fd]"
+            ? "bg-accent-soft"
             : t.id === activeTaskId
-              ? "bg-[#eff4fd]"
+              ? "bg-accent-soft"
               : "hover:bg-neutral-50"
       } ${
         dropHint?.id === t.id
@@ -317,7 +317,7 @@ export default function TaskListRow({
           <button
             onClick={() => toggleExpand(t.id)}
             title={expanded.has(t.id) ? "サブタスクを閉じる" : "サブタスクを開く"}
-            className="w-4 shrink-0 text-center text-xs text-neutral-600 hover:text-black"
+            className="w-4 shrink-0 text-center text-xs text-secondary hover:text-black"
           >
             {expanded.has(t.id) ? "▾" : "▸"}
           </button>
@@ -373,11 +373,11 @@ export default function TaskListRow({
         </QuickTaskName>
         {t.approval && <TaskApprovalBadge approval={t.approval} onClick={() => openTask(t.id)} />}
         {t.recurrence && t.recurrence !== "none" && (
-          <span title="繰り返しタスク" className="shrink-0 text-xs text-neutral-500">
+          <span title="繰り返しタスク" className="shrink-0 text-xs text-muted">
             ↻
           </span>
         )}
-        <span className="ml-1 flex items-center gap-2 text-[11px] text-neutral-600">
+        <span className="ml-1 flex items-center gap-2 text-[11px] text-secondary">
           {t.subtask_count > 0 && (
             <span className="flex items-center gap-0.5" title="サブタスク">
               <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.2">
@@ -396,9 +396,9 @@ export default function TaskListRow({
             </span>
           )}
         </span>
-        <span className="flex w-full flex-wrap items-center gap-2 pl-6 text-[11px] text-neutral-500 lg:hidden">
+        <span className="flex w-full flex-wrap items-center gap-2 pl-6 text-[11px] text-muted lg:hidden">
           {t.due_on && (
-            <span className={overdue ? "font-semibold text-red-600" : isToday ? "font-semibold text-[#2c60b8]" : ""}>
+            <span className={overdue ? "font-semibold text-danger" : isToday ? "font-semibold text-accent-text" : ""}>
               期日 {t.due_on}
             </span>
           )}
@@ -420,7 +420,7 @@ export default function TaskListRow({
           onClick={(e) => openEdit(e, t, "assignee", t.assignee_id === null ? "" : String(t.assignee_id))}
           title={t.assignee_name ? "クリックで編集" : "未割り当て — クリックで編集"}
           style={{ order: visibleCols.indexOf("assignee") }}
-          className="flex min-w-0 cursor-pointer items-center gap-1.5 truncate rounded pl-2 text-neutral-600 hover:bg-neutral-100"
+          className="flex min-w-0 cursor-pointer items-center gap-1.5 truncate rounded pl-2 text-secondary hover:bg-neutral-100"
         >
           {t.assignee_name ? (
             <>
@@ -451,7 +451,7 @@ export default function TaskListRow({
               return (
                 <span
                   className={`whitespace-nowrap text-[12px] ${
-                    overdue ? "font-medium text-red-700" : isToday ? "text-green-700" : "text-neutral-600"
+                    overdue ? "font-medium text-red-700" : isToday ? "text-success" : "text-secondary"
                   }`}
                 >
                   {s1}
@@ -505,10 +505,10 @@ export default function TaskListRow({
         >
           {t.progress > 0 ? (
             <>
-              <span className="h-1.5 w-16 overflow-hidden rounded bg-neutral-200">
+              <span className="h-1.5 w-16 overflow-hidden rounded bg-surface-strong">
                 <span className="block h-full rounded bg-green-500" style={{ width: `${t.progress}%` }} />
               </span>
-              <span className="text-xs text-neutral-600">{t.progress}%</span>
+              <span className="text-xs text-secondary">{t.progress}%</span>
             </>
           ) : null}
         </span>
@@ -564,7 +564,7 @@ export default function TaskListRow({
                     onChanged={onTimerChange}
                   />
                 ) : (
-                  <span className="block truncate text-neutral-600">
+                  <span className="block truncate text-secondary">
                     {customFieldDisplay(
                       f,
                       customValues[t.id]?.[f.id],
@@ -592,7 +592,7 @@ export default function TaskListRow({
                 key={f.id}
                 title={display}
                 style={{ order }}
-                className="truncate rounded pl-2 text-neutral-600"
+                className="truncate rounded pl-2 text-secondary"
               >
                 {display}
               </span>
@@ -604,7 +604,7 @@ export default function TaskListRow({
               onClick={(e) => openEdit(e, t, fieldKey, customRaw(t.id, f))}
               title="クリックで編集"
               style={{ order }}
-              className="cursor-pointer truncate rounded pl-2 text-neutral-600 hover:bg-neutral-100"
+              className="cursor-pointer truncate rounded pl-2 text-secondary hover:bg-neutral-100"
             >
               {display}
             </span>
@@ -761,7 +761,7 @@ export default function TaskListRow({
       ) : (
         <button
           onClick={() => setSubAdding(t.id)}
-          className="flex h-9 w-full items-center rounded pr-2 pl-[108px] text-left text-[13px] whitespace-nowrap text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
+          className="flex h-9 w-full items-center rounded pr-2 pl-[108px] text-left text-[13px] whitespace-nowrap text-muted hover:bg-neutral-50 hover:text-neutral-700"
         >
           サブタスクを追加
         </button>

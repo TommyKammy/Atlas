@@ -8,7 +8,7 @@ import {
 } from "@/lib/custom-fields";
 import type { User } from "@/lib/data";
 
-const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500";
+const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted";
 const menuItem = "flex w-full items-center gap-1 rounded px-3 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-neutral-100";
 
 export default function ListColumnHeader({
@@ -137,7 +137,7 @@ export default function ListColumnHeader({
         <button
           onClick={() => setMenuCol(open ? null : columnKey)}
           title="列メニュー"
-          className={`rounded px-0.5 text-[10px] leading-none text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 ${
+          className={`rounded px-0.5 text-[10px] leading-none text-muted hover:bg-neutral-200 hover:text-neutral-700 ${
             open ? "opacity-100" : "opacity-0 group-hover/hd:opacity-100"
           }`}
         >
@@ -158,7 +158,7 @@ export default function ListColumnHeader({
           />
         )}
         {open && (
-          <div className="absolute top-full left-0 z-40 mt-1 w-60 rounded-lg border bg-white py-1 text-sm shadow-lg">
+          <div className="absolute top-full left-0 z-40 mt-1 w-60 rounded-lg border bg-surface py-1 text-sm shadow-lg">
             {columnKey !== "name" && (
               <>
                 <div className={menuLabel}>列を移動</div>
@@ -374,7 +374,7 @@ export default function ListColumnHeader({
                 >
                   列を非表示
                 </button>
-                <button className={menuItem + " text-red-600 hover:bg-red-50"} onClick={() => { removeField(field); setMenuCol(null); }}>
+                <button className={menuItem + " text-danger hover:bg-red-50"} onClick={() => { removeField(field); setMenuCol(null); }}>
                   フィールドを削除
                 </button>
               </>

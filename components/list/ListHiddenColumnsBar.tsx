@@ -34,7 +34,7 @@ export default function ListHiddenColumnsBar({
   if (coreKeys.length === 0 && hiddenFields.length === 0 && !showStatus) return null;
 
   return (
-    <div className="flex items-center gap-1 py-1 text-[11px] font-normal text-neutral-500">
+    <div className="flex items-center gap-1 py-1 text-[11px] font-normal text-muted">
       非表示:
       {coreKeys.map((key) => (
         <button

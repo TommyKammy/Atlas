@@ -19,10 +19,10 @@ import ListOptionsDrawer, { type ListColumnOption } from "./ListOptionsDrawer";
 import ListSortMenu from "./ListSortMenu";
 
 const toolbarBtn = viewToolbarControlClass;
-const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
+const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
 const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
 const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
-const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-white shadow-lg";
+const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-surface shadow-lg";
 
 function FilterIcon() {
   return (

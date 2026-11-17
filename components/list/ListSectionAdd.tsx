@@ -72,13 +72,13 @@ export default function ListSectionAdd({
           >
             {saving ? "追加中…" : "追加"}
           </button>
-          <button type="button" onClick={onCancel} disabled={saving} className={`text-neutral-500 disabled:opacity-50 ${compact ? "px-1 text-xs" : "px-2 text-sm"}`}>
+          <button type="button" onClick={onCancel} disabled={saving} className={`text-muted disabled:opacity-50 ${compact ? "px-1 text-xs" : "px-2 text-sm"}`}>
             キャンセル
           </button>
           {error && <p id={errorId} role="alert" className="w-full text-sm text-red-700">{error}</p>}
         </div>
       ) : (
-        <button type="button" ref={startRef} onClick={onStart} className="text-left text-sm text-neutral-500 hover:text-neutral-800">
+        <button type="button" ref={startRef} onClick={onStart} className="text-left text-sm text-muted hover:text-neutral-800">
           ＋ セクションを追加
         </button>
       )}
