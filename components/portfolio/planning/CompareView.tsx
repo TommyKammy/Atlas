@@ -166,13 +166,13 @@ function ScenarioCard({
       ? Math.min(100, (focusCell.demandDays / focusCell.capacityDays) * 100)
       : 0;
   return (
-    <article className="flex min-w-0 flex-col rounded-lg border border-neutral-200 bg-white">
+    <article className="flex min-w-0 flex-col rounded-lg border border-neutral-200 bg-surface">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 px-4 py-3">
         <h3 className="text-[14px] font-semibold text-neutral-900">{result.name}</h3>
         <StatusTag result={result} />
       </header>
       {focus && (
-        <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
+        <div className="border-b border-neutral-200 bg-surface-subtle px-4 py-3">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <span className="text-[11px] font-semibold text-neutral-700">
               {focus.reason === "shortage"
@@ -180,7 +180,7 @@ function ScenarioCard({
                 : "共通の制約点（最も余力が少ない）"}
               : {monthLabelFromStart(startMonth, focus.monthIndex)} {focus.roleName}
             </span>
-            <span className="text-[10px] text-neutral-500">案件の需要 / 配賦枠</span>
+            <span className="text-[10px] text-muted">案件の需要 / 配賦枠</span>
           </div>
           {focusCell ? (
             <>
@@ -193,13 +193,13 @@ function ScenarioCard({
                   {formatDays(focusCell.demandDays)} /{" "}
                   {focusCell.capacityDays === null ? "未設定" : formatDays(focusCell.capacityDays)}
                 </span>
-                <span className="text-[11px] text-neutral-500">人日</span>
+                <span className="text-[11px] text-muted">人日</span>
                 <span
                   className={`ml-auto text-[11px] ${
                     focusCell.shortageDays > 0
                       ? "font-semibold text-orange-800"
                       : focusCell.capacityMissing || focusCell.demandMissing
-                        ? "text-amber-800"
+                        ? "text-warning"
                         : "font-semibold text-neutral-800"
                   }`}
                 >
@@ -208,7 +208,7 @@ function ScenarioCard({
               </div>
               {focusCell.capacityDays !== null && focusCell.capacityDays > 0 && (
                 <div
-                  className="mt-1 h-[5px] w-full overflow-hidden rounded-full bg-neutral-200"
+                  className="mt-1 h-[5px] w-full overflow-hidden rounded-full bg-surface-strong"
                   aria-hidden="true"
                 >
                   <div
@@ -221,7 +221,7 @@ function ScenarioCard({
               )}
             </>
           ) : (
-            <p className="mt-1 text-[11px] text-neutral-500">
+            <p className="mt-1 text-[11px] text-muted">
               この職種・月の需給データがありません。
             </p>
           )}
@@ -229,25 +229,25 @@ function ScenarioCard({
       )}
       <div className="grid flex-1 gap-3 p-4 sm:grid-cols-2">
         <div>
-          <div className="text-[11px] text-neutral-500">投資額</div>
+          <div className="text-[11px] text-muted">投資額</div>
           <div className="mt-0.5 text-[22px] font-semibold text-neutral-900 tabular-nums">
             {formatManYen(result.knownCostYen)}{" "}
-            <span className="text-[12px] font-normal text-neutral-500">万円</span>
+            <span className="text-[12px] font-normal text-muted">万円</span>
           </div>
-          <div className={`mt-0.5 text-[11px] ${result.overBudget ? "font-semibold text-orange-700" : "text-neutral-500"}`}>
+          <div className={`mt-0.5 text-[11px] ${result.overBudget ? "font-semibold text-orange-700" : "text-muted"}`}>
             {budgetText(result)}
           </div>
         </div>
         <div>
-          <div className="text-[11px] text-neutral-500">実施案件 / 見送り</div>
+          <div className="text-[11px] text-muted">実施案件 / 見送り</div>
           <div className="mt-0.5 text-[14px] font-semibold text-neutral-900 tabular-nums">
             {result.included.length}
-            <span className="ml-1 text-[12px] font-normal text-neutral-500">件</span>
-            <span className="mx-1.5 text-neutral-400">/</span>
+            <span className="ml-1 text-[12px] font-normal text-muted">件</span>
+            <span className="mx-1.5 text-subtle">/</span>
             {result.skipped.length}
-            <span className="ml-1 text-[12px] font-normal text-neutral-500">件</span>
+            <span className="ml-1 text-[12px] font-normal text-muted">件</span>
           </div>
-          <div className="mt-0.5 text-[11px] text-neutral-500">
+          <div className="mt-0.5 text-[11px] text-muted">
             月別の不足 {result.shortages.length}件
           </div>
         </div>
@@ -270,23 +270,23 @@ function ScenarioCard({
             </p>
           )}
           {missing && (
-            <p className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+            <p className="mt-1 rounded-md border border-amber-200 bg-warning-soft px-2.5 py-1.5 text-[11px] text-amber-900">
               未設定: {missing}。既知の不足は上に表示していますが、未設定が解消するまで「制約内」の判定はできません。
             </p>
           )}
         </div>
         <section className="sm:col-span-2">
           <h4 className="text-[11px] font-semibold text-neutral-700">今期に実施</h4>
-          <p className="mt-0.5 text-[11px] text-neutral-600">
+          <p className="mt-0.5 text-[11px] text-secondary">
             {result.included.map((initiative) => initiative.name).join("、") || "なし"}
           </p>
         </section>
         <section className="sm:col-span-2">
           <h4 className="text-[11px] font-semibold text-neutral-700">今期は見送り（見送る効果）</h4>
           {result.skipped.length === 0 ? (
-            <p className="mt-0.5 text-[11px] text-neutral-600">なし</p>
+            <p className="mt-0.5 text-[11px] text-secondary">なし</p>
           ) : (
-            <ul className="mt-0.5 space-y-1 text-[11px] text-neutral-600">
+            <ul className="mt-0.5 space-y-1 text-[11px] text-secondary">
               {result.skipped.map((initiative) => (
                 <li key={initiative.id}>
                   <span className="font-medium text-neutral-800">{initiative.name}</span>
@@ -398,7 +398,7 @@ export default function CompareView({
       <div className="space-y-4">
         <div>
           <h2 className="text-[16px] font-semibold text-neutral-900">投資シナリオ比較</h2>
-          <p className="mt-0.5 text-[12px] text-neutral-500">
+          <p className="mt-0.5 text-[12px] text-muted">
             案件の組み合わせを変えて、予算上限と月別の人員制約を比較します。
           </p>
         </div>
@@ -437,7 +437,7 @@ export default function CompareView({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[16px] font-semibold text-neutral-900">投資シナリオ比較</h2>
-          <p className="mt-0.5 text-[12px] text-neutral-500">
+          <p className="mt-0.5 text-[12px] text-muted">
             案件の組み合わせを変えて、予算上限 {formatManYen(period.budgetYen)} 万円と月別の人員制約を比較します。A案とB案は独立して保存されます。
           </p>
         </div>
@@ -508,17 +508,17 @@ export default function CompareView({
             <p>申請者・最終承認者から独立した有効なレビュー担当が必要です。担当が設定と異なる提案は取り下げてください。</p>
           )}
           {submissionBlock === "self_approval" && !openProposal && (
-            <p className="mt-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+            <p className="mt-1.5 rounded border border-amber-300 bg-warning-soft px-2.5 py-1.5 text-[11px] text-amber-900">
               あなたは最終承認者に設定されているため、自分の提案を提出できません。別のメンバーに提案を依頼するか、承認設定を変更してください。
             </p>
           )}
           {submissionBlock === "approver_missing" && (
-            <p className="mt-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+            <p className="mt-1.5 rounded border border-amber-300 bg-warning-soft px-2.5 py-1.5 text-[11px] text-amber-900">
               最終承認者が未設定または無効です。承認設定を確認してください。
             </p>
           )}
           {approverIneligible && (
-            <p className="mt-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+            <p className="mt-1.5 rounded border border-amber-300 bg-warning-soft px-2.5 py-1.5 text-[11px] text-amber-900">
               最終承認者がこの投資計画を完全に閲覧できません。承認設定で有効なメンバーを選び直してください。
             </p>
           )}
@@ -597,11 +597,11 @@ export default function CompareView({
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h3 className="text-[14px] font-semibold text-neutral-900">案件の組み合わせ</h3>
-            <p className="mt-0.5 text-[11px] text-neutral-500">
+            <p className="mt-0.5 text-[11px] text-muted">
               チェックした比較候補を各案に含めます。固定案件は両案に必ず含まれます。変更はその案だけに保存されます。
             </p>
           </div>
-          {busySlot !== null && <span className="text-[11px] text-neutral-500" role="status">保存中…</span>}
+          {busySlot !== null && <span className="text-[11px] text-muted" role="status">保存中…</span>}
         </div>
         <PlanningTable
           label="案件の組み合わせ"
@@ -609,25 +609,25 @@ export default function CompareView({
           stacked
           className="mt-2 rounded-lg border border-neutral-200"
         >
-          <thead className="bg-neutral-50">
+          <thead className="bg-surface-subtle">
             <tr>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">案件 / 期待効果</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-right text-[11px] font-semibold text-neutral-600">対象期間の費用</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">A案</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">B案</th>
+              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">案件 / 期待効果</th>
+              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-right text-[11px] font-semibold text-secondary">対象期間の費用</th>
+              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">A案</th>
+              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">B案</th>
             </tr>
           </thead>
           <tbody>
             {state.initiatives.map((initiative) => {
               return (
                 <tr key={initiative.id} className="border-b border-neutral-100 last:border-b-0">
-                  <th scope="row" data-label="案件" className="bg-white px-3 py-2.5 text-left align-top">
+                  <th scope="row" data-label="案件" className="bg-surface px-3 py-2.5 text-left align-top">
                     <span className="text-[12px] font-semibold text-neutral-800">{initiative.name}</span>
-                    <span className="mt-0.5 block text-[11px] text-neutral-500">{initiative.expectedEffect}</span>
+                    <span className="mt-0.5 block text-[11px] text-muted">{initiative.expectedEffect}</span>
                   </th>
                   <td data-label="対象期間の費用" className="px-3 py-2.5 text-right align-top text-[12px] tabular-nums">
                     {initiative.costYen === null ? (
-                      <span className="text-amber-800">未設定</span>
+                      <span className="text-warning">未設定</span>
                     ) : (
                       `${formatManYen(initiative.costYen)} 万円`
                     )}
@@ -650,7 +650,7 @@ export default function CompareView({
                             disabled={!canEdit || busySlot !== null}
                             onChange={(event) => void toggle(slot, initiative.id, event.target.checked)}
                             aria-label={`${slot === 0 ? "A案" : "B案"}に${initiative.name}を含める`}
-                            className="h-4 w-4 rounded border-neutral-300"
+                            className="h-4 w-4 rounded border-line-strong"
                           />
                           <span>{checked ? "今期に実施" : "今期は見送り"}</span>
                         </label>
@@ -667,7 +667,7 @@ export default function CompareView({
       <section>
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h3 className="text-[14px] font-semibold text-neutral-900">月別・職種別の需給比較</h3>
-          <span className="text-[11px] text-neutral-500">案件の需要 / 配賦枠。不足は既知の値でも表示します。</span>
+          <span className="text-[11px] text-muted">案件の需要 / 配賦枠。不足は既知の値でも表示します。</span>
         </div>
         <PlanningTable
           label="月別・職種別の需給比較"
@@ -675,12 +675,12 @@ export default function CompareView({
           matrix
           className="mt-2 rounded-lg border border-neutral-200"
         >
-          <thead className="bg-neutral-50">
+          <thead className="bg-surface-subtle">
             <tr>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">職種</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">月</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">A案</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">B案</th>
+              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">職種</th>
+              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">月</th>
+              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">A案</th>
+              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">B案</th>
             </tr>
           </thead>
           <tbody>
@@ -694,10 +694,10 @@ export default function CompareView({
                 );
                 return (
                   <tr key={`${role.id}:${monthIndex}`} className="border-b border-neutral-100 last:border-b-0">
-                    <th scope="row" className="bg-white px-3 py-2 text-left text-[12px] font-medium text-neutral-800">
+                    <th scope="row" className="bg-surface px-3 py-2 text-left text-[12px] font-medium text-neutral-800">
                       {role.name}
                     </th>
-                    <td className="px-3 py-2 text-[11px] text-neutral-600">
+                    <td className="px-3 py-2 text-[11px] text-secondary">
                       {monthLabelFromStart(period.startMonth, monthIndex)}
                     </td>
                     {[cellA, cellB].map((cell, index) => (

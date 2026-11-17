@@ -156,14 +156,14 @@ export default function PortfolioWorkspace({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">共有ポートフォリオ</h2>
-          <p className="mt-0.5 text-xs text-neutral-400">
+          <p className="mt-0.5 text-xs text-subtle">
             複数プロジェクトをまとめ、ポートフォリオ単位のルールを実行できます。
           </p>
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <div className="rounded-lg border border-neutral-200 bg-white p-3">
+        <div className="rounded-lg border border-neutral-200 bg-surface p-3">
           <div className="space-y-2">
             <input
               value={name}
@@ -181,7 +181,7 @@ export default function PortfolioWorkspace({
               type="button"
               onClick={() => void create()}
               disabled={busy || name.trim() === ""}
-              className="h-8 w-full rounded-md bg-[#2c60b8] text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+              className="h-8 w-full rounded-md bg-accent text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
             >
               ＋ ポートフォリオを作成
             </button>
@@ -189,7 +189,7 @@ export default function PortfolioWorkspace({
           </div>
           <div className="mt-3 space-y-1 border-t border-neutral-100 pt-3">
             {portfolios.length === 0 ? (
-              <p className="py-3 text-center text-[11px] text-neutral-400">
+              <p className="py-3 text-center text-[11px] text-subtle">
                 ポートフォリオはまだありません。
               </p>
             ) : (
@@ -199,14 +199,14 @@ export default function PortfolioWorkspace({
                   type="button"
                   onClick={() => setSelectedId(portfolio.id)}
                   className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left ${
-                    selectedId === portfolio.id ? "bg-[#eff4fd]" : "hover:bg-neutral-50"
+                    selectedId === portfolio.id ? "bg-accent-soft" : "hover:bg-neutral-50"
                   }`}
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[12px] font-medium text-neutral-800">
                       {portfolio.name}
                     </span>
-                    <span className="block text-[10px] text-neutral-400">
+                    <span className="block text-[10px] text-subtle">
                       {portfolio.project_count}プロジェクト・{portfolio.rule_count}ルール
                     </span>
                   </span>
@@ -218,12 +218,12 @@ export default function PortfolioWorkspace({
 
         <div className="min-w-0">
           {detail === null ? (
-            <div className="rounded-lg border border-dashed border-neutral-300 bg-white px-6 py-12 text-center text-[12px] text-neutral-400">
+            <div className="rounded-lg border border-dashed border-line-strong bg-surface px-6 py-12 text-center text-[12px] text-subtle">
               ポートフォリオを選択するか、新規作成してください。
             </div>
           ) : (
             <>
-              <div className="rounded-lg border border-neutral-200 bg-white p-4">
+              <div className="rounded-lg border border-neutral-200 bg-surface p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -233,16 +233,16 @@ export default function PortfolioWorkspace({
                       {detail.portfolio.can_view_plan && (
                         <Link
                           href={`/portfolio/${detail.portfolio.id}/planning?view=ledger`}
-                          className="inline-flex h-8 items-center rounded-md bg-[#2c60b8] px-3 text-[12px] font-medium text-white hover:bg-[#24529c]"
+                          className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-[12px] font-medium text-white hover:bg-[#24529c]"
                         >
                           投資計画を開く →
                         </Link>
                       )}
                     </div>
-                    <p className="mt-0.5 text-[11px] text-neutral-500">
+                    <p className="mt-0.5 text-[11px] text-muted">
                       {detail.portfolio.description || "説明はありません"}
                     </p>
-                    <p className="mt-1 text-[10px] text-neutral-400">
+                    <p className="mt-1 text-[10px] text-subtle">
                       所有者: {detail.portfolio.owner_name ?? "不明"} ・{" "}
                       {detail.portfolio.project_count}プロジェクト
                     </p>
@@ -252,7 +252,7 @@ export default function PortfolioWorkspace({
                       type="button"
                       onClick={() => void remove(detail.portfolio)}
                       disabled={busy}
-                      className="text-[11px] text-neutral-400 hover:text-rose-600 disabled:opacity-50"
+                      className="text-[11px] text-subtle hover:text-rose-600 disabled:opacity-50"
                     >
                       ポートフォリオを削除
                     </button>
@@ -263,7 +263,7 @@ export default function PortfolioWorkspace({
                   {detail.projects.map((project) => (
                     <span
                       key={project.id}
-                      className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[11px] text-neutral-700"
+                      className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-surface-subtle px-2 py-0.5 text-[11px] text-neutral-700"
                     >
                       {project.name}
                       {detail.portfolio.can_edit && (
@@ -272,7 +272,7 @@ export default function PortfolioWorkspace({
                           aria-label={`${project.name}を外す`}
                           onClick={() => void removeProject(project)}
                           disabled={busy}
-                          className="text-neutral-400 hover:text-rose-600"
+                          className="text-subtle hover:text-rose-600"
                         >
                           ×
                         </button>
@@ -280,7 +280,7 @@ export default function PortfolioWorkspace({
                     </span>
                   ))}
                   {detail.projects.length === 0 && (
-                    <span className="text-[11px] text-neutral-400">
+                    <span className="text-[11px] text-subtle">
                       プロジェクトがありません。
                     </span>
                   )}
@@ -312,7 +312,7 @@ export default function PortfolioWorkspace({
                 )}
               </div>
 
-              <div className="mt-4 rounded-lg border border-neutral-200 bg-white">
+              <div className="mt-4 rounded-lg border border-neutral-200 bg-surface">
                 <AutomationRulesPanel
                   key={detail.portfolio.id}
                   projectId={0}

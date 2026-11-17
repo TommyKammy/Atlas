@@ -43,7 +43,7 @@ export default function PlanningHeader({
 }) {
   return (
     <header className="space-y-3">
-      <nav aria-label="パンくず" className="text-[12px] text-neutral-500">
+      <nav aria-label="パンくず" className="text-[12px] text-muted">
         <Link href={backHref} className="text-[#24529c] hover:underline">
           ポートフォリオ
         </Link>
@@ -57,7 +57,7 @@ export default function PlanningHeader({
         <div className="flex min-w-0 items-start gap-3">
           <span
             aria-hidden
-            className="mt-0.5 hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#edf3fd] text-[#2c60b8] sm:flex"
+            className="mt-0.5 hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#edf3fd] text-accent-text sm:flex"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5">
               <path d="M3 7h18v13H3z" />
@@ -72,7 +72,7 @@ export default function PlanningHeader({
               </Tag>
               {approvalEnabled && <Tag tone="blue">承認フロー有効</Tag>}
             </div>
-            <p className="mt-0.5 text-[12px] text-neutral-500">共有ポートフォリオの投資計画</p>
+            <p className="mt-0.5 text-[12px] text-muted">共有ポートフォリオの投資計画</p>
             <Link href={backHref} className="mt-1 inline-block text-[11px] text-[#24529c] hover:underline">
               ← 選択中のポートフォリオに戻る
             </Link>
@@ -80,9 +80,9 @@ export default function PlanningHeader({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {periods.length > 0 && (
-            <label className="flex items-center gap-2 text-[11px] font-medium text-neutral-600">
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2 py-1.5">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4 text-neutral-500" aria-hidden>
+            <label className="flex items-center gap-2 text-[11px] font-medium text-secondary">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-surface px-2 py-1.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4 text-muted" aria-hidden>
                   <path d="M3 6h18v15H3zM7 3v6M17 3v6M3 11h18" />
                 </svg>
                 <span className="sr-only">対象四半期</span>
@@ -133,8 +133,8 @@ export default function PlanningHeader({
               aria-current={current ? "page" : undefined}
               className={`-mb-px border-b-2 px-0.5 py-2 font-medium ${
                 current
-                  ? "border-[#2c60b8] text-[#24529c]"
-                  : "border-transparent text-neutral-600 hover:border-neutral-300 hover:text-neutral-900"
+                  ? "border-accent text-[#24529c]"
+                  : "border-transparent text-secondary hover:border-neutral-300 hover:text-neutral-900"
               }`}
             >
               {item.label}

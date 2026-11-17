@@ -34,16 +34,16 @@ export default async function PortfolioPage({
           監査ログ →
         </a>}
       </div>
-      <p className="mt-1 text-sm text-neutral-500">
+      <p className="mt-1 text-sm text-muted">
         {ws?.name} の全プロジェクト（{rows.length}件）
       </p>
       <div className="mt-4 max-w-5xl">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold">マイポートフォリオ</h2>
-          <span className="text-xs text-neutral-400">{saved.length}件</span>
+          <span className="text-xs text-subtle">{saved.length}件</span>
         </div>
         {saved.length === 0 ? (
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-subtle">
             サイドバーのプロジェクトを右クリック →「ポートフォリオに追加」でここに追加されます。
           </p>
         ) : (
@@ -52,7 +52,7 @@ export default async function PortfolioPage({
               <Link
                 key={p.id}
                 href={`/projects/${p.id}?view=list`}
-                className="rounded-full border bg-white px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
+                className="rounded-full border bg-surface px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
               >
                 {p.name}
               </Link>
@@ -61,7 +61,7 @@ export default async function PortfolioPage({
         )}
       </div>
       <div className="mt-6 max-w-5xl">
-        <div className="grid grid-cols-[minmax(0,1fr)_200px_120px_80px_220px] gap-2 border-b px-2 py-2 text-xs font-semibold text-neutral-500">
+        <div className="grid grid-cols-[minmax(0,1fr)_200px_120px_80px_220px] gap-2 border-b px-2 py-2 text-xs font-semibold text-muted">
           <span>プロジェクト</span>
           <span>進捗</span>
           <span>期間</span>
@@ -79,18 +79,18 @@ export default async function PortfolioPage({
                 {p.name}
               </Link>
               <span className="flex items-center gap-2">
-                <span className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-neutral-200">
+                <span className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-surface-strong">
                   <span className="block h-full bg-green-500" style={{ width: `${pct}%` }} />
                 </span>
-                <span className="shrink-0 text-xs text-neutral-500">
+                <span className="shrink-0 text-xs text-muted">
                   {p.done}/{p.total}
                 </span>
               </span>
-              <span className="truncate text-xs text-neutral-600">
+              <span className="truncate text-xs text-secondary">
                 {p.min_due ?? "–"} 〜 {p.max_due ?? "–"}
               </span>
-              <span className="text-neutral-600">{p.members}人</span>
-              <span className={p.overdue > 0 ? "font-semibold text-red-600" : "text-neutral-400"}>
+              <span className="text-secondary">{p.members}人</span>
+              <span className={p.overdue > 0 ? "font-semibold text-danger" : "text-subtle"}>
                 {p.overdue > 0 ? `${p.overdue}件` : "なし"}
               </span>
             </div>

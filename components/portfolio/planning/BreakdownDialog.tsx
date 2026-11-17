@@ -53,7 +53,7 @@ export default function BreakdownDialog({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="text-[13px] font-semibold text-neutral-900">{result.name}</div>
-            <div className="text-[11px] text-neutral-500">単位: 人日</div>
+            <div className="text-[11px] text-muted">単位: 人日</div>
           </div>
           {cell.shortageDays > 0 ? (
             <Tag tone="bad">不足 {formatDays(cell.shortageDays)} 人日</Tag>
@@ -64,7 +64,7 @@ export default function BreakdownDialog({
           )}
         </div>
         {rows.length === 0 ? (
-          <p className="rounded-md border border-dashed border-neutral-300 px-3 py-6 text-center text-[12px] text-neutral-500">
+          <p className="rounded-md border border-dashed border-line-strong px-3 py-6 text-center text-[12px] text-muted">
             この案に含まれる案件はありません。
           </p>
         ) : (
@@ -73,12 +73,12 @@ export default function BreakdownDialog({
             caption={`${monthLabel} ${role.name}の案件別需要`}
             className="rounded-lg border border-neutral-200"
           >
-            <thead className="bg-neutral-50">
+            <thead className="bg-surface-subtle">
               <tr>
-                <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">
+                <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">
                   需要の内訳
                 </th>
-                <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-right text-[11px] font-semibold text-neutral-600">
+                <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-right text-[11px] font-semibold text-secondary">
                   人日
                 </th>
               </tr>
@@ -86,9 +86,9 @@ export default function BreakdownDialog({
             <tbody>
               {rows.map(({ initiative, days }) => (
                 <tr key={initiative.id} className="border-b border-neutral-100 last:border-b-0">
-                  <th scope="row" className="bg-white px-3 py-2 text-left text-[12px] font-medium text-neutral-800">
+                  <th scope="row" className="bg-surface px-3 py-2 text-left text-[12px] font-medium text-neutral-800">
                     {initiative.name}{" "}
-                    <span className="ml-1 font-normal text-neutral-500">
+                    <span className="ml-1 font-normal text-muted">
                       {initiative.kind === "fixed" ? "固定" : "候補"}
                     </span>
                   </th>
@@ -97,7 +97,7 @@ export default function BreakdownDialog({
                   </td>
                 </tr>
               ))}
-              <tr className="bg-neutral-50">
+              <tr className="bg-surface-subtle">
                 <th scope="row" className="px-3 py-2 text-left text-[12px] font-semibold text-neutral-800">
                   需要合計（既知）
                 </th>
@@ -129,7 +129,7 @@ export default function BreakdownDialog({
           </PlanningTable>
         )}
         {incomplete && (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+          <p className="rounded-md border border-amber-200 bg-warning-soft px-3 py-2 text-[12px] text-amber-900">
             {cell.demandMissing && "需要が未設定の案件があります。"}
             {cell.capacityMissing && "配賦枠が未設定です。"}
             既知の不足は上に表示していますが、未設定項目が解消するまで「制約内」の判定はできません。

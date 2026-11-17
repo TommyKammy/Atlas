@@ -2,14 +2,14 @@ import type { ReactNode } from "react";
 import type { PlanningScenarioResult } from "@/lib/planning/calculations";
 
 export const buttonPrimary =
-  "inline-flex min-h-9 items-center justify-center rounded-md bg-[#2c60b8] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-9 items-center justify-center rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:cursor-not-allowed disabled:opacity-50";
 export const buttonSecondary =
-  "inline-flex min-h-9 items-center justify-center rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50";
 export const buttonQuiet =
   "inline-flex items-center rounded px-1 py-0.5 text-[13px] font-medium text-[#24529c] hover:underline disabled:cursor-not-allowed disabled:opacity-50";
 export const inputClass =
-  "h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]";
-export const labelClass = "block text-[12px] font-medium text-neutral-600";
+  "h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]";
+export const labelClass = "block text-[12px] font-medium text-secondary";
 export const sectionTitle = "text-[15px] font-semibold text-neutral-900";
 
 export function Tag({
@@ -20,10 +20,10 @@ export function Tag({
   tone?: "neutral" | "blue" | "good" | "warn" | "bad";
 }) {
   const tones = {
-    neutral: "border-neutral-300 bg-neutral-50 text-neutral-600",
+    neutral: "border-line-strong bg-surface-subtle text-secondary",
     blue: "border-blue-200 bg-blue-50 text-blue-800",
     good: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    warn: "border-amber-200 bg-amber-50 text-amber-800",
+    warn: "border-amber-200 bg-warning-soft text-warning",
     bad: "border-orange-300 bg-orange-50 text-orange-800",
   };
   return (
@@ -55,17 +55,17 @@ export function Stat({
   tone?: "neutral" | "warn" | "bad";
 }) {
   return (
-    <div className="min-w-0 rounded-lg border border-neutral-200 bg-white p-3">
-      <div className="text-[11px] text-neutral-500">{label}</div>
+    <div className="min-w-0 rounded-lg border border-neutral-200 bg-surface p-3">
+      <div className="text-[11px] text-muted">{label}</div>
       <div
         className={`mt-0.5 text-[22px] leading-tight font-semibold tabular-nums ${
-          tone === "bad" ? "text-orange-700" : tone === "warn" ? "text-amber-800" : "text-neutral-900"
+          tone === "bad" ? "text-orange-700" : tone === "warn" ? "text-warning" : "text-neutral-900"
         }`}
       >
         {value}
-        {unit && <> <span className="text-[12px] font-normal text-neutral-500">{unit}</span></>}
+        {unit && <> <span className="text-[12px] font-normal text-muted">{unit}</span></>}
       </div>
-      {detail && <div className="mt-1 text-[11px] text-neutral-500">{detail}</div>}
+      {detail && <div className="mt-1 text-[11px] text-muted">{detail}</div>}
     </div>
   );
 }
@@ -79,8 +79,8 @@ export function Notice({
 }) {
   const tones = {
     info: "border-blue-200 bg-blue-50 text-blue-900",
-    warn: "border-amber-200 bg-amber-50 text-amber-900",
-    error: "border-red-200 bg-red-50 text-red-900",
+    warn: "border-amber-200 bg-warning-soft text-amber-900",
+    error: "border-red-200 bg-danger-soft text-red-900",
     success: "border-emerald-200 bg-emerald-50 text-emerald-900",
   };
   return (
@@ -100,9 +100,9 @@ export function EmptyPanel({
   actions?: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-neutral-300 bg-white px-5 py-10 text-center">
+    <div className="rounded-lg border border-dashed border-line-strong bg-surface px-5 py-10 text-center">
       <h2 className="text-[15px] font-semibold text-neutral-900">{title}</h2>
-      {children && <div className="mx-auto mt-2 max-w-xl text-[12px] text-neutral-500">{children}</div>}
+      {children && <div className="mx-auto mt-2 max-w-xl text-[12px] text-muted">{children}</div>}
       {actions && <div className="mt-4 flex flex-wrap justify-center gap-2">{actions}</div>}
     </div>
   );

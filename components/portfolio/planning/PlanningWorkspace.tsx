@@ -51,7 +51,7 @@ function periodKeyOf(period: PlanningPeriodSummary): string {
 
 function LoadingShell() {
   return (
-    <div role="status" className="mx-auto max-w-[1180px] px-4 py-6 text-[13px] text-neutral-500 md:px-6">
+    <div role="status" className="mx-auto max-w-[1180px] px-4 py-6 text-[13px] text-muted md:px-6">
       投資計画を読み込み中…
     </div>
   );
@@ -461,7 +461,7 @@ export default function PlanningWorkspace({
         </details>
       )}
       {refreshing && (
-        <p role="status" className="mt-3 text-[11px] text-neutral-500">
+        <p role="status" className="mt-3 text-[11px] text-muted">
           最新の内容を読み込み中…
         </p>
       )}

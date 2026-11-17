@@ -63,7 +63,7 @@ export default function ProposalWithdrawForm({
       noValidate
       aria-label="投資提案の取り下げ"
       onSubmit={(event) => void submit(event)}
-      className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3"
+      className="rounded-md border border-amber-200 bg-warning-soft px-3 py-3"
     >
       <h3 className="text-[13px] font-semibold text-amber-950">提案を取り下げる</h3>
       <p className="mt-1 text-[11px] text-amber-900">
@@ -84,7 +84,7 @@ export default function ProposalWithdrawForm({
             setReason(event.target.value);
             if (event.target.value.trim() !== "") setInvalid(false);
           }}
-          className="mt-1 min-h-16 w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
+          className="mt-1 min-h-16 w-full rounded-md border border-line-strong bg-white px-2.5 py-2 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
           maxLength={1000}
           aria-describedby={invalid ? errorId : undefined}
           aria-invalid={invalid}
