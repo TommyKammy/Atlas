@@ -209,6 +209,61 @@ export type PlanningDecisionComplete = {
 
 export type PlanningDecision = PlanningDecisionRestricted | PlanningDecisionComplete;
 
+export type PlanningProposalStatus =
+  | "submitted"
+  | "under_review"
+  | "returned"
+  | "approved"
+  | "rejected"
+  | "withdrawn"
+  | "superseded";
+
+export type PlanningApprovalParticipant = {
+  id: number;
+  name: string;
+};
+
+export type PlanningApprovalCandidate = PlanningApprovalParticipant & {
+  email: string | null;
+};
+
+export type PlanningApprovalSettings = {
+  enabled: boolean;
+  finalApprover: PlanningApprovalParticipant | null;
+  reviewer: PlanningApprovalParticipant | null;
+  /** In-flight proposals across the portfolio; settings cannot be redirected while nonzero. */
+  openProposalCount: number;
+};
+
+type PlanningProposalBase = {
+  id: number;
+  version: number;
+  status: PlanningProposalStatus;
+  recommendedSlot: 0 | 1;
+  recommendedScenarioName: string;
+  submitterName: string;
+  submittedAt: string;
+  periodRevision: number;
+  budgetYen: number;
+  finalApproverName: string;
+  reviewerName: string | null;
+  restricted: boolean;
+};
+
+export type PlanningProposalRestricted = PlanningProposalBase & {
+  restricted: true;
+  reason: null;
+  snapshot: null;
+};
+
+export type PlanningProposalComplete = PlanningProposalBase & {
+  restricted: false;
+  reason: string;
+  snapshot: PlanningDecisionSnapshot;
+};
+
+export type PlanningProposal = PlanningProposalRestricted | PlanningProposalComplete;
+
 export type PlanningComparisonProjection = {
   revision: number;
   budgetYen: number;
@@ -237,6 +292,10 @@ export type PlanningState = {
   /** Server projection for one authorized revision; null when restricted or no period. */
   comparison: PlanningComparisonProjection | null;
   decisions: PlanningDecision[];
+  approval: PlanningApprovalSettings;
+  proposals: PlanningProposal[];
+  /** Editor-only eligible full-visibility members for approval settings. */
+  approvalCandidates: PlanningApprovalCandidate[] | null;
   viewers: PlanningViewer[] | null;
   viewerCandidates: PlanningViewerCandidate[] | null;
   /** Editor-only active-member directory. Never included in read-only state. */

@@ -21,6 +21,16 @@ export function parsePositiveId(value: unknown, label: string): number {
   return id;
 }
 
+export function parseNullablePositiveId(value: unknown, label: string): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  return parsePositiveId(value, label);
+}
+
+export function parseBoolean(value: unknown, label: string): boolean {
+  if (typeof value !== "boolean") throw badRequest(`${label}が正しくありません`);
+  return value;
+}
+
 export function parseYear(value: unknown): number {
   const year = Number(value);
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {

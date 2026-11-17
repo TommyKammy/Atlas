@@ -14,6 +14,7 @@ import type {
   PlanningView,
 } from "@/lib/planning/types";
 import AdoptDialog from "./AdoptDialog";
+import ApprovalSettingsDialog, { type ApprovalSettingsInput } from "./ApprovalSettingsDialog";
 import BreakdownDialog from "./BreakdownDialog";
 import BudgetDialog from "./BudgetDialog";
 import CapacityDialog from "./CapacityDialog";
@@ -26,6 +27,7 @@ import PeriodDialog from "./PeriodDialog";
 import PlanningHeader from "./PlanningHeader";
 import RolesDialog from "./RolesDialog";
 import ViewersDialog from "./ViewersDialog";
+import type { ProposalSubmitInput } from "./SubmitProposalDialog";
 import { isStaleRevisionError, planningErrorMessage } from "./errors";
 import { buttonPrimary, EmptyPanel, Notice, buttonSecondary } from "./ui";
 
@@ -78,6 +80,7 @@ export default function PlanningWorkspace({
   const [capacityDialog, setCapacityDialog] = useState(false);
   const [rolesDialog, setRolesDialog] = useState(false);
   const [viewersDialog, setViewersDialog] = useState(false);
+  const [approvalSettingsDialog, setApprovalSettingsDialog] = useState(false);
   const [carryoverDialog, setCarryoverDialog] = useState(false);
   const [adoptSlot, setAdoptSlot] = useState<0 | 1 | null>(null);
   const [breakdown, setBreakdown] = useState<BreakdownState | null>(null);
@@ -277,6 +280,22 @@ export default function PlanningWorkspace({
     toast("採用時点の内容を決定履歴に記録しました");
   };
 
+  const submitProposal = async (input: ProposalSubmitInput) => {
+    if (!selectedPeriod) return;
+    const result = await mutate<{ version: number }>(
+      `/api/portfolios/${portfolioId}/planning/proposals`,
+      "POST",
+      { periodId: selectedPeriod.id, revision: selectedPeriod.revision, ...input },
+    );
+    toast(`投資提案を提出しました（版${result.version}）`);
+  };
+
+  const saveApprovalSettings = async (input: ApprovalSettingsInput) => {
+    await api(`/api/portfolios/${portfolioId}/planning/approval-settings`, "PUT", input);
+    await load(periodKey, true);
+    toast(input.enabled ? "承認フローを有効にしました" : "承認フローを無効にしました");
+  };
+
   const createPeriod = async (input: {
     year: number;
     quarter: 1 | 2 | 3 | 4;
@@ -343,11 +362,13 @@ export default function PlanningWorkspace({
         view={view}
         canEdit={canEdit}
         canManageViewers={state.access.canManageViewers}
+        approvalEnabled={state.approval.enabled}
         restricted={state.restricted}
         onView={switchView}
         onPeriod={switchPeriod}
         onNewPeriod={() => setPeriodDialog(true)}
         onManageViewers={() => setViewersDialog(true)}
+        onApprovalSettings={() => setApprovalSettingsDialog(true)}
       />
 
       {refreshing && (
@@ -409,9 +430,11 @@ export default function PlanningWorkspace({
           />
         ) : (
           <CompareView
+            key={`compare-${selectedPeriod.id}`}
             state={state}
             onToggle={toggleScenario}
             onAdopt={(slot) => setAdoptSlot(slot)}
+            onSubmitProposal={submitProposal}
             onEditBudget={() => setBudgetDialog(true)}
             onNavigate={switchView}
           />
@@ -489,6 +512,15 @@ export default function PlanningWorkspace({
           candidates={state.viewerCandidates}
           onAdd={addViewer}
           onRemove={removeViewer}
+        />
+      )}
+      {state.approvalCandidates && (
+        <ApprovalSettingsDialog
+          open={approvalSettingsDialog}
+          onClose={() => setApprovalSettingsDialog(false)}
+          settings={state.approval}
+          candidates={state.approvalCandidates}
+          onSave={saveApprovalSettings}
         />
       )}
       {adoptSlot !== null && selectedPeriod && (

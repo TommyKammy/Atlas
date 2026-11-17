@@ -18,11 +18,13 @@ export default function PlanningHeader({
   view,
   canEdit,
   canManageViewers,
+  approvalEnabled,
   restricted,
   onView,
   onPeriod,
   onNewPeriod,
   onManageViewers,
+  onApprovalSettings,
 }: {
   portfolioName: string;
   backHref: string;
@@ -31,11 +33,13 @@ export default function PlanningHeader({
   view: PlanningView;
   canEdit: boolean;
   canManageViewers: boolean;
+  approvalEnabled: boolean;
   restricted: boolean;
   onView: (view: PlanningView) => void;
   onPeriod: (period: PlanningPeriodSummary) => void;
   onNewPeriod: () => void;
   onManageViewers: () => void;
+  onApprovalSettings: () => void;
 }) {
   return (
     <header className="space-y-3">
@@ -66,6 +70,7 @@ export default function PlanningHeader({
               <Tag tone={restricted ? "warn" : canEdit ? "blue" : "neutral"}>
                 {restricted ? "閲覧制限" : canEdit ? "編集可能" : "閲覧のみ"}
               </Tag>
+              {approvalEnabled && <Tag tone="blue">承認フロー有効</Tag>}
             </div>
             <p className="mt-0.5 text-[12px] text-neutral-500">共有ポートフォリオの投資計画</p>
             <Link href={backHref} className="mt-1 inline-block text-[11px] text-[#24529c] hover:underline">
@@ -102,6 +107,11 @@ export default function PlanningHeader({
           {canManageViewers && (
             <button type="button" className={buttonSecondary} onClick={onManageViewers}>
               閲覧者
+            </button>
+          )}
+          {canEdit && (
+            <button type="button" className={buttonSecondary} onClick={onApprovalSettings}>
+              承認設定
             </button>
           )}
           {canEdit && (

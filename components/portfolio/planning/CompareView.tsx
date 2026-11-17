@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatDays, formatManYen, monthLabelFromStart } from "@/lib/planning/format";
 import type { PlanningScenarioResult } from "@/lib/planning/calculations";
+import { isOpenProposalStatus, proposalSubmissionBlock } from "@/lib/planning/approvals";
 import { scenarioCalculation } from "@/lib/planning/select";
 import { PLANNING_MONTHS } from "@/lib/planning/types";
 import type {
@@ -13,6 +14,8 @@ import type {
 } from "@/lib/planning/types";
 import DecisionHistory from "./DecisionHistory";
 import PlanningTable from "./PlanningTable";
+import ProposalHistory from "./ProposalHistory";
+import SubmitProposalDialog, { type ProposalSubmitInput } from "./SubmitProposalDialog";
 import { planningErrorMessage } from "./errors";
 import {
   buttonPrimary,
@@ -133,15 +136,17 @@ function compareFocus(
 function ScenarioCard({
   result,
   focus,
-  canAdopt,
+  canAct,
+  actionLabel,
   startMonth,
-  onAdopt,
+  onAction,
 }: {
   result: PlanningScenarioResult;
   focus: CompareFocus | null;
-  canAdopt: boolean;
+  canAct: boolean;
+  actionLabel: string;
   startMonth: number;
-  onAdopt: () => void;
+  onAction: () => void;
 }) {
   const missing = missingText(result);
   const focusCell = focus
@@ -286,8 +291,8 @@ function ScenarioCard({
         </section>
       </div>
       <footer className="border-t border-neutral-200 px-4 py-3">
-        <button type="button" onClick={onAdopt} className={buttonPrimary} disabled={!canAdopt}>
-          {result.name}を採用…
+        <button type="button" onClick={onAction} className={buttonPrimary} disabled={!canAct}>
+          {actionLabel}
         </button>
       </footer>
     </article>
@@ -298,17 +303,21 @@ export default function CompareView({
   state,
   onToggle,
   onAdopt,
+  onSubmitProposal,
   onEditBudget,
   onNavigate,
 }: {
   state: PlanningState;
   onToggle: (slot: 0 | 1, initiativeId: number, checked: boolean) => Promise<void>;
   onAdopt: (slot: 0 | 1) => void;
+  onSubmitProposal: (input: ProposalSubmitInput) => Promise<void>;
   onEditBudget: () => void;
   onNavigate: (view: PlanningView) => void;
 }) {
   const [busySlot, setBusySlot] = useState<0 | 1 | null>(null);
   const [toggleError, setToggleError] = useState("");
+  const [proposalSlot, setProposalSlot] = useState<0 | 1 | null>(null);
+  const [proposalDetailId, setProposalDetailId] = useState<number | null>(null);
   const period = state.selectedPeriod;
   if (!period) return null;
   const scenarioA = scenarioCalculation(state, 0);
@@ -321,6 +330,25 @@ export default function CompareView({
   );
   const canEdit = state.access.canEditData;
   const latest = state.decisions[0];
+  const approval = state.approval;
+  const openProposal =
+    state.proposals.find((proposal) => isOpenProposalStatus(proposal.status)) ?? null;
+  const submissionBlock = approval.enabled
+    ? proposalSubmissionBlock({
+        approvalsEnabled: approval.enabled,
+        finalApproverUserId: approval.finalApprover?.id ?? null,
+        submitterUserId: state.currentUserId,
+        openProposal: openProposal !== null,
+      })
+    : null;
+  const approverIneligible =
+    approval.finalApprover !== null &&
+    state.approvalCandidates !== null &&
+    !state.approvalCandidates.some(
+      (candidate) => candidate.id === approval.finalApprover?.id,
+    );
+  const canSubmitProposal = canEdit && submissionBlock === null && !approverIneligible;
+  const proposalResult = proposalSlot === null ? null : scenarioCalculation(state, proposalSlot);
 
   const toggle = async (slot: 0 | 1, initiativeId: number, checked: boolean) => {
     if (busySlot !== null) return;
@@ -374,6 +402,57 @@ export default function CompareView({
         </div>
       </div>
 
+      {approval.enabled && (
+        <section
+          aria-label="投資提案の承認"
+          className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px] text-blue-900"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Tag tone="blue">承認フロー有効</Tag>
+            <span>
+              最終承認者: <b>{approval.finalApprover?.name ?? "未設定"}</b>
+            </span>
+            <span className="text-blue-300" aria-hidden>
+              |
+            </span>
+            <span>
+              レビュー担当:{" "}
+              <b>{openProposal?.reviewerName ?? approval.reviewer?.name ?? "なし"}</b>
+            </span>
+          </div>
+          {openProposal ? (
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+              <span>
+                この四半期の提案（版{openProposal.version}）は
+                <b>{openProposal.recommendedScenarioName}</b>の推奨で提出済みです。最終承認者の決定を待っています。
+              </span>
+              <button type="button" className={buttonQuiet} onClick={() => setProposalDetailId(openProposal.id)}>
+                提案の詳細を開く
+              </button>
+            </div>
+          ) : (
+            <p className="mt-1.5 text-[11px] text-blue-800">
+              採用する案を選び、理由を添えて投資提案として提出します。提出時点のA案・B案が固定され、最終承認者が決定します。直接採用はできません。
+            </p>
+          )}
+          {submissionBlock === "self_approval" && !openProposal && (
+            <p className="mt-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+              あなたは最終承認者に設定されているため、自分の提案を提出できません。別のメンバーに提案を依頼するか、承認設定を変更してください。
+            </p>
+          )}
+          {submissionBlock === "approver_missing" && (
+            <p className="mt-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+              最終承認者が未設定または無効です。承認設定を確認してください。
+            </p>
+          )}
+          {approverIneligible && (
+            <p className="mt-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+              最終承認者がこの投資計画を完全に閲覧できません。承認設定で有効なメンバーを選び直してください。
+            </p>
+          )}
+        </section>
+      )}
+
       {latest && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
           <span className="min-w-0 text-[12px] text-blue-900">
@@ -391,16 +470,42 @@ export default function CompareView({
         <ScenarioCard
           result={scenarioA}
           focus={focus}
-          canAdopt={canEdit}
+          canAct={approval.enabled ? (openProposal !== null ? true : canSubmitProposal) : canEdit}
+          actionLabel={
+            approval.enabled
+              ? openProposal
+                ? `${scenarioA.name}の提案を確認`
+                : `${scenarioA.name}で提案…`
+              : `${scenarioA.name}を採用…`
+          }
           startMonth={period.startMonth}
-          onAdopt={() => onAdopt(0)}
+          onAction={
+            approval.enabled
+              ? openProposal
+                ? () => setProposalDetailId(openProposal.id)
+                : () => setProposalSlot(0)
+              : () => onAdopt(0)
+          }
         />
         <ScenarioCard
           result={scenarioB}
           focus={focus}
-          canAdopt={canEdit}
+          canAct={approval.enabled ? (openProposal !== null ? true : canSubmitProposal) : canEdit}
+          actionLabel={
+            approval.enabled
+              ? openProposal
+                ? `${scenarioB.name}の提案を確認`
+                : `${scenarioB.name}で提案…`
+              : `${scenarioB.name}を採用…`
+          }
           startMonth={period.startMonth}
-          onAdopt={() => onAdopt(1)}
+          onAction={
+            approval.enabled
+              ? openProposal
+                ? () => setProposalDetailId(openProposal.id)
+                : () => setProposalSlot(1)
+              : () => onAdopt(1)
+          }
         />
       </div>
 
@@ -537,7 +642,18 @@ export default function CompareView({
         </PlanningTable>
       </section>
 
-      <DecisionHistory decisions={state.decisions} />
+      {(approval.enabled || state.proposals.length > 0) && (
+        <ProposalHistory
+          key={`proposal-history-${period.id}`}
+          proposals={state.proposals}
+          period={period}
+          approvalEnabled={approval.enabled}
+          selectedId={proposalDetailId}
+          onSelect={setProposalDetailId}
+        />
+      )}
+
+      <DecisionHistory decisions={state.decisions} approvalEnabled={approval.enabled} />
 
       <div className="flex flex-wrap justify-end gap-3 border-t border-neutral-200 pt-3">
         <button type="button" className={buttonQuiet} onClick={() => onNavigate("ledger")}>
@@ -547,6 +663,22 @@ export default function CompareView({
           職種別・月別の内訳を見る →
         </button>
       </div>
+
+      {proposalSlot !== null && (
+        <SubmitProposalDialog
+          open
+          onClose={() => setProposalSlot(null)}
+          result={proposalResult}
+          period={period}
+          settings={approval}
+          candidates={state.approvalCandidates ?? []}
+          block={submissionBlock}
+          onSubmit={async (input) => {
+            await onSubmitProposal(input);
+            setProposalSlot(null);
+          }}
+        />
+      )}
     </div>
   );
 }

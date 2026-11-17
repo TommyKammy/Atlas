@@ -1,6 +1,6 @@
 import type { Queryable } from "../db";
 import { ApiError, badRequest, forbidden, notFound } from "../api/errors";
-import type { PlanningAccess } from "./types";
+import type { PlanningAccess, PlanningApprovalCandidate } from "./types";
 
 export type PlanningAccessRecord = PlanningAccess & {
   portfolioId: number;
@@ -65,6 +65,68 @@ export async function requirePlanningEditor(
   const access = await requirePlanningAccess(q, portfolioId, workspaceId, userId);
   if (!access.canEdit) throw forbidden("この投資計画を編集する権限がありません");
   return access;
+}
+
+/**
+ * Active workspace members who already have full planning visibility. Selection
+ * never grants plan or project access; it only records an existing entitlement.
+ */
+export async function loadEligiblePlanParticipants(
+  q: Queryable,
+  portfolioId: number,
+  workspaceId: number,
+  userId: number | null = null,
+): Promise<PlanningApprovalCandidate[]> {
+  const result = await q.query(
+    `SELECT u.id, u.name, u.email
+     FROM portfolios p
+     JOIN users u ON u.deactivated_at IS NULL
+     WHERE p.id = $1::bigint
+       AND p.workspace_id = $2::bigint
+       AND ($3::bigint IS NULL OR u.id = $3::bigint)
+       AND (
+         u.role_id IS NULL
+         OR EXISTS (
+           SELECT 1 FROM workspace_roles r
+           WHERE r.id = u.role_id AND r.workspace_id = p.workspace_id
+         )
+       )
+       AND (
+         u.is_admin
+         OR p.owner_id = u.id
+         OR EXISTS (
+           SELECT 1 FROM portfolio_plan_viewers v
+           WHERE v.portfolio_id = p.id AND v.user_id = u.id
+         )
+       )
+       AND NOT EXISTS (
+         SELECT 1
+         FROM portfolio_initiatives i
+         JOIN portfolio_initiative_estimates e
+           ON e.initiative_id = i.id AND e.portfolio_id = i.portfolio_id
+         WHERE i.portfolio_id = p.id
+           AND i.linked_project_id IS NOT NULL
+           AND NOT (
+             u.is_admin
+             OR EXISTS (
+               SELECT 1
+               FROM project_members m
+               JOIN projects pr ON pr.id = m.project_id
+               WHERE m.project_id = i.linked_project_id
+                 AND m.user_id = u.id
+                 AND pr.deleted_at IS NULL
+                 AND pr.workspace_id = p.workspace_id
+             )
+           )
+       )
+     ORDER BY u.name, u.id`,
+    [portfolioId, workspaceId, userId],
+  );
+  return result.rows.map((row) => ({
+    id: Number(row.id),
+    name: String(row.name),
+    email: row.email === null || row.email === undefined ? null : String(row.email),
+  }));
 }
 
 /** Serialize plan mutations for one portfolio before reading or changing revisions. */

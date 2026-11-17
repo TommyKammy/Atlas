@@ -4,12 +4,14 @@ import {
   assertPeriodFullyVisible,
   assertPortfolioFullyVisible,
   assertRevision,
+  loadEligiblePlanParticipants,
   lockPlanningPeriod,
   lockPlanningPortfolio,
   requirePlanningEditor,
   resolveLinkableProject,
   visibleProjectIds,
 } from "./access";
+import { approvalSettingsChanged, proposalSubmissionBlock } from "./approvals";
 import { buildDecisionSnapshot, type CalculationInitiative } from "./calculations";
 import { hashPlanningSnapshot } from "./decision-snapshot";
 import {
@@ -17,6 +19,7 @@ import {
   resolveActiveInitiativeOwner,
 } from "./owner";
 import {
+  loadApprovalSettings,
   loadCapacities,
   loadPeriodInitiatives,
   loadRoles,
@@ -61,6 +64,22 @@ async function currentRevision(q: Queryable, periodId: number, portfolioId: numb
   );
   if (result.rowCount === 0) throw notFound("対象四半期が見つかりません");
   return Number(result.rows[0].revision);
+}
+
+async function countOpenProposals(
+  q: Queryable,
+  portfolioId: number,
+  periodId: number | null,
+): Promise<number> {
+  const result = await q.query(
+    `SELECT COUNT(*)::int AS n
+     FROM portfolio_plan_proposals
+     WHERE portfolio_id = $1::bigint
+       AND status IN ('submitted', 'under_review')
+       AND ($2::bigint IS NULL OR period_id = $2::bigint)`,
+    [portfolioId, periodId],
+  );
+  return Number(result.rows[0].n);
 }
 
 async function validateDemandRoles(
@@ -787,6 +806,339 @@ export async function saveScenarioSelection(input: {
   });
 }
 
+export async function updateApprovalSettings(input: {
+  workspaceId: number;
+  portfolioId: number;
+  userId: number;
+  enabled: boolean;
+  finalApproverUserId: number | null;
+  reviewerUserId: number | null;
+}): Promise<{
+  enabled: boolean;
+  finalApproverUserId: number | null;
+  reviewerUserId: number | null;
+}> {
+  return withTransaction(async (q) => {
+    await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
+    await requirePlanningEditor(q, input.portfolioId, input.workspaceId, input.userId);
+
+    const current = await loadApprovalSettings(q, input.portfolioId);
+    const next = input.enabled
+      ? {
+          enabled: true,
+          finalApproverUserId: input.finalApproverUserId,
+          reviewerUserId: input.reviewerUserId,
+        }
+      : { enabled: false, finalApproverUserId: null, reviewerUserId: null };
+    const changed = approvalSettingsChanged(
+      {
+        enabled: current.enabled,
+        finalApproverUserId: current.finalApprover?.id ?? null,
+        reviewerUserId: current.reviewer?.id ?? null,
+      },
+      next,
+    );
+    if (!changed) {
+      return {
+        enabled: current.enabled,
+        finalApproverUserId: current.finalApprover?.id ?? null,
+        reviewerUserId: current.reviewer?.id ?? null,
+      };
+    }
+
+    const openProposalCount = await countOpenProposals(q, input.portfolioId, null);
+    if (openProposalCount > 0) {
+      throw new ApiError(
+        409,
+        `未解決の投資提案が${openProposalCount}件あるため、承認の有効・無効や担当者は変更できません。先に提案を承認または差し戻してください`,
+        "approval_settings_locked",
+        { openProposalCount },
+      );
+    }
+
+    if (next.enabled) {
+      if (next.finalApproverUserId === null) {
+        throw badRequest("最終承認者を選択してください");
+      }
+      const candidates = await loadEligiblePlanParticipants(
+        q,
+        input.portfolioId,
+        input.workspaceId,
+      );
+      const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+      const approver = byId.get(next.finalApproverUserId);
+      if (!approver) {
+        throw badRequest(
+          "最終承認者として選択できるのは、この投資計画を完全に閲覧できる有効なメンバーだけです",
+        );
+      }
+      if (next.reviewerUserId !== null) {
+        const reviewer = byId.get(next.reviewerUserId);
+        if (!reviewer) {
+          throw badRequest(
+            "レビュー担当として選択できるのは、この投資計画を完全に閲覧できる有効なメンバーだけです",
+          );
+        }
+      }
+    }
+
+    await q.query(
+      `INSERT INTO portfolio_plan_approval_settings
+         (portfolio_id, workspace_id, approvals_enabled, final_approver_user_id,
+          default_reviewer_user_id, updated_by, updated_at)
+       VALUES ($1::bigint, $2::bigint, $3, $4::bigint, $5::bigint, $6::bigint, now())
+       ON CONFLICT (portfolio_id) DO UPDATE SET
+         workspace_id = EXCLUDED.workspace_id,
+         approvals_enabled = EXCLUDED.approvals_enabled,
+         final_approver_user_id = EXCLUDED.final_approver_user_id,
+         default_reviewer_user_id = EXCLUDED.default_reviewer_user_id,
+         updated_by = EXCLUDED.updated_by,
+         updated_at = now()`,
+      [
+        input.portfolioId,
+        input.workspaceId,
+        next.enabled,
+        next.enabled ? next.finalApproverUserId : null,
+        next.enabled ? next.reviewerUserId : null,
+        input.userId,
+      ],
+    );
+
+    return {
+      enabled: next.enabled,
+      finalApproverUserId: next.enabled ? next.finalApproverUserId : null,
+      reviewerUserId: next.enabled ? next.reviewerUserId : null,
+    };
+  });
+}
+
+/**
+ * Freeze both scenarios and hand the proposal to the configured final approver.
+ * The submission itself never adopts a plan; direct adoption is refused while
+ * approvals are enabled.
+ */
+export async function submitProposal(input: {
+  workspaceId: number;
+  portfolioId: number;
+  userId: number;
+  periodId: number;
+  revision: number;
+  chosenSlot: 0 | 1;
+  reason: string;
+  reviewerUserId?: number | null;
+  requestId: string;
+}): Promise<{ id: number; version: number; idempotent: boolean; submittedAt: string }> {
+  try {
+    return await withTransaction(async (q) => {
+      await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
+      await requirePlanningEditor(q, input.portfolioId, input.workspaceId, input.userId);
+      const period = await lockPlanningPeriod(
+        q,
+        input.periodId,
+        input.portfolioId,
+        input.workspaceId,
+      );
+
+      const previous = await q.query(
+        `SELECT id, version, submitted_by, recommended_slot, reason, reviewer_user_id,
+           submitted_at::text AS submitted_at
+         FROM portfolio_plan_proposals
+         WHERE period_id = $1::bigint AND request_id = $2`,
+        [input.periodId, input.requestId],
+      );
+      if (previous.rowCount !== 0) {
+        const row = previous.rows[0];
+        const previousReviewerId =
+          row.reviewer_user_id === null || row.reviewer_user_id === undefined
+            ? null
+            : Number(row.reviewer_user_id);
+        if (
+          Number(row.submitted_by) !== input.userId ||
+          Number(row.recommended_slot) !== input.chosenSlot ||
+          String(row.reason) !== input.reason ||
+          (input.reviewerUserId !== undefined && input.reviewerUserId !== previousReviewerId)
+        ) {
+          throw new ApiError(
+            409,
+            "同じリクエストIDが別の提案内容で使用されています",
+            "request_id_reused",
+          );
+        }
+        return {
+          id: Number(row.id),
+          version: Number(row.version),
+          idempotent: true,
+          submittedAt: String(row.submitted_at),
+        };
+      }
+
+      const settings = await loadApprovalSettings(q, input.portfolioId);
+      const periodOpenProposals = await countOpenProposals(
+        q,
+        input.portfolioId,
+        input.periodId,
+      );
+      const block = proposalSubmissionBlock({
+        approvalsEnabled: settings.enabled,
+        finalApproverUserId: settings.finalApprover?.id ?? null,
+        submitterUserId: input.userId,
+        openProposal: periodOpenProposals > 0,
+      });
+      if (block === "approvals_disabled") {
+        throw conflict("このポートフォリオでは承認フローが有効になっていません", "approval_disabled");
+      }
+      if (block === "approver_missing") {
+        throw conflict(
+          "最終承認者が設定されていないため、投資提案を提出できません。承認設定を確認してください",
+          "approver_unavailable",
+        );
+      }
+      if (block === "self_approval") {
+        throw new ApiError(
+          409,
+          "申請者自身は最終承認者になれません。別の最終承認者を設定するか、別のメンバーが提案してください",
+          "self_approval_forbidden",
+        );
+      }
+      if (block === "open_proposal") {
+        throw conflict(
+          "この四半期には未解決の投資提案があります。承認または差し戻し後に再提出してください",
+          "proposal_open",
+        );
+      }
+
+      await assertRevision(period.revision, input.revision);
+      await assertPeriodFullyVisible(
+        q,
+        input.periodId,
+        input.portfolioId,
+        input.workspaceId,
+        input.userId,
+      );
+
+      const candidates = await loadEligiblePlanParticipants(
+        q,
+        input.portfolioId,
+        input.workspaceId,
+      );
+      const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+      const approverId = settings.finalApprover?.id ?? null;
+      if (approverId === null) {
+        throw conflict("最終承認者が設定されていません", "approver_unavailable");
+      }
+      const approver = byId.get(approverId);
+      if (!approver) {
+        throw conflict(
+          "最終承認者がこの投資計画を完全に閲覧できないため、提案を提出できません。承認設定を確認してください",
+          "approver_unavailable",
+        );
+      }
+      const reviewerId =
+        input.reviewerUserId === undefined
+          ? (settings.reviewer?.id ?? null)
+          : input.reviewerUserId;
+      let reviewerName: string | null = null;
+      if (reviewerId !== null) {
+        const reviewer = byId.get(reviewerId);
+        if (!reviewer) {
+          throw conflict(
+            "指定したレビュー担当がこの投資計画を完全に閲覧できないため、提案を提出できません",
+            "reviewer_unavailable",
+          );
+        }
+        reviewerName = reviewer.name;
+      }
+
+      const roles = await loadRoles(q, input.portfolioId);
+      const capacities = await loadCapacities(q, input.periodId);
+      const initiatives = await loadPeriodInitiatives(q, input.periodId, input.portfolioId);
+      const scenarios = await loadScenarios(q, input.periodId, input.portfolioId);
+      if (!scenarios.some((scenario) => scenario.slot === input.chosenSlot)) {
+        throw badRequest("提案する案が見つかりません");
+      }
+      const actor = await q.query("SELECT name FROM users WHERE id = $1::bigint", [input.userId]);
+      if (actor.rowCount === 0) throw badRequest("実行者が見つかりません");
+
+      const snapshot = buildDecisionSnapshot({
+        period: {
+          id: period.id,
+          year: period.year,
+          quarter: period.quarter,
+          budgetYen: period.budgetYen,
+          revision: period.revision,
+        },
+        roles,
+        initiatives: initiatives as CalculationInitiative[],
+        capacities,
+        scenarios: scenarios.map((scenario) => ({
+          slot: scenario.slot,
+          name: scenario.name,
+          selectedCandidateIds: scenario.selectedInitiativeIds,
+        })),
+        chosenSlot: input.chosenSlot,
+      });
+      const snapshotHash = hashPlanningSnapshot(snapshot);
+      const versionResult = await q.query(
+        `SELECT COALESCE(MAX(version), 0) + 1 AS version
+         FROM portfolio_plan_proposals
+         WHERE period_id = $1::bigint`,
+        [input.periodId],
+      );
+      const version = Number(versionResult.rows[0].version);
+      const inserted = await q.query(
+        `INSERT INTO portfolio_plan_proposals
+           (workspace_id, portfolio_id, period_id, version, status, recommended_slot,
+            reason, request_id, submitted_by, submitted_by_name, submitted_at,
+            final_approver_user_id, final_approver_name, reviewer_user_id, reviewer_name,
+            period_revision, budget_yen, snapshot, snapshot_sha256)
+         VALUES ($1::bigint, $2::bigint, $3::bigint, $4::int, 'submitted', $5::smallint,
+                 $6, $7, $8::bigint, $9, now(),
+                 $10::bigint, $11, $12::bigint, $13,
+                 $14::int, $15::bigint, $16::jsonb, $17)
+         RETURNING id, submitted_at::text AS submitted_at`,
+        [
+          input.workspaceId,
+          input.portfolioId,
+          input.periodId,
+          version,
+          input.chosenSlot,
+          input.reason,
+          input.requestId,
+          input.userId,
+          String(actor.rows[0].name),
+          approver.id,
+          approver.name,
+          reviewerId,
+          reviewerName,
+          period.revision,
+          period.budgetYen,
+          JSON.stringify(snapshot),
+          snapshotHash,
+        ],
+      );
+      return {
+        id: Number(inserted.rows[0].id),
+        version,
+        idempotent: false,
+        submittedAt: String(inserted.rows[0].submitted_at),
+      };
+    });
+  } catch (error) {
+    const dbError = error as { code?: string; constraint?: string } | null;
+    if (
+      dbError?.code === "23505" &&
+      (dbError.constraint === "idx_portfolio_plan_proposals_one_open" ||
+        dbError.constraint === "portfolio_plan_proposals_period_id_version_key")
+    ) {
+      throw conflict(
+        "この四半期には未解決の投資提案があります。承認または差し戻し後に再提出してください",
+        "proposal_open",
+      );
+    }
+    throw error;
+  }
+}
+
 export async function adoptScenario(input: {
   workspaceId: number;
   portfolioId: number;
@@ -801,6 +1153,17 @@ export async function adoptScenario(input: {
     await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
     await requirePlanningEditor(q, input.portfolioId, input.workspaceId, input.userId);
     const period = await lockPlanningPeriod(q, input.periodId, input.portfolioId, input.workspaceId);
+
+    const approval = await loadApprovalSettings(q, input.portfolioId);
+    const openProposalCount = await countOpenProposals(q, input.portfolioId, null);
+    if (approval.enabled || openProposalCount > 0) {
+      throw new ApiError(
+        409,
+        "承認フローが有効なため、比較画面からの直接採用はできません。投資提案を提出し、最終承認者の決定を待ってください",
+        "approval_required",
+        { approvalRequired: true },
+      );
+    }
 
     const previous = await q.query(
       `SELECT id, chosen_slot, reason, decided_at::text AS decided_at
@@ -925,6 +1288,24 @@ export async function removePlanViewer(input: {
   return withTransaction(async (q) => {
     await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
     await requirePlanningEditor(q, input.portfolioId, input.workspaceId, input.userId);
+    const assigned = await q.query(
+      `SELECT 1
+       FROM portfolio_plan_proposals p
+       JOIN portfolios pf ON pf.id = p.portfolio_id
+       LEFT JOIN users u ON u.id = $2::bigint
+       WHERE p.portfolio_id = $1::bigint
+         AND p.status IN ('submitted', 'under_review')
+         AND (p.final_approver_user_id = $2::bigint OR p.reviewer_user_id = $2::bigint)
+         AND NOT (COALESCE(u.is_admin, FALSE) OR pf.owner_id = $2::bigint)
+       LIMIT 1`,
+      [input.portfolioId, input.viewerId],
+    );
+    if (assigned.rowCount !== 0) {
+      throw conflict(
+        "このユーザーは未解決の投資提案の最終承認者またはレビュー担当です。提案を解決してから閲覧者から外してください",
+        "approver_assigned",
+      );
+    }
     await q.query(
       `DELETE FROM portfolio_plan_viewers
        WHERE portfolio_id = $1::bigint AND user_id = $2::bigint`,

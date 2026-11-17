@@ -8,11 +8,14 @@ import {
 import { periodLabel, quarterStartMonth } from "./format";
 import {
   requirePlanningAccess,
+  loadEligiblePlanParticipants,
   visibleProjectIds,
   type PlanningAccessRecord,
 } from "./access";
 import { buildPlanningComparison } from "./select";
 import type {
+  PlanningApprovalCandidate,
+  PlanningApprovalSettings,
   PlanningCapacity,
   PlanningComparisonProjection,
   PlanningDecision,
@@ -20,6 +23,8 @@ import type {
   PlanningInitiative,
   PlanningOwnerCandidate,
   PlanningPeriodSummary,
+  PlanningProposal,
+  PlanningProposalStatus,
   PlanningRole,
   PlanningScenario,
   PlanningState,
@@ -311,6 +316,118 @@ export async function loadDecisions(
   });
 }
 
+export async function loadApprovalSettings(
+  q: Queryable,
+  portfolioId: number,
+): Promise<PlanningApprovalSettings> {
+  const result = await q.query(
+    `SELECT s.approvals_enabled,
+       s.final_approver_user_id, approver.name AS final_approver_name,
+       s.default_reviewer_user_id, reviewer.name AS reviewer_name,
+       (
+         SELECT COUNT(*)::int
+         FROM portfolio_plan_proposals p
+         WHERE p.portfolio_id = portfolios.id
+           AND p.status IN ('submitted', 'under_review')
+       ) AS open_proposal_count
+     FROM portfolios
+     LEFT JOIN portfolio_plan_approval_settings s ON s.portfolio_id = portfolios.id
+     LEFT JOIN users approver ON approver.id = s.final_approver_user_id
+     LEFT JOIN users reviewer ON reviewer.id = s.default_reviewer_user_id
+     WHERE portfolios.id = $1::bigint`,
+    [portfolioId],
+  );
+  if (result.rowCount === 0) throw new Error("portfolio not found");
+  const row = result.rows[0];
+  const approverId = nullableNumber(row.final_approver_user_id);
+  const reviewerId = nullableNumber(row.default_reviewer_user_id);
+  return {
+    enabled: row.approvals_enabled === true,
+    finalApprover:
+      approverId !== null && row.final_approver_name !== null
+        ? { id: approverId, name: String(row.final_approver_name) }
+        : null,
+    reviewer:
+      reviewerId !== null && row.reviewer_name !== null
+        ? { id: reviewerId, name: String(row.reviewer_name) }
+        : null,
+    openProposalCount: number(row.open_proposal_count ?? 0),
+  };
+}
+
+/**
+ * Submitted proposals are redacted exactly like adopted decisions: the current
+ * actor must still see every linked project stored inside the frozen snapshot.
+ */
+export async function loadProposals(
+  q: Queryable,
+  input: {
+    workspaceId: number;
+    portfolioId: number;
+    periodId: number;
+    userId: number;
+  },
+): Promise<PlanningProposal[]> {
+  const result = await q.query(
+    `SELECT id, version, status, recommended_slot, reason, submitted_by_name,
+       submitted_at::text AS submitted_at, final_approver_name, reviewer_name,
+       period_revision, budget_yen, snapshot, snapshot_sha256
+     FROM portfolio_plan_proposals
+     WHERE period_id = $1::bigint
+       AND portfolio_id = $2::bigint
+       AND workspace_id = $3::bigint
+     ORDER BY version DESC, id DESC`,
+    [input.periodId, input.portfolioId, input.workspaceId],
+  );
+
+  const parsed = result.rows.map((row) => {
+    const snapshot = row.snapshot;
+    const recommendedSlot: 0 | 1 = number(row.recommended_slot) === 1 ? 1 : 0;
+    if (!isPlanningDecisionSnapshot(snapshot) || snapshot.chosenSlot !== recommendedSlot) {
+      throw new Error("submitted proposal snapshot has an invalid shape");
+    }
+    if (hashPlanningSnapshot(snapshot) !== String(row.snapshot_sha256)) {
+      throw new Error("submitted proposal snapshot failed its integrity check");
+    }
+    return { row, snapshot, recommendedSlot };
+  });
+
+  const projectIds = parsed.flatMap(({ snapshot }) => snapshotProjectIds(snapshot));
+  const visible = await visibleProjectIds(q, input.userId, input.workspaceId, projectIds);
+
+  return parsed.map(({ row, snapshot, recommendedSlot }) => {
+    const hidden = snapshotProjectIds(snapshot).some((id) => !visible.has(id));
+    const base = {
+      id: number(row.id),
+      version: number(row.version),
+      status: String(row.status) as PlanningProposalStatus,
+      recommendedSlot,
+      recommendedScenarioName:
+        snapshot.scenarios[recommendedSlot]?.name ?? (recommendedSlot === 0 ? "A案" : "B案"),
+      submitterName: String(row.submitted_by_name),
+      submittedAt: String(row.submitted_at),
+      periodRevision: number(row.period_revision),
+      budgetYen: number(row.budget_yen),
+      finalApproverName: String(row.final_approver_name),
+      reviewerName: stringOrNull(row.reviewer_name),
+    };
+    if (hidden) {
+      return {
+        ...base,
+        restricted: true as const,
+        reason: null,
+        snapshot: null,
+      };
+    }
+    return {
+      ...base,
+      restricted: false as const,
+      reason: String(row.reason),
+      snapshot,
+    };
+  });
+}
+
 async function loadOwnerCandidates(
   q: Queryable,
   workspaceId: number,
@@ -399,6 +516,7 @@ export async function loadPlanningState(input: {
 
     const roles = await loadRoles(q, input.portfolioId);
     const projects = await getPortfolioProjects(input.portfolioId, input.userId, q);
+    const approval = await loadApprovalSettings(q, input.portfolioId);
 
     let capacities: PlanningCapacity[] = [];
     let initiatives: PlanningInitiative[] = [];
@@ -406,6 +524,7 @@ export async function loadPlanningState(input: {
     let scenarios: [PlanningScenario, PlanningScenario] | null = null;
     let comparison: PlanningComparisonProjection | null = null;
     let decisions: PlanningDecision[] = [];
+    let proposals: PlanningProposal[] = [];
     let restricted = false;
 
     if (selectedPeriod) {
@@ -453,16 +572,28 @@ export async function loadPlanningState(input: {
         periodId: selectedPeriod.id,
         userId: input.userId,
       });
+      proposals = await loadProposals(q, {
+        workspaceId: input.workspaceId,
+        portfolioId: input.portfolioId,
+        periodId: selectedPeriod.id,
+        userId: input.userId,
+      });
     }
 
     let viewers: PlanningViewer[] | null = null;
     let viewerCandidates: PlanningViewerCandidate[] | null = null;
     let ownerCandidates: PlanningOwnerCandidate[] | null = null;
+    let approvalCandidates: PlanningApprovalCandidate[] | null = null;
     if (access.canEdit) {
       // The member directory is editor-only; read-only projections never
       // include account emails. It follows the same active-workspace membership
       // rule as owner validation.
       ownerCandidates = await loadOwnerCandidates(q, input.workspaceId);
+      approvalCandidates = await loadEligiblePlanParticipants(
+        q,
+        input.portfolioId,
+        input.workspaceId,
+      );
       const loaded = await loadViewers(q, input.portfolioId);
       viewers = loaded.viewers;
       viewerCandidates = loaded.candidates;
@@ -485,6 +616,9 @@ export async function loadPlanningState(input: {
       scenarios,
       comparison,
       decisions,
+      approval,
+      proposals,
+      approvalCandidates,
       viewers,
       viewerCandidates,
       ownerCandidates,
