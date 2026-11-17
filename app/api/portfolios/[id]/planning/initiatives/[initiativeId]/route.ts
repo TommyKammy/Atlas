@@ -12,7 +12,9 @@ import {
   parseInitiativeKind,
   parseName,
   parseNullableCostYen,
+  parseNullableOwnerMemberId,
   parseOptionalProjectId,
+  parseOwnerNameHint,
   parsePositiveId,
   parseRevision,
 } from "@/lib/planning/validation";
@@ -32,7 +34,9 @@ export const PATCH = withUser(async (req, { uid, params }) => {
     periodId,
     revision,
     name: parseName(body.name, "案件名", 160),
-    ownerName: parseName(body.ownerName, "起案責任者", 120),
+    ownerMemberId:
+      body.ownerMemberId === undefined ? undefined : parseNullableOwnerMemberId(body.ownerMemberId),
+    ownerNameHint: parseOwnerNameHint(body.ownerName),
     expectedEffect: parseName(body.expectedEffect, "期待効果", 1000),
     kind: parseInitiativeKind(body.kind),
     linkedProjectId: parseOptionalProjectId(body.linkedProjectId),

@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Request } from "@playwright/test";
 
 // A missing selector should fail one action, not consume the whole test
 // timeout. This also keeps a controlled checkbox's server round-trip bounded.
@@ -9,8 +9,9 @@ test.use({ actionTimeout: 15_000 });
  *
  * The portfolio itself is an isolated API fixture because it is pre-existing
  * shared data. Everything that makes the planning decision (period, roles,
- * estimates, allocation, A/B comparison, adoption and history) is exercised
- * through the Japanese UI, with no network or feature mocks.
+ * estimates, owner selection, allocation, A/B comparison, adoption and
+ * history) is exercised through the Japanese UI, with no network or feature
+ * mocks.
  */
 
 const EMAIL = process.env.E2E_EMAIL ?? "admin@example.com";
@@ -41,7 +42,6 @@ const MUTATED_SUPPLY: Record<Role, DaysByMonth> = {
 
 type Initiative = {
   name: string;
-  owner: string;
   effect: string;
   kind: "fixed" | "candidate";
   costManYen: number;
@@ -51,7 +51,6 @@ type Initiative = {
 const INITIATIVES: Initiative[] = [
   {
     name: "基盤更改",
-    owner: "佐藤",
     effect: "保守期限までに基盤を移行",
     kind: "fixed",
     costManYen: 600,
@@ -63,7 +62,6 @@ const INITIATIVES: Initiative[] = [
   },
   {
     name: "申請自動化",
-    owner: "田中",
     effect: "申請処理を平均5日から2日に短縮",
     kind: "candidate",
     costManYen: 400,
@@ -75,7 +73,6 @@ const INITIATIVES: Initiative[] = [
   },
   {
     name: "顧客分析",
-    owner: "鈴木",
     effect: "顧客レポートの集計を月20時間削減",
     kind: "candidate",
     costManYen: 300,
@@ -86,6 +83,12 @@ const INITIATIVES: Initiative[] = [
     },
   },
 ];
+
+type DirectoryMember = {
+  id: number;
+  name: string;
+  email: string | null;
+};
 
 const portfoliosToRemove = new WeakMap<Page, number>();
 
@@ -146,6 +149,56 @@ async function seedPortfolio(page: Page): Promise<{ id: number; name: string }> 
   return { id, name };
 }
 
+async function loadDirectory(page: Page): Promise<DirectoryMember[]> {
+  const response = await page.request.get("/api/users");
+  expect(response.status(), await response.text()).toBe(200);
+  const body = await response.json() as { users: DirectoryMember[] };
+  expect(body.users.length).toBeGreaterThan(0);
+  return body.users;
+}
+
+async function loadCurrentUser(page: Page): Promise<DirectoryMember> {
+  const response = await page.request.get("/api/me");
+  expect(response.status(), await response.text()).toBe(200);
+  return await response.json() as DirectoryMember;
+}
+
+/**
+ * Resolve the owner through the real searchable member picker. The first
+ * initiative uses the explicit self action; the others type an email and pick
+ * the visible option, proving selection is deliberate and never implicit.
+ */
+async function selectOwner(
+  dialog: Locator,
+  owner: DirectoryMember,
+  useSelf: boolean,
+): Promise<void> {
+  if (useSelf) {
+    await dialog.getByRole("button", { name: "自分を設定", exact: true }).click();
+  } else {
+    const search = dialog.getByRole("combobox", {
+      name: "メンバーを検索（名前またはメールアドレス）",
+      exact: true,
+    });
+    await search.fill(owner.email ?? owner.name);
+    await expect(search).toHaveAttribute("aria-expanded", "true");
+    const option = dialog
+      .getByRole("listbox", { name: "起案責任者の候補", exact: true })
+      .getByRole("option")
+      .filter({ hasText: owner.email ?? owner.name })
+      .first();
+    await expect(option).toBeVisible();
+    await expect(option).toContainText(owner.name);
+    await option.click();
+    await expect(search).toHaveValue("");
+    await expect(search).toHaveAttribute("aria-expanded", "false");
+  }
+
+  const selected = dialog.locator("[data-owner-selected]");
+  await expect(selected).toContainText(owner.name);
+  if (owner.email) await expect(selected).toContainText(owner.email);
+}
+
 function planningTab(page: Page, label: string): Locator {
   return page.getByRole("navigation", { name: "投資計画" }).getByRole("button", {
     name: label,
@@ -204,13 +257,27 @@ async function createQuarter(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: "案件台帳", exact: true })).toBeVisible();
 }
 
-async function createInitiative(page: Page, initiative: Initiative): Promise<void> {
+async function createInitiative(
+  page: Page,
+  initiative: Initiative,
+  owner: DirectoryMember,
+  useSelf: boolean,
+): Promise<void> {
   await page.getByRole("button", { name: "＋ 案件を登録", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "案件を登録", exact: true });
   await expect(dialog).toBeVisible();
 
   await dialog.getByLabel("案件名", { exact: true }).fill(initiative.name);
-  await dialog.getByLabel("起案責任者", { exact: true }).fill(initiative.owner);
+  // New initiatives never inherit the current user: the picker starts empty.
+  await expect(dialog.locator("[data-owner-selected]")).toHaveCount(0);
+  await expect(
+    dialog.getByRole("combobox", {
+      name: "メンバーを検索（名前またはメールアドレス）",
+      exact: true,
+    }),
+  ).toHaveValue("");
+  await selectOwner(dialog, owner, useSelf);
+  await expect(dialog.locator("[data-owner-selected]")).toHaveCount(1);
   await dialog.getByLabel("期間内の概算費用（万円）", { exact: true }).fill(String(initiative.costManYen));
   await dialog.getByLabel("期待効果", { exact: true }).fill(initiative.effect);
   // Same wrapping-label caveat as the quarter select: scope to the select and
@@ -384,23 +451,144 @@ test("A/B comparison adopts B and freezes both alternatives after the live trial
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1440, height: 1000 });
   const portfolio = await seedPortfolio(page);
+  const directory = await loadDirectory(page);
+  const self = await loadCurrentUser(page);
+  const others = directory.filter((member) => member.id !== self.id);
+  const owners: DirectoryMember[] = [
+    self,
+    others[0] ?? self,
+    others[1] ?? others[0] ?? self,
+  ];
 
   // Entry through the existing shared-portfolio screen.
   await openPlanningFromPortfolio(page, portfolio);
   await createQuarter(page);
 
-  // Three estimates through the ledger dialog.
-  for (const initiative of INITIATIVES) await createInitiative(page, initiative);
+  // Three estimates through the ledger dialog. The owner is selected from the
+  // real workspace directory; the first uses the explicit self action.
+  for (const [index, initiative] of INITIATIVES.entries()) {
+    await createInitiative(page, initiative, owners[index], index === 0);
+  }
 
   const ledger = page.getByRole("region", { name: "案件一覧" });
   await expect(ledger.getByRole("row")).toHaveCount(1 + INITIATIVES.length);
-  for (const initiative of INITIATIVES) {
+  for (const [index, initiative] of INITIATIVES.entries()) {
     const row = ledger.getByRole("row").filter({ hasText: initiative.name });
-    await expect(row).toContainText(initiative.owner);
+    await expect(row).toContainText(owners[index].name);
     await expect(row).toContainText(initiative.effect);
     await expect(row).toContainText(`${initiative.costManYen} 万円`);
     await expect(row).toContainText(initiative.kind === "fixed" ? "全案に固定" : "比較候補");
   }
+  if (owners[0].email) {
+    // Read-only ledger state shows the stored name, never directory emails.
+    await expect(ledger).not.toContainText(owners[0].email);
+  }
+
+  // Reopen the linked owner and save unrelated fields. The existing member is
+  // retained instead of being re-resolved or replaced by free text.
+  const firstRow = ledger.getByRole("row").filter({ hasText: INITIATIVES[0].name });
+  await firstRow.getByRole("button", { name: INITIATIVES[0].name, exact: true }).click();
+  const editDialog = page.getByRole("dialog", { name: "案件を編集", exact: true });
+  await expect(editDialog).toBeVisible();
+  const retainedOwner = editDialog.locator("[data-owner-selected]");
+  await expect(retainedOwner).toContainText(owners[0].name);
+  if (owners[0].email) await expect(retainedOwner).toContainText(owners[0].email);
+
+  // Keyboard regression for the searchable picker inside the edit form.
+  const ownerSearch = editDialog.getByRole("combobox", {
+    name: "メンバーを検索（名前またはメールアドレス）",
+    exact: true,
+  });
+  const ownerListbox = editDialog.getByRole("listbox", {
+    name: "起案責任者の候補",
+    exact: true,
+  });
+  const ownerOptions = ownerListbox.getByRole("option");
+  await ownerSearch.click();
+  await expect(ownerSearch).toHaveAttribute("aria-expanded", "true");
+  const optionCount = await ownerOptions.count();
+  expect(optionCount).toBeGreaterThan(1);
+  const lastOptionId = await ownerOptions.nth(optionCount - 1).getAttribute("id");
+  const firstOptionId = await ownerOptions.first().getAttribute("id");
+  const secondOptionId = await ownerOptions.nth(1).getAttribute("id");
+  expect(lastOptionId).toBeTruthy();
+  expect(firstOptionId).toBeTruthy();
+  expect(secondOptionId).toBeTruthy();
+  await ownerSearch.press("End");
+  await expect(ownerSearch).toHaveAttribute("aria-activedescendant", lastOptionId!);
+  const activeId = await ownerSearch.getAttribute("aria-activedescendant");
+  expect(activeId).toBeTruthy();
+  await expect
+    .poll(() =>
+      page.evaluate((id) => {
+        const active = document.getElementById(id);
+        const list = active?.closest('[role="listbox"]');
+        if (!active || !list) return false;
+        const activeRect = active.getBoundingClientRect();
+        const listRect = list.getBoundingClientRect();
+        return activeRect.top >= listRect.top - 1 && activeRect.bottom <= listRect.bottom + 1;
+      }, activeId!),
+    )
+    .toBe(true);
+  await ownerSearch.press("Home");
+  await expect(ownerSearch).toHaveAttribute("aria-activedescendant", firstOptionId!);
+  await ownerSearch.press("ArrowDown");
+  await expect(ownerSearch).toHaveAttribute("aria-activedescendant", secondOptionId!);
+
+  // Focus leaving the search input closes the popup.
+  await editDialog.getByLabel("期間内の概算費用（万円）", { exact: true }).click();
+  await expect(ownerSearch).toHaveAttribute("aria-expanded", "false");
+
+  // Enter in this field must never submit the form: not for no results, not
+  // after Escape, and not after a selection closed the list.
+  const patchRequests: string[] = [];
+  const recordPatch = (request: Request) => {
+    const pathname = new URL(request.url()).pathname;
+    if (request.method() === "PATCH" && pathname.includes("/planning/initiatives/")) {
+      patchRequests.push(pathname);
+    }
+  };
+  page.on("request", recordPatch);
+
+  const noMatch = `no-such-member-${Date.now()}`;
+  await ownerSearch.fill(noMatch);
+  await expect(ownerSearch).toHaveAttribute("aria-expanded", "true");
+  await ownerSearch.press("Enter");
+  await expect(ownerSearch).toHaveValue(noMatch);
+  await expect(retainedOwner).toContainText(owners[0].name);
+
+  await ownerSearch.press("Escape");
+  await expect(ownerSearch).toHaveAttribute("aria-expanded", "false");
+  await ownerSearch.press("Enter");
+
+  if (owners[0].email) {
+    await ownerSearch.fill(owners[0].email);
+    await expect(ownerSearch).toHaveAttribute("aria-expanded", "true");
+    await ownerSearch.press("Enter");
+    await expect(ownerSearch).toHaveValue("");
+    await expect(ownerSearch).toHaveAttribute("aria-expanded", "false");
+    await ownerSearch.press("Enter");
+  }
+
+  await page.waitForTimeout(500);
+  page.off("request", recordPatch);
+  expect(patchRequests).toEqual([]);
+  await expect(editDialog).toBeVisible();
+  await expect(retainedOwner).toContainText(owners[0].name);
+
+  const [editResponse] = await Promise.all([
+    page.waitForResponse((response) => {
+      const pathname = new URL(response.url()).pathname;
+      return (
+        response.request().method() === "PATCH" &&
+        pathname.includes("/planning/initiatives/")
+      );
+    }),
+    editDialog.getByRole("button", { name: "変更を保存", exact: true }).click(),
+  ]);
+  expect(editResponse.status(), await editResponse.text()).toBe(200);
+  await expect(editDialog).toHaveCount(0);
+  await expect(firstRow).toContainText(owners[0].name);
 
   // Roles from the quarter dialog and the month-by-month allocation.
   await openTab(page, "職種別の余力");

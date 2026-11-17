@@ -11,6 +11,7 @@ import {
 } from "./ui";
 import PlanningDialog from "./PlanningDialog";
 import PlanningTable from "./PlanningTable";
+import OwnerPicker, { type OwnerSelection } from "./OwnerPicker";
 import { planningErrorMessage } from "./errors";
 import {
   formatDays,
@@ -25,6 +26,7 @@ import type {
   PlanningInitiative,
   PlanningInitiativeKind,
   PlanningMonth,
+  PlanningOwnerCandidate,
   PlanningPeriodSummary,
   PlanningProjectOption,
   PlanningRole,
@@ -33,7 +35,9 @@ import { PLANNING_MONTHS } from "@/lib/planning/types";
 
 export type InitiativeSaveInput = {
   name: string;
-  ownerName: string;
+  ownerMemberId: number | null;
+  /** Present only when retaining the exact legacy free-text owner. */
+  ownerName?: string;
   expectedEffect: string;
   kind: PlanningInitiativeKind;
   linkedProjectId: number | null;
@@ -53,6 +57,8 @@ export default function InitiativeDialog({
   projects,
   initiatives,
   carryovers,
+  ownerCandidates,
+  currentUserId,
   initiative,
   focusLink = false,
   onSave,
@@ -65,6 +71,8 @@ export default function InitiativeDialog({
   projects: PlanningProjectOption[];
   initiatives: PlanningInitiative[];
   carryovers: PlanningCarryover[];
+  ownerCandidates: PlanningOwnerCandidate[];
+  currentUserId: number;
   initiative?: PlanningInitiative;
   focusLink?: boolean;
   onSave: (input: InitiativeSaveInput) => Promise<void>;
@@ -72,7 +80,7 @@ export default function InitiativeDialog({
 }) {
   const formId = useId();
   const [name, setName] = useState("");
-  const [ownerName, setOwnerName] = useState("");
+  const [ownerSelection, setOwnerSelection] = useState<OwnerSelection>({ type: "none" });
   const [expectedEffect, setExpectedEffect] = useState("");
   const [kind, setKind] = useState<PlanningInitiativeKind>("candidate");
   const [linkedProjectId, setLinkedProjectId] = useState("");
@@ -90,7 +98,13 @@ export default function InitiativeDialog({
     if (wasOpen.current) return;
     wasOpen.current = true;
     setName(initiative?.name ?? "");
-    setOwnerName(initiative?.ownerName ?? "");
+    setOwnerSelection(
+      initiative
+        ? initiative.ownerMemberId !== null
+          ? { type: "member", id: initiative.ownerMemberId, name: initiative.ownerName }
+          : { type: "legacy", name: initiative.ownerName }
+        : { type: "none" },
+    );
     setExpectedEffect(initiative?.expectedEffect ?? "");
     setKind(initiative?.kind ?? "candidate");
     setLinkedProjectId(initiative?.linkedProjectId ? String(initiative.linkedProjectId) : "");
@@ -117,8 +131,8 @@ export default function InitiativeDialog({
       setError("案件名を入力してください");
       return;
     }
-    if (ownerName.trim() === "") {
-      setError("起案責任者を入力してください");
+    if (ownerSelection.type === "none") {
+      setError("起案責任者を選択してください");
       return;
     }
     if (expectedEffect.trim() === "") {
@@ -149,7 +163,8 @@ export default function InitiativeDialog({
     try {
       await onSave({
         name: name.trim(),
-        ownerName: ownerName.trim(),
+        ownerMemberId: ownerSelection.type === "member" ? ownerSelection.id : null,
+        ...(ownerSelection.type === "legacy" ? { ownerName: ownerSelection.name } : {}),
         expectedEffect: expectedEffect.trim(),
         kind,
         linkedProjectId: linkedProjectId === "" ? null : Number(linkedProjectId),
@@ -225,16 +240,12 @@ export default function InitiativeDialog({
           />
         </label>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className={labelClass}>
-            起案責任者
-            <input
-              value={ownerName}
-              onChange={(event) => setOwnerName(event.target.value)}
-              className={`${inputClass} mt-1`}
-              maxLength={120}
-              required
-            />
-          </label>
+          <OwnerPicker
+            candidates={ownerCandidates}
+            currentUserId={currentUserId}
+            value={ownerSelection}
+            onChange={setOwnerSelection}
+          />
           <label className={labelClass}>
             期間内の概算費用（万円）
             <input

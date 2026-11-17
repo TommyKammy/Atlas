@@ -45,6 +45,9 @@ export type PlanningDemand = {
 export type PlanningInitiative = {
   id: number;
   name: string;
+  /** Null only for legacy free-text owners that have not been associated yet. */
+  ownerMemberId: number | null;
+  /** Stored at save time; never recomputed from the current account name on read. */
   ownerName: string;
   expectedEffect: string;
   kind: PlanningInitiativeKind;
@@ -80,6 +83,13 @@ export type PlanningViewer = {
 };
 
 export type PlanningViewerCandidate = {
+  id: number;
+  name: string;
+  email: string | null;
+};
+
+/** Editor-only workspace directory used by the initiative owner picker. */
+export type PlanningOwnerCandidate = {
   id: number;
   name: string;
   email: string | null;
@@ -229,6 +239,9 @@ export type PlanningState = {
   decisions: PlanningDecision[];
   viewers: PlanningViewer[] | null;
   viewerCandidates: PlanningViewerCandidate[] | null;
+  /** Editor-only active-member directory. Never included in read-only state. */
+  ownerCandidates: PlanningOwnerCandidate[] | null;
+  currentUserId: number;
   projects: PlanningProjectOption[];
   restricted: boolean;
   restrictedReason: string | null;

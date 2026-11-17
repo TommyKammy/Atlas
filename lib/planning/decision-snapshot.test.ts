@@ -111,6 +111,7 @@ test("adopted snapshots freeze both plans, totals, gaps and skipped opportunity 
   const [a, b] = snapshot.scenarios;
   assert.equal(a.knownCostYen, 10_000_000);
   assert.equal(b.knownCostYen, 9_000_000);
+  assert.equal(a.included.find((item) => item.id === 1)?.ownerName, "佐藤");
   assert.equal(a.skipped[0].name, "顧客分析");
   assert.equal(a.skipped[0].expectedEffect, "集計を月20時間削減");
   const jan = a.cells.find((cell) => cell.roleId === 1 && cell.monthIndex === 1);

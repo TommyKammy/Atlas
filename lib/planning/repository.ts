@@ -18,6 +18,7 @@ import type {
   PlanningDecision,
   PlanningDemand,
   PlanningInitiative,
+  PlanningOwnerCandidate,
   PlanningPeriodSummary,
   PlanningRole,
   PlanningScenario,
@@ -101,7 +102,7 @@ export async function loadPeriodInitiatives(
   portfolioId: number,
 ): Promise<PlanningInitiative[]> {
   const result = await q.query(
-    `SELECT i.id, i.name, i.owner_name, i.expected_effect, e.kind,
+    `SELECT i.id, i.name, i.owner_member_id, i.owner_name, i.expected_effect, e.kind,
        i.linked_project_id, p.name AS linked_project_name, e.cost_yen
      FROM portfolio_initiative_estimates e
      JOIN portfolio_initiatives i
@@ -138,6 +139,7 @@ export async function loadPeriodInitiatives(
   return result.rows.map((row) => ({
     id: number(row.id),
     name: String(row.name),
+    ownerMemberId: nullableNumber(row.owner_member_id),
     ownerName: String(row.owner_name),
     expectedEffect: String(row.expected_effect),
     kind: row.kind === "fixed" ? "fixed" : "candidate",
@@ -309,6 +311,32 @@ export async function loadDecisions(
   });
 }
 
+async function loadOwnerCandidates(
+  q: Queryable,
+  workspaceId: number,
+): Promise<PlanningOwnerCandidate[]> {
+  const result = await q.query(
+    `SELECT u.id, u.name, u.email
+     FROM users u
+     JOIN workspaces w ON w.id = $1::bigint
+     WHERE u.deactivated_at IS NULL
+       AND (
+         u.role_id IS NULL
+         OR EXISTS (
+           SELECT 1 FROM workspace_roles r
+           WHERE r.id = u.role_id AND r.workspace_id = w.id
+         )
+       )
+     ORDER BY u.name, u.id`,
+    [workspaceId],
+  );
+  return result.rows.map((row) => ({
+    id: number(row.id),
+    name: String(row.name),
+    email: stringOrNull(row.email),
+  }));
+}
+
 async function loadViewers(
   q: Queryable,
   portfolioId: number,
@@ -429,7 +457,12 @@ export async function loadPlanningState(input: {
 
     let viewers: PlanningViewer[] | null = null;
     let viewerCandidates: PlanningViewerCandidate[] | null = null;
+    let ownerCandidates: PlanningOwnerCandidate[] | null = null;
     if (access.canEdit) {
+      // The member directory is editor-only; read-only projections never
+      // include account emails. It follows the same active-workspace membership
+      // rule as owner validation.
+      ownerCandidates = await loadOwnerCandidates(q, input.workspaceId);
       const loaded = await loadViewers(q, input.portfolioId);
       viewers = loaded.viewers;
       viewerCandidates = loaded.candidates;
@@ -454,6 +487,8 @@ export async function loadPlanningState(input: {
       decisions,
       viewers,
       viewerCandidates,
+      ownerCandidates,
+      currentUserId: input.userId,
       projects: projects.map((project) => ({ id: project.id, name: project.name })),
       restricted,
       restrictedReason: restricted

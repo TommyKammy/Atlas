@@ -13,6 +13,7 @@ const capacities = ([1, 2, 3] as const).map((monthIndex) => ({
 const fixed: PlanningInitiative = {
   id: 1,
   name: "基盤更改",
+  ownerMemberId: 1,
   ownerName: "佐藤",
   expectedEffect: "基盤を移行",
   kind: "fixed",
@@ -29,6 +30,7 @@ const fixed: PlanningInitiative = {
 const candidate: PlanningInitiative = {
   id: 2,
   name: "申請自動化",
+  ownerMemberId: 2,
   ownerName: "田中",
   expectedEffect: "申請処理を短縮",
   kind: "candidate",

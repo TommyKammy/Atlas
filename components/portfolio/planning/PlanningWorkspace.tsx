@@ -427,6 +427,8 @@ export default function PlanningWorkspace({
           projects={state.projects}
           initiatives={state.initiatives}
           carryovers={state.carryovers}
+          ownerCandidates={state.ownerCandidates ?? []}
+          currentUserId={state.currentUserId}
           initiative={initiative}
           focusLink={initiativeDialog.focusLink}
           onSave={saveInitiative}

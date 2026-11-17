@@ -13,6 +13,10 @@ import {
 import { buildDecisionSnapshot, type CalculationInitiative } from "./calculations";
 import { hashPlanningSnapshot } from "./decision-snapshot";
 import {
+  planInitiativeOwnerChange,
+  resolveActiveInitiativeOwner,
+} from "./owner";
+import {
   loadCapacities,
   loadPeriodInitiatives,
   loadRoles,
@@ -393,7 +397,10 @@ export type InitiativeMutationInput = {
   periodId: number;
   revision: number;
   name: string;
-  ownerName: string;
+  /** Omitted on update means "keep the stored owner", including an inactive one. */
+  ownerMemberId?: number | null;
+  /** Echoed only to retain an existing legacy free-text name on update. */
+  ownerNameHint?: string | null;
   expectedEffect: string;
   kind: PlanningInitiativeKind;
   linkedProjectId: number | null;
@@ -403,7 +410,10 @@ export type InitiativeMutationInput = {
 
 export async function createInitiative(input: InitiativeMutationInput): Promise<{ id: number; revision: number }> {
   const name = parseName(input.name, "案件名", 160);
-  const ownerName = parseName(input.ownerName, "起案責任者", 120);
+  if (input.ownerMemberId === null || input.ownerMemberId === undefined) {
+    throw badRequest("起案責任者を選択してください");
+  }
+  const ownerMemberId = input.ownerMemberId;
   const expectedEffect = parseName(input.expectedEffect, "期待効果", 1000);
   return withTransaction(async (q) => {
     await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
@@ -417,6 +427,7 @@ export async function createInitiative(input: InitiativeMutationInput): Promise<
       input.workspaceId,
       input.userId,
     );
+    const owner = await resolveActiveInitiativeOwner(q, input.workspaceId, ownerMemberId);
     await validateProjectLink(q, {
       portfolioId: input.portfolioId,
       workspaceId: input.workspaceId,
@@ -428,15 +439,16 @@ export async function createInitiative(input: InitiativeMutationInput): Promise<
 
     const inserted = await q.query(
       `INSERT INTO portfolio_initiatives
-         (workspace_id, portfolio_id, name, owner_name, expected_effect,
+         (workspace_id, portfolio_id, name, owner_member_id, owner_name, expected_effect,
           linked_project_id, created_by)
-       VALUES ($1::bigint, $2::bigint, $3, $4, $5, $6::bigint, $7::bigint)
+       VALUES ($1::bigint, $2::bigint, $3, $4::bigint, $5, $6, $7::bigint, $8::bigint)
        RETURNING id`,
       [
         input.workspaceId,
         input.portfolioId,
         name,
-        ownerName,
+        owner.ownerMemberId,
+        owner.ownerName,
         expectedEffect,
         input.linkedProjectId,
         input.userId,
@@ -472,7 +484,6 @@ export async function updateInitiative(
   input: InitiativeMutationInput & { initiativeId: number },
 ): Promise<{ revision: number }> {
   const name = parseName(input.name, "案件名", 160);
-  const ownerName = parseName(input.ownerName, "起案責任者", 120);
   const expectedEffect = parseName(input.expectedEffect, "期待効果", 1000);
   return withTransaction(async (q) => {
     await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
@@ -487,7 +498,7 @@ export async function updateInitiative(
       input.userId,
     );
     const target = await q.query(
-      `SELECT i.id, e.kind, i.linked_project_id
+      `SELECT i.id, e.kind, i.linked_project_id, i.owner_member_id, i.owner_name
        FROM portfolio_initiatives i
        JOIN portfolio_initiative_estimates e
          ON e.initiative_id = i.id AND e.period_id = $2::bigint
@@ -510,6 +521,30 @@ export async function updateInitiative(
     }
     await validateDemandRoles(q, input.portfolioId, input.demands);
 
+    // Retaining the same member is always allowed, even if that account is now
+    // inactive. Only a deliberate change is checked against the active
+    // directory. A legacy free-text owner can be kept as-is or associated with
+    // a member; it is never guessed or rewritten during an unrelated save.
+    const ownerChange = planInitiativeOwnerChange(
+      {
+        ownerMemberId:
+          target.rows[0].owner_member_id === null ||
+          target.rows[0].owner_member_id === undefined
+            ? null
+            : Number(target.rows[0].owner_member_id),
+        ownerName: String(target.rows[0].owner_name),
+      },
+      input.ownerMemberId,
+      input.ownerNameHint,
+    );
+    const owner =
+      ownerChange.mode === "keep"
+        ? {
+            ownerMemberId: ownerChange.ownerMemberId,
+            ownerName: ownerChange.ownerName,
+          }
+        : await resolveActiveInitiativeOwner(q, input.workspaceId, ownerChange.ownerMemberId);
+
     if (String(target.rows[0].kind) !== input.kind) {
       // Classification belongs to this period's estimate. Reset only this
       // period's scenario selections; earlier quarters keep their own kind.
@@ -524,13 +559,14 @@ export async function updateInitiative(
     }
     await q.query(
       `UPDATE portfolio_initiatives
-       SET name = $2, owner_name = $3, expected_effect = $4,
-           linked_project_id = $5::bigint, updated_at = now()
-       WHERE id = $1::bigint AND portfolio_id = $6::bigint`,
+       SET name = $2, owner_member_id = $3::bigint, owner_name = $4,
+           expected_effect = $5, linked_project_id = $6::bigint, updated_at = now()
+       WHERE id = $1::bigint AND portfolio_id = $7::bigint`,
       [
         input.initiativeId,
         name,
-        ownerName,
+        owner.ownerMemberId,
+        owner.ownerName,
         expectedEffect,
         input.linkedProjectId,
         input.portfolioId,

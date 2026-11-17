@@ -92,6 +92,45 @@ export function parseNullableDays(value: unknown): number | null {
   return tenths / 10;
 }
 
+/** New initiatives must name exactly one active member; free text is not accepted. */
+export function parseOwnerMemberId(value: unknown): number {
+  if (value === null || value === undefined || value === "") {
+    throw badRequest("起案責任者を選択してください");
+  }
+  return parseOwnerMemberIdValue(value);
+}
+
+/** Updates may retain a legacy free-text owner by omitting the member id. */
+export function parseNullableOwnerMemberId(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  return parseOwnerMemberIdValue(value);
+}
+
+function parseOwnerMemberIdValue(value: unknown): number {
+  const raw = typeof value === "number" ? value : typeof value === "string" ? value.trim() : null;
+  if (raw === null || (typeof raw === "string" && !/^\d+$/.test(raw))) {
+    throw badRequest("起案責任者が正しくありません");
+  }
+  const id = Number(raw);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw badRequest("起案責任者が正しくありません");
+  }
+  return id;
+}
+
+/**
+ * Optional legacy name echoed by the edit dialog. The server only accepts it
+ * when it is identical to the stored legacy value; it never derives or guesses
+ * a member from this text.
+ */
+export function parseOwnerNameHint(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") throw badRequest("起案責任者の入力内容が正しくありません");
+  const name = value.trim();
+  if (name.length > 120) throw badRequest("起案責任者は120文字以内で入力してください");
+  return name;
+}
+
 export function parseName(value: unknown, label: string, maxLength: number): string {
   const name = typeof value === "string" ? value.trim() : "";
   if (name === "") throw badRequest(`${label}を入力してください`);
