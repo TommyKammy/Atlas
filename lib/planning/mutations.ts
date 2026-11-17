@@ -15,10 +15,13 @@ import {
 import {
   approvalSettingsChanged,
   effectiveProposalStatus,
+  isOpenProposalStatus,
   proposalInitialReviewOutcome,
   proposalInitialStatus,
   proposalReviewOutcome,
+  proposalStatusAfterDecision,
   proposalStatusAfterReview,
+  proposalStatusLabel,
   proposalSubmissionBlock,
   type ProposalReviewAction,
 } from "./approvals";
@@ -26,6 +29,7 @@ import { buildDecisionSnapshot, type CalculationInitiative } from "./calculation
 import {
   hashPlanningSnapshot,
   isPlanningDecisionSnapshot,
+  samePlanningPlanContent,
   snapshotProjectIds,
 } from "./decision-snapshot";
 import { transitionProposalStatus } from "./proposal-transition";
@@ -42,6 +46,7 @@ import {
 } from "./repository";
 import type {
   PlanningInitiativeKind,
+  PlanningProposalDecisionAction,
   PlanningProposalReviewOutcome,
   PlanningProposalStatus,
   PlanningQuarter,
@@ -1221,6 +1226,28 @@ export async function reviewProposal(input: {
     const status = effectiveProposalStatus(rawStatus, reviewerUserId);
     const outcome = proposalReviewOutcome(input.action);
 
+    if (reviewerUserId === null) {
+      throw conflict("この提案にはレビュー担当者が設定されていません", "reviewer_unassigned");
+    }
+    if (reviewerUserId !== input.userId) {
+      throw forbidden("この提案をレビューできるのは、割り当てられたレビュー担当者だけです");
+    }
+
+    const snapshot = row.snapshot;
+    if (
+      !isPlanningDecisionSnapshot(snapshot) ||
+      hashPlanningSnapshot(snapshot) !== String(row.snapshot_sha256)
+    ) {
+      throw conflict("提案の内容を確認できませんでした", "proposal_snapshot_invalid");
+    }
+    const projectIds = snapshotProjectIds(snapshot);
+    const visible = await visibleProjectIds(q, input.userId, input.workspaceId, projectIds);
+    if (projectIds.some((projectId) => !visible.has(projectId))) {
+      throw forbidden(
+        "閲覧権限のない元プロジェクトが含まれるため、この提案をレビューできません。全案件の元プロジェクト閲覧権限が必要です",
+      );
+    }
+
     if (input.requestId !== null && row.review_request_id === input.requestId) {
       if (
         reviewerUserId !== input.userId ||
@@ -1265,27 +1292,6 @@ export async function reviewProposal(input: {
         { currentStatus: status },
       );
     }
-    if (reviewerUserId === null) {
-      throw conflict("この提案にはレビュー担当者が設定されていません", "reviewer_unassigned");
-    }
-    if (reviewerUserId !== input.userId) {
-      throw forbidden("この提案をレビューできるのは、割り当てられたレビュー担当者だけです");
-    }
-
-    const snapshot = row.snapshot;
-    if (
-      !isPlanningDecisionSnapshot(snapshot) ||
-      hashPlanningSnapshot(snapshot) !== String(row.snapshot_sha256)
-    ) {
-      throw conflict("提案の内容を確認できませんでした", "proposal_snapshot_invalid");
-    }
-    const projectIds = snapshotProjectIds(snapshot);
-    const visible = await visibleProjectIds(q, input.userId, input.workspaceId, projectIds);
-    if (projectIds.some((projectId) => !visible.has(projectId))) {
-      throw forbidden(
-        "閲覧権限のない元プロジェクトが含まれるため、この提案をレビューできません。全案件の元プロジェクト閲覧権限が必要です",
-      );
-    }
 
     const nextStatus = proposalStatusAfterReview(input.action);
     const transitioned = await transitionProposalStatus(q, {
@@ -1318,6 +1324,504 @@ export async function reviewProposal(input: {
       idempotent: false,
     };
   });
+}
+
+/**
+ * Final approver action. Approval copies the frozen submission snapshot into
+ * the existing immutable decision table and links it back to the proposal in
+ * one transaction. Returns and deferrals only close the proposal version and
+ * never create an adopted decision.
+ */
+export async function decideProposal(input: {
+  workspaceId: number;
+  portfolioId: number;
+  userId: number;
+  proposalId: number;
+  action: PlanningProposalDecisionAction;
+  reason: string;
+  requestId: string;
+  expectedStatus: PlanningProposalStatus | null;
+}): Promise<{
+  id: number;
+  version: number;
+  status: PlanningProposalStatus;
+  action: PlanningProposalDecisionAction;
+  decisionId: number | null;
+  decidedAt: string;
+  idempotent: boolean;
+}> {
+  try {
+    return await withTransaction(async (q) => {
+      await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
+      await requirePlanningAccess(q, input.portfolioId, input.workspaceId, input.userId);
+
+      const actor = await q.query(
+        "SELECT name FROM users WHERE id = $1::bigint AND deactivated_at IS NULL",
+        [input.userId],
+      );
+      if (actor.rowCount === 0) throw forbidden("実行者が存在しないか無効です");
+
+      const loaded = await q.query(
+        `SELECT id, version, status, period_id, recommended_slot, submitted_by,
+           final_approver_user_id, reviewer_user_id, review_outcome,
+           decision_action, decision_note,
+           decision_request_id, decision_id, decided_at::text AS decided_at,
+           snapshot, snapshot_sha256
+         FROM portfolio_plan_proposals
+         WHERE id = $1::bigint
+           AND portfolio_id = $2::bigint
+           AND workspace_id = $3::bigint
+         FOR UPDATE`,
+        [input.proposalId, input.portfolioId, input.workspaceId],
+      );
+      if (loaded.rowCount === 0) throw notFound("投資提案が見つかりません");
+      const row = loaded.rows[0];
+      const reviewerUserId =
+        row.reviewer_user_id === null || row.reviewer_user_id === undefined
+          ? null
+          : Number(row.reviewer_user_id);
+      const rawStatus = String(row.status) as PlanningProposalStatus;
+      const status = effectiveProposalStatus(rawStatus, reviewerUserId);
+      const finalApproverUserId = Number(row.final_approver_user_id);
+      const submitterUserId = Number(row.submitted_by);
+
+      // Assignment and frozen-snapshot visibility are verified even when this
+      // is a retry of an already-recorded action, so revoked actors are denied.
+      if (finalApproverUserId !== input.userId) {
+        throw forbidden(
+          "この提案を決裁できるのは、割り当てられた最終承認者だけです",
+        );
+      }
+      if (submitterUserId === input.userId) {
+        throw forbidden("申請者自身はこの提案を決裁できません");
+      }
+
+      const snapshot = row.snapshot;
+      const recommendedSlot = Number(row.recommended_slot) === 1 ? (1 as const) : (0 as const);
+      if (
+        !isPlanningDecisionSnapshot(snapshot) ||
+        snapshot.chosenSlot !== recommendedSlot ||
+        hashPlanningSnapshot(snapshot) !== String(row.snapshot_sha256)
+      ) {
+        throw new ApiError(
+          409,
+          "提案の内容を確認できませんでした",
+          "proposal_snapshot_invalid",
+        );
+      }
+      const projectIds = snapshotProjectIds(snapshot);
+      const visible = await visibleProjectIds(q, input.userId, input.workspaceId, projectIds);
+      if (projectIds.some((projectId) => !visible.has(projectId))) {
+        throw forbidden(
+          "閲覧権限のない元プロジェクトが含まれるため、この提案を決裁できません。全案件の元プロジェクト閲覧権限が必要です",
+        );
+      }
+
+      if (row.decision_request_id === input.requestId) {
+        if (
+          finalApproverUserId !== input.userId ||
+          row.decision_action !== input.action ||
+          String(row.decision_note ?? "") !== input.reason ||
+          row.decided_at === null ||
+          row.decided_at === undefined
+        ) {
+          throw new ApiError(
+            409,
+            "同じリクエストIDが別の決裁内容で使用されています",
+            "request_id_reused",
+          );
+        }
+        return {
+          id: Number(row.id),
+          version: Number(row.version),
+          status,
+          action: input.action,
+          decisionId:
+            row.decision_id === null || row.decision_id === undefined
+              ? null
+              : Number(row.decision_id),
+          decidedAt: String(row.decided_at),
+          idempotent: true,
+        };
+      }
+
+      if (
+        input.expectedStatus !== null &&
+        input.expectedStatus !== status &&
+        input.expectedStatus !== rawStatus
+      ) {
+        throw new ApiError(
+          409,
+          "提案の状態が変わりました。最新の内容を確認してください",
+          "proposal_status_changed",
+          { currentStatus: status },
+        );
+      }
+
+      if (
+        status === "under_review" ||
+        (reviewerUserId !== null && row.review_outcome !== "passed")
+      ) {
+        throw new ApiError(
+          409,
+          "レビュー担当の確認が完了していないため、最終決裁はできません。先にレビューを完了してください",
+          "review_pending",
+          { currentStatus: status },
+        );
+      }
+      if (status !== "pending_decision") {
+        throw new ApiError(
+          409,
+          `この提案は既に「${proposalStatusLabel(status)}」です。最新の内容を確認してください`,
+          "proposal_status_changed",
+          { currentStatus: status },
+        );
+      }
+
+      // Only approval adopts the frozen plan. A stale submission could not be
+      // safely adopted, but a return/defer is still a valid closure.
+      if (input.action === "approve") {
+        const period = await lockPlanningPeriod(
+          q,
+          Number(row.period_id),
+          input.portfolioId,
+          input.workspaceId,
+        );
+        const roles = await loadRoles(q, input.portfolioId);
+        const capacities = await loadCapacities(q, period.id);
+        const initiatives = await loadPeriodInitiatives(
+          q,
+          period.id,
+          input.portfolioId,
+        );
+        const scenarios = await loadScenarios(q, period.id, input.portfolioId);
+        const currentSnapshot = buildDecisionSnapshot({
+          period: {
+            id: period.id,
+            year: period.year,
+            quarter: period.quarter,
+            budgetYen: period.budgetYen,
+            revision: period.revision,
+          },
+          roles,
+          initiatives: initiatives as CalculationInitiative[],
+          capacities,
+          scenarios: scenarios.map((scenario) => ({
+            slot: scenario.slot,
+            name: scenario.name,
+            selectedCandidateIds: scenario.selectedInitiativeIds,
+          })),
+          chosenSlot: snapshot.chosenSlot,
+        });
+        if (!samePlanningPlanContent(snapshot, currentSnapshot)) {
+          throw new ApiError(
+            409,
+            "提出時点から計画（予算・配賦枠・案件構成など）が変更されています。この提案は承認できません。提案を取り下げ、現在の計画で新しい版を提出してください",
+            "proposal_stale",
+            { currentRevision: period.revision },
+          );
+        }
+      }
+
+      const decidedAtResult = await q.query("SELECT now()::text AS decided_at");
+      const decidedAt = String(decidedAtResult.rows[0].decided_at);
+      const nextStatus = proposalStatusAfterDecision(input.action);
+
+      if (input.action === "approve") {
+        const inserted = await q.query(
+          `INSERT INTO portfolio_plan_decisions
+             (workspace_id, portfolio_id, period_id, chosen_slot, reason, request_id,
+              actor_id, actor_name, decided_at, period_revision, budget_yen,
+              snapshot, snapshot_sha256, source_proposal_id)
+           VALUES ($1::bigint, $2::bigint, $3::bigint, $4::smallint, $5, $6,
+                   $7::bigint, $8, $9::timestamptz, $10::int, $11::bigint,
+                   $12::jsonb, $13, $14::bigint)
+           RETURNING id, decided_at::text AS decided_at`,
+          [
+            input.workspaceId,
+            input.portfolioId,
+            Number(row.period_id),
+            snapshot.chosenSlot,
+            input.reason,
+            input.requestId,
+            input.userId,
+            String(actor.rows[0].name),
+            decidedAt,
+            snapshot.period.revision,
+            snapshot.period.budgetYen,
+            JSON.stringify(snapshot),
+            String(row.snapshot_sha256),
+            input.proposalId,
+          ],
+        );
+        const decisionId = Number(inserted.rows[0].id);
+        const decisionDecidedAt = String(inserted.rows[0].decided_at);
+        const updated = await q.query(
+          `UPDATE portfolio_plan_proposals
+           SET status = 'approved',
+               decision_action = 'approve',
+               decision_note = $4,
+               decided_by = $5::bigint,
+               decided_by_name = $6,
+               decided_at = $7::timestamptz,
+               decision_id = $8::bigint,
+               decision_request_id = $9
+           WHERE id = $1::bigint
+             AND status = $2::text
+             AND final_approver_user_id = $3::bigint
+           RETURNING version`,
+          [
+            input.proposalId,
+            rawStatus,
+            input.userId,
+            input.reason,
+            input.userId,
+            String(actor.rows[0].name),
+            decisionDecidedAt,
+            decisionId,
+            input.requestId,
+          ],
+        );
+        if (updated.rowCount === 0) {
+          throw new ApiError(
+            409,
+            "提案の状態が変わりました。最新の内容を確認してください",
+            "proposal_status_changed",
+          );
+        }
+        return {
+          id: input.proposalId,
+          version: Number(updated.rows[0].version),
+          status: nextStatus,
+          action: input.action,
+          decisionId,
+          decidedAt: decisionDecidedAt,
+          idempotent: false,
+        };
+      }
+
+      const updated = await q.query(
+        `UPDATE portfolio_plan_proposals
+         SET status = $4::text,
+             decision_action = $5,
+             decision_note = $6,
+             decided_by = $7::bigint,
+             decided_by_name = $8,
+             decided_at = now(),
+             decision_request_id = $9
+         WHERE id = $1::bigint
+           AND status = $2::text
+           AND final_approver_user_id = $3::bigint
+         RETURNING version, decided_at::text AS decided_at`,
+        [
+          input.proposalId,
+          rawStatus,
+          input.userId,
+          nextStatus,
+          input.action,
+          input.reason,
+          input.userId,
+          String(actor.rows[0].name),
+          input.requestId,
+        ],
+      );
+      if (updated.rowCount === 0) {
+        throw new ApiError(
+          409,
+          "提案の状態が変わりました。最新の内容を確認してください",
+          "proposal_status_changed",
+        );
+      }
+      return {
+        id: input.proposalId,
+        version: Number(updated.rows[0].version),
+        status: nextStatus,
+        action: input.action,
+        decisionId: null,
+        decidedAt: String(updated.rows[0].decided_at),
+        idempotent: false,
+      };
+    });
+  } catch (error) {
+    const dbError = error as { code?: string; constraint?: string } | null;
+    if (dbError?.code === "23505") {
+      if (dbError.constraint?.includes("source_proposal")) {
+        throw new ApiError(
+          409,
+          "この提案は既に決裁済みです。最新の内容を確認してください",
+          "proposal_already_decided",
+        );
+      }
+      throw new ApiError(
+        409,
+        "同じ操作が別の内容で送信されています。最新の内容を確認して、もう一度お試しください",
+        "request_id_reused",
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * Applicant/editor recovery path for an open version. Withdrawal never reads
+ * the frozen snapshot, so it still works after a reviewer or approver account
+ * is deactivated or loses access, and never discloses restricted content.
+ */
+export async function withdrawProposal(input: {
+  workspaceId: number;
+  portfolioId: number;
+  userId: number;
+  proposalId: number;
+  reason: string;
+  requestId: string;
+  expectedStatus: PlanningProposalStatus | null;
+}): Promise<{
+  id: number;
+  version: number;
+  status: PlanningProposalStatus;
+  withdrawnAt: string;
+  idempotent: boolean;
+}> {
+  try {
+    return await withTransaction(async (q) => {
+      await lockPlanningPortfolio(q, input.portfolioId, input.workspaceId);
+      // Plan visibility is required for every caller, including the applicant.
+      // Project visibility is intentionally not checked: losing access to a
+      // linked project or to the reviewer/approver must not block recovery.
+      const access = await requirePlanningAccess(
+        q,
+        input.portfolioId,
+        input.workspaceId,
+        input.userId,
+      );
+
+      const actor = await q.query(
+        "SELECT name FROM users WHERE id = $1::bigint AND deactivated_at IS NULL",
+        [input.userId],
+      );
+      if (actor.rowCount === 0) throw forbidden("実行者が存在しないか無効です");
+
+      const loaded = await q.query(
+        `SELECT id, version, status, submitted_by, reviewer_user_id,
+           withdraw_request_id, withdraw_reason, withdrawn_by,
+           withdrawn_at::text AS withdrawn_at
+         FROM portfolio_plan_proposals
+         WHERE id = $1::bigint
+           AND portfolio_id = $2::bigint
+           AND workspace_id = $3::bigint
+         FOR UPDATE`,
+        [input.proposalId, input.portfolioId, input.workspaceId],
+      );
+      if (loaded.rowCount === 0) throw notFound("投資提案が見つかりません");
+      const row = loaded.rows[0];
+      const submitterUserId = Number(row.submitted_by);
+      const authorized = access.canEdit || submitterUserId === input.userId;
+      if (!authorized) {
+        throw forbidden("提案を取り下げできるのは申請者またはポートフォリオの編集者だけです");
+      }
+
+      const reviewerUserId =
+        row.reviewer_user_id === null || row.reviewer_user_id === undefined
+          ? null
+          : Number(row.reviewer_user_id);
+      const rawStatus = String(row.status) as PlanningProposalStatus;
+      const status = effectiveProposalStatus(rawStatus, reviewerUserId);
+
+      if (row.withdraw_request_id === input.requestId) {
+        const recordedBy =
+          row.withdrawn_by === null || row.withdrawn_by === undefined
+            ? null
+            : Number(row.withdrawn_by);
+        if (
+          recordedBy !== input.userId ||
+          String(row.withdraw_reason ?? "") !== input.reason ||
+          row.withdrawn_at === null ||
+          row.withdrawn_at === undefined
+        ) {
+          throw new ApiError(
+            409,
+            "同じリクエストIDが別の取り下げ内容で使用されています",
+            "request_id_reused",
+          );
+        }
+        return {
+          id: Number(row.id),
+          version: Number(row.version),
+          status: "withdrawn",
+          withdrawnAt: String(row.withdrawn_at),
+          idempotent: true,
+        };
+      }
+
+      if (
+        input.expectedStatus !== null &&
+        input.expectedStatus !== status &&
+        input.expectedStatus !== rawStatus
+      ) {
+        throw new ApiError(
+          409,
+          "提案の状態が変わりました。最新の内容を確認してください",
+          "proposal_status_changed",
+          { currentStatus: status },
+        );
+      }
+      if (!isOpenProposalStatus(status)) {
+        throw new ApiError(
+          409,
+          `この提案は既に「${proposalStatusLabel(status)}」のため取り下げできません`,
+          "proposal_status_changed",
+          { currentStatus: status },
+        );
+      }
+
+      const updated = await q.query(
+        `UPDATE portfolio_plan_proposals
+         SET status = 'withdrawn',
+             withdraw_reason = $4,
+             withdraw_request_id = $5,
+             withdrawn_by = $6::bigint,
+             withdrawn_by_name = $7,
+             withdrawn_at = now()
+         WHERE id = $1::bigint
+           AND status = $2::text
+           AND submitted_by = $3::bigint
+         RETURNING version, withdrawn_at::text AS withdrawn_at`,
+        [
+          input.proposalId,
+          rawStatus,
+          submitterUserId,
+          input.reason,
+          input.requestId,
+          input.userId,
+          String(actor.rows[0].name),
+        ],
+      );
+      if (updated.rowCount === 0) {
+        throw new ApiError(
+          409,
+          "提案の状態が変わりました。最新の内容を確認してください",
+          "proposal_status_changed",
+        );
+      }
+      return {
+        id: input.proposalId,
+        version: Number(updated.rows[0].version),
+        status: "withdrawn",
+        withdrawnAt: String(updated.rows[0].withdrawn_at),
+        idempotent: false,
+      };
+    });
+  } catch (error) {
+    const dbError = error as { code?: string; constraint?: string } | null;
+    if (dbError?.code === "23505") {
+      throw new ApiError(
+        409,
+        "同じ操作が別の内容で送信されています。最新の内容を確認して、もう一度お試しください",
+        "request_id_reused",
+      );
+    }
+    throw error;
+  }
 }
 
 export async function adoptScenario(input: {

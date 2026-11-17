@@ -25,6 +25,7 @@ import type {
   PlanningOwnerCandidate,
   PlanningPeriodSummary,
   PlanningProposal,
+  PlanningProposalDecisionAction,
   PlanningProposalReviewOutcome,
   PlanningProposalStatus,
   PlanningRole,
@@ -54,6 +55,13 @@ function reviewOutcomeValue(
   if (value === null || value === undefined) {
     return status === "pending_decision" ? "not_required" : null;
   }
+  return null;
+}
+
+function decisionActionValue(
+  value: unknown,
+): PlanningProposalDecisionAction | null {
+  if (value === "approve" || value === "return" || value === "defer") return value;
   return null;
 }
 
@@ -277,7 +285,7 @@ export async function loadDecisions(
 ): Promise<PlanningDecision[]> {
   const result = await q.query(
     `SELECT id, chosen_slot, reason, actor_name, decided_at::text AS decided_at,
-       period_revision, budget_yen, snapshot, snapshot_sha256
+       period_revision, budget_yen, source_proposal_id, snapshot, snapshot_sha256
      FROM portfolio_plan_decisions
      WHERE period_id = $1::bigint
        AND portfolio_id = $2::bigint
@@ -303,25 +311,43 @@ export async function loadDecisions(
   return parsed.map(({ row, snapshot }) => {
     const hidden = snapshotProjectIds(snapshot).some((id) => !visible.has(id));
     const chosenSlot = number(row.chosen_slot) === 1 ? (1 as const) : (0 as const);
-    const base = {
+    const common = {
       id: number(row.id),
-      chosenSlot,
-      chosenScenarioName: snapshot.scenarios[chosenSlot]?.name ?? (chosenSlot === 0 ? "A案" : "B案"),
       actorName: String(row.actor_name),
       decidedAt: String(row.decided_at),
-      periodRevision: number(row.period_revision),
-      budgetYen: number(row.budget_yen),
+      sourceProposalId: nullableNumber(row.source_proposal_id),
     };
     if (hidden) {
+      // Proposal-backed decisions follow the proposal redaction: no adopted
+      // selection, historical budget or snapshot. Legacy direct decisions
+      // keep their established restricted display metadata.
+      if (common.sourceProposalId !== null) {
+        return {
+          ...common,
+          restricted: true as const,
+          reason: null,
+          snapshot: null,
+        };
+      }
       return {
-        ...base,
+        ...common,
+        chosenSlot,
+        chosenScenarioName:
+          snapshot.scenarios[chosenSlot]?.name ?? (chosenSlot === 0 ? "A案" : "B案"),
+        periodRevision: number(row.period_revision),
+        budgetYen: number(row.budget_yen),
         restricted: true as const,
         reason: null,
         snapshot: null,
       };
     }
     return {
-      ...base,
+      ...common,
+      chosenSlot,
+      chosenScenarioName:
+        snapshot.scenarios[chosenSlot]?.name ?? (chosenSlot === 0 ? "A案" : "B案"),
+      periodRevision: number(row.period_revision),
+      budgetYen: number(row.budget_yen),
       restricted: false as const,
       reason: String(row.reason),
       snapshot,
@@ -382,11 +408,14 @@ export async function loadProposals(
   },
 ): Promise<PlanningProposal[]> {
   const result = await q.query(
-    `SELECT id, version, status, recommended_slot, reason, submitted_by_name,
-       submitted_at::text AS submitted_at, final_approver_user_id, final_approver_name,
+    `SELECT id, version, status, recommended_slot, reason, submitted_by,
+       submitted_by_name, submitted_at::text AS submitted_at,
+       final_approver_user_id, final_approver_name,
        reviewer_user_id, reviewer_name, review_outcome,
        reviewed_at::text AS reviewed_at, review_note,
-       period_revision, budget_yen, snapshot, snapshot_sha256
+       decision_action, decision_id, decided_by_name, decided_at::text AS decided_at,
+       decision_note, withdrawn_by_name, withdrawn_at::text AS withdrawn_at,
+       withdraw_reason, period_revision, budget_yen, snapshot, snapshot_sha256
      FROM portfolio_plan_proposals
      WHERE period_id = $1::bigint
        AND portfolio_id = $2::bigint
@@ -418,39 +447,48 @@ export async function loadProposals(
       reviewerUserId,
     );
     const reviewOutcome = reviewOutcomeValue(row.review_outcome, status);
-    const reviewNote = stringOrNull(row.review_note);
     const base = {
       id: number(row.id),
       version: number(row.version),
       status,
-      recommendedSlot,
-      recommendedScenarioName:
-        snapshot.scenarios[recommendedSlot]?.name ?? (recommendedSlot === 0 ? "A案" : "B案"),
+      submitterUserId: number(row.submitted_by),
       submitterName: String(row.submitted_by_name),
       submittedAt: String(row.submitted_at),
-      periodRevision: number(row.period_revision),
-      budgetYen: number(row.budget_yen),
       finalApproverUserId: number(row.final_approver_user_id),
       finalApproverName: String(row.final_approver_name),
       reviewerUserId,
       reviewerName: stringOrNull(row.reviewer_name),
       reviewOutcome,
       reviewedAt: stringOrNull(row.reviewed_at),
-      reviewNote,
+      decisionAction: decisionActionValue(row.decision_action),
+      decisionId: nullableNumber(row.decision_id),
+      decidedByName: stringOrNull(row.decided_by_name),
+      decidedAt: stringOrNull(row.decided_at),
+      withdrawnByName: stringOrNull(row.withdrawn_by_name),
+      withdrawnAt: stringOrNull(row.withdrawn_at),
     };
     if (hidden) {
+      // Snapshot-derived fields (historical budget, recommended scenario,
+      // reasons and notes) must not cross the wire for someone missing access
+      // to a referenced project. The remaining metadata is enough to show the
+      // open version and let the applicant/editor withdraw it.
       return {
         ...base,
-        reviewNote: null,
         restricted: true as const,
-        reason: null,
-        snapshot: null,
       };
     }
     return {
       ...base,
       restricted: false as const,
+      recommendedSlot,
+      recommendedScenarioName:
+        snapshot.scenarios[recommendedSlot]?.name ?? (recommendedSlot === 0 ? "A案" : "B案"),
+      periodRevision: number(row.period_revision),
+      budgetYen: number(row.budget_yen),
       reason: String(row.reason),
+      reviewNote: stringOrNull(row.review_note),
+      decisionNote: stringOrNull(row.decision_note),
+      withdrawReason: stringOrNull(row.withdraw_reason),
       snapshot,
     };
   });

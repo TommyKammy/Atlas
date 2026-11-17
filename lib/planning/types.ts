@@ -183,12 +183,19 @@ export type PlanningDecisionSnapshot = {
 
 export type PlanningDecisionRestricted = {
   id: number;
-  chosenSlot: 0 | 1;
-  chosenScenarioName: string;
   actorName: string;
   decidedAt: string;
-  periodRevision: number;
-  budgetYen: number;
+  /** Proposal this decision adopted, when created by the approval workflow. */
+  sourceProposalId: number | null;
+  /**
+   * Legacy direct decisions keep their existing restricted display metadata.
+   * Proposal-backed restricted decisions omit the adopted selection and
+   * historical budget so they match the proposal's redaction.
+   */
+  chosenSlot?: 0 | 1;
+  chosenScenarioName?: string;
+  periodRevision?: number;
+  budgetYen?: number;
   restricted: true;
   reason: null;
   snapshot: null;
@@ -202,6 +209,8 @@ export type PlanningDecisionComplete = {
   decidedAt: string;
   periodRevision: number;
   budgetYen: number;
+  /** Proposal this decision adopted, when created by the approval workflow. */
+  sourceProposalId: number | null;
   restricted: false;
   reason: string;
   snapshot: PlanningDecisionSnapshot;
@@ -213,6 +222,7 @@ export type PlanningProposalStatus =
   | "submitted"
   | "under_review"
   | "pending_decision"
+  | "deferred"
   | "returned"
   | "approved"
   | "rejected"
@@ -220,6 +230,8 @@ export type PlanningProposalStatus =
   | "superseded";
 
 export type PlanningProposalReviewOutcome = "passed" | "returned" | "not_required";
+
+export type PlanningProposalDecisionAction = "approve" | "return" | "defer";
 
 export type PlanningApprovalParticipant = {
   id: number;
@@ -238,36 +250,47 @@ export type PlanningApprovalSettings = {
   openProposalCount: number;
 };
 
+/**
+ * Non-confidential workflow metadata. Restricted proposals keep only these
+ * fields so the applicant/editor can still see the open version, withdraw it
+ * and resubmit without learning snapshot-derived budget or scenario data.
+ */
 type PlanningProposalBase = {
   id: number;
   version: number;
   status: PlanningProposalStatus;
-  recommendedSlot: 0 | 1;
-  recommendedScenarioName: string;
+  submitterUserId: number;
   submitterName: string;
   submittedAt: string;
-  periodRevision: number;
-  budgetYen: number;
   finalApproverUserId: number;
   finalApproverName: string;
   reviewerUserId: number | null;
   reviewerName: string | null;
   reviewOutcome: PlanningProposalReviewOutcome | null;
   reviewedAt: string | null;
-  /** Null while restricted, matching the existing reason/snapshot redaction. */
-  reviewNote: string | null;
+  decisionAction: PlanningProposalDecisionAction | null;
+  decisionId: number | null;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  withdrawnByName: string | null;
+  withdrawnAt: string | null;
   restricted: boolean;
 };
 
 export type PlanningProposalRestricted = PlanningProposalBase & {
   restricted: true;
-  reason: null;
-  snapshot: null;
 };
 
 export type PlanningProposalComplete = PlanningProposalBase & {
   restricted: false;
+  recommendedSlot: 0 | 1;
+  recommendedScenarioName: string;
+  periodRevision: number;
+  budgetYen: number;
   reason: string;
+  reviewNote: string | null;
+  decisionNote: string | null;
+  withdrawReason: string | null;
   snapshot: PlanningDecisionSnapshot;
 };
 

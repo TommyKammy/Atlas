@@ -28,7 +28,9 @@ import PlanningHeader from "./PlanningHeader";
 import RolesDialog from "./RolesDialog";
 import ViewersDialog from "./ViewersDialog";
 import type { ProposalSubmitInput } from "./SubmitProposalDialog";
+import type { ProposalDecisionInput } from "./ProposalDecisionForm";
 import type { ProposalReviewInput } from "./ProposalReviewForm";
+import type { ProposalWithdrawInput } from "./ProposalWithdrawForm";
 import { isStaleRevisionError, planningErrorMessage } from "./errors";
 import { buttonPrimary, EmptyPanel, Notice, buttonSecondary } from "./ui";
 
@@ -304,6 +306,33 @@ export default function PlanningWorkspace({
     );
   };
 
+  const decideProposal = async (proposalId: number, input: ProposalDecisionInput) => {
+    const result = await mutate<{
+      status: string;
+      action: ProposalDecisionInput["action"];
+    }>(
+      `/api/portfolios/${portfolioId}/planning/proposals/${proposalId}/decision`,
+      "POST",
+      input,
+    );
+    toast(
+      result.action === "approve"
+        ? "提案を承認し、提出時点の内容を決定履歴に採用しました"
+        : result.action === "defer"
+          ? "提案を今期見送りとして記録しました"
+          : "提案を差し戻しました。新しい版を提出できます",
+    );
+  };
+
+  const withdrawProposal = async (proposalId: number, input: ProposalWithdrawInput) => {
+    await mutate(
+      `/api/portfolios/${portfolioId}/planning/proposals/${proposalId}/withdraw`,
+      "POST",
+      input,
+    );
+    toast("提案を取り下げました。現在の計画で新しい版を提出できます");
+  };
+
   const saveApprovalSettings = async (input: ApprovalSettingsInput) => {
     await api(`/api/portfolios/${portfolioId}/planning/approval-settings`, "PUT", input);
     await load(periodKey, true);
@@ -450,6 +479,8 @@ export default function PlanningWorkspace({
             onAdopt={(slot) => setAdoptSlot(slot)}
             onSubmitProposal={submitProposal}
             onReviewProposal={reviewProposal}
+            onDecideProposal={decideProposal}
+            onWithdrawProposal={withdrawProposal}
             onEditBudget={() => setBudgetDialog(true)}
             onNavigate={switchView}
           />

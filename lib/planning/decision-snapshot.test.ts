@@ -10,6 +10,7 @@ import {
 import {
   hashPlanningSnapshot,
   isPlanningDecisionSnapshot,
+  samePlanningPlanContent,
   snapshotProjectIds,
   stableStringify,
 } from "./decision-snapshot";
@@ -155,6 +156,45 @@ test("snapshot hash ignores object key ordering and detects tampering", () => {
   assert.notEqual(hashPlanningSnapshot(tampered), hash);
   assert.equal(isPlanningDecisionSnapshot(snapshot), true);
   assert.equal(isPlanningDecisionSnapshot({ version: 1 }), false);
+});
+
+test("stale approval compares plan content rather than unrelated revision bumps", () => {
+  const submitted = buildDecisionSnapshot(source());
+
+  const unrelatedRevision = source();
+  unrelatedRevision.period.revision = 8;
+  assert.equal(
+    samePlanningPlanContent(submitted, buildDecisionSnapshot(unrelatedRevision)),
+    true,
+  );
+
+  const changedBudget = source();
+  changedBudget.period.budgetYen = 9_000_000;
+  assert.equal(
+    samePlanningPlanContent(submitted, buildDecisionSnapshot(changedBudget)),
+    false,
+  );
+
+  const changedCapacity = source();
+  changedCapacity.capacities = capacities.map((capacity) =>
+    capacity.roleId === 1 && capacity.monthIndex === 1
+      ? { ...capacity, days: 12 }
+      : capacity,
+  );
+  assert.equal(
+    samePlanningPlanContent(submitted, buildDecisionSnapshot(changedCapacity)),
+    false,
+  );
+
+  const changedSelection = source();
+  changedSelection.scenarios = [
+    { slot: 0 as const, name: "A案", selectedCandidateIds: [2, 3] },
+    { slot: 1 as const, name: "B案", selectedCandidateIds: [3] },
+  ];
+  assert.equal(
+    samePlanningPlanContent(submitted, buildDecisionSnapshot(changedSelection)),
+    false,
+  );
 });
 
 test("scenario calculation can be reused independently for comparison tests", () => {

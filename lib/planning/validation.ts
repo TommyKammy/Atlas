@@ -173,6 +173,44 @@ export function parseReason(value: unknown): string {
   return reason;
 }
 
+export function parseDecisionReason(value: unknown): string {
+  const reason = typeof value === "string" ? value.trim() : "";
+  if (reason === "") throw badRequest("決定理由を入力してください");
+  if (reason.length > 1000) throw badRequest("決定理由は1000文字以内で入力してください");
+  return reason;
+}
+
+export function parseWithdrawReason(value: unknown): string {
+  const reason = typeof value === "string" ? value.trim() : "";
+  if (reason === "") throw badRequest("取り下げ理由を入力してください");
+  if (reason.length > 1000) throw badRequest("取り下げ理由は1000文字以内で入力してください");
+  return reason;
+}
+
+export function parseProposalDecisionAction(value: unknown): "approve" | "return" | "defer" {
+  const action = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (action === "approve" || action === "approved" || action === "adopt" || action === "accept") {
+    return "approve";
+  }
+  if (
+    action === "return" ||
+    action === "returned" ||
+    action === "send_back" ||
+    action === "request_changes"
+  ) {
+    return "return";
+  }
+  if (
+    action === "defer" ||
+    action === "deferred" ||
+    action === "skip" ||
+    action === "postpone"
+  ) {
+    return "defer";
+  }
+  throw badRequest("最終決裁の操作が正しくありません");
+}
+
 export function parseRequestId(value: unknown): string {
   const requestId = typeof value === "string" ? value.trim() : "";
   if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(requestId)) {

@@ -48,6 +48,35 @@ export function isPlanningDecisionSnapshot(value: unknown): value is PlanningDec
   );
 }
 
+/**
+ * Plan-driving content of a frozen snapshot. Period revision is deliberately
+ * excluded: revisions also move for unrelated edits, so approval compares the
+ * actual budget, roles, capacities, initiatives and scenario composition.
+ */
+export function planningPlanContent(snapshot: PlanningDecisionSnapshot) {
+  return {
+    period: {
+      id: snapshot.period.id,
+      year: snapshot.period.year,
+      quarter: snapshot.period.quarter,
+      budgetYen: snapshot.period.budgetYen,
+    },
+    roles: snapshot.roles,
+    scenarios: snapshot.scenarios,
+    chosenSlot: snapshot.chosenSlot,
+  };
+}
+
+/** True when the frozen submission still describes the current plan content. */
+export function samePlanningPlanContent(
+  left: PlanningDecisionSnapshot,
+  right: PlanningDecisionSnapshot,
+): boolean {
+  return (
+    stableStringify(planningPlanContent(left)) === stableStringify(planningPlanContent(right))
+  );
+}
+
 export function snapshotProjectIds(snapshot: PlanningDecisionSnapshot): number[] {
   const ids = new Set<number>();
   for (const scenario of snapshot.scenarios) {

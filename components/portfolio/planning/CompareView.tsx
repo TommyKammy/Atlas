@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { formatDays, formatManYen, monthLabelFromStart } from "@/lib/planning/format";
 import type { PlanningScenarioResult } from "@/lib/planning/calculations";
-import { isOpenProposalStatus, proposalSubmissionBlock } from "@/lib/planning/approvals";
+import {
+  isOpenProposalStatus,
+  proposalStatusLabel,
+  proposalSubmissionBlock,
+} from "@/lib/planning/approvals";
 import { scenarioCalculation } from "@/lib/planning/select";
 import { PLANNING_MONTHS } from "@/lib/planning/types";
 import type {
@@ -15,7 +19,9 @@ import type {
 import DecisionHistory from "./DecisionHistory";
 import PlanningTable from "./PlanningTable";
 import ProposalHistory from "./ProposalHistory";
+import type { ProposalDecisionInput } from "./ProposalDecisionForm";
 import type { ProposalReviewInput } from "./ProposalReviewForm";
+import type { ProposalWithdrawInput } from "./ProposalWithdrawForm";
 import SubmitProposalDialog, { type ProposalSubmitInput } from "./SubmitProposalDialog";
 import { planningErrorMessage } from "./errors";
 import {
@@ -306,6 +312,8 @@ export default function CompareView({
   onAdopt,
   onSubmitProposal,
   onReviewProposal,
+  onDecideProposal,
+  onWithdrawProposal,
   onEditBudget,
   onNavigate,
 }: {
@@ -314,6 +322,8 @@ export default function CompareView({
   onAdopt: (slot: 0 | 1) => void;
   onSubmitProposal: (input: ProposalSubmitInput) => Promise<void>;
   onReviewProposal: (proposalId: number, input: ProposalReviewInput) => Promise<void>;
+  onDecideProposal: (proposalId: number, input: ProposalDecisionInput) => Promise<void>;
+  onWithdrawProposal: (proposalId: number, input: ProposalWithdrawInput) => Promise<void>;
   onEditBudget: () => void;
   onNavigate: (view: PlanningView) => void;
 }) {
@@ -356,8 +366,13 @@ export default function CompareView({
     openProposal.status === "under_review" &&
     state.access.canReview &&
     openProposal.reviewerUserId === state.currentUserId;
-  const latestReturned =
-    state.proposals.find((proposal) => proposal.status === "returned") ?? null;
+  const latestClosed =
+    state.proposals.find(
+      (proposal) =>
+        proposal.status === "returned" ||
+        proposal.status === "deferred" ||
+        proposal.status === "withdrawn",
+    ) ?? null;
   const proposalResult = proposalSlot === null ? null : scenarioCalculation(state, proposalSlot);
 
   const toggle = async (slot: 0 | 1, initiativeId: number, checked: boolean) => {
@@ -386,6 +401,22 @@ export default function CompareView({
           {state.restrictedReason}
           閲覧できない案件が含まれるため、合計・不足・見送る効果・採用操作は表示できません。
         </Notice>
+        {(approval.enabled || state.proposals.length > 0) && (
+          <ProposalHistory
+            key={`proposal-history-${period.id}`}
+            proposals={state.proposals}
+            period={period}
+            approvalEnabled={approval.enabled}
+            selectedId={proposalDetailId}
+            onSelect={setProposalDetailId}
+            currentUserId={state.currentUserId}
+            canReview={state.access.canReview}
+            canEdit={state.access.canEdit}
+            onReview={onReviewProposal}
+            onDecide={onDecideProposal}
+            onWithdraw={onWithdrawProposal}
+          />
+        )}
       </div>
     );
   }
@@ -433,8 +464,17 @@ export default function CompareView({
           {openProposal ? (
             <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
               <span>
-                この四半期の提案（版{openProposal.version}）は
-                <b>{openProposal.recommendedScenarioName}</b>の推奨で提出済みです。
+                {openProposal.restricted ? (
+                  <>
+                    この四半期の提案（版{openProposal.version}）は提出済みです。
+                    閲覧権限のない元プロジェクトを含むため内容は非表示です。申請者または編集者は詳細から取り下げできます。
+                  </>
+                ) : (
+                  <>
+                    この四半期の提案（版{openProposal.version}）は
+                    <b>{openProposal.recommendedScenarioName}</b>の推奨で提出済みです。
+                  </>
+                )}
                 {openProposal.status === "under_review"
                   ? canReviewOpenProposal
                     ? "あなたがレビュー担当です。提出時点の内容を確認してください。"
@@ -444,13 +484,18 @@ export default function CompareView({
                     : "最終承認者の決定を待っています。"}
               </span>
               <button type="button" className={buttonQuiet} onClick={() => setProposalDetailId(openProposal.id)}>
-                {canReviewOpenProposal ? "レビューする" : "提案の詳細を開く"}
+                {canReviewOpenProposal
+                  ? "レビューする"
+                  : openProposal.status === "pending_decision" &&
+                      openProposal.finalApproverUserId === state.currentUserId
+                    ? "決裁する"
+                    : "提案の詳細を開く"}
               </button>
             </div>
           ) : (
             <p className="mt-1.5 text-[11px] text-blue-800">
-              {latestReturned
-                ? `前回の提案（版${latestReturned.version}）は差し戻されました。内容を見直して新しい提案を提出できます。`
+              {latestClosed
+                ? `前回の提案（版${latestClosed.version}・${proposalStatusLabel(latestClosed.status)}）は終了しました。内容を見直して新しい提案を提出できます。`
                 : "採用する案を選び、理由を添えて投資提案として提出します。提出時点のA案・B案が固定され、最終承認者が決定します。直接採用はできません。"}
             </p>
           )}
@@ -495,7 +540,10 @@ export default function CompareView({
               ? openProposal
                 ? canReviewOpenProposal
                   ? `${scenarioA.name}の提案をレビュー`
-                  : `${scenarioA.name}の提案を確認`
+                  : openProposal.status === "pending_decision" &&
+                      openProposal.finalApproverUserId === state.currentUserId
+                    ? `${scenarioA.name}の提案を決裁`
+                    : `${scenarioA.name}の提案を確認`
                 : `${scenarioA.name}で提案…`
               : `${scenarioA.name}を採用…`
           }
@@ -517,7 +565,10 @@ export default function CompareView({
               ? openProposal
                 ? canReviewOpenProposal
                   ? `${scenarioB.name}の提案をレビュー`
-                  : `${scenarioB.name}の提案を確認`
+                  : openProposal.status === "pending_decision" &&
+                      openProposal.finalApproverUserId === state.currentUserId
+                    ? `${scenarioB.name}の提案を決裁`
+                    : `${scenarioB.name}の提案を確認`
                 : `${scenarioB.name}で提案…`
               : `${scenarioB.name}を採用…`
           }
@@ -675,11 +726,18 @@ export default function CompareView({
           onSelect={setProposalDetailId}
           currentUserId={state.currentUserId}
           canReview={state.access.canReview}
+          canEdit={state.access.canEdit}
           onReview={onReviewProposal}
+          onDecide={onDecideProposal}
+          onWithdraw={onWithdrawProposal}
         />
       )}
 
-      <DecisionHistory decisions={state.decisions} approvalEnabled={approval.enabled} />
+      <DecisionHistory
+        decisions={state.decisions}
+        proposals={state.proposals}
+        approvalEnabled={approval.enabled}
+      />
 
       <div className="flex flex-wrap justify-end gap-3 border-t border-neutral-200 pt-3">
         <button type="button" className={buttonQuiet} onClick={() => onNavigate("ledger")}>

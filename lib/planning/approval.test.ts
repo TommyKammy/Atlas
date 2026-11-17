@@ -4,10 +4,14 @@ import {
   approvalSettingsChanged,
   effectiveProposalStatus,
   isOpenProposalStatus,
+  proposalDecisionActionLabel,
+  proposalDecisionStageLabel,
   proposalInitialReviewOutcome,
   proposalInitialStatus,
   proposalReviewOutcome,
   proposalReviewOutcomeLabel,
+  proposalReviewStageLabel,
+  proposalStatusAfterDecision,
   proposalStatusAfterReview,
   proposalStatusLabel,
   proposalSubmissionBlock,
@@ -121,4 +125,27 @@ test("legacy submitted rows follow their reviewer assignment without rewriting p
   assert.equal(effectiveProposalStatus("submitted", null), "pending_decision");
   assert.equal(effectiveProposalStatus("under_review", 9), "under_review");
   assert.equal(effectiveProposalStatus("returned", 9), "returned");
+});
+
+test("final decisions map to distinct closed statuses and labels", () => {
+  assert.equal(proposalStatusAfterDecision("approve"), "approved");
+  assert.equal(proposalStatusAfterDecision("return"), "returned");
+  assert.equal(proposalStatusAfterDecision("defer"), "deferred");
+  assert.equal(proposalDecisionActionLabel("approve"), "承認して採用");
+  assert.equal(proposalDecisionActionLabel("return"), "差し戻す");
+  assert.equal(proposalDecisionActionLabel("defer"), "今期は見送る");
+  assert.equal(proposalStatusLabel("deferred"), "今期は見送り");
+  assert.equal(isOpenProposalStatus("deferred"), false);
+});
+
+test("workflow stages distinguish skipped review from pending and decided stages", () => {
+  assert.equal(proposalReviewStageLabel(null, "not_required"), "レビュー省略");
+  assert.equal(proposalReviewStageLabel(3, "not_required"), "レビュー省略");
+  assert.equal(proposalReviewStageLabel(3, null), "レビュー待ち");
+  assert.equal(proposalReviewStageLabel(3, "passed"), "レビュー確認済み");
+  assert.equal(proposalReviewStageLabel(3, "returned"), "レビューで差し戻し");
+  assert.equal(proposalDecisionStageLabel("pending_decision"), "最終決裁待ち");
+  assert.equal(proposalDecisionStageLabel("approved"), "承認済み");
+  assert.equal(proposalDecisionStageLabel("deferred"), "今期は見送り");
+  assert.equal(proposalDecisionStageLabel("withdrawn"), "取下げ");
 });

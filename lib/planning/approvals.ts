@@ -1,4 +1,8 @@
-import type { PlanningProposalReviewOutcome, PlanningProposalStatus } from "./types";
+import type {
+  PlanningProposalDecisionAction,
+  PlanningProposalReviewOutcome,
+  PlanningProposalStatus,
+} from "./types";
 
 export const OPEN_PROPOSAL_STATUSES = [
   "submitted",
@@ -18,6 +22,8 @@ export function proposalStatusLabel(status: PlanningProposalStatus): string {
       return "レビュー待ち";
     case "pending_decision":
       return "最終承認待ち";
+    case "deferred":
+      return "今期は見送り";
     case "returned":
       return "差し戻し";
     case "approved":
@@ -52,6 +58,58 @@ export function proposalReviewOutcome(
 
 export function proposalStatusAfterReview(action: ProposalReviewAction): PlanningProposalStatus {
   return action === "pass" ? "pending_decision" : "returned";
+}
+
+export function proposalStatusAfterDecision(
+  action: PlanningProposalDecisionAction,
+): PlanningProposalStatus {
+  if (action === "approve") return "approved";
+  if (action === "defer") return "deferred";
+  return "returned";
+}
+
+export function proposalDecisionActionLabel(action: PlanningProposalDecisionAction): string {
+  switch (action) {
+    case "approve":
+      return "承認して採用";
+    case "defer":
+      return "今期は見送る";
+    case "return":
+      return "差し戻す";
+  }
+}
+
+/** Compact stage label used by the proposal list and detail. */
+export function proposalReviewStageLabel(
+  reviewerUserId: number | null,
+  outcome: PlanningProposalReviewOutcome | null,
+): string {
+  if (reviewerUserId === null || outcome === "not_required") return "レビュー省略";
+  if (outcome === "passed") return "レビュー確認済み";
+  if (outcome === "returned") return "レビューで差し戻し";
+  return "レビュー待ち";
+}
+
+export function proposalDecisionStageLabel(status: PlanningProposalStatus): string {
+  switch (status) {
+    case "pending_decision":
+      return "最終決裁待ち";
+    case "approved":
+      return "承認済み";
+    case "deferred":
+      return "今期は見送り";
+    case "returned":
+      return "差し戻し";
+    case "withdrawn":
+      return "取下げ";
+    case "superseded":
+      return "新版に置換";
+    case "rejected":
+      return "却下";
+    case "submitted":
+    case "under_review":
+      return "最終決裁前";
+  }
 }
 
 export function proposalInitialStatus(reviewerUserId: number | null): PlanningProposalStatus {

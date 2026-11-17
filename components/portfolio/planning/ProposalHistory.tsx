@@ -6,14 +6,23 @@ import {
   periodLabel,
   quarterStartMonth,
 } from "@/lib/planning/format";
-import { proposalReviewOutcomeLabel, proposalStatusLabel } from "@/lib/planning/approvals";
+import {
+  isOpenProposalStatus,
+  proposalDecisionActionLabel,
+  proposalDecisionStageLabel,
+  proposalReviewOutcomeLabel,
+  proposalReviewStageLabel,
+  proposalStatusLabel,
+} from "@/lib/planning/approvals";
 import type {
   PlanningPeriodSummary,
   PlanningProposal,
   PlanningProposalStatus,
 } from "@/lib/planning/types";
 import PlanningDialog from "./PlanningDialog";
+import ProposalDecisionForm, { type ProposalDecisionInput } from "./ProposalDecisionForm";
 import ProposalReviewForm, { type ProposalReviewInput } from "./ProposalReviewForm";
+import ProposalWithdrawForm, { type ProposalWithdrawInput } from "./ProposalWithdrawForm";
 import ScenarioSnapshotView from "./ScenarioSnapshot";
 import { buttonQuiet, buttonSecondary, EmptyPanel, Notice, Tag } from "./ui";
 
@@ -26,7 +35,7 @@ function statusTone(status: PlanningProposalStatus): "neutral" | "blue" | "good"
     return "blue";
   }
   if (status === "approved") return "good";
-  if (status === "returned" || status === "rejected") return "bad";
+  if (status === "deferred" || status === "returned" || status === "rejected") return "warn";
   return "neutral";
 }
 
@@ -34,25 +43,107 @@ function proposalTitle(proposal: PlanningProposal): string {
   return `投資提案（版${proposal.version}）`;
 }
 
+function actionNeeded(proposal: PlanningProposal, currentUserId: number): string {
+  if (proposal.status === "under_review") {
+    return proposal.reviewerUserId === currentUserId
+      ? "あなたのレビューが必要です。"
+      : `レビュー担当（${proposal.reviewerName ?? "未設定"}）の確認待ちです。`;
+  }
+  if (proposal.status === "pending_decision") {
+    if (proposal.decisionAction === null && proposal.reviewOutcome === "not_required") {
+      return proposal.finalApproverUserId === currentUserId
+        ? "レビューは省略されています。あなたの最終決裁が必要です。"
+        : `レビューは省略されています。${proposal.finalApproverName}の最終決裁待ちです。`;
+    }
+    return proposal.finalApproverUserId === currentUserId
+      ? "あなたの最終決裁が必要です。"
+      : `${proposal.finalApproverName}の最終決裁待ちです。`;
+  }
+  if (proposal.status === "returned") {
+    return "差し戻し済みです。申請者または編集者が新しい版を提出できます。";
+  }
+  if (proposal.status === "deferred") {
+    return "今期は見送りとして記録されました。次の版を提出できます。";
+  }
+  if (proposal.status === "withdrawn") {
+    return "取り下げ済みです。現在の計画で新しい版を提出できます。";
+  }
+  if (proposal.status === "approved") {
+    return "承認済みです。採用内容は決定履歴に固定されています。";
+  }
+  return "この版は終了しています。";
+}
+
+function ProposalStages({ proposal }: { proposal: PlanningProposal }) {
+  const review = proposalReviewStageLabel(proposal.reviewerUserId, proposal.reviewOutcome);
+  const decision = proposalDecisionStageLabel(proposal.status);
+  return (
+    <ol
+      aria-label="提案の進行状況"
+      className="flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-600"
+    >
+      <li className="rounded-full border border-neutral-300 bg-neutral-50 px-2 py-0.5 font-semibold">
+        申請済み
+      </li>
+      <li aria-hidden>→</li>
+      <li
+        className={`rounded-full border px-2 py-0.5 font-semibold ${
+          review === "レビュー省略"
+            ? "border-neutral-300 bg-neutral-50 text-neutral-600"
+            : review === "レビューで差し戻し"
+              ? "border-amber-200 bg-amber-50 text-amber-800"
+              : "border-blue-200 bg-blue-50 text-blue-800"
+        }`}
+      >
+        {review}
+      </li>
+      <li aria-hidden>→</li>
+      <li
+        className={`rounded-full border px-2 py-0.5 font-semibold ${
+          proposal.status === "approved"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            : proposal.status === "pending_decision"
+              ? "border-blue-200 bg-blue-50 text-blue-800"
+              : "border-neutral-300 bg-neutral-50 text-neutral-600"
+        }`}
+      >
+        {decision}
+      </li>
+    </ol>
+  );
+}
+
 function ProposalDetail({
   proposal,
   currentRevision,
   currentUserId,
   canReview,
+  canEdit,
   onReview,
+  onDecide,
+  onWithdraw,
 }: {
   proposal: PlanningProposal;
   currentRevision: number;
   currentUserId: number;
   canReview: boolean;
+  canEdit: boolean;
   onReview: (input: ProposalReviewInput) => Promise<void>;
+  onDecide: (input: ProposalDecisionInput) => Promise<void>;
+  onWithdraw: (input: ProposalWithdrawInput) => Promise<void>;
 }) {
-  const snapshot = proposal.snapshot;
   const canReviewThis =
     canReview &&
     proposal.status === "under_review" &&
     proposal.reviewerUserId === currentUserId &&
     !proposal.restricted;
+  const canDecideThis =
+    !proposal.restricted &&
+    proposal.status === "pending_decision" &&
+    proposal.finalApproverUserId === currentUserId;
+  const canWithdrawThis =
+    isOpenProposalStatus(proposal.status) &&
+    (canEdit || proposal.submitterUserId === currentUserId);
 
   return (
     <div className="space-y-4">
@@ -61,18 +152,25 @@ function ProposalDetail({
         <span className="text-[12px] font-medium text-neutral-800">{proposalTitle(proposal)}</span>
         {proposal.restricted && <Tag tone="warn">閲覧制限</Tag>}
       </div>
+      <ProposalStages proposal={proposal} />
+      <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-[12px] font-medium text-neutral-800">
+        {actionNeeded(proposal, currentUserId)}
+      </p>
 
       <dl className="grid gap-x-4 gap-y-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-[11px] sm:grid-cols-2">
         <div>
           <dt className="text-neutral-500">対象期間</dt>
           <dd className="font-medium text-neutral-800">
-            {snapshot
-              ? periodLabel(snapshot.period.year, snapshot.period.quarter)
-              : "閲覧制限のため非表示"}
+            {proposal.restricted
+              ? "閲覧制限のため非表示"
+              : periodLabel(
+                  proposal.snapshot.period.year,
+                  proposal.snapshot.period.quarter,
+                )}
           </dd>
         </div>
         <div>
-          <dt className="text-neutral-500">提出者 / 提出日時</dt>
+          <dt className="text-neutral-500">申請者 / 提出日時</dt>
           <dd className="font-medium text-neutral-800">
             {proposal.submitterName} ・ {formatDecisionDate(proposal.submittedAt)}
           </dd>
@@ -88,11 +186,7 @@ function ProposalDetail({
         <div>
           <dt className="text-neutral-500">レビュー結果</dt>
           <dd className="font-medium text-neutral-800">
-            {proposal.reviewOutcome
-              ? proposalReviewOutcomeLabel(proposal.reviewOutcome)
-              : proposal.status === "under_review"
-                ? "確認待ち"
-                : "未レビュー"}
+            {proposalReviewStageLabel(proposal.reviewerUserId, proposal.reviewOutcome)}
           </dd>
         </div>
         <div>
@@ -102,27 +196,41 @@ function ProposalDetail({
           </dd>
         </div>
         <div>
-          <dt className="text-neutral-500">提出時の計画の版 / 現在の版</dt>
+          <dt className="text-neutral-500">最終決裁</dt>
           <dd className="font-medium text-neutral-800">
-            {proposal.periodRevision} / {currentRevision}
+            {proposalDecisionStageLabel(proposal.status)}
+            {proposal.decisionAction ? `（${proposalDecisionActionLabel(proposal.decisionAction)}）` : ""}
           </dd>
         </div>
         <div>
-          <dt className="text-neutral-500">予算</dt>
-          <dd className="font-medium text-neutral-800">{formatManYen(proposal.budgetYen)} 万円</dd>
+          <dt className="text-neutral-500">決裁者 / 決裁日時</dt>
+          <dd className="font-medium text-neutral-800">
+            {proposal.decidedByName
+              ? `${proposal.decidedByName} ・ ${proposal.decidedAt ? formatDecisionDate(proposal.decidedAt) : "—"}`
+              : "—"}
+          </dd>
         </div>
+        {!proposal.restricted && (
+          <>
+            <div>
+              <dt className="text-neutral-500">提出時の計画の版 / 現在の版</dt>
+              <dd className="font-medium text-neutral-800">
+                {proposal.periodRevision} / {currentRevision}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-neutral-500">予算</dt>
+              <dd className="font-medium text-neutral-800">
+                {formatManYen(proposal.budgetYen)} 万円
+              </dd>
+            </div>
+          </>
+        )}
       </dl>
 
-      {proposal.reviewNote && !proposal.restricted && (
-        <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] text-blue-900">
-          <div className="text-[11px] font-semibold text-blue-800">レビューコメント</div>
-          <p className="mt-0.5 whitespace-pre-wrap">{proposal.reviewNote}</p>
-        </div>
-      )}
-
-      {proposal.restricted || !snapshot ? (
+      {proposal.restricted ? (
         <Notice tone="warn">
-          この提案には閲覧権限のない元プロジェクトに紐づく案件が含まれるため、理由・推奨シナリオ・両案の内訳・合計を表示できません。全案件の元プロジェクト閲覧権限が必要です。
+          この提案には閲覧権限のない元プロジェクトに紐づく案件が含まれるため、理由・推奨シナリオ・両案の内訳・合計を表示できません。申請者または編集者はこの版を取り下げ、新しい版を提出できます。
         </Notice>
       ) : (
         <>
@@ -133,16 +241,62 @@ function ProposalDetail({
             <div className="font-semibold">
               推奨シナリオ: {proposal.recommendedScenarioName}
             </div>
-            <div className="mt-1 text-[11px] text-blue-800">提案理由</div>
+            <div className="mt-1 text-[11px] font-semibold text-blue-800">
+              申請者の理由 ・ {proposal.submitterName} ・ {formatDecisionDate(proposal.submittedAt)}
+            </div>
             <p className="mt-0.5 whitespace-pre-wrap">{proposal.reason}</p>
           </div>
+
+          {proposal.reviewOutcome === "not_required" ? (
+            <Notice tone="info">レビューは省略されています（レビュー担当なし）。</Notice>
+          ) : proposal.reviewOutcome ? (
+            <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-[12px] text-neutral-800">
+              <div className="text-[11px] font-semibold text-neutral-600">
+                レビューの回答 ・ {proposal.reviewerName ?? "レビュー担当"} ・{" "}
+                {proposal.reviewedAt ? formatDecisionDate(proposal.reviewedAt) : "—"} ・{" "}
+                {proposalReviewOutcomeLabel(proposal.reviewOutcome)}
+              </div>
+              {proposal.reviewNote && (
+                <p className="mt-1 whitespace-pre-wrap">{proposal.reviewNote}</p>
+              )}
+            </div>
+          ) : null}
+
+          {proposal.decisionAction && proposal.decidedAt && (
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-950">
+              <div className="text-[11px] font-semibold text-emerald-900">
+                最終決裁（{proposalDecisionActionLabel(proposal.decisionAction)}） ・{" "}
+                {proposal.decidedByName ?? proposal.finalApproverName} ・{" "}
+                {formatDecisionDate(proposal.decidedAt)}
+              </div>
+              {proposal.decisionNote && (
+                <p className="mt-1 whitespace-pre-wrap">{proposal.decisionNote}</p>
+              )}
+              {proposal.decisionId !== null && (
+                <a href="#decision-history" className="mt-1 inline-block underline">
+                  決定履歴の採用記録を見る
+                </a>
+              )}
+            </div>
+          )}
+
+          {proposal.status === "withdrawn" && proposal.withdrawReason && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-950">
+              <div className="text-[11px] font-semibold text-amber-900">
+                取り下げ ・ {proposal.withdrawnByName ?? "申請者"} ・{" "}
+                {proposal.withdrawnAt ? formatDecisionDate(proposal.withdrawnAt) : "—"}
+              </div>
+              <p className="mt-1 whitespace-pre-wrap">{proposal.withdrawReason}</p>
+            </div>
+          )}
+
           <div className="space-y-3">
-            {snapshot.scenarios.map((scenario) => (
+            {proposal.snapshot.scenarios.map((scenario) => (
               <ScenarioSnapshotView
                 key={scenario.slot}
                 scenario={scenario}
                 highlighted={scenario.slot === proposal.recommendedSlot}
-                startMonth={quarterStartMonth(snapshot.period.quarter)}
+                startMonth={quarterStartMonth(proposal.snapshot.period.quarter)}
                 highlightLabel="推奨"
                 snapshotLabel="提出時点"
               />
@@ -163,19 +317,44 @@ function ProposalDetail({
           レビュー担当（{proposal.reviewerName ?? "未設定"}）の確認待ちです。割り当てられた担当者のみが確認または差し戻せます。
         </Notice>
       )}
-      {proposal.status === "pending_decision" && (
-        <Notice tone={proposal.reviewOutcome === "passed" ? "success" : "info"}>
-          {proposal.reviewOutcome === "passed"
-            ? "レビューを確認済みです。最終承認者の決裁待ちです。"
-            : proposal.reviewOutcome === "not_required"
-              ? "レビュー不要のため、最終承認者の決裁待ちです。"
-              : "最終承認者の決裁待ちです。"}
+      {canDecideThis && (
+        <ProposalDecisionForm
+          key={`decision-${proposal.id}`}
+          onDecide={onDecide}
+        />
+      )}
+      {proposal.status === "pending_decision" && !canDecideThis && (
+        <Notice tone="info">
+          最終承認者（{proposal.finalApproverName}）の決裁待ちです。割り当てられた最終承認者のみが決定できます。
         </Notice>
       )}
       {proposal.status === "returned" && (
         <Notice tone="warn">
-          この提案は差し戻されました。内容を見直し、同じ四半期に新しい版の提案を提出できます。
+          この提案は差し戻されました。共有されたコメントを確認し、同じ四半期に新しい版の提案を提出できます。
         </Notice>
+      )}
+      {proposal.status === "deferred" && (
+        <Notice tone="warn">
+          この提案は今期見送りとして記録されました。採用記録は作成されていません。次の版を提出できます。
+        </Notice>
+      )}
+      {proposal.status === "withdrawn" && (
+        <Notice tone="info">
+          この版は取り下げられました。現在の計画で新しい版を提出できます。
+        </Notice>
+      )}
+      {proposal.status === "approved" && (
+        <Notice tone="success">
+          承認され、提出時点のスナップショットが決定履歴に採用記録として固定されました。
+        </Notice>
+      )}
+
+      {canWithdrawThis && (
+        <ProposalWithdrawForm
+          key={`withdraw-${proposal.id}-${proposal.status}`}
+          currentStatus={proposal.status}
+          onWithdraw={onWithdraw}
+        />
       )}
     </div>
   );
@@ -189,7 +368,10 @@ export default function ProposalHistory({
   onSelect,
   currentUserId,
   canReview,
+  canEdit,
   onReview,
+  onDecide,
+  onWithdraw,
 }: {
   proposals: PlanningProposal[];
   period: PlanningPeriodSummary;
@@ -198,7 +380,10 @@ export default function ProposalHistory({
   onSelect: (proposalId: number | null) => void;
   currentUserId: number;
   canReview: boolean;
+  canEdit: boolean;
   onReview: (proposalId: number, input: ProposalReviewInput) => Promise<void>;
+  onDecide: (proposalId: number, input: ProposalDecisionInput) => Promise<void>;
+  onWithdraw: (proposalId: number, input: ProposalWithdrawInput) => Promise<void>;
 }) {
   const selected = proposals.find((proposal) => proposal.id === selectedId) ?? null;
 
@@ -225,7 +410,6 @@ export default function ProposalHistory({
       ) : (
         <ol className="mt-3 space-y-3">
           {proposals.map((proposal) => {
-            const snapshot = proposal.snapshot;
             return (
               <li
                 key={proposal.id}
@@ -246,10 +430,11 @@ export default function ProposalHistory({
                       {proposal.submitterName} ・ {formatDecisionDate(proposal.submittedAt)} ・
                       最終承認者 {proposal.finalApproverName}
                       {proposal.reviewerName ? ` ・ レビュー ${proposal.reviewerName}` : ""}
-                      {proposal.reviewOutcome
-                        ? ` ・ ${proposalReviewOutcomeLabel(proposal.reviewOutcome)}`
-                        : ""}
+                      {` ・ ${proposalReviewStageLabel(proposal.reviewerUserId, proposal.reviewOutcome)}`}
                     </p>
+                    <div className="mt-1.5">
+                      <ProposalStages proposal={proposal} />
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -261,24 +446,39 @@ export default function ProposalHistory({
                     canReview &&
                     proposal.reviewerUserId === currentUserId
                       ? "レビューする"
-                      : "提案の詳細を見る"}
+                      : proposal.status === "pending_decision" &&
+                          proposal.finalApproverUserId === currentUserId
+                        ? "決裁する"
+                        : "提案の詳細を見る"}
                   </button>
                 </div>
 
-                {proposal.restricted || !snapshot ? (
+                {proposal.restricted ? (
                   <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
-                    閲覧権限のない元プロジェクトを含むため、理由・合計・両案の内訳は非表示です。
+                    閲覧権限のない元プロジェクトを含むため、理由・合計・両案の内訳は非表示です。取り下げはこの詳細画面から行えます。
                   </p>
                 ) : (
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-700">
                     <span>
                       推奨 <b>{proposal.recommendedScenarioName}</b>
                     </span>
-                    <span>投資額 {formatManYen(snapshot.scenarios[proposal.recommendedSlot].knownCostYen)} 万円</span>
                     <span>
-                      {snapshot.scenarios[proposal.recommendedSlot].overBudget
-                        ? `予算超過 ${formatManYen(-snapshot.scenarios[proposal.recommendedSlot].budgetRemainingYen)}`
-                        : `予算残 ${formatManYen(snapshot.scenarios[proposal.recommendedSlot].budgetRemainingYen)}`}{" "}
+                      投資額{" "}
+                      {formatManYen(
+                        proposal.snapshot.scenarios[proposal.recommendedSlot].knownCostYen,
+                      )}{" "}
+                      万円
+                    </span>
+                    <span>
+                      {proposal.snapshot.scenarios[proposal.recommendedSlot].overBudget
+                        ? `予算超過 ${formatManYen(
+                            -proposal.snapshot.scenarios[proposal.recommendedSlot]
+                              .budgetRemainingYen,
+                          )}`
+                        : `予算残 ${formatManYen(
+                            proposal.snapshot.scenarios[proposal.recommendedSlot]
+                              .budgetRemainingYen,
+                          )}`}{" "}
                       万円
                     </span>
                     <span>提出時の計画の版 {proposal.periodRevision}</span>
@@ -307,7 +507,10 @@ export default function ProposalHistory({
             currentRevision={period.revision}
             currentUserId={currentUserId}
             canReview={canReview}
+            canEdit={canEdit}
             onReview={(input) => onReview(selected.id, input)}
+            onDecide={(input) => onDecide(selected.id, input)}
+            onWithdraw={(input) => onWithdraw(selected.id, input)}
           />
         )}
       </PlanningDialog>
