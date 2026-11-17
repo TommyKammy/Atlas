@@ -23,7 +23,7 @@ function readBaselineKeys(): Set<string> {
   } catch (error) {
     throw new Error(
       `contrast baseline is missing or invalid at ${BASELINE_PATH}; regenerate it with ` +
-        `BASE=http://127.0.0.1:<port> node scripts/ui-contrast.mjs --write-baseline`,
+        `ATLAS_UI_CONTRAST_WRITE_BASELINE=1 bash tests/run-e2e.sh ui-contrast`,
       { cause: error },
     );
   }
@@ -71,6 +71,9 @@ test.describe("contrast audit", () => {
     }
 
     const newViolations = violations.filter((violation) => !baselineKeys.has(violation.key));
+    console.log(
+      `contrast audit: ${violations.length} violation(s) across ${THEMES.length * pageEntries(process.env.ATLAS_UI_PAGES).length} page/theme combinations; ${baselineKeys.size} baseline key(s)`,
+    );
     const detail = newViolations.map((violation) => ({
       page: violation.page,
       theme: violation.theme,

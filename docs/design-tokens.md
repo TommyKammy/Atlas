@@ -268,7 +268,7 @@ node scripts/ui-visual-compare.mjs /tmp/atlas-ui-before /tmp/atlas-ui-after /tmp
 # 現在の違反を JSON で確認し、ベースラインと比較（--check が既定）
 node scripts/ui-contrast.mjs
 
-# ベースラインを更新する
+# ベースラインを更新する（公式手順は 8.3 の専用スイート）
 node scripts/ui-contrast.mjs --write-baseline
 ```
 
@@ -277,13 +277,23 @@ node scripts/ui-contrast.mjs --write-baseline
 - `--check` は `tests/fixtures/contrast-baseline.json` にない違反が1件でもあれば終了コード 1。ベースラインにだけ残っている違反は `fixedViolations` として報告する（失敗にはしない）。
 - 出力は JSON（`summary.byPageTheme` にページ×テーマ別の件数）。ログインは `ATLAS_UI_EMAIL` / `ATLAS_UI_PASSWORD`（既定は seed の管理者）を使う。
 
-### 8.3 ブラウザテスト
+### 8.3 コントラスト回帰テスト（専用スイート）
 
 ```bash
-bash tests/run-e2e.sh browser
+# シード直後の新しい隔離スタックで、ui-contrast.spec.ts だけを workers 1 で実行する
+bash tests/run-e2e.sh ui-contrast
 ```
 
-`tests/browser/ui-contrast.spec.ts` が同じ監査をライト/ダークで実行し、ベースラインにない違反があれば失敗する。隔離された E2E スタックが必要なため、通常の `npm run test:browser` ではなく `tests/run-e2e.sh` から実行する。
+`tests/browser/ui-contrast.spec.ts` が同じ監査をライト/ダークで実行し、ベースラインにない違反があれば失敗する。違反の同一性キーは画面に表示されるデータに依存するため、全件の `bash tests/run-e2e.sh browser` には含めない（他のテストが追加したプロジェクト・タスク・アバター・監査ログでキーが変わる）。`browser` スイートは従来どおり全件を実行するが、このスペックだけは既定で対象外になる。
+
+ベースラインを更新するときは、同じ専用スイートに書き出しモードを指定し、続けて通常モードで成功を確認する。
+
+```bash
+ATLAS_UI_CONTRAST_WRITE_BASELINE=1 bash tests/run-e2e.sh ui-contrast
+bash tests/run-e2e.sh ui-contrast
+```
+
+書き出しモードも通常モードと同じ隔離ガード（スタック名・マーカー・Playwright の誤ターゲット拒否）を通り、`tests/fixtures/contrast-baseline.json` を更新する。手元の使い捨て環境に対して `scripts/ui-contrast.mjs` を直接実行することもできるが、公式のベースラインはシード直後の専用スイートで生成する。
 
 ### 8.4 docs を Tailwind の走査対象から外す
 

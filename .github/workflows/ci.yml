@@ -92,6 +92,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run browser tests on a disposable stack
         run: bash tests/run-e2e.sh browser
+      - name: Run contrast audit on a fresh seed-only stack
+        run: bash tests/run-e2e.sh ui-contrast
 
   e2e:
     runs-on: ubuntu-latest
