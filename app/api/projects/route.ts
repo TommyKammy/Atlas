@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { db, withTransaction } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -21,6 +22,7 @@ export const GET = withUser(async (_req, { uid }) => {
 });
 
 export const POST = withUser(async (req, { uid }) => {
+  await requirePermission(uid, "projects.create");
   const body = await req.json().catch(() => null);
   const { workspace_id, name } = body ?? {};
   if (!workspace_id || !name || String(name).trim() === "") {

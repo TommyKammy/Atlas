@@ -42,7 +42,7 @@ export const getProjectShellData = cache(async (projectId: number, viewerId: num
   const [sections, users, members, projectTabs, customFields, projectApps, projectBundles, projectRules, favorite] =
     await Promise.all([
       getSections(projectId),
-      getUsers(),
+      getUsers(viewerId),
       getProjectMembers(projectId),
       getProjectTabs(projectId),
       getCustomFields(projectId),

@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, type Queryable } from "./db";
 
 export type PasswordPolicy = {
   min_length: number;
@@ -24,8 +24,8 @@ type PolicyRow = {
   password_require_symbol: boolean;
 };
 
-export async function getPasswordPolicy(): Promise<PasswordPolicy> {
-  const r = await db.query(
+export async function getPasswordPolicy(q: Queryable = db): Promise<PasswordPolicy> {
+  const r = await q.query(
     `SELECT password_min_length, password_require_upper, password_require_lower,
        password_require_number, password_require_symbol
      FROM workspace_security ORDER BY workspace_id LIMIT 1`,
@@ -63,8 +63,8 @@ export function passwordPolicyError(password: string, policy: PasswordPolicy): s
 }
 
 /** Validate against the workspace policy and return a user-facing error. */
-export async function validatePassword(password: string): Promise<string | null> {
-  return passwordPolicyError(password, await getPasswordPolicy());
+export async function validatePassword(password: string, q: Queryable = db): Promise<string | null> {
+  return passwordPolicyError(password, await getPasswordPolicy(q));
 }
 
 export function passwordPolicySummary(policy: PasswordPolicy): string {

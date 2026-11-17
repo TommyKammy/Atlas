@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { getPortfolio, getPortfolioProjects, getWorkspace } from "@/lib/data";
-import { getCurrentUserId } from "@/lib/current-user";
+import { hasPermission } from "@/lib/permissions";
+import { requirePageUser } from "@/lib/current-user";
 import { getPortfolios } from "@/lib/repositories/portfolios";
 import PortfolioWorkspace from "@/components/PortfolioWorkspace";
-import { redirect } from "next/navigation";
 
 export const instant = false;
 
@@ -12,10 +12,10 @@ export default async function PortfolioPage({
 }: {
   searchParams: Promise<{ portfolio?: string | string[] }>;
 }) {
+  const viewer = await requirePageUser();
+  const viewerId = viewer.id;
   const ws = await getWorkspace();
-  const viewerId = await getCurrentUserId();
-  if (!viewerId) redirect("/login");
-  const rows = ws ? await getPortfolio(ws.id, viewerId ?? undefined) : [];
+  const rows = ws ? await getPortfolio(ws.id, viewerId) : [];
   const saved = await getPortfolioProjects(viewerId);
   const portfolios = ws ? await getPortfolios(ws.id, viewerId) : [];
   const params = await searchParams;
@@ -30,9 +30,9 @@ export default async function PortfolioPage({
     <div className="p-6">
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-bold">ポートフォリオ</h1>
-        <a href="/audit" className="text-sm text-blue-700 hover:underline">
+        {viewer.isAdmin && await hasPermission(viewerId, "audit.view") && <a href="/audit" className="text-sm text-blue-700 hover:underline">
           監査ログ →
-        </a>
+        </a>}
       </div>
       <p className="mt-1 text-sm text-neutral-500">
         {ws?.name} の全プロジェクト（{rows.length}件）

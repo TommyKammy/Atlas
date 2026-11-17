@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-export default function CreateMenu() {
+export default function CreateMenu({ canCreateProject }: { canCreateProject: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -58,7 +58,7 @@ export default function CreateMenu() {
           <button onClick={newTask} className="block w-full px-3 py-1.5 text-left hover:bg-neutral-100">
             タスク
           </button>
-          <button
+          {canCreateProject && <button
             onClick={() => {
               setOpen(false);
               router.push("/projects/new");
@@ -66,7 +66,7 @@ export default function CreateMenu() {
             className="block w-full px-3 py-1.5 text-left hover:bg-neutral-100"
           >
             プロジェクト
-          </button>
+          </button>}
         </div>
       )}
     </div>

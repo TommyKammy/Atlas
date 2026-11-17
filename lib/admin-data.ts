@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { normalizePermissions, type Permission } from "./permissions";
+import { canGrantRole, getEffectiveRole, permissionsForBaseLevel, normalizePermissions, type EffectiveRole, type Permission } from "./permissions";
 import { isSamlSessionAllowed } from "./session-policy";
 
 export type AdminWorkspace = {
@@ -55,6 +55,7 @@ export type AdminTeam = {
 };
 
 export type AdminRole = {
+  can_assign?: boolean;
   id: number;
   key: string;
   name: string;
@@ -67,6 +68,7 @@ export type AdminRole = {
 };
 
 export type AdminUser = {
+  can_manage: boolean;
   id: number;
   name: string;
   email?: string | null;
@@ -81,6 +83,35 @@ export type AdminUser = {
   role_name?: string | null;
   totp_enabled?: boolean;
 };
+
+type TargetRoleRow = {
+  is_admin?: boolean;
+  is_guest?: boolean;
+  permissions: unknown;
+  is_super: boolean | null;
+};
+
+async function markManageable<T extends TargetRoleRow>(rows: T[], actorId: number) {
+  const actor = await getEffectiveRole(actorId);
+  return rows.map(({ permissions, is_super, ...user }) => {
+    const legacyLevel = user.is_admin ? "admin" : user.is_guest ? "guest" : "member";
+    const list = permissions === null ? permissionsForBaseLevel(legacyLevel) : normalizePermissions(permissions);
+    return { ...user, can_manage: canGrantRole(actor, { permissions: new Set(list), isSuper: is_super === true }) };
+  });
+}
+
+export async function getAdminUsers(actorId: number): Promise<AdminUser[]> {
+  const r = await db.query(
+    `SELECT u.id, u.name, u.email, u.title, u.avatar_url, u.is_guest, u.is_admin,
+       u.role_id, u.totp_enabled, u.deactivated_at::text AS deactivated_at,
+       r.permissions, r.is_super, r.key AS role_key, r.name AS role_name,
+       (SELECT COUNT(*)::int FROM tasks t WHERE t.assignee_id = u.id AND t.deleted_at IS NULL AND NOT t.completed) AS open_tasks
+     FROM users u
+     LEFT JOIN workspace_roles r ON r.id = u.role_id
+     ORDER BY u.id`,
+  );
+  return markManageable(r.rows as (AdminUser & TargetRoleRow)[], actorId);
+}
 
 export async function getAdminWorkspace(): Promise<AdminWorkspace | null> {
   const r = await db.query(
@@ -143,7 +174,7 @@ export async function getAdminTeams(workspaceId: number): Promise<AdminTeam[]> {
   return r.rows as AdminTeam[];
 }
 
-export async function getAdminRoles(workspaceId: number): Promise<AdminRole[]> {
+export async function getAdminRoles(workspaceId: number, actor?: EffectiveRole | null): Promise<AdminRole[]> {
   const r = await db.query(
     `SELECT r.id, r.key, r.name, r.description, r.base_level, r.permissions,
        r.is_system, r.is_super,
@@ -154,13 +185,19 @@ export async function getAdminRoles(workspaceId: number): Promise<AdminRole[]> {
     [workspaceId],
   );
   const rows = r.rows as (Omit<AdminRole, "permissions"> & { permissions: unknown })[];
-  return rows.map((row) => ({
-    ...row,
-    permissions: normalizePermissions(row.permissions),
-  })) as AdminRole[];
+  return rows.map((row) => {
+    const permissions = normalizePermissions(row.permissions);
+    return {
+      ...row, permissions,
+      ...(actor === undefined ? {} : {
+        can_assign: canGrantRole(actor, { isSuper: row.is_super, permissions: new Set(permissions) }),
+      }),
+    };
+  });
 }
 
 export type TotpUserRow = {
+  can_manage: boolean;
   id: number;
   name: string;
   email: string | null;
@@ -169,9 +206,9 @@ export type TotpUserRow = {
   role_name: string | null;
 };
 
-export async function getTotpUsers(workspaceId: number): Promise<TotpUserRow[]> {
+export async function getTotpUsers(workspaceId: number, actorId: number): Promise<TotpUserRow[]> {
   const r = await db.query(
-    `SELECT u.id, u.name, u.email, u.totp_enabled,
+    `SELECT u.id, u.name, u.email, u.totp_enabled, u.is_guest, u.is_admin, r.permissions, r.is_super,
        u.totp_enrolled_at::text AS totp_enrolled_at, r.name AS role_name
      FROM users u
      LEFT JOIN workspace_roles r ON r.id = u.role_id
@@ -180,5 +217,5 @@ export async function getTotpUsers(workspaceId: number): Promise<TotpUserRow[]> 
      ORDER BY u.totp_enabled DESC, u.id`,
     [workspaceId],
   );
-  return r.rows as TotpUserRow[];
+  return markManageable(r.rows as (TotpUserRow & TargetRoleRow)[], actorId);
 }

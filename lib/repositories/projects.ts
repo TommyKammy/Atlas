@@ -1,3 +1,4 @@
+import { projectDataAccess } from "../data-actor";
 import { cache } from "react";
 import { db, type Queryable } from "../db";
 import { normalizeProjectRole, type ProjectRole } from "../project-roles";
@@ -525,31 +526,33 @@ export async function getProjectMembers(projectId: number): Promise<User[]> {
   return r.rows;
 }
 
-export async function getArchivedProjects(workspaceId: number) {
+export async function getArchivedProjects(workspaceId: number, viewerId: number) {
   const r = await db.query(
-    `SELECT id, name, archived_at::text AS archived_at FROM projects
-     WHERE workspace_id = $1 AND archived_at IS NOT NULL AND deleted_at IS NULL
+    `SELECT id, name, archived_at::text AS archived_at, ${projectDataAccess("p", "$2", "admin")} AS can_manage FROM projects p
+     WHERE ${projectDataAccess("p", "$2")} AND workspace_id = $1 AND archived_at IS NOT NULL AND deleted_at IS NULL
      ORDER BY archived_at DESC`,
-    [workspaceId],
+    [workspaceId, viewerId],
   );
-  return r.rows as { id: number; name: string; archived_at: string }[];
+  return r.rows as { id: number; name: string; archived_at: string; can_manage: boolean }[];
 }
 
-export async function getDeletedProjects(workspaceId: number) {
+export async function getDeletedProjects(workspaceId: number, viewerId: number) {
   const r = await db.query(
     `SELECT p.id, p.name, p.deleted_at::text AS deleted_at,
        COALESCE(u.name, '') AS deleted_by_name,
+       ${projectDataAccess("p", "$2", "admin")} AS can_manage,
        (SELECT COUNT(*)::int FROM tasks t WHERE t.project_id = p.id AND t.deleted_at IS NULL) AS task_count
      FROM projects p LEFT JOIN users u ON u.id = p.deleted_by
-     WHERE p.workspace_id = $1 AND p.deleted_at IS NOT NULL
+     WHERE p.workspace_id = $1 AND p.deleted_at IS NOT NULL AND ${projectDataAccess("p", "$2")}
      ORDER BY p.deleted_at DESC`,
-    [workspaceId],
+    [workspaceId, viewerId],
   );
   return r.rows as {
     id: number;
     name: string;
     deleted_at: string;
     deleted_by_name: string;
+    can_manage: boolean;
     task_count: number;
   }[];
 }
@@ -568,7 +571,8 @@ export async function getRecentProjects(userId: number | null) {
   if (userId === null) return [];
   const r = await db.query(
     `SELECT p.id, p.name, p.color, p.icon FROM user_recent_projects r JOIN projects p ON p.id = r.project_id
-     WHERE r.user_id = $1 AND p.archived_at IS NULL ORDER BY r.opened_at DESC LIMIT 5`,
+     WHERE r.user_id = $1 AND p.archived_at IS NULL AND p.deleted_at IS NULL
+       AND ${projectDataAccess("p", "$1")} ORDER BY r.opened_at DESC LIMIT 5`,
     [userId],
   );
   return r.rows as { id: number; name: string; color: string | null; icon: string | null }[];

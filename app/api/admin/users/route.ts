@@ -3,19 +3,11 @@ import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { withAdminPermission } from "@/lib/api/route";
 import { validatePassword } from "@/lib/password-policy";
-import { getAdminRoles } from "@/lib/admin-data";
+import { getAdminRoles, getAdminUsers } from "@/lib/admin-data";
 import { canGrantRole, getEffectiveRole, getRoleByKey } from "@/lib/permissions";
 
-export const GET = withAdminPermission("members.manage", async () => {
-  const r = await db.query(
-    `SELECT u.id, u.name, u.email, u.title, u.avatar_url, u.is_guest, u.is_admin,
-       u.role_id, u.totp_enabled, u.deactivated_at::text AS deactivated_at,
-       r.key AS role_key, r.name AS role_name,
-       (SELECT COUNT(*)::int FROM tasks t WHERE t.assignee_id = u.id AND t.deleted_at IS NULL AND NOT t.completed) AS open_tasks
-     FROM users u
-     LEFT JOIN workspace_roles r ON r.id = u.role_id
-     ORDER BY u.id`,
-  );
+export const GET = withAdminPermission("members.manage", async (_req, { uid }) => {
+  const users = await getAdminUsers(uid);
   const ws = await db.query(
     `SELECT (SELECT COUNT(*)::int FROM projects) AS projects,
        (SELECT COUNT(*)::int FROM tasks WHERE deleted_at IS NULL) AS tasks,
@@ -26,9 +18,9 @@ export const GET = withAdminPermission("members.manage", async () => {
   );
   const workspaceId = Number(ws.rows[0]?.workspace_id ?? 1);
   return NextResponse.json({
-    users: r.rows,
+    users,
     stats: ws.rows[0],
-    roles: await getAdminRoles(workspaceId),
+    roles: await getAdminRoles(workspaceId, await getEffectiveRole(uid)),
   });
 });
 

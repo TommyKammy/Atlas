@@ -8,7 +8,7 @@ import { useState } from "react";
 export default function TrashList({
   initial,
 }: {
-  initial: { id: number; name: string; project_name: string | null; deleted_at: string }[];
+  initial: { id: number; name: string; project_name: string | null; can_edit: boolean; deleted_at: string }[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<number | null>(null);
@@ -47,14 +47,14 @@ export default function TrashList({
           <span className="shrink-0 text-xs text-neutral-400">{t.project_name ?? "–"}</span>
           <button
             onClick={() => restore(t.id)}
-            disabled={busy === t.id}
+            disabled={!t.can_edit || busy === t.id}
             className="shrink-0 rounded border px-2 py-0.5 hover:bg-neutral-100 disabled:opacity-50"
           >
             復元
           </button>
           <button
             onClick={() => purge(t.id, t.name)}
-            disabled={busy === t.id}
+            disabled={!t.can_edit || busy === t.id}
             className="shrink-0 rounded border border-red-300 px-2 py-0.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
           >
             完全削除

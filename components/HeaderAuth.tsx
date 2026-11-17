@@ -1,3 +1,4 @@
+import { hasPermission } from "@/lib/permissions";
 import { getCurrentUserId } from "@/lib/current-user";
 import CreateMenu from "./CreateMenu";
 import SearchBox from "./SearchBox";
@@ -9,7 +10,7 @@ export default async function HeaderAuth() {
   }
   return (
     <>
-      <CreateMenu />
+      <CreateMenu canCreateProject={await hasPermission(uid, "projects.create")} />
       <SearchBox />
     </>
   );

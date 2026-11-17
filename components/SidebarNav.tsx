@@ -1,3 +1,4 @@
+import { hasPermission } from "@/lib/permissions";
 import Link from "next/link";
 import NavPending from "./NavPending";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -98,7 +99,7 @@ function NavLink({
 export default async function SidebarNav() {
   const cuid = await getCurrentUserId();
   const ws = await getWorkspace();
-  const users = await getUsers();
+  const users = await getUsers(cuid);
   const me = users.find((u) => u.id === cuid) ?? null;
   const projects = ws && me ? await getSidebarProjects(ws.id, me.id) : [];
   const unread = ws && me ? await getUnreadCount(me.id, ws.id) : 0;
@@ -153,7 +154,7 @@ export default async function SidebarNav() {
         <NavLink item={TRASH_NAV} className={item} />
         <div className={`${label} flex items-center justify-between pr-1`}>
           <span>{NAV_LABELS.projects}</span>
-          {ws && <SidebarAddProject />}
+          {ws && cuid && await hasPermission(cuid, "projects.create") && <SidebarAddProject />}
         </div>
         {ws && me && <SidebarProjectList key={`${ws.id}:${me.id}`} workspaceId={ws.id} projects={projects} favoriteIds={[...favoriteIds]} />}
         {projects.length === 0 && <div className="px-3 py-1.5 text-neutral-500">（なし）</div>}

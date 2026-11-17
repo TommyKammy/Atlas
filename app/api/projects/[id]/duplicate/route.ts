@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { withProject } from "@/lib/api/route";
 import { duplicateProject } from "@/lib/services/project-duplicate";
@@ -6,6 +7,7 @@ import { duplicateProject } from "@/lib/services/project-duplicate";
 export const POST = withProject(
   "edit",
   async (_req, { uid, projectId, body }) => {
+    await requirePermission(uid, "projects.create");
     const id = await duplicateProject({ uid, projectId, body });
     return NextResponse.json({ id, source_project_id: projectId }, { status: 201 });
   },

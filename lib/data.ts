@@ -1,3 +1,5 @@
+import { getDirectoryUsers } from "./repositories/users";
+import { projectDataAccess } from "./data-actor";
 import { cache } from "react";
 import { db } from "./db";
 import type { RichTextDoc } from "./rich-text-types";
@@ -46,15 +48,10 @@ export const getWorkspace = cache(async () => {
 });
 
 
-export const getUsers = cache(async (): Promise<User[]> => {
-  const r = await db.query(
-    `SELECT u.id, u.name, u.email, u.title, u.avatar_url, u.is_guest, u.is_admin,
-       u.role_id, u.totp_enabled, u.deactivated_at::text AS deactivated_at,
-       r.key AS role_key, r.name AS role_name
-     FROM users u LEFT JOIN workspace_roles r ON r.id = u.role_id
-     WHERE u.deactivated_at IS NULL ORDER BY u.id`,
-  );
-  return r.rows;
+export const getUsers = cache(async (viewerId: number | null): Promise<User[]> => {
+  if (viewerId === null) return [];
+  const ws = await getWorkspace();
+  return ws ? getDirectoryUsers(ws.id, viewerId) : [];
 });
 
 /** Projects visible to a user: workspace admins see all, others only member projects. */
@@ -121,13 +118,14 @@ export async function getPortfolioProjects(userId: number | null) {
   const r = await db.query(
     `SELECT p.id, p.name, pp.added_at::text AS added_at
      FROM portfolio_projects pp JOIN projects p ON p.id = pp.project_id
-     WHERE pp.user_id = $1 AND p.archived_at IS NULL ORDER BY pp.added_at DESC`,
+     WHERE pp.user_id = $1 AND p.archived_at IS NULL AND p.deleted_at IS NULL
+       AND ${projectDataAccess("p", "$1")} ORDER BY pp.added_at DESC`,
     [userId],
   );
   return r.rows as { id: number; name: string; added_at: string }[];
 }
 
-export async function getPortfolio(workspaceId: number, viewerUserId?: number): Promise<PortfolioRow[]> {
+export async function getPortfolio(workspaceId: number, viewerUserId: number): Promise<PortfolioRow[]> {
   const r = await db.query(
     `SELECT p.id, p.name,
        COUNT(DISTINCT t.id) FILTER (WHERE t.parent_task_id IS NULL)::int AS total,
@@ -140,11 +138,9 @@ export async function getPortfolio(workspaceId: number, viewerUserId?: number): 
      LEFT JOIN tasks t ON t.project_id = p.id AND t.deleted_at IS NULL
      LEFT JOIN project_members m ON m.project_id = p.id
      WHERE p.workspace_id = $1 AND p.archived_at IS NULL
-       AND ($2::bigint IS NULL
-         OR EXISTS (SELECT 1 FROM users ux WHERE ux.id = $2 AND ux.is_admin)
-         OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id = p.id AND pm.user_id = $2))
+       AND p.deleted_at IS NULL AND ${projectDataAccess("p", "$2")}
      GROUP BY p.id ORDER BY p.id`,
-    [workspaceId, viewerUserId ?? null],
+    [workspaceId, viewerUserId],
   );
   return r.rows;
 }
@@ -163,16 +159,30 @@ export type TrashItem = {
   id: number;
   name: string;
   project_name: string | null;
+  can_edit: boolean;
   deleted_at: string;
 };
 
-export async function getTrash(workspaceId: number): Promise<TrashItem[]> {
+export async function getTrash(workspaceId: number, viewerId: number): Promise<TrashItem[]> {
   const r = await db.query(
-    `SELECT t.id, t.name, p.name AS project_name, t.deleted_at::text AS deleted_at
-     FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
-     WHERE t.deleted_at IS NOT NULL AND (p.workspace_id = $1 OR t.project_id IS NULL)
+    `SELECT t.id, t.name, visible.name AS project_name, t.deleted_at::text AS deleted_at,
+       ${projectDataAccess("governing", "$2", "edit")} AS can_edit
+     FROM tasks t
+     LEFT JOIN projects governing ON governing.id = COALESCE(t.project_id,
+       (SELECT m.project_id FROM task_project_memberships m WHERE m.task_id = t.id ORDER BY m.project_id LIMIT 1),
+       (SELECT parent.project_id FROM tasks parent WHERE parent.id = t.parent_task_id))
+     LEFT JOIN LATERAL (
+       SELECT p.id, p.name FROM projects p
+       WHERE p.workspace_id = $1 AND p.id IN (
+         SELECT governing.id UNION ALL
+         SELECT m.project_id FROM task_project_memberships m WHERE m.task_id = t.id
+       ) AND ${projectDataAccess("p", "$2")}
+       ORDER BY (p.id = governing.id) DESC, p.id LIMIT 1
+     ) visible ON TRUE
+     WHERE t.deleted_at IS NOT NULL AND (visible.id IS NOT NULL
+       OR (governing.id IS NULL AND ${projectDataAccess("governing", "$2")}))
      ORDER BY t.deleted_at DESC LIMIT 200`,
-    [workspaceId],
+    [workspaceId, viewerId],
   );
   return r.rows;
 }
@@ -183,7 +193,8 @@ export async function getTrash(workspaceId: number): Promise<TrashItem[]> {
 export async function getFavorites(userId: number) {
   const r = await db.query(
     `SELECT p.id, p.name, p.color, p.icon FROM user_favorites f JOIN projects p ON p.id = f.project_id
-     WHERE f.user_id = $1 AND p.archived_at IS NULL ORDER BY p.id`,
+     WHERE f.user_id = $1 AND p.archived_at IS NULL AND p.deleted_at IS NULL
+       AND ${projectDataAccess("p", "$1")} ORDER BY p.id`,
     [userId],
   );
   return r.rows as { id: number; name: string; color: string | null; icon: string | null }[];

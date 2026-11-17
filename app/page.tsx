@@ -1,3 +1,4 @@
+import { hasPermission } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import HomeDashboard from "@/components/home/HomeDashboard";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -51,7 +52,7 @@ export default async function Home() {
     notepad,
     unread,
   ] = await Promise.all([
-    getUsers(),
+    getUsers(uid),
     getHomeWidgets(ws.id, uid),
     getHomeMyTasks(uid),
     getHomeAssignedTasks(uid),
@@ -78,6 +79,7 @@ export default async function Home() {
   return (
     <>
       <HomeDashboard
+        canCreateProject={await hasPermission(uid, "projects.create")}
         userId={uid}
         today={today}
         dateLine={dateLine}

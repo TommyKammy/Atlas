@@ -1,9 +1,14 @@
+import { redirect } from "next/navigation";
+import { requirePageUser } from "@/lib/current-user";
+import { hasPermission } from "@/lib/permissions";
 import { getAuditLog } from "@/lib/audit";
 import { getWorkspace } from "@/lib/data";
 
 export const instant = false;
 
 export default async function AuditPage() {
+  const user = await requirePageUser();
+  if (!user.isAdmin || !(await hasPermission(user.id, "audit.view"))) redirect("/");
   const ws = await getWorkspace();
   const rows = ws ? await getAuditLog(ws.id) : [];
 

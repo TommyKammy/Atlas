@@ -9,7 +9,7 @@ import type { AdminRole, AdminUser } from "@/lib/admin-data";
 import UserAvatar from "./UserAvatar";
 
 const roleOf = (u: AdminUser) =>
-  u.role_key ?? (u.is_admin ? "super_admin" : u.is_guest ? "guest" : "member");
+  u.role_key ?? (u.is_admin ? "admin" : u.is_guest ? "guest" : "member");
 
 export default function AdminPanel({
   initial,
@@ -230,12 +230,12 @@ export default function AdminPanel({
                 <select
                   value={roleOf(u)}
                   onChange={(e) => setRoleFor(u.id, e.target.value)}
-                  disabled={u.id === currentUserId}
+                  disabled={!u.can_manage || u.id === currentUserId}
                   className="h-7 w-full rounded border bg-white px-1 text-xs disabled:bg-neutral-100 disabled:text-neutral-400"
                   title={u.id === currentUserId ? "自分自身の権限は変更できません" : undefined}
                 >
                   {roleOptions.map((r) => (
-                    <option key={r.key} value={r.key}>
+                    <option key={r.key} value={r.key} disabled={r.can_assign === false}>
                       {r.name}
                     </option>
                   ))}
@@ -243,22 +243,22 @@ export default function AdminPanel({
               </span>
               <span className="text-neutral-600">{u.open_tasks ?? "–"}</span>
               <span className="flex gap-1 text-xs">
-                <button onClick={() => openEdit(u)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
+                <button disabled={!u.can_manage} onClick={() => openEdit(u)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
                   編集
                 </button>
-                <button onClick={() => resetPw(u.id, u.name)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
+                <button disabled={!u.can_manage} onClick={() => resetPw(u.id, u.name)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
                   PW
                 </button>
                 <button
                   onClick={() => toggleActive(u)}
-                  disabled={u.id === currentUserId}
+                  disabled={!u.can_manage || u.id === currentUserId}
                   className="rounded border px-1.5 py-0.5 text-neutral-600 hover:bg-neutral-100 disabled:opacity-40"
                 >
                   {u.deactivated_at ? "有効化" : "無効化"}
                 </button>
                 <button
                   onClick={() => remove(u.id, u.name)}
-                  disabled={u.id === currentUserId}
+                  disabled={!u.can_manage || u.id === currentUserId}
                   className="rounded border border-red-300 px-1.5 py-0.5 text-red-600 hover:bg-red-50 disabled:opacity-40"
                 >
                   削除
@@ -303,7 +303,7 @@ export default function AdminPanel({
         />
         <select value={role} onChange={(e) => setRole(e.target.value)} className={`${field} h-[34px]`}>
           {roleOptions.map((r) => (
-            <option key={r.key} value={r.key}>
+            <option key={r.key} value={r.key} disabled={r.can_assign === false}>
               {r.name}
             </option>
           ))}
@@ -329,7 +329,7 @@ export default function AdminPanel({
           {roleOptions
             .filter((r) => ["member", "guest", "admin"].includes(r.key))
             .map((r) => (
-              <option key={r.key} value={r.key}>
+              <option key={r.key} value={r.key} disabled={r.can_assign === false}>
                 {r.name}
               </option>
             ))}
@@ -405,7 +405,7 @@ export default function AdminPanel({
                   className={`${field} mt-1 w-full`}
                 >
                   {roleOptions.map((r) => (
-                    <option key={r.key} value={r.key}>
+                    <option key={r.key} value={r.key} disabled={r.can_assign === false}>
                       {r.name}
                     </option>
                   ))}

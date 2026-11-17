@@ -6,7 +6,7 @@ import { useState } from "react";
 export default function ArchivedProjects({
   initial,
 }: {
-  initial: { id: number; name: string; archived_at: string }[];
+  initial: { id: number; name: string; archived_at: string; can_manage: boolean }[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<number | null>(null);
@@ -37,7 +37,7 @@ export default function ArchivedProjects({
           <span className="shrink-0 text-xs text-neutral-400">{p.archived_at.slice(0, 10)}</span>
           <button
             onClick={() => restore(p.id)}
-            disabled={busy === p.id}
+            disabled={!p.can_manage || busy === p.id}
             className="shrink-0 rounded border px-2 py-0.5 hover:bg-neutral-100 disabled:opacity-50"
           >
             復元

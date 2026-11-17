@@ -1,6 +1,5 @@
 import { assertDataActor, projectDataAccess, type DataActor } from "../data-actor";
 import { db } from "../db";
-import type { User } from "../data";
 import { compatibleTaskParent } from "./scope";
 import { emptySearchPage, searchPageRequest, type SearchPage, type SearchPageRequest } from "../search-pagination";
 
@@ -50,28 +49,7 @@ const TASK_SEARCH_HOMES = `
   ) task_home ON TRUE
   JOIN projects p ON p.id = task_home.project_id`;
 
-export async function getSearchUsers(workspaceId: number, viewerUserId: number): Promise<User[]> {
-  const r = await db.query(
-    `SELECT u.id, u.name, u.email, u.title, u.avatar_url, u.is_guest, u.is_admin,
-       u.deactivated_at::text AS deactivated_at
-     FROM users u
-     WHERE u.deactivated_at IS NULL
-       AND (
-         NOT EXISTS (SELECT 1 FROM users me WHERE me.id = $1 AND me.is_guest)
-         OR u.id = $1
-         OR EXISTS (
-           SELECT 1
-           FROM project_members a
-           JOIN projects p ON p.id = a.project_id AND p.workspace_id = $2
-           JOIN project_members b ON b.project_id = a.project_id AND b.user_id = u.id
-           WHERE a.user_id = $1
-         )
-       )
-     ORDER BY u.id`,
-    [viewerUserId, workspaceId],
-  );
-  return r.rows;
-}
+export { getDirectoryUsers as getSearchUsers } from "./users";
 
 export type AdvancedSearchFilters = {
   q: string;

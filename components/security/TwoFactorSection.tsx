@@ -129,7 +129,7 @@ export function TwoFactorSection({
               </span>
               <button
                 onClick={() => resetUser(user)}
-                disabled={!user.totp_enabled}
+                disabled={!user.totp_enabled || !user.can_manage}
                 className="rounded border px-1.5 py-0.5 text-xs hover:bg-neutral-100 disabled:opacity-40"
               >
                 リセット

@@ -50,10 +50,10 @@ export function sessionCookieOptions(maxAge = SESSION_TTL_SECONDS) {
   };
 }
 
-async function loadSessionByToken(token: string): Promise<SessionAccess | null> {
+export async function loadSessionByToken(token: string, q: Queryable = db): Promise<SessionAccess | null> {
   if (!isSessionToken(token)) return null;
   const tokenHash = hashSessionToken(token);
-  const r = await db.query(
+  const r = await q.query(
     `SELECT u.id, u.name, u.email, u.is_admin, u.is_guest, u.totp_enabled,
        s.mfa_enrollment_only OR COALESCE(w.two_factor_policy = 'required' AND (
          NOT u.totp_enabled OR s.created_at < COALESCE(u.totp_enrolled_at, '-infinity'::timestamptz)

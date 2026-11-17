@@ -1,4 +1,5 @@
-import { db } from "./db";
+import { forbidden } from "./api/errors";
+import { db, type Queryable } from "./db";
 import {
   ALL_PERMISSIONS,
   normalizePermissions,
@@ -36,13 +37,13 @@ export type EffectiveRole = {
  * Resolve a user's effective workspace role. Legacy users without role_id
  * fall back to the is_admin / is_guest flags so existing data keeps working.
  */
-export async function getEffectiveRole(userId: number): Promise<EffectiveRole | null> {
-  const r = await db.query(
+export async function getEffectiveRole(userId: number, q: Queryable = db, includeInactive = false): Promise<EffectiveRole | null> {
+  const r = await q.query(
     `SELECT u.id, u.is_admin, u.is_guest, u.role_id,
        r.key, r.name, r.base_level, r.permissions, r.is_super
      FROM users u LEFT JOIN workspace_roles r ON r.id = u.role_id
-     WHERE u.id = $1 AND u.deactivated_at IS NULL`,
-    [userId],
+     WHERE u.id = $1 AND ($2 OR u.deactivated_at IS NULL)`,
+    [userId, includeInactive],
   );
   const row = r.rows[0] as
     | {
@@ -84,19 +85,24 @@ export async function hasPermission(userId: number, permission: Permission): Pro
   return role?.permissions.has(permission) === true;
 }
 
+export async function requirePermission(userId: number, permission: Permission) {
+  if (!(await hasPermission(userId, permission))) throw forbidden("permission denied");
+}
+
 export type RoleRecord = {
   id: number;
   key: string;
   name: string;
   baseLevel: "admin" | "member" | "guest";
+  isSuper: boolean;
   isGuest: boolean;
   isAdmin: boolean;
   permissions: Set<string>;
 };
 
-export async function getRoleByKey(key: string): Promise<RoleRecord | null> {
-  const r = await db.query(
-    `SELECT id, key, name, base_level, permissions FROM workspace_roles
+export async function getRoleByKey(key: string, q: Queryable = db): Promise<RoleRecord | null> {
+  const r = await q.query(
+    `SELECT id, key, name, base_level, permissions, is_super FROM workspace_roles
      WHERE key = $1 ORDER BY workspace_id LIMIT 1`,
     [key],
   );
@@ -106,6 +112,7 @@ export async function getRoleByKey(key: string): Promise<RoleRecord | null> {
         key: string;
         name: string;
         base_level: "admin" | "member" | "guest";
+        is_super: boolean;
         permissions: unknown;
       }
     | undefined;
@@ -115,6 +122,7 @@ export async function getRoleByKey(key: string): Promise<RoleRecord | null> {
     key: row.key,
     name: row.name,
     baseLevel: row.base_level,
+    isSuper: row.is_super === true,
     isAdmin: row.base_level === "admin",
     isGuest: row.base_level === "guest",
     permissions: new Set(normalizePermissions(row.permissions)),
@@ -131,8 +139,8 @@ export function canAccessAdminConsole(role: EffectiveRole | null): boolean {
 }
 
 /** A user can only grant a role whose permissions are a subset of their own. */
-export function canGrantRole(actor: EffectiveRole | null, role: RoleRecord): boolean {
-  if (!actor) return false;
+export function canGrantRole(actor: EffectiveRole | null, role: Pick<RoleRecord, "permissions" | "isSuper">): boolean {
+  if (!actor || (role.isSuper && !actor.isSuper)) return false;
   for (const permission of role.permissions) {
     if (!actor.permissions.has(permission)) return false;
   }

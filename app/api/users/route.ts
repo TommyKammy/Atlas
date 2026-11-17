@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getUsers } from "@/lib/data";
 import { withUser } from "@/lib/api/route";
 
-// Workspace directory used by project member pickers and share dialogs.
-export const GET = withUser(async () => {
-  const r = await db.query(
-    `SELECT id, name, email, title, avatar_url, is_guest, is_admin
-     FROM users WHERE deactivated_at IS NULL ORDER BY id`,
-  );
-  return NextResponse.json({ users: r.rows });
+export const GET = withUser(async (_req, { uid }) => {
+  const rows = await getUsers(uid);
+  const users = rows.map(({ id, name, email, title, avatar_url, is_guest, is_admin }) =>
+    ({ id, name, email, title, avatar_url, is_guest, is_admin }));
+  return NextResponse.json({ users });
 });

@@ -10,6 +10,7 @@ type DeletedProject = {
   name: string;
   deleted_at: string;
   deleted_by_name: string;
+  can_manage: boolean;
   task_count: number;
 };
 
@@ -60,7 +61,7 @@ export default function DeletedProjects({ initial }: { initial: DeletedProject[]
           <button
             type="button"
             onClick={() => void restore(project.id)}
-            disabled={busy === project.id}
+            disabled={!project.can_manage || busy === project.id}
             className="shrink-0 rounded border px-2 py-0.5 hover:bg-neutral-100 disabled:opacity-50"
           >
             復元
@@ -68,7 +69,7 @@ export default function DeletedProjects({ initial }: { initial: DeletedProject[]
           <button
             type="button"
             onClick={() => void purge(project)}
-            disabled={busy === project.id}
+            disabled={!project.can_manage || busy === project.id}
             className="shrink-0 rounded border border-red-200 px-2 py-0.5 text-red-700 hover:bg-red-50 disabled:opacity-50"
           >
             完全に削除

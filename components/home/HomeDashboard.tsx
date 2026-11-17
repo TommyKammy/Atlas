@@ -35,6 +35,7 @@ import ProjectsWidget from "./widgets/ProjectsWidget";
 import StatusUpdatesWidget from "./widgets/StatusUpdatesWidget";
 
 export default function HomeDashboard({
+  canCreateProject,
   userId,
   today,
   dateLine,
@@ -55,6 +56,7 @@ export default function HomeDashboard({
   notepad,
   users,
 }: {
+  canCreateProject: boolean;
   userId: number;
   today: string;
   dateLine: string;
@@ -286,7 +288,7 @@ export default function HomeDashboard({
               />
             )}
             {widget.widget_type === "projects" && (
-              <ProjectsWidget projects={projects} />
+              <ProjectsWidget canCreateProject={canCreateProject} projects={projects} />
             )}
             {widget.widget_type === "assigned_tasks" && (
               <AssignedTasksWidget

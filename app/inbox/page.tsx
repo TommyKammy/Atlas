@@ -17,7 +17,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   const uid = await getCurrentUserId();
   if (!uid) redirect("/login");
   const ws = await getWorkspace();
-  const users = await getUsers();
+  const users = await getUsers(uid);
   const me = users.find((u) => u.id === uid) ?? null;
   const page = ws && me ? await getInboxPage(me.id, ws.id, { filter, cursor })
     : { items: [], total: 0, unread: 0, read: 0, all: 0, nextCursor: null };

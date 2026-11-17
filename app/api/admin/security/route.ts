@@ -7,11 +7,11 @@ import { getSecuritySettings, getTotpUsers, type SecuritySettings } from "@/lib/
 const TWO_FACTOR = new Set(["optional", "required"]);
 const SAML_MODES = new Set(["off", "optional", "required", "members_only"]);
 
-export const GET = withAdminPermission("security.manage", async () => {
+export const GET = withAdminPermission("security.manage", async (_req, { uid }) => {
   const settings = await getSecuritySettings();
   return NextResponse.json({
     settings,
-    totpUsers: await getTotpUsers(settings.workspace_id),
+    totpUsers: await getTotpUsers(settings.workspace_id, uid),
   });
 });
 
@@ -130,5 +130,5 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
     return updated.rows[0] as SecuritySettings;
   });
   if (outcome instanceof Response) return outcome;
-  return NextResponse.json({ settings: outcome, totpUsers: await getTotpUsers(outcome.workspace_id) });
+  return NextResponse.json({ settings: outcome, totpUsers: await getTotpUsers(outcome.workspace_id, uid) });
 });

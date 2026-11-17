@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { isSessionToken, SESSION_COOKIE } from "@/lib/session-token";
+import { loadSessionByToken } from "@/lib/api/session";
+import { queryAtRequestBoundary } from "@/lib/db";
 import { STATIC_SECURITY_HEADERS } from "@/lib/security-headers";
 
 function securityHeaders(nonce: string): Record<string, string> {
@@ -36,8 +38,7 @@ function withSecurityHeaders(response: NextResponse, nonce: string): NextRespons
   return response;
 }
 
-// Demo auth gate: every page/API except login requires a numeric atlas_uid cookie.
-// Cookie issuance itself is password-gated at /api/auth/login.
+// Block invalid sessions before a protected page can stream HTML or an RSC payload.
 export async function proxy(req: NextRequest) {
   const nonce = crypto.randomUUID();
   const requestHeaders = new Headers(req.headers);
@@ -76,6 +77,13 @@ export async function proxy(req: NextRequest) {
     return withSecurityHeaders(NextResponse.redirect(new URL("/login", req.url)), nonce);
   }
 
+  if (!req.nextUrl.pathname.startsWith("/api/")) {
+    const session = await loadSessionByToken(token, { query: queryAtRequestBoundary });
+    if (!session) return withSecurityHeaders(NextResponse.redirect(new URL("/login", req.url)), nonce);
+    if (session.mfaPending && req.nextUrl.pathname !== "/profile") {
+      return withSecurityHeaders(NextResponse.redirect(new URL("/profile#two-factor", req.url)), nonce);
+    }
+  }
   return withSecurityHeaders(next(), nonce);
 }
 

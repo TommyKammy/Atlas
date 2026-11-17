@@ -1,3 +1,4 @@
+import { requirePageUser } from "@/lib/current-user";
 import Link from "next/link";
 import { getArchivedProjects, getDeletedProjects, getTrash, getWorkspace } from "@/lib/data";
 import TrashList from "@/components/TrashList";
@@ -7,10 +8,11 @@ import DeletedProjects from "@/components/DeletedProjects";
 export const instant = false;
 
 export default async function TrashPage() {
+  const user = await requirePageUser();
   const ws = await getWorkspace();
-  const items = ws ? await getTrash(ws.id) : [];
-  const archived = ws ? await getArchivedProjects(ws.id) : [];
-  const deleted = ws ? await getDeletedProjects(ws.id) : [];
+  const items = ws ? await getTrash(ws.id, user.id) : [];
+  const archived = ws ? await getArchivedProjects(ws.id, user.id) : [];
+  const deleted = ws ? await getDeletedProjects(ws.id, user.id) : [];
   return (
     <div className="p-6">
       <h1 className="text-lg font-bold">削除済み</h1>

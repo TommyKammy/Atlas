@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import { todayISO } from "@/lib/dates";
 import { shiftDate } from "@/lib/timeline-dnd";
@@ -34,6 +35,7 @@ export const DELETE = withAdmin(async (_req, { params }) => {
 
 // Instantiate a template into a new project. Body: { name: string }.
 export const POST = withUser(async (req, { uid, params }) => {
+  await requirePermission(uid, "projects.create");
   const id = params.id;
   const body = (await req.json().catch(() => null)) as { name?: unknown } | null;
   const name = typeof body?.name === "string" ? body.name.trim() : "";

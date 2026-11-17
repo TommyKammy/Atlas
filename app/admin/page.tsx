@@ -1,6 +1,5 @@
 import { getCurrentUserId } from "@/lib/current-user";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
 import AdminConsole from "@/components/AdminConsole";
 import {
   getAdminRoles,
@@ -8,7 +7,7 @@ import {
   getAdminWorkspace,
   getSecuritySettings,
   getTotpUsers,
-  type AdminUser,
+  getAdminUsers,
 } from "@/lib/admin-data";
 import { canAccessAdminConsole, getEffectiveRole } from "@/lib/permissions";
 import { getPasswordPolicy, passwordPolicySummary } from "@/lib/password-policy";
@@ -27,17 +26,7 @@ export default async function AdminPage() {
       </div>
     );
   }
-  const users = (
-    await db.query(
-      `SELECT u.id, u.name, u.email, u.title, u.avatar_url, u.is_guest, u.is_admin,
-         u.role_id, u.totp_enabled, u.deactivated_at::text AS deactivated_at,
-         r.key AS role_key, r.name AS role_name,
-         (SELECT COUNT(*)::int FROM tasks t WHERE t.assignee_id = u.id AND t.deleted_at IS NULL AND NOT t.completed) AS open_tasks
-       FROM users u
-       LEFT JOIN workspace_roles r ON r.id = u.role_id
-       ORDER BY u.id`,
-    )
-  ).rows as AdminUser[];
+  const users = await getAdminUsers(uid);
   const workspacePromise = getAdminWorkspace();
   const securityPromise = getSecuritySettings();
   const workspace = await workspacePromise;
@@ -52,9 +41,9 @@ export default async function AdminPage() {
   const security = await securityPromise;
   const passwordPolicyText = passwordPolicySummary(await getPasswordPolicy());
   const [roles, teams, totpUsers] = await Promise.all([
-    getAdminRoles(workspace.id),
+    getAdminRoles(workspace.id, role),
     getAdminTeams(workspace.id),
-    getTotpUsers(workspace.id),
+    getTotpUsers(workspace.id, uid),
   ]);
   return (
     <div className="max-w-6xl p-6">

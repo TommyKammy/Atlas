@@ -10,7 +10,7 @@ export const instant = false;
 export default async function ProfilePage() {
   const access = await getMfaServerSession();
   if (!access) redirect("/login");
-  const me = access.mfaPending ? null : (await getUsers()).find((u) => u.id === access.user.id);
+  const me = access.mfaPending ? null : (await getUsers(access.user.id)).find((u) => u.id === access.user.id);
   if (!me && !access.mfaPending) {
     return (
       <div className="p-8">

@@ -1,3 +1,4 @@
+import { directoryAccess } from "./users";
 import { db, withTransaction, type Queryable } from "../db";
 import {
   DEFAULT_HOME_WIDGETS,
@@ -221,7 +222,7 @@ export async function getHomeMembers(workspaceId: number, viewerId: number): Pro
         WHERE t.assignee_id = u.id AND NOT t.completed AND t.deleted_at IS NULL AND t.parent_task_id IS NULL
           AND t.due_on BETWEEN CURRENT_DATE AND CURRENT_DATE + 30)::int AS month_tasks
      FROM users u
-     WHERE u.deactivated_at IS NULL AND u.id <> $2
+     WHERE u.deactivated_at IS NULL AND u.id <> $2 AND ${directoryAccess("u", "$2", "$1")}
      ORDER BY open_tasks DESC, shared_projects DESC, u.id
      LIMIT 12`,
     [workspaceId, viewerId],

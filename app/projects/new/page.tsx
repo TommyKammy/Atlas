@@ -1,3 +1,4 @@
+import { hasPermission } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import ProjectCreateScreen from "@/components/project-create/ProjectCreateScreen";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -9,6 +10,7 @@ export const instant = false;
 export default async function NewProjectPage() {
   const uid = await getCurrentUserId();
   if (!uid) redirect("/login");
+  if (!(await hasPermission(uid, "projects.create"))) redirect("/");
   const ws = await getWorkspace();
   if (!ws) {
     return (
@@ -23,7 +25,7 @@ export default async function NewProjectPage() {
 
   const [templates, users] = await Promise.all([
     getProjectTemplateSummaries(ws.id),
-    getUsers(),
+    getUsers(uid),
   ]);
   const me = users.find((user) => user.id === uid) ?? null;
 

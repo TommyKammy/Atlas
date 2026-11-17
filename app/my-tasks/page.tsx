@@ -9,7 +9,7 @@ export const instant = false;
 export default async function MyTasksPage() {
   const uid = await getCurrentUserId();
   if (!uid) redirect("/login");
-  const users = await getUsers();
+  const users = await getUsers(uid);
   const me = users.find((u) => u.id === uid) ?? null;
   const tasks = me ? await getMyTasks(me.id) : [];
   const today = todayISO();
