@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import type { Portfolio, PortfolioProject, PortfolioRule } from "@/lib/portfolios";
@@ -14,14 +15,18 @@ type PortfolioDetail = {
 
 export default function PortfolioWorkspace({
   initialPortfolios,
+  initialSelectedId,
   availableProjects,
 }: {
   initialPortfolios: Portfolio[];
+  initialSelectedId?: number;
   availableProjects: { id: number; name: string }[];
 }) {
   const [portfolios, setPortfolios] = useState(initialPortfolios);
   const [selectedId, setSelectedId] = useState<number | null>(
-    initialPortfolios[0]?.id ?? null,
+    initialSelectedId && initialPortfolios.some((portfolio) => portfolio.id === initialSelectedId)
+      ? initialSelectedId
+      : initialPortfolios[0]?.id ?? null,
   );
   const [detail, setDetail] = useState<PortfolioDetail | null>(null);
   const [name, setName] = useState("");
@@ -47,6 +52,13 @@ export default function PortfolioWorkspace({
       setDetail(null);
     }
   };
+
+  useEffect(() => {
+    if (selectedId === null) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("portfolio", String(selectedId));
+    window.history.replaceState(null, "", url);
+  }, [selectedId]);
 
   useEffect(() => {
     if (selectedId === null) return;
@@ -214,9 +226,19 @@ export default function PortfolioWorkspace({
               <div className="rounded-lg border border-neutral-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <h3 className="text-[16px] font-semibold text-neutral-900">
-                      {detail.portfolio.name}
-                    </h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-[16px] font-semibold text-neutral-900">
+                        {detail.portfolio.name}
+                      </h3>
+                      {detail.portfolio.can_view_plan && (
+                        <Link
+                          href={`/portfolio/${detail.portfolio.id}/planning?view=ledger`}
+                          className="inline-flex h-8 items-center rounded-md bg-[#2c60b8] px-3 text-[12px] font-medium text-white hover:bg-[#24529c]"
+                        >
+                          投資計画を開く →
+                        </Link>
+                      )}
+                    </div>
                     <p className="mt-0.5 text-[11px] text-neutral-500">
                       {detail.portfolio.description || "説明はありません"}
                     </p>

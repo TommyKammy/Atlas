@@ -1,0 +1,129 @@
+/*
+ * Feature-scoped styles for the planning tables, written as plain CSS and
+ * imported for its side effects. The project config applies the Tailwind
+ * Turbopack loader to every stylesheet, so a CSS Module would arrive with an
+ * empty class map. All classes are explicitly prefixed with "ppt-" instead.
+ */
+
+.ppt-region {
+  max-inline-size: 100%;
+  max-block-size: min(72dvh, 820px);
+  overflow: auto;
+  container-type: inline-size;
+  overscroll-behavior: contain;
+}
+
+.ppt-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.ppt-table thead {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+}
+
+.ppt-table tbody th {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+}
+
+.ppt-matrix {
+  min-inline-size: 680px;
+}
+
+.ppt-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ppt-cell-button {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 132px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: start;
+}
+
+.ppt-meter {
+  display: block;
+  block-size: 5px;
+  margin-block: 5px 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7ebf1;
+}
+
+.ppt-meter > span {
+  display: block;
+  block-size: 100%;
+  border-radius: inherit;
+  background: #7f9dcc;
+}
+
+.ppt-meter-hot > span {
+  background: #c2602f;
+}
+
+@container (width < 720px) {
+  .ppt-stack {
+    display: block;
+  }
+
+  .ppt-stack thead {
+    display: none;
+  }
+
+  .ppt-stack tbody,
+  .ppt-stack tr,
+  .ppt-stack th,
+  .ppt-stack td {
+    display: block;
+  }
+
+  .ppt-stack tbody th,
+  .ppt-stack td {
+    inline-size: auto;
+    text-align: start;
+  }
+
+  .ppt-stack tbody tr {
+    margin-block-end: 12px;
+    overflow: hidden;
+    border: 1px solid #e1e5eb;
+    border-radius: 8px;
+  }
+
+  .ppt-stack tbody tr:last-child {
+    margin-block-end: 0;
+  }
+
+  .ppt-stack tbody th {
+    position: static;
+    border-block-end: 1px solid #e1e5eb;
+  }
+
+  .ppt-stack td[data-label]::before {
+    content: attr(data-label) "：";
+    opacity: 0.72;
+    font-weight: 600;
+  }
+}
+
+html[data-theme="dark"] .ppt-stack tbody tr {
+  border-color: #3a3a3a;
+}
+
+html[data-theme="dark"] .ppt-stack tbody th {
+  border-block-end-color: #3a3a3a;
+}
+
+html[data-theme="dark"] .ppt-meter {
+  background: #3a3a3a;
+}

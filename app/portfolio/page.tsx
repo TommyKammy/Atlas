@@ -7,13 +7,24 @@ import { redirect } from "next/navigation";
 
 export const instant = false;
 
-export default async function PortfolioPage() {
+export default async function PortfolioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ portfolio?: string | string[] }>;
+}) {
   const ws = await getWorkspace();
   const viewerId = await getCurrentUserId();
   if (!viewerId) redirect("/login");
   const rows = ws ? await getPortfolio(ws.id, viewerId ?? undefined) : [];
   const saved = await getPortfolioProjects(viewerId);
   const portfolios = ws ? await getPortfolios(ws.id, viewerId) : [];
+  const params = await searchParams;
+  const selectedParam = Array.isArray(params.portfolio) ? params.portfolio[0] : params.portfolio;
+  const requestedPortfolioId = Number(selectedParam);
+  const initialSelectedId =
+    Number.isInteger(requestedPortfolioId) && requestedPortfolioId > 0
+      ? requestedPortfolioId
+      : undefined;
 
   return (
     <div className="p-6">
@@ -88,6 +99,7 @@ export default async function PortfolioPage() {
       </div>
       <PortfolioWorkspace
         initialPortfolios={portfolios}
+        initialSelectedId={initialSelectedId}
         availableProjects={rows.map((row) => ({ id: row.id, name: row.name }))}
       />
     </div>

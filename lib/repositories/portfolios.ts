@@ -44,6 +44,10 @@ export async function getPortfolios(
        (SELECT COUNT(*)::int FROM portfolio_items i WHERE i.portfolio_id = p.id) AS project_count,
        (SELECT COUNT(*)::int FROM portfolio_rules pr WHERE pr.portfolio_id = p.id) AS rule_count,
        (EXISTS (SELECT 1 FROM users v WHERE v.id = $2 AND v.is_admin) OR p.owner_id = $2) AS can_edit,
+       (EXISTS (SELECT 1 FROM users v WHERE v.id = $2 AND v.is_admin)
+         OR p.owner_id = $2
+         OR EXISTS (SELECT 1 FROM portfolio_plan_viewers pv
+                    WHERE pv.portfolio_id = p.id AND pv.user_id = $2)) AS can_view_plan,
        p.created_at::text AS created_at, p.updated_at::text AS updated_at
      FROM portfolios p
      LEFT JOIN users u ON u.id = p.owner_id
@@ -59,6 +63,7 @@ export async function getPortfolios(
     project_count: Number(row.project_count ?? 0),
     rule_count: Number(row.rule_count ?? 0),
     can_edit: row.can_edit === true,
+    can_view_plan: row.can_view_plan === true,
   })) as Portfolio[];
 }
 
@@ -73,6 +78,10 @@ export async function getPortfolio(
        (SELECT COUNT(*)::int FROM portfolio_items i WHERE i.portfolio_id = p.id) AS project_count,
        (SELECT COUNT(*)::int FROM portfolio_rules pr WHERE pr.portfolio_id = p.id) AS rule_count,
        (EXISTS (SELECT 1 FROM users v WHERE v.id = $3 AND v.is_admin) OR p.owner_id = $3) AS can_edit,
+       (EXISTS (SELECT 1 FROM users v WHERE v.id = $3 AND v.is_admin)
+         OR p.owner_id = $3
+         OR EXISTS (SELECT 1 FROM portfolio_plan_viewers pv
+                    WHERE pv.portfolio_id = p.id AND pv.user_id = $3)) AS can_view_plan,
        p.created_at::text AS created_at, p.updated_at::text AS updated_at
      FROM portfolios p
      LEFT JOIN users u ON u.id = p.owner_id
@@ -89,6 +98,7 @@ export async function getPortfolio(
     project_count: Number(row.project_count ?? 0),
     rule_count: Number(row.rule_count ?? 0),
     can_edit: row.can_edit === true,
+    can_view_plan: row.can_view_plan === true,
   } as Portfolio;
 }
 
@@ -139,8 +149,9 @@ export async function deletePortfolio(portfolioId: number, actorId: number): Pro
 export async function getPortfolioProjects(
   portfolioId: number,
   viewerId?: number,
+  q: Queryable = db,
 ): Promise<PortfolioProject[]> {
-  const r = await db.query(
+  const r = await q.query(
     `SELECT p.id, p.name, p.color, p.icon
      FROM portfolio_items i JOIN projects p ON p.id = i.project_id
      WHERE i.portfolio_id = $1::bigint AND p.deleted_at IS NULL

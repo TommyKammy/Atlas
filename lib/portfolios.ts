@@ -10,6 +10,8 @@ export type Portfolio = {
   project_count: number;
   rule_count: number;
   can_edit: boolean;
+  /** Owner/admin editor or an explicitly authorized investment-plan viewer. */
+  can_view_plan: boolean;
   created_at: string;
   updated_at: string;
 };
