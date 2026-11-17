@@ -1055,7 +1055,7 @@ python3 -c "import json; d=json.load(open('$TMPD/gs-history.json')); assert '要
 curl -s -m 15 -b "$JAR" "$BASE/search" -o "$TMPD/gs-empty.html"
 grep -q 'data-search-history' "$TMPD/gs-empty.html" && grep -q 'data-search-history-item="要件定義"' "$TMPD/gs-empty.html" && grep -q 'data-search-history-clear' "$TMPD/gs-empty.html" && ok "search history page" || bad "search history page"
 curl -s -m 15 -b "$JAR" "$BASE/" -o "$TMPD/gs-home.html"
-grep -q 'data-global-search-input' "$TMPD/gs-home.html" && grep -q 'data-global-search' "$TMPD/gs-home.html" && ok "global search shell markup" || bad "global search shell markup"
+grep -q 'data-sidebar-actions' "$TMPD/gs-home.html" && grep -q 'data-command-palette-open' "$TMPD/gs-home.html" && ! grep -q 'data-global-search-input' "$TMPD/gs-home.html" && ok "command palette entry markup" || bad "command palette entry markup"
 curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/search/history" -o /dev/null
 curl -s -m 15 -b "$JAR" "$BASE/search" -o "$TMPD/gs-cleared.html"
 ! grep -q 'data-search-history' "$TMPD/gs-cleared.html" && ok "search history clear" || bad "search history clear"
@@ -1466,7 +1466,7 @@ grep -q 'data-sidebar-user-menu' "$TMPD/sadd.html" && grep -q 'data-sidebar-help
 cp "$JAR" "$TMPD/jar-collapsed"
 printf '127.0.0.1\tFALSE\t/\tFALSE\t0\tatlas_sidebar\tcollapsed\n' >> "$TMPD/jar-collapsed"
 curl -s -m 15 -b "$TMPD/jar-collapsed" "$BASE/projects/1?view=list" -o "$TMPD/scollapse.html"
-grep -q 'サイドバーを展開' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-add-project' "$TMPD/scollapse.html" && ok "sidebar collapsed SSR" || bad "sidebar collapsed SSR"
+grep -q 'サイドバーを展開' "$TMPD/scollapse.html" && grep -q 'data-sidebar-rail-actions' "$TMPD/scollapse.html" && grep -q 'data-command-palette-open' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-actions' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-add-project' "$TMPD/scollapse.html" && ok "sidebar collapsed SSR" || bad "sidebar collapsed SSR"
 grep -q 'data-sidebar-user-menu' "$TMPD/scollapse.html" && grep -q 'data-sidebar-help' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-invite' "$TMPD/scollapse.html" && ok "collapsed rail footer" || bad "collapsed rail footer"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=bogus" -o "$TMPD/cw2.html"
 grep -q '2026年' "$TMPD/cw2.html" && ok "week fallback" || bad "week fallback"

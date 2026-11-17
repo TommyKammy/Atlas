@@ -2,8 +2,9 @@ import { db } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/current-user";
 import SidebarHelpButton from "./SidebarHelpButton";
 import SidebarUserMenu from "./SidebarUserMenu";
+import ThemeToggle from "./ThemeToggle";
 
-export default async function SidebarRailFooter() {
+export default async function SidebarRailFooter({ theme }: { theme: "light" | "dark" }) {
   const uid = await getCurrentUserId();
   const user =
     uid === null
@@ -19,7 +20,8 @@ export default async function SidebarRailFooter() {
           )
         ).rows[0];
   return (
-    <div className="mt-auto flex flex-col items-center gap-3 pb-2 pt-2">
+    <div data-sidebar-rail-footer className="mt-auto flex flex-col items-center gap-3 pb-2 pt-2">
+      <ThemeToggle initialTheme={theme} />
       <SidebarHelpButton />
       {user && <SidebarUserMenu user={user} />}
     </div>

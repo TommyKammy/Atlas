@@ -102,6 +102,38 @@ export async function getPortfolio(
   } as Portfolio;
 }
 
+/**
+ * Whether the entry points for portfolio work should be shown to this user.
+ * This is presentation only: page and API access keep their own checks.
+ */
+export async function canUsePortfolio(
+  workspaceId: number,
+  userId: number,
+): Promise<boolean> {
+  const r = await db.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM users u
+       WHERE u.id = $2::bigint
+         AND u.deactivated_at IS NULL
+         AND (
+           u.is_admin
+           OR EXISTS (
+             SELECT 1 FROM portfolios p
+             WHERE p.workspace_id = $1::bigint AND p.owner_id = u.id
+           )
+           OR EXISTS (
+             SELECT 1
+             FROM portfolios p
+             JOIN portfolio_plan_viewers pv ON pv.portfolio_id = p.id
+             WHERE p.workspace_id = $1::bigint AND pv.user_id = u.id
+           )
+         )
+     ) AS can_use_portfolio`,
+    [workspaceId, userId],
+  );
+  return r.rows[0]?.can_use_portfolio === true;
+}
+
 export async function createPortfolio(
   workspaceId: number,
   ownerId: number,

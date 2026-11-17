@@ -1,21 +1,94 @@
 @import "tailwindcss";
+@source not "../docs";
+
+/* ---------------------------------------------------------------------------
+   Atlas semantic color tokens
+
+   Light values live on :root, dark values on html[data-theme="dark"].
+   Keep the two blocks in sync: every token below must appear in both.
+   These values reproduce the current palette; they are not a redesign.
+   See docs/design-tokens.md for usage and the legacy-class mapping.
+   --------------------------------------------------------------------------- */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Backgrounds and surfaces */
+  --atlas-bg: #ffffff;
+  --atlas-surface: #ffffff;
+  --atlas-surface-subtle: oklch(98.5% 0 none);
+  --atlas-surface-muted: oklch(97% 0 none);
+  --atlas-surface-strong: oklch(92.2% 0 none);
+
+  /* Overlay */
+  --atlas-scrim: rgb(0 0 0 / 0.25);
+
+  /* Lines */
+  --atlas-line: #eaeaea;
+  --atlas-line-strong: oklch(87% 0 none);
+
+  /* Text */
+  --atlas-text: #171717;
+  --atlas-text-secondary: oklch(43.9% 0 none);
+  --atlas-text-muted: oklch(55.6% 0 none);
+  --atlas-text-subtle: oklch(70.8% 0 none);
+
+  /* Accent */
+  --atlas-accent: #2c60b8;
+  --atlas-accent-text: #2c60b8;
+  --atlas-accent-soft: #eff4fd;
+
+  /* Status */
+  --atlas-danger: oklch(57.7% 0.245 27.325);
+  --atlas-danger-soft: oklch(97.1% 0.013 17.38);
+  --atlas-success: oklch(52.7% 0.154 150.069);
+  --atlas-success-soft: oklch(96.2% 0.044 156.743);
+  --atlas-warning: oklch(47.3% 0.137 46.201);
+  --atlas-warning-soft: oklch(98.7% 0.022 95.277);
+
+  /* Focus */
+  --atlas-focus-ring: #2c60b8;
+
+  /* Back-compat aliases (kept for existing bg-background/text-foreground usage). */
+  --background: var(--atlas-bg);
+  --foreground: var(--atlas-text);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Semantic palette. Text utilities are text-text / text-secondary /
+     text-muted / text-subtle; see docs/design-tokens.md. */
+  --color-bg: var(--atlas-bg);
+  --color-surface: var(--atlas-surface);
+  --color-surface-subtle: var(--atlas-surface-subtle);
+  --color-surface-muted: var(--atlas-surface-muted);
+  --color-surface-strong: var(--atlas-surface-strong);
+  --color-scrim: var(--atlas-scrim);
+  --color-line: var(--atlas-line);
+  --color-line-strong: var(--atlas-line-strong);
+  --color-text: var(--atlas-text);
+  --color-secondary: var(--atlas-text-secondary);
+  --color-muted: var(--atlas-text-muted);
+  --color-subtle: var(--atlas-text-subtle);
+  --color-accent: var(--atlas-accent);
+  --color-accent-text: var(--atlas-accent-text);
+  --color-accent-soft: var(--atlas-accent-soft);
+  --color-danger: var(--atlas-danger);
+  --color-danger-soft: var(--atlas-danger-soft);
+  --color-success: var(--atlas-success);
+  --color-success-soft: var(--atlas-success-soft);
+  --color-warning: var(--atlas-warning);
+  --color-warning-soft: var(--atlas-warning-soft);
+  --color-focus-ring: var(--atlas-focus-ring);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--atlas-bg);
+  color: var(--atlas-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
     Meiryo, sans-serif;
 }
@@ -24,13 +97,51 @@ body {
    and the atlas_theme cookie so SSR keeps the same palette. */
 html[data-theme="dark"] {
   color-scheme: dark;
-  --background: #1a1a1a;
-  --foreground: #ededed;
+
+  /* Backgrounds and surfaces */
+  --atlas-bg: #1a1a1a;
+  --atlas-surface: #242424;
+  --atlas-surface-subtle: #2a2a2a;
+  --atlas-surface-muted: #303030;
+  --atlas-surface-strong: #3a3a3a;
+
+  /* Overlay */
+  --atlas-scrim: rgb(0 0 0 / 0.55);
+
+  /* Lines */
+  --atlas-line: #3a3a3a;
+  --atlas-line-strong: #4a4a4a;
+
+  /* Text */
+  --atlas-text: #ededed;
+  --atlas-text-secondary: #cfcfcf;
+  --atlas-text-muted: #bdbdbd;
+  --atlas-text-subtle: #a9a9a9;
+
+  /* Accent */
+  --atlas-accent: #2c60b8;
+  --atlas-accent-text: #8db8ff;
+  --atlas-accent-soft: #20344f;
+
+  /* Status */
+  --atlas-danger: #ff8f8f;
+  --atlas-danger-soft: #3a2020;
+  --atlas-success: #8fe0a0;
+  --atlas-success-soft: #1e3a2a;
+  --atlas-warning: #f0c987;
+  --atlas-warning-soft: #332a18;
+
+  /* Focus */
+  --atlas-focus-ring: #2c60b8;
+
+  /* Back-compat aliases */
+  --background: var(--atlas-bg);
+  --foreground: var(--atlas-text);
 }
 
 html[data-theme="dark"] body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--atlas-bg);
+  color: var(--atlas-text);
 }
 
 /* Surfaces */
@@ -141,20 +252,20 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
   ::after,
   ::backdrop,
   ::file-selector-button {
-    border-color: #eaeaea;
+    border-color: var(--atlas-line);
   }
 
   /* X-02: consistent, high-contrast keyboard focus ring across light/dark surfaces. */
   html[data-theme="dark"] *,
   html[data-theme="dark"] ::before,
   html[data-theme="dark"] ::after {
-    border-color: #3a3a3a;
+    border-color: var(--atlas-line);
   }
 
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
     outline: 2px solid #ffffff !important;
     outline-offset: 2px !important;
-    box-shadow: 0 0 0 4px #2c60b8 !important;
+    box-shadow: 0 0 0 4px var(--atlas-focus-ring) !important;
   }
 
   /* The full-height resize separator uses its own visible blue focus line. */

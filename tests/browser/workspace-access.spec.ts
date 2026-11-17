@@ -220,6 +220,42 @@ test("saved projects and directory follow live membership", async ({ page, reque
   expect(await response!.text()).not.toContain("Revoked-" + run);
 });
 
+test("portfolio entry points follow portfolio visibility", async ({ page, request }) => {
+  await login(request, seedAdmin.email, seedAdmin.password);
+  const created = await request.post("/api/portfolios", { data: { name: "Nav-" + run } });
+  await status(created, 201);
+  const portfolioId = (await created.json()).id as number;
+  const sidebarLink = page.locator('[data-sidebar-navigation] a[href="/portfolio"]');
+  const railLink = page.locator('[data-sidebar-rail] a[href="/portfolio"]:not([data-sidebar-flyout-link])');
+  const railFlyoutLink = page.locator('[data-sidebar-flyout="/portfolio"] a[href="/portfolio"]');
+  try {
+    await login(page.request, accounts.member.email);
+    await page.goto("/");
+    await expect(page.locator("[data-sidebar-navigation]")).toBeVisible();
+    await expect(page.locator("[data-sidebar-rail]")).toBeVisible();
+    await expect(sidebarLink).toHaveCount(0);
+    await expect(railLink).toHaveCount(0);
+    await expect(railFlyoutLink).toHaveCount(0);
+
+    await login(page.request, accounts.admin.email);
+    await page.goto("/");
+    await expect(sidebarLink).toHaveCount(1);
+    await expect(railLink).toHaveCount(1);
+    await expect(railFlyoutLink).toHaveCount(1);
+
+    await status(await request.post(`/api/portfolios/${portfolioId}/planning/viewers`, { data: { userId: accounts.member.id } }), 200);
+    await login(page.request, accounts.member.email);
+    await page.goto("/");
+    await expect(sidebarLink).toHaveCount(1);
+    await expect(railLink).toHaveCount(1);
+    await expect(railFlyoutLink).toHaveCount(1);
+  } finally {
+    await login(request, seedAdmin.email, seedAdmin.password);
+    await status(await request.delete(`/api/portfolios/${portfolioId}/planning/viewers/${accounts.member.id}`), 200);
+    await status(await request.delete(`/api/portfolios/${portfolioId}`), 200);
+  }
+});
+
 test("admin can reset a member password and revoked sessions cannot return", async ({ page, request }) => {
   await login(request, accounts.admin.email);
   await login(page.request, accounts.member.email);

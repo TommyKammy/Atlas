@@ -1,4 +1,3 @@
-import { hasPermission } from "@/lib/permissions";
 import Link from "next/link";
 import NavPending from "./NavPending";
 import { getCurrentUserId } from "@/lib/current-user";
@@ -8,12 +7,14 @@ import SidebarProjectList from "./SidebarProjectList";
 import { getSidebarProjects } from "@/lib/repositories/sidebar-projects";
 import SidebarAddProject from "./SidebarAddProject";
 import SidebarInviteButton from "./SidebarInviteButton";
+import CreateMenu from "./CreateMenu";
+import OpenCommandPaletteButton from "./OpenCommandPaletteButton";
 import {
   getUnreadCount,
   getUsers,
   getWorkspace,
 } from "@/lib/data";
-import { ADMIN_NAV, MAIN_NAV, NAV_LABELS, TRASH_NAV, type NavItem, type SidebarIconName } from "@/lib/navigation";
+import { ADMIN_NAV, MAIN_NAV, NAV_LABELS, TRASH_NAV, visibleNavItems, type NavItem, type SidebarIconName } from "@/lib/navigation";
 
 function NavIcon({ name }: { name: SidebarIconName }) {
   const common = {
@@ -96,7 +97,15 @@ function NavLink({
   );
 }
 
-export default async function SidebarNav() {
+export default async function SidebarNav({
+  showPortfolio,
+  canCreateProject,
+  showActions,
+}: {
+  showPortfolio: boolean;
+  canCreateProject: boolean;
+  showActions: boolean;
+}) {
   const cuid = await getCurrentUserId();
   const ws = await getWorkspace();
   const users = await getUsers(cuid);
@@ -116,8 +125,14 @@ export default async function SidebarNav() {
       <div className="flex h-10 shrink-0 items-center px-3 text-[14px] font-normal text-[#F3F3F3]">
         <span className="truncate">{ws?.name ?? "Atlas"}</span>
       </div>
+      {showActions && (
+        <div data-sidebar-actions className="flex shrink-0 items-center gap-1.5 px-2 pb-2">
+          <CreateMenu canCreateProject={canCreateProject} variant="sidebar" />
+          <OpenCommandPaletteButton className={`${item} min-w-0 flex-1`} showShortcut />
+        </div>
+      )}
       <nav data-reorder-scroll data-sidebar-navigation className="flex-1 overflow-y-auto px-2 pb-4 text-sm">
-        {MAIN_NAV.map((entry) => (
+        {visibleNavItems(MAIN_NAV, showPortfolio).map((entry) => (
           <NavLink key={entry.key} item={entry} className={item} unread={entry.key === "inbox" ? unread : 0} />
         ))}
         {me?.is_admin && <NavLink item={ADMIN_NAV} className={item} />}
@@ -154,7 +169,7 @@ export default async function SidebarNav() {
         <NavLink item={TRASH_NAV} className={item} />
         <div className={`${label} flex items-center justify-between pr-1`}>
           <span>{NAV_LABELS.projects}</span>
-          {ws && cuid && await hasPermission(cuid, "projects.create") && <SidebarAddProject />}
+          {ws && cuid && canCreateProject && <SidebarAddProject />}
         </div>
         {ws && me && <SidebarProjectList key={`${ws.id}:${me.id}`} workspaceId={ws.id} projects={projects} favoriteIds={[...favoriteIds]} />}
         {projects.length === 0 && <div className="px-3 py-1.5 text-neutral-500">（なし）</div>}

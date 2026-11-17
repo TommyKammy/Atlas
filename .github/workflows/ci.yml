@@ -28,6 +28,8 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Color literal ratchet
+        run: npm run check:colors
       - name: Unit tests
         run: npm test
       - name: Production build
