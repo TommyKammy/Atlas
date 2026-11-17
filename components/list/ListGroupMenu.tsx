@@ -68,7 +68,7 @@ export default function ListGroupMenu({
       </div>
 
       <div className="mt-3 flex items-center gap-2">
-        <span className="w-24 shrink-0 text-[12px] text-neutral-600">グループ</span>
+        <span className="w-24 shrink-0 text-[12px] text-secondary">グループ</span>
         <select
           data-list-group-primary
           value={groupBy}
@@ -84,7 +84,7 @@ export default function ListGroupMenu({
       </div>
 
       <div className="mt-2 flex items-center gap-2">
-        <span className="w-24 shrink-0 text-[12px] text-neutral-600">カスタムソート</span>
+        <span className="w-24 shrink-0 text-[12px] text-secondary">カスタムソート</span>
         <select
           data-list-group-dir
           value={groupDir}
@@ -99,7 +99,7 @@ export default function ListGroupMenu({
       {allowSubgroup && (group2 === null ? (
         showSecondary ? (
           <div className="mt-2 flex items-center gap-2">
-            <span className="w-24 shrink-0 text-[12px] text-neutral-600">サブグループ</span>
+            <span className="w-24 shrink-0 text-[12px] text-secondary">サブグループ</span>
             <select
               data-list-group-secondary
               defaultValue=""
@@ -122,7 +122,7 @@ export default function ListGroupMenu({
             type="button"
             data-list-group-add-subgroup
             onClick={() => setShowSecondary(true)}
-            className="mt-2 flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-neutral-600 hover:bg-neutral-100"
+            className="mt-2 flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-secondary hover:bg-neutral-100"
           >
             <span className="text-[14px] leading-none">＋</span>
             サブグループを追加
@@ -130,7 +130,7 @@ export default function ListGroupMenu({
         )
       ) : (
         <div className="mt-2 flex items-center gap-2">
-          <span className="w-24 shrink-0 text-[12px] text-neutral-600">サブグループ</span>
+          <span className="w-24 shrink-0 text-[12px] text-secondary">サブグループ</span>
           <select
             data-list-group-secondary
             value={group2}
@@ -151,7 +151,7 @@ export default function ListGroupMenu({
               onClearSecondary();
               setShowSecondary(false);
             }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-neutral-700"
           >
             ×
           </button>

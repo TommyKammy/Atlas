@@ -35,7 +35,7 @@ export default function ListSectionMenu({
         role="menu"
         data-section-menu={section.id}
         aria-label="セクションのその他のアクション"
-        className="fixed z-[61] w-[268px] rounded-lg border border-[#e1e1e1] bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+        className="fixed z-[61] w-[268px] rounded-lg border border-[#e1e1e1] bg-surface py-1 shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
         style={{ left: menu.left, top: menu.top }}
       >
         <button
@@ -80,7 +80,7 @@ export default function ListSectionMenu({
           role="menuitem"
           data-section-menu-action="delete"
           onClick={() => onDelete(section)}
-          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-red-600 hover:bg-red-50"
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-danger hover:bg-red-50"
         >
           <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.3">
             <path d="M3 4.5h10M6.5 2.5h3M4.5 4.5l.7 9h5.6l.7-9M6.8 7v4M9.2 7v4" strokeLinecap="round" strokeLinejoin="round" />

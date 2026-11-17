@@ -23,7 +23,7 @@ export default function SavedViewsBar({
           className={`flex items-center gap-1 rounded-full border px-2 py-0.5 ${
             view.id === activeSavedId
               ? "border-blue-600 bg-blue-50 text-blue-700"
-              : "text-neutral-600"
+              : "text-secondary"
           }`}
         >
           <a href={`/projects/${projectId}?view=list&saved=${view.id}`}>{view.name}</a>
@@ -37,7 +37,7 @@ export default function SavedViewsBar({
         </span>
       ))}
       {activeSavedId !== null && (
-        <a href={`/projects/${projectId}?view=list`} className="text-neutral-500 hover:text-black">
+        <a href={`/projects/${projectId}?view=list`} className="text-muted hover:text-black">
           クリア ×
         </a>
       )}

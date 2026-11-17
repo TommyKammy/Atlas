@@ -164,12 +164,12 @@ export default function ListFilterMenu({
       onClick={onClick}
       className={`${quickFilterCls} ${
         active
-          ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]"
-          : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
+          ? "border-accent bg-accent-soft text-accent-text"
+          : "border-neutral-200 bg-surface text-secondary hover:bg-neutral-50"
       }`}
     >
       {label}
-      {extra && <span className="ml-1 text-[11px] text-neutral-400">{extra}</span>}
+      {extra && <span className="ml-1 text-[11px] text-subtle">{extra}</span>}
     </button>
   );
 
@@ -265,13 +265,13 @@ export default function ListFilterMenu({
     }
     return (
       <div key={key} data-list-filter-row={key} className="flex items-center gap-2">
-        <span className="w-28 shrink-0 truncate text-[12px] text-neutral-600">{labelFor(key)}</span>
+        <span className="w-28 shrink-0 truncate text-[12px] text-secondary">{labelFor(key)}</span>
         {control}
         <button
           type="button"
           aria-label={`${labelFor(key)}フィルターを削除`}
           onClick={() => removeField(key)}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-neutral-700"
         >
           ×
         </button>
@@ -295,7 +295,7 @@ export default function ListFilterMenu({
         </button>
       </div>
 
-      <div className="mt-3 text-[11px] font-medium text-neutral-500">クイックフィルター</div>
+      <div className="mt-3 text-[11px] font-medium text-muted">クイックフィルター</div>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {quickFilters.includes("open") &&
           quick(
@@ -334,15 +334,15 @@ export default function ListFilterMenu({
           data-list-filter-add
           aria-expanded={addOpen}
           onClick={() => setAddOpen((open) => !open)}
-          className="flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-neutral-600 hover:bg-neutral-100"
+          className="flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-secondary hover:bg-neutral-100"
         >
           <span className="text-[14px] leading-none">＋</span>
           フィルターを追加
         </button>
         {addOpen && (
-          <div data-list-filter-add-menu className="mt-1 rounded-md border border-neutral-200 bg-white py-1">
+          <div data-list-filter-add-menu className="mt-1 rounded-md border border-neutral-200 bg-surface py-1">
             {available.length === 0 && (
-              <div className="px-3 py-1 text-[12px] text-neutral-400">追加できるフィルターはありません</div>
+              <div className="px-3 py-1 text-[12px] text-subtle">追加できるフィルターはありません</div>
             )}
             {available.map((key) => (
               <button

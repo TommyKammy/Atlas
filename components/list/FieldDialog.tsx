@@ -97,9 +97,9 @@ export default function FieldDialog({
     save,
   } = dialog;
 
-  const label = "mt-3 block text-[11px] font-medium text-neutral-500";
+  const label = "mt-3 block text-[11px] font-medium text-muted";
   const fieldClass =
-    "mt-1 h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-neutral-800 outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10";
+    "mt-1 h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-neutral-800 outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10";
 
   return createPortal(
     <div
@@ -113,7 +113,7 @@ export default function FieldDialog({
         aria-modal="true"
         aria-label={mode === "edit" ? "フィールドを編集" : "フィールドを追加"}
         onClick={(event) => event.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-[560px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-[560px] flex-col overflow-hidden rounded-xl bg-surface shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3">
           <div>
@@ -121,21 +121,21 @@ export default function FieldDialog({
               {mode === "edit" ? "フィールドを編集" : "フィールドを追加"}
             </h2>
             {mode === "edit" && field && (
-              <div className="mt-0.5 text-[10px] text-neutral-400">フィールドタイプは変更できません</div>
+              <div className="mt-0.5 text-[10px] text-subtle">フィールドタイプは変更できません</div>
             )}
           </div>
           <button
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="rounded p-1 text-xl leading-none text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className="rounded p-1 text-xl leading-none text-subtle hover:bg-neutral-100 hover:text-neutral-700"
           >
             ×
           </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          <label className="block text-[11px] font-medium text-neutral-500">
+          <label className="block text-[11px] font-medium text-muted">
             フィールドタイトル <span className="text-red-500">*</span>
             <input
               autoFocus
@@ -150,7 +150,7 @@ export default function FieldDialog({
           <label className={label}>
             フィールドタイプ
             {mode === "edit" ? (
-              <div className="mt-1 flex h-9 items-center rounded-md border border-neutral-200 bg-neutral-50 px-2.5 text-[13px] text-neutral-600">
+              <div className="mt-1 flex h-9 items-center rounded-md border border-neutral-200 bg-surface-subtle px-2.5 text-[13px] text-secondary">
                 {TYPE_LABELS[type]}
               </div>
             ) : (
@@ -198,7 +198,7 @@ export default function FieldDialog({
               onChange={(event) => setDescription(event.target.value)}
               rows={2}
               placeholder="説明を追加（任意）"
-              className="mt-1 w-full resize-y rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-[13px] outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10"
+              className="mt-1 w-full resize-y rounded-md border border-line-strong bg-white px-2.5 py-2 text-[13px] outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10"
             />
           </label>
 
@@ -213,7 +213,7 @@ export default function FieldDialog({
           {selectField && <SelectOptionsEditor dialog={dialog} />}
 
           {mode === "create" && (
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-[11px] text-neutral-600">
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-[11px] text-secondary">
               <input
                 type="checkbox"
                 checked={addToLibrary}
@@ -225,14 +225,14 @@ export default function FieldDialog({
 
           <FieldAccessEditor dialog={dialog} />
 
-          {error && <p className="mt-3 text-[12px] text-red-600">{error}</p>}
+          {error && <p className="mt-3 text-[12px] text-danger">{error}</p>}
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-neutral-200 px-5 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-[12px] text-neutral-600 hover:bg-neutral-100"
+            className="rounded-md px-3 py-1.5 text-[12px] text-secondary hover:bg-neutral-100"
           >
             キャンセル
           </button>
