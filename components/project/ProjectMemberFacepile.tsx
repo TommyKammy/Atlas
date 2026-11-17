@@ -42,7 +42,7 @@ export default function ProjectMemberFacepile({
 
   return (
     <>
-      <span data-project-members className="hidden items-center -space-x-1 lg:flex">
+      <span data-project-members className="hidden shrink-0 items-center -space-x-1 xl:flex">
         {visible.length > 0 && (
           <button
             type="button"

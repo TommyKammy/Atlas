@@ -30,7 +30,7 @@ export default function StarButton({
       aria-pressed={starred}
       aria-label={starred ? "お気に入りから外す" : "お気に入りに追加"}
       title={starred ? "お気に入りから外す" : "お気に入りに追加"}
-      className={`text-lg leading-none ${starred ? "text-amber-600" : "text-neutral-500 hover:text-amber-600"}`}
+      className={`shrink-0 text-lg leading-none ${starred ? "text-amber-600" : "text-neutral-500 hover:text-amber-600"}`}
     >
       {starred ? "★" : "☆"}
     </button>

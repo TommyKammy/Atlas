@@ -22,7 +22,7 @@ export default function ProjectShareButton({
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="flex h-7 items-center rounded-md bg-[#4075cf] px-2.5 text-xs text-white hover:bg-[#3567b8]"
+        className="flex h-7 shrink-0 items-center rounded-md bg-[#4075cf] px-2.5 text-xs whitespace-nowrap text-white hover:bg-[#3567b8]"
       >
         {label}
       </button>

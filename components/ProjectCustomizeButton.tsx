@@ -159,16 +159,18 @@ export default function ProjectCustomizeButton({
       <button
         type="button"
         data-project-customize
+        aria-label="カスタマイズ"
         aria-expanded={open}
+        title="カスタマイズ"
         onClick={toggleDrawer}
-        className={`hidden h-7 items-center gap-1 rounded-md border px-2.5 text-xs md:flex ${
+        className={`hidden h-7 shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs whitespace-nowrap md:flex ${
           open
             ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]"
             : "border-[#e1e1e1] bg-white text-neutral-700 hover:bg-neutral-50"
         }`}
       >
         <PaletteIcon />
-        カスタマイズ
+        <span className="hidden xl:inline">カスタマイズ</span>
       </button>
 
       {open && (
