@@ -99,7 +99,7 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
 
   const field = "w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-500";
   return (
-    <form onSubmit={submit} aria-busy={busy} className="flex w-80 flex-col gap-3 rounded-lg border bg-white p-6 shadow" data-login-form>
+    <form onSubmit={submit} aria-busy={busy} className="flex w-80 flex-col gap-3 rounded-lg border bg-surface p-6 shadow" data-login-form>
       <h1 className="text-lg font-bold">Atlas にログイン</h1>
       <label htmlFor={`${formId}-email`} className="text-sm font-medium">メールアドレス</label>
       <input
@@ -166,8 +166,8 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
           </button>
         </div>
       )}
-      {error && <p role="alert" data-auth-feedback className="text-sm text-red-600">{error}</p>}
-      {notice && <p className="text-xs text-neutral-600">{notice}</p>}
+      {error && <p role="alert" data-auth-feedback className="text-sm text-danger">{error}</p>}
+      {notice && <p className="text-xs text-secondary">{notice}</p>}
       <button type="submit" disabled={busy} className="rounded bg-blue-600 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50">
         ログイン
       </button>
@@ -181,11 +181,11 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
         </a>
       )}
       {samlMode === "required" || samlMode === "members_only" ? (
-        <p className="text-[11px] text-neutral-500">
+        <p className="text-[11px] text-muted">
           SAML SSO が必須です。ゲストと管理者の扱いはワークスペースの設定に従います。
         </p>
       ) : (
-        <p className="text-xs text-neutral-400">開発用初期値：admin@example.com / atlas-dev-2026</p>
+        <p className="text-xs text-subtle">開発用初期値：admin@example.com / atlas-dev-2026</p>
       )}
     </form>
   );

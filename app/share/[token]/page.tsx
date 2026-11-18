@@ -39,9 +39,9 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <p className="text-xs text-neutral-400">Atlas 共有プレビュー（読み取り専用）</p>
+      <p className="text-xs text-subtle">Atlas 共有プレビュー（読み取り専用）</p>
       <h1 className="mt-1 text-xl font-bold">{project.name}</h1>
-      <p className="mt-1 text-sm text-neutral-600">
+      <p className="mt-1 text-sm text-secondary">
         進捗 {pct}%（{totals.rows[0].done}/{totals.rows[0].total}）
       </p>
       {(sections.rows as { id: number; name: string }[]).map((s) => (
@@ -67,11 +67,11 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
                 >
                   {t.completed && "✓"}
                 </span>
-                <span className={`min-w-0 flex-1 truncate ${t.completed ? "text-neutral-400 line-through" : ""}`}>
+                <span className={`min-w-0 flex-1 truncate ${t.completed ? "text-subtle line-through" : ""}`}>
                   {t.name}
                 </span>
-                <span className="shrink-0 text-xs text-neutral-500">{t.assignee_name ?? "–"}</span>
-                <span className="w-24 shrink-0 text-xs text-neutral-600">{t.due_on ?? "–"}</span>
+                <span className="shrink-0 text-xs text-muted">{t.assignee_name ?? "–"}</span>
+                <span className="w-24 shrink-0 text-xs text-secondary">{t.due_on ?? "–"}</span>
               </div>
             ))}
         </div>

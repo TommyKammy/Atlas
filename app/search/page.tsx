@@ -105,11 +105,11 @@ export default async function SearchPage(props: {
     <div className="p-6">
       <h1 className="text-lg font-bold">検索</h1>
       {str(sp, "q").trim().length > SEARCH_QUERY_LIMIT && (
-        <p role="status" className="mt-2 text-[12px] text-amber-800">キーワードは先頭{SEARCH_QUERY_LIMIT}文字で検索しています。</p>
+        <p role="status" className="mt-2 text-[12px] text-warning">キーワードは先頭{SEARCH_QUERY_LIMIT}文字で検索しています。</p>
       )}
       {q === "" && searchHistory.length > 0 && (
-        <div data-search-history className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-neutral-600">
-          <span className="font-medium text-neutral-500">最近の検索</span>
+        <div data-search-history className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-secondary">
+          <span className="font-medium text-muted">最近の検索</span>
           {searchHistory.map((item) => (
             <Link
               key={item}
@@ -176,27 +176,27 @@ export default async function SearchPage(props: {
         <details className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-2" open>
           <summary className="cursor-pointer text-[12px] font-medium text-neutral-700">日付条件</summary>
           <div className="mt-2 flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1 text-[12px] text-neutral-600">
+            <label className="flex flex-col gap-1 text-[12px] text-secondary">
               期日（自）
               <input type="date" name="from" defaultValue={f.dueFrom ?? ""} className={field} />
             </label>
-            <label className="flex flex-col gap-1 text-[12px] text-neutral-600">
+            <label className="flex flex-col gap-1 text-[12px] text-secondary">
               期日（至）
               <input type="date" name="to" defaultValue={f.dueTo ?? ""} className={field} />
             </label>
-            <label className="flex flex-col gap-1 text-[12px] text-neutral-600">
+            <label className="flex flex-col gap-1 text-[12px] text-secondary">
               作成日（自）
               <input type="date" name="created_from" defaultValue={f.createdFrom ?? ""} className={field} />
             </label>
-            <label className="flex flex-col gap-1 text-[12px] text-neutral-600">
+            <label className="flex flex-col gap-1 text-[12px] text-secondary">
               作成日（至）
               <input type="date" name="created_to" defaultValue={f.createdTo ?? ""} className={field} />
             </label>
-            <label className="flex flex-col gap-1 text-[12px] text-neutral-600">
+            <label className="flex flex-col gap-1 text-[12px] text-secondary">
               完了日（自）
               <input type="date" name="completed_from" defaultValue={f.completedFrom ?? ""} className={field} />
             </label>
-            <label className="flex flex-col gap-1 text-[12px] text-neutral-600">
+            <label className="flex flex-col gap-1 text-[12px] text-secondary">
               完了日（至）
               <input type="date" name="completed_to" defaultValue={f.completedTo ?? ""} className={field} />
             </label>
@@ -208,7 +208,7 @@ export default async function SearchPage(props: {
             <summary className="cursor-pointer text-[12px] font-medium text-neutral-700">カスタムフィールド</summary>
             <div className="mt-2 grid gap-2 sm:grid-cols-3">
               {customFields.map((customField) => (
-                <label key={customField.id} className="flex min-w-0 flex-col gap-1 text-[12px] text-neutral-600">
+                <label key={customField.id} className="flex min-w-0 flex-col gap-1 text-[12px] text-secondary">
                   <span className="truncate" title={`${customField.project_name} / ${customField.name}`}>
                     {customField.name}
                   </span>
@@ -239,7 +239,7 @@ export default async function SearchPage(props: {
           <button type="submit" className="rounded bg-blue-600 px-4 py-1.5 text-white hover:bg-blue-700">
             検索
           </button>
-          <Link href="/search" className="text-[12px] text-neutral-500 hover:text-neutral-800">
+          <Link href="/search" className="text-[12px] text-muted hover:text-neutral-800">
             条件をクリア
           </Link>
         </div>
@@ -247,8 +247,8 @@ export default async function SearchPage(props: {
 
       {ws && <SavedSearchBar workspaceId={ws.id} saved={savedSearches} />}
 
-      {searched && <p data-search-total={total} className="mt-3 text-sm text-neutral-500">合計 {total}件</p>}
-      {searched && q !== "" && <p className="mt-1 text-[12px] text-neutral-500">プロジェクト・メッセージ・知識・ファイルはキーワードで検索します。その他の絞り込み条件はタスクに適用されます。</p>}
+      {searched && <p data-search-total={total} className="mt-3 text-sm text-muted">合計 {total}件</p>}
+      {searched && q !== "" && <p className="mt-1 text-[12px] text-muted">プロジェクト・メッセージ・知識・ファイルはキーワードで検索します。その他の絞り込み条件はタスクに適用されます。</p>}
       <SearchResults
         q={q}
         searched={searched}

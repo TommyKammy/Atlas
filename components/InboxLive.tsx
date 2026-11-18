@@ -38,7 +38,7 @@ export default function InboxLive() {
     };
   }, [auto, router]);
   return (
-    <label className="flex items-center gap-1 text-sm text-neutral-600" title="他タブと即時同期＋30秒ごとに自動更新">
+    <label className="flex items-center gap-1 text-sm text-secondary" title="他タブと即時同期＋30秒ごとに自動更新">
       <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
       自動更新
     </label>

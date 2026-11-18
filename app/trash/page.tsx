@@ -16,7 +16,7 @@ export default async function TrashPage() {
   return (
     <div className="p-6">
       <h1 className="text-lg font-bold">削除済み</h1>
-      <p className="mt-1 text-sm text-neutral-500">
+      <p className="mt-1 text-sm text-muted">
         ゴミ箱内のタスク（{items.length}件）。復元または完全削除ができます。
         削除から30日後に自動で完全削除されます。
       </p>

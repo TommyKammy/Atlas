@@ -27,7 +27,7 @@ export default async function Home() {
     return (
       <div className="p-8">
         <h1 className="text-xl font-bold">Atlas</h1>
-        <p className="mt-2 text-neutral-600">
+        <p className="mt-2 text-secondary">
           ワークスペースがありません。DB初期化（db/init.sql + seed）を確認してください。
         </p>
       </div>

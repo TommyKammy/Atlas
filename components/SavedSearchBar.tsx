@@ -51,10 +51,10 @@ export default function SavedSearchBar({
 
   return (
     <div data-saved-searches className="mt-3 flex max-w-5xl flex-wrap items-center gap-2 text-[12px]">
-      <span className="font-medium text-neutral-600">保存検索</span>
-      {saved.length === 0 && <span className="text-neutral-400">まだありません</span>}
+      <span className="font-medium text-secondary">保存検索</span>
+      {saved.length === 0 && <span className="text-subtle">まだありません</span>}
       {saved.map((item) => (
-        <span key={item.id} className="flex items-center gap-0.5 rounded-full border border-neutral-200 bg-white pl-2">
+        <span key={item.id} className="flex items-center gap-0.5 rounded-full border border-neutral-200 bg-surface pl-2">
           <button
             type="button"
             data-saved-search-apply={item.id}
@@ -79,7 +79,7 @@ export default function SavedSearchBar({
         data-saved-search-save
         disabled={busy}
         onClick={() => void save()}
-        className="rounded-full border border-[#2c60b8] px-2 py-0.5 text-[#2c60b8] hover:bg-[#eff4fd] disabled:opacity-50"
+        className="rounded-full border border-accent px-2 py-0.5 text-accent-text hover:bg-[#eff4fd] disabled:opacity-50"
       >
         ＋ 現在の条件を保存
       </button>

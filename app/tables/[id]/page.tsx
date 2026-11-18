@@ -35,7 +35,7 @@ export default async function ProjectTablePage({ params }: { params: Promise<{ i
 
   return (
     <div className="p-6">
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-subtle">
         {table.project_name} から作成したテーブル ・ {table.created_at.slice(0, 10)}
       </p>
       <div className="mt-1 flex flex-wrap items-center gap-3">
@@ -52,16 +52,16 @@ export default async function ProjectTablePage({ params }: { params: Promise<{ i
         >
           XLSX
         </a>
-        <a href={`/projects/${table.project_id}?view=list`} className="text-sm text-neutral-500 hover:underline">
+        <a href={`/projects/${table.project_id}?view=list`} className="text-sm text-muted hover:underline">
           元のプロジェクト →
         </a>
       </div>
       <div className="mt-4 overflow-auto rounded border">
         <table className="min-w-full border-collapse text-sm" data-project-table={table.id}>
-          <thead className="sticky top-0 bg-neutral-50">
+          <thead className="sticky top-0 bg-surface-subtle">
             <tr>
               {table.columns.map((column) => (
-                <th key={column.key} className="whitespace-nowrap border-b px-3 py-2 text-left font-semibold text-neutral-600">
+                <th key={column.key} className="whitespace-nowrap border-b px-3 py-2 text-left font-semibold text-secondary">
                   {column.label}
                 </th>
               ))}
@@ -70,7 +70,7 @@ export default async function ProjectTablePage({ params }: { params: Promise<{ i
           <tbody>
             {table.rows.length === 0 && (
               <tr>
-                <td colSpan={Math.max(1, table.columns.length)} className="px-3 py-6 text-center text-neutral-400">
+                <td colSpan={Math.max(1, table.columns.length)} className="px-3 py-6 text-center text-subtle">
                   行がありません
                 </td>
               </tr>
@@ -87,7 +87,7 @@ export default async function ProjectTablePage({ params }: { params: Promise<{ i
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-neutral-400">{table.rows.length}行</p>
+      <p className="mt-2 text-xs text-subtle">{table.rows.length}行</p>
     </div>
   );
 }

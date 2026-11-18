@@ -75,11 +75,11 @@ export default function InviteAcceptForm({ token }: { token: string }) {
   return (
     <div className="flex min-h-[70vh] items-center justify-center p-6">
       <div className="w-full max-w-md rounded-xl border border-neutral-200 p-6 shadow-sm">
-        {!invite && !error && <p className="text-sm text-neutral-500">招待を確認しています…</p>}
+        {!invite && !error && <p className="text-sm text-muted">招待を確認しています…</p>}
         {error && !invite && (
           <div>
             <h1 className="text-lg font-semibold">招待を開けませんでした</h1>
-            <p className="mt-2 text-sm text-red-600">{error}</p>
+            <p className="mt-2 text-sm text-danger">{error}</p>
             <a href="/login" className="mt-4 inline-block text-sm text-blue-700 hover:underline">
               ログインへ
             </a>
@@ -88,10 +88,10 @@ export default function InviteAcceptForm({ token }: { token: string }) {
         {invite && (
           <>
             <h1 className="text-xl font-semibold">{invite.workspace_name} への招待</h1>
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-1 text-sm text-muted">
               {invite.email} ・ {ROLE_LABEL[invite.role] ?? invite.role}
             </p>
-            <p className="mt-1 text-xs text-neutral-400">
+            <p className="mt-1 text-xs text-subtle">
               有効期限: {invite.expires_at.slice(0, 10)}
             </p>
             <div className="mt-4 space-y-2">
@@ -123,7 +123,7 @@ export default function InviteAcceptForm({ token }: { token: string }) {
                 }}
               />
             </div>
-            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            {error && <p className="mt-2 text-sm text-danger">{error}</p>}
             <button
               type="button"
               onClick={accept}

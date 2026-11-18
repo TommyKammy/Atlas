@@ -27,14 +27,14 @@ export default function ArchivedProjects({
   };
 
   if (initial.length === 0) {
-    return <p className="mt-2 text-sm text-neutral-500">アーカイブ済みのプロジェクトはありません。</p>;
+    return <p className="mt-2 text-sm text-muted">アーカイブ済みのプロジェクトはありません。</p>;
   }
   return (
     <div className="mt-2 max-w-4xl">
       {initial.map((p) => (
         <div key={p.id} className="flex items-center gap-3 border-b py-2 text-sm">
           <span className="min-w-0 flex-1 truncate">{p.name}</span>
-          <span className="shrink-0 text-xs text-neutral-400">{p.archived_at.slice(0, 10)}</span>
+          <span className="shrink-0 text-xs text-subtle">{p.archived_at.slice(0, 10)}</span>
           <button
             onClick={() => restore(p.id)}
             disabled={!p.can_manage || busy === p.id}

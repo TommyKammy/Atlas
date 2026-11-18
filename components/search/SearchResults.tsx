@@ -52,17 +52,17 @@ export default function SearchResults({
               </span>
               <Link
                 href={taskHref(task)}
-                className={`min-w-0 flex-1 truncate hover:underline ${task.completed ? "text-neutral-500 line-through" : ""}`}
+                className={`min-w-0 flex-1 truncate hover:underline ${task.completed ? "text-muted line-through" : ""}`}
               >
                 {task.name}
               </Link>
-              <span className="hidden w-32 shrink-0 truncate text-xs text-neutral-500 md:inline">
+              <span className="hidden w-32 shrink-0 truncate text-xs text-muted md:inline">
                 {task.project_name}
               </span>
-              <span className="hidden w-24 shrink-0 truncate text-xs text-neutral-500 md:inline">
+              <span className="hidden w-24 shrink-0 truncate text-xs text-muted md:inline">
                 {task.assignee_name ?? "–"}
               </span>
-              <span className="w-24 shrink-0 text-neutral-600">{task.due_on ?? "–"}</span>
+              <span className="w-24 shrink-0 text-secondary">{task.due_on ?? "–"}</span>
             </div>
           ))}
           <SearchPager page={pagination.tasks} pageKey="tasks_page" params={searchParams} label="タスク" />
@@ -83,7 +83,7 @@ export default function SearchResults({
               <Link href={projectHref(project)} className="min-w-0 flex-1 truncate font-medium hover:underline">
                 {project.name}
               </Link>
-              <span className="w-20 shrink-0 text-right text-xs text-neutral-500">プロジェクト</span>
+              <span className="w-20 shrink-0 text-right text-xs text-muted">プロジェクト</span>
             </div>
           ))}
           <SearchPager page={pagination.projects} pageKey="projects_page" params={searchParams} label="プロジェクト" />
@@ -100,9 +100,9 @@ export default function SearchResults({
               </span>
               <Link href={messageHref(message)} className="min-w-0 flex-1 hover:underline">
                 <span className="block truncate font-medium">{message.title || "(件名なし)"}</span>
-                <span className="block truncate text-xs text-neutral-500">{message.body}</span>
+                <span className="block truncate text-xs text-muted">{message.body}</span>
               </Link>
-              <span className="hidden w-32 shrink-0 truncate text-xs text-neutral-500 md:inline">
+              <span className="hidden w-32 shrink-0 truncate text-xs text-muted md:inline">
                 {message.project_name}
               </span>
             </div>
@@ -116,14 +116,14 @@ export default function SearchResults({
           <div className={sectionTitle}>知識（{pagination.knowledge.total}件）</div>
           {knowledge.map((note) => (
             <div key={note.id} data-search-result-id={note.id} className={rowCls}>
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-amber-100 text-[10px] text-amber-800">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-amber-100 text-[10px] text-warning">
                 K
               </span>
               <Link href={knowledgeHref(note)} className="min-w-0 flex-1 hover:underline">
                 <span className="block truncate font-medium">{note.title}</span>
-                <span className="block truncate text-xs text-neutral-500">{note.body}</span>
+                <span className="block truncate text-xs text-muted">{note.body}</span>
               </Link>
-              <span className="hidden w-32 shrink-0 truncate text-xs text-neutral-500 md:inline">
+              <span className="hidden w-32 shrink-0 truncate text-xs text-muted md:inline">
                 {note.project_name}
               </span>
             </div>
@@ -137,16 +137,16 @@ export default function SearchResults({
           <div className={sectionTitle}>ファイル（{pagination.files.total}件）</div>
           {files.map((file) => (
             <div key={file.id} data-search-result-id={file.id} className={rowCls}>
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-neutral-100 text-[10px] text-neutral-700">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-surface-muted text-[10px] text-neutral-700">
                 F
               </span>
               <Link href={fileHref(file)} className="min-w-0 flex-1 hover:underline">
                 <span className="block truncate font-medium">{file.file_name}</span>
-                <span className="block truncate text-xs text-neutral-500">
+                <span className="block truncate text-xs text-muted">
                   {file.task_name} / {file.project_name}
                 </span>
               </Link>
-              <span className="w-20 shrink-0 text-right text-xs text-neutral-500">ファイル</span>
+              <span className="w-20 shrink-0 text-right text-xs text-muted">ファイル</span>
             </div>
           ))}
           <SearchPager page={pagination.files} pageKey="files_page" params={searchParams} label="ファイル" />
@@ -154,7 +154,7 @@ export default function SearchResults({
       )}
 
       {searched && total === 0 && (
-        <div data-search-empty className="rounded-lg border border-dashed border-neutral-200 px-4 py-10 text-center text-[13px] text-neutral-500">
+        <div data-search-empty className="rounded-lg border border-dashed border-neutral-200 px-4 py-10 text-center text-[13px] text-muted">
           条件に一致する結果はありません。
         </div>
       )}
@@ -172,7 +172,7 @@ function SearchPager({ page, pageKey, params, label }: {
   const to = Math.min(page.page * page.pageSize, page.total);
   const linkClass = "rounded border border-neutral-200 px-3 py-1 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600";
   return (
-    <nav data-search-pagination={pageKey} aria-label={`${label}の検索結果ページ`} className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-neutral-600">
+    <nav data-search-pagination={pageKey} aria-label={`${label}の検索結果ページ`} className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-secondary">
       <span data-search-range>{from}–{to} / {page.total}件</span>
       {page.pageCount > 1 && <span data-search-current-page>{page.page} / {page.pageCount}ページ</span>}
       {page.page > 1 && <Link prefetch={false} href={searchPageHref(params, pageKey, page.page - 1)} data-search-page="previous" className={linkClass}>前へ<span className="sr-only">（{label}）</span></Link>}

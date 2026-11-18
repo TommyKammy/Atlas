@@ -49,13 +49,13 @@ export default function ShareLinks({ projectId }: { projectId: number }) {
   return (
     <div className="mt-6">
       <h2 className="font-semibold">共有リンク（読み取り専用）</h2>
-      {!canManage && <p className="mt-1 text-sm text-neutral-500">共有リンクの管理には共有権限が必要です。</p>}
+      {!canManage && <p className="mt-1 text-sm text-muted">共有リンクの管理には共有権限が必要です。</p>}
       {canManage && tokens.length === 0 && (
-        <p className="mt-1 text-sm text-neutral-500">発行済みリンクはありません。</p>
+        <p className="mt-1 text-sm text-muted">発行済みリンクはありません。</p>
       )}
       {tokens.map((t) => (
         <div key={t.id} className="flex items-center gap-2 border-b py-1.5 font-mono text-xs">
-          <span className="min-w-0 flex-1 truncate text-neutral-600">
+          <span className="min-w-0 flex-1 truncate text-secondary">
             {t.label || "(無題)"} ・ {t.created_at}
             {t.expires_at ? ` ・ 期限:${t.expires_at.slice(0, 10)}` : " ・ 無期限"}
           </span>

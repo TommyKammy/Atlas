@@ -37,14 +37,14 @@ export default function TrashList({
   };
 
   if (initial.length === 0) {
-    return <p className="mt-4 text-sm text-neutral-500">ゴミ箱は空です。</p>;
+    return <p className="mt-4 text-sm text-muted">ゴミ箱は空です。</p>;
   }
   return (
     <div className="mt-4 max-w-4xl">
       {initial.map((t) => (
         <div key={t.id} className="flex items-center gap-3 border-b py-2 text-sm">
-          <span className="min-w-0 flex-1 truncate text-neutral-500 line-through">{t.name}</span>
-          <span className="shrink-0 text-xs text-neutral-400">{t.project_name ?? "–"}</span>
+          <span className="min-w-0 flex-1 truncate text-muted line-through">{t.name}</span>
+          <span className="shrink-0 text-xs text-subtle">{t.project_name ?? "–"}</span>
           <button
             onClick={() => restore(t.id)}
             disabled={!t.can_edit || busy === t.id}
@@ -55,7 +55,7 @@ export default function TrashList({
           <button
             onClick={() => purge(t.id, t.name)}
             disabled={!t.can_edit || busy === t.id}
-            className="shrink-0 rounded border border-red-300 px-2 py-0.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
+            className="shrink-0 rounded border border-red-300 px-2 py-0.5 text-danger hover:bg-red-50 disabled:opacity-50"
           >
             完全削除
           </button>

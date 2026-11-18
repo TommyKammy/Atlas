@@ -15,7 +15,7 @@ export default function HelpPage() {
   return (
     <div data-help-page className="max-w-3xl p-6 pb-16 text-sm text-neutral-700">
       <h1 className="text-xl font-bold text-neutral-900">ヘルプと始め方</h1>
-      <p className="mt-2 text-neutral-500">
+      <p className="mt-2 text-muted">
         Atlas の基本操作、連携、ショートカットをまとめています。
       </p>
 
@@ -66,7 +66,7 @@ export default function HelpPage() {
         <div className="mt-2 space-y-2">
           {SHORTCUTS.map(([key, description]) => (
             <div key={key} className="flex gap-3">
-              <kbd className="shrink-0 rounded border bg-neutral-100 px-1.5 py-0.5 font-mono text-xs">{key}</kbd>
+              <kbd className="shrink-0 rounded border bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{key}</kbd>
               <span>{description}</span>
             </div>
           ))}

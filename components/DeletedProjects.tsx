@@ -46,18 +46,18 @@ export default function DeletedProjects({ initial }: { initial: DeletedProject[]
   };
 
   if (initial.length === 0) {
-    return <p className="mt-2 text-sm text-neutral-500">削除済みのプロジェクトはありません。</p>;
+    return <p className="mt-2 text-sm text-muted">削除済みのプロジェクトはありません。</p>;
   }
   return (
     <div className="mt-2 max-w-4xl" data-deleted-projects>
       {initial.map((project) => (
         <div key={project.id} className="flex flex-wrap items-center gap-3 border-b py-2 text-sm">
           <span className="min-w-0 flex-1 truncate">{project.name}</span>
-          <span className="shrink-0 text-xs text-neutral-400">
+          <span className="shrink-0 text-xs text-subtle">
             {project.deleted_at.slice(0, 10)}
             {project.deleted_by_name ? ` ・ ${project.deleted_by_name}` : ""}
           </span>
-          <span className="shrink-0 text-xs text-neutral-400">{project.task_count}タスク</span>
+          <span className="shrink-0 text-xs text-subtle">{project.task_count}タスク</span>
           <button
             type="button"
             onClick={() => void restore(project.id)}
