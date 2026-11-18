@@ -24,6 +24,13 @@
 //   reverted to its legacy class until stage 3 (palette switch) intentionally
 //   retunes the dark state.
 //
+//   [token-variant-over-legacy] The reverse pairing: a state utility that is
+//   already a semantic token (`hover:bg-hover`) and a base legacy class of the
+//   same property whose unlayered dark override still exists (`bg-white`).
+//   The base legacy override always wins over the layered state token in dark
+//   mode, so the state stops working there. Migrate the base class in the same
+//   change, or revert the state token to its legacy state class.
+//
 //   [legacy-overlap] Two base classes of the same property can also collide.
 //   Example (T17): a chevron has `text-neutral-500` in its base classes and
 //   `text-neutral-700` only while the menu is open. Before the migration both
@@ -65,6 +72,10 @@
 //     hover:bg-neutral-200, hover:text-black, hover:text-neutral-700,
 //     hover:text-neutral-800) looks the same before and after; it is skipped.
 //     The list is read from app/globals.css, not hard-coded.
+//   - [token-variant-over-legacy] only pairs a state class that is itself a
+//     semantic token with a base legacy class that has an unlayered dark
+//     override for the same property. Legacy/legacy state pairs and token/token
+//     pairs are not reported.
 //   - `placeholder:` is out of scope. It colors ::placeholder, not the element's
 //     own text, and the legacy dark overrides never targeted it. Pseudo-element
 //     variants (before:, after:, file:, marker:, selection:, backdrop:) are
@@ -81,6 +92,11 @@
 //     because they do not color the element itself. It also ignores any token
 //     whose property is not in the element rule (today: border-color) and any
 //     token whose resolved dark value equals the rule value.
+//   - [token-variant-over-legacy] does not require the state token's legacy
+//     class to have had its own dark override. It reports the pair whenever the
+//     base legacy override would block the state token in dark mode, which is
+//     conservative: a state whose legacy class was never overridden already
+//     lost in dark before the migration.
 //
 // How class sets are assembled
 // ----------------------------
@@ -103,10 +119,11 @@
 // 80 combinations) so mutually exclusive bar faces are not merged.
 //
 // Output: `file:line  [kind] <conflict class>  (with <token class> / <element>)`,
-// one line per problem, then a count. `kind` is `variant`, `legacy-overlap` or
-// `form-control`. Exit code 1 when anything is found, 0 when clean. The line
-// points at the string segment that contains the class to inspect; for a class
-// inherited from a constant, that is the constant's definition line. For
+// one line per problem, then a count. `kind` is `variant`,
+// `token-variant-over-legacy`, `legacy-overlap` or `form-control`. Exit code 1
+// when anything is found, 0 when clean. The line points at the string segment
+// that contains the class to inspect; for a class inherited from a constant,
+// that is the constant's definition line. For `token-variant-over-legacy`,
 // `legacy-overlap` and `form-control`, the reported line is the token class to
 // revert.
 //
@@ -185,6 +202,10 @@ export const TOKEN_PROPERTIES = new Map([
   ["bg-danger-soft", "bg"],
   ["bg-warning-soft", "bg"],
   ["bg-success-soft", "bg"],
+  // Stage 2 hover surfaces: hover:bg-neutral-100 / hover:bg-neutral-200 had
+  // unlayered dark overrides (#363636 / #3f3f3f).
+  ["bg-hover", "bg"],
+  ["bg-hover-strong", "bg"],
   // Text: text-neutral-900/600/500/400, text-[#050505], text-[#2c60b8],
   // text-red-600, text-green-700, text-amber-800.
   ["text-text", "text"],
@@ -199,6 +220,11 @@ export const TOKEN_PROPERTIES = new Map([
   // Borders: border-neutral-200/300, border-[#eaeaea].
   ["border-line", "border"],
   ["border-line-strong", "border"],
+  // Stage 2 borders: border-neutral-100 / border-blue-200 / border-red-200 had
+  // unlayered dark overrides (#333333 / #2f4a6d / #5c3030).
+  ["border-line-subtle", "border"],
+  ["border-accent-line", "border"],
+  ["border-danger-line", "border"],
 ]);
 
 const PALETTE_NAMES =
@@ -217,22 +243,31 @@ const SEMANTIC_TOKEN_VALUES = new Set([
   "surface-subtle",
   "surface-muted",
   "surface-strong",
+  "hover",
+  "hover-strong",
   "scrim",
   "line",
   "line-strong",
+  "line-subtle",
   "text",
   "secondary",
   "muted",
   "subtle",
+  "on-accent",
   "accent",
   "accent-text",
   "accent-soft",
+  "accent-hover",
+  "accent-line",
   "danger",
   "danger-soft",
+  "danger-line",
   "warning",
   "warning-soft",
+  "warning-line",
   "success",
   "success-soft",
+  "success-line",
   "focus-ring",
   "background",
   "foreground",
@@ -736,16 +771,42 @@ function tokensWithPositions(sourceFile, chunks) {
 }
 
 function inspectClassSet(tokens, { overriddenVariants, darkOverrides, formControlRules, tokenDarkValues, element }) {
+  const findings = [];
+
+  // [token-variant-over-legacy] A state token next to a base legacy class whose
+  // unlayered dark override wins over the layered state token in dark mode.
+  // This runs before the base-token guard: `bg-white hover:bg-accent-hover`
+  // has no base token at all, but its dark hover is still wrong.
+  for (const [token, line] of tokens) {
+    const { variants, base } = splitVariants(token);
+    if (variants.length === 0) continue;
+    if (variants.some((variant) => NON_ELEMENT_VARIANTS.has(variant.split("/")[0]))) continue;
+    const stateful = variants.some((variant) => !BREAKPOINT.test(variant) && isStateVariant(variant));
+    if (!stateful) continue;
+    if (!isSemanticTokenColor(base)) continue;
+    if (overriddenVariants.has(token)) continue;
+
+    const property = colorProperty(base);
+    if (!property) continue;
+    for (const other of tokens.keys()) {
+      if (other === token) continue;
+      if (TOKEN_PROPERTIES.has(other) || isSemanticTokenColor(other)) continue;
+      const otherParts = splitVariants(other);
+      if (otherParts.variants.length) continue;
+      if (colorProperty(otherParts.base) !== property) continue;
+      if (!darkOverrides.get(other)?.has(property)) continue;
+      findings.push({ kind: "token-variant-over-legacy", line, stateClass: token, token: other });
+    }
+  }
+
   const tokensByProperty = { bg: [], text: [], border: [] };
   for (const token of tokens.keys()) {
     const property = TOKEN_PROPERTIES.get(token);
     if (property) tokensByProperty[property].push(token);
   }
   if (!tokensByProperty.bg.length && !tokensByProperty.text.length && !tokensByProperty.border.length) {
-    return [];
+    return findings;
   }
-
-  const findings = [];
 
   // [variant] A state utility of the same property next to a base token.
   for (const [token, line] of tokens) {
@@ -962,8 +1023,9 @@ function main() {
         "",
         "Reports migrated token classes that conflict with the unlayered legacy",
         "dark rules: a state variant of the same property, a base legacy class",
-        "of the same property, or a form-control background/text token. Revert",
-        "the token class; see docs/design-tokens.md section 6.1.",
+        "of the same property, a state token over a base legacy class, or a",
+        "form-control background/text token. Revert the token class; see",
+        "docs/design-tokens.md section 6.1.",
       ].join("\n"),
     );
     return;
@@ -990,9 +1052,20 @@ function main() {
   console.error(
     `${findings.length} conflict(s) in ${new Set(findings.map((finding) => finding.path)).size} file(s).`,
   );
-  console.error(
-    "Revert each token class to its legacy class (docs/design-tokens.md section 4); keep state classes unchanged.",
-  );
+  const kinds = new Set(findings.map((finding) => finding.kind));
+  if (kinds.has("variant")) {
+    console.error("variant: revert the base token (with ...) to its legacy class; keep the state class unchanged.");
+  }
+  if (kinds.has("legacy-overlap")) {
+    console.error("legacy-overlap: revert the base token (with ...) to its legacy class.");
+  }
+  if (kinds.has("form-control")) {
+    console.error("form-control: revert the background/text token, or move it off the form control.");
+  }
+  if (kinds.has("token-variant-over-legacy")) {
+    console.error("token-variant-over-legacy: migrate the base legacy class in the same change, or revert the state token.");
+  }
+  console.error("See docs/design-tokens.md section 4 and 6.1.");
   process.exitCode = 1;
 }
 

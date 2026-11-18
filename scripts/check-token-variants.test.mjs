@@ -78,10 +78,36 @@ test("does not report state classes that are semantic tokens", () => {
   assert.deepEqual(conflicts('<div className="border-line focus:border-accent" />'), []);
   assert.deepEqual(conflicts('<div className="bg-surface hover:bg-danger-soft" />'), []);
   assert.deepEqual(conflicts('<div className="bg-surface hover:bg-scrim" />'), []);
+  assert.deepEqual(conflicts('<div className="bg-surface hover:bg-hover" />'), []);
   // A legacy palette state class is still reported.
   assert.deepEqual(conflicts('<a className="text-muted hover:text-neutral-900" />'), [
     { stateClass: "hover:text-neutral-900", token: "text-muted" },
   ]);
+});
+
+test("detects a state token over a base legacy class with a dark override (token-variant-over-legacy)", () => {
+  assert.deepEqual(findings('<div className="bg-white hover:bg-hover" />'), [
+    { kind: "token-variant-over-legacy", conflict: "hover:bg-hover", token: "bg-white" },
+  ]);
+  // A state token whose base token is not a migrated base class is still checked.
+  assert.deepEqual(findings('<div className="bg-white hover:bg-accent-hover" />'), [
+    { kind: "token-variant-over-legacy", conflict: "hover:bg-accent-hover", token: "bg-white" },
+  ]);
+  assert.deepEqual(findings('<div className="border-neutral-200 focus:border-accent-line" />'), [
+    { kind: "token-variant-over-legacy", conflict: "focus:border-accent-line", token: "border-neutral-200" },
+  ]);
+  assert.deepEqual(findings('<a className="text-neutral-700 hover:text-on-accent" />'), [
+    { kind: "token-variant-over-legacy", conflict: "hover:text-on-accent", token: "text-neutral-700" },
+  ]);
+});
+
+test("does not report state tokens without a base legacy dark override", () => {
+  assert.deepEqual(findings('<div className="bg-surface hover:bg-hover" />'), []);
+  assert.deepEqual(findings('<div className="hover:bg-hover" />'), []);
+  assert.deepEqual(findings('<div className="bg-white hover:bg-neutral-100" />'), []);
+  assert.deepEqual(findings('<div className="border-[#eeeeee] hover:border-accent-line" />'), []);
+  assert.deepEqual(findings('<div className="bg-white focus:border-accent-line" />'), []);
+  assert.deepEqual(findings('<div className="bg-white placeholder:bg-hover" />'), []);
 });
 
 test("classifies semantic token colors", () => {
@@ -91,6 +117,14 @@ test("classifies semantic token colors", () => {
   assert.equal(isSemanticTokenColor("bg-accent-soft"), true);
   assert.equal(isSemanticTokenColor("text-accent-text"), true);
   assert.equal(isSemanticTokenColor("border-accent"), true);
+  assert.equal(isSemanticTokenColor("text-on-accent"), true);
+  assert.equal(isSemanticTokenColor("bg-hover"), true);
+  assert.equal(isSemanticTokenColor("bg-hover-strong"), true);
+  assert.equal(isSemanticTokenColor("border-line-subtle"), true);
+  assert.equal(isSemanticTokenColor("border-accent-line"), true);
+  assert.equal(isSemanticTokenColor("border-danger-line"), true);
+  assert.equal(isSemanticTokenColor("border-warning-line"), true);
+  assert.equal(isSemanticTokenColor("border-success-line"), true);
   assert.equal(isSemanticTokenColor("border-t-line"), true);
   assert.equal(isSemanticTokenColor("bg-danger-soft"), true);
   assert.equal(isSemanticTokenColor("bg-scrim"), true);
@@ -253,6 +287,11 @@ test("resolves token dark values from the dark variables and @theme inline mappi
   assert.equal(TOKEN_DARK_VALUES.get("text-muted"), "#bdbdbd");
   assert.equal(TOKEN_DARK_VALUES.get("bg-surface"), "#242424");
   assert.equal(TOKEN_DARK_VALUES.get("bg-surface-muted"), "#303030");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-hover"), "#363636");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-hover-strong"), "#3f3f3f");
+  assert.equal(TOKEN_DARK_VALUES.get("border-line-subtle"), "#333333");
+  assert.equal(TOKEN_DARK_VALUES.get("border-accent-line"), "#2f4a6d");
+  assert.equal(TOKEN_DARK_VALUES.get("border-danger-line"), "#5c3030");
 });
 
 test("detects a background/text token on an intrinsic form control (form-control)", () => {
