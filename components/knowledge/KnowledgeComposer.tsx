@@ -144,7 +144,7 @@ export default function KnowledgeComposer({ note, projectId, viewerId, template,
         <button type="button" data-knowledge-save disabled={status === "saving"} onClick={() => void save(!record.current)} className="rounded bg-accent px-3 py-2 text-xs font-medium text-on-accent disabled:opacity-50">{status === "saving" ? "保存中…" : "今すぐ保存"}</button>
       </div>
     </div>
-    {error && <div role="alert" className="mb-4 rounded-md border border-danger-line bg-danger-soft p-3 text-sm text-red-800">
+    {error && <div role="alert" className="mb-4 rounded-md border border-danger-line bg-danger-soft p-3 text-sm text-danger">
       <p>{error}</p><p className="mt-1">未保存の変更はこの画面に残っています。</p>
       <div className="mt-2 flex flex-wrap gap-3">
         <button onClick={() => void save(true)} className="underline">再試行</button>

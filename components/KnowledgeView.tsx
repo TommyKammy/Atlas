@@ -148,7 +148,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
         })}>{trashOpen ? "ノート一覧に戻る" : "ゴミ箱"}</button>
       </>}
     </ProjectViewToolbar>
-    {error && <p role="alert" className="mb-4 rounded-md bg-danger-soft p-3 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mb-4 rounded-md bg-danger-soft p-3 text-sm text-danger">{error}</p>}
     {notice && <p role="status" className="mb-4 text-sm text-secondary">{notice}</p>}
     {trashOpen ? <KnowledgeTrash projectId={projectId} onBusyChange={setBusy} onRestored={async note => {
       setNotice(`「${note.title}」を復元しました`);

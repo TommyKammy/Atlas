@@ -80,7 +80,7 @@ export default function MyTasksWidget({
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line-strong text-subtle">
               ✓
             </span>
-            <p className="text-[12px] text-subtle">
+            <p className="text-[12px] text-muted">
               {active === "completed" ? "完了したタスクはありません。" : "この期間のタスクはありません。"}
             </p>
             <button

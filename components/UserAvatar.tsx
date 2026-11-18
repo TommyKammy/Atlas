@@ -27,7 +27,7 @@ export default function UserAvatar({
   return (
     <span
       title={label}
-      className={`${className} ${textClassName} flex shrink-0 items-center justify-center rounded-full font-bold text-text ${AVATAR_COLORS[code % AVATAR_COLORS.length]}`}
+      className={`${className} ${textClassName} flex shrink-0 items-center justify-center rounded-full font-bold ${AVATAR_COLORS[code % AVATAR_COLORS.length]}`}
     >
       {label.slice(0, 1)}
     </span>

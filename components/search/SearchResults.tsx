@@ -46,7 +46,7 @@ export default function SearchResults({
             <div key={task.id} data-search-result-id={task.id} className={rowCls}>
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                  task.completed ? "border-success-strong bg-success-strong text-on-accent" : "border-line-strong"
+                  task.completed ? "border-success-strong bg-success-strong text-on-strong" : "border-line-strong"
                 }`}
               >
                 {task.completed && "✓"}

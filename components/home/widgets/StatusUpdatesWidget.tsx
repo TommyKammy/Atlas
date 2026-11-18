@@ -79,7 +79,7 @@ export default function StatusUpdatesWidget({
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line-strong text-subtle">
               ◉
             </span>
-            <p className="text-[12px] text-subtle">まだステータス更新はありません。</p>
+            <p className="text-[12px] text-muted">まだステータス更新はありません。</p>
             {projects.length > 0 && (
               <button
                 type="button"

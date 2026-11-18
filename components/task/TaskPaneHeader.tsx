@@ -81,7 +81,7 @@ export default function TaskPaneHeader({
         aria-label={task.approval ? "承認の操作を開く" : undefined}
         className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium ${
           task.completed
-            ? "border-success-strong bg-success-strong text-on-accent hover:bg-success-strong-hover"
+            ? "border-success-strong bg-success-strong text-on-strong hover:bg-success-strong-hover"
             : "border-line-strong bg-surface text-secondary hover:bg-hover"
         }`}
       >

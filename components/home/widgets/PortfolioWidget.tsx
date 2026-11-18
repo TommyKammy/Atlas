@@ -79,7 +79,7 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
       <div className="min-h-[170px] flex-1 p-2">
         {scoped.length === 0 ? (
           <div className="flex h-full min-h-[150px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-            <p className="text-[12px] text-subtle">
+            <p className="text-[12px] text-muted">
               {active === "saved"
                 ? "マイポートフォリオにプロジェクトがありません。"
                 : "表示するプロジェクトがありません。"}

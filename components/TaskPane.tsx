@@ -391,7 +391,7 @@ export default function TaskPane({
           {!canEdit && <p role="status" data-task-readonly className="mb-2 text-[12px] text-secondary">タスクの項目は閲覧のみです。変更には編集権限が必要です。</p>}
           {conflict && (
             <div className="mb-3 rounded-lg border border-danger-line bg-danger-soft p-3 text-sm">
-              <div className="font-semibold text-red-700">他のユーザーが先に更新しました</div>
+              <div className="font-semibold text-danger">他のユーザーが先に更新しました</div>
               <div className="mt-1 space-y-0.5">
                 {Object.keys(conflict.attempted)
                   .filter((key) => key in FIELD_LABELS)
@@ -408,7 +408,7 @@ export default function TaskPane({
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={retryOverwrite}
-                  className="rounded bg-danger-strong px-3 py-1 text-on-accent hover:bg-danger-strong-hover"
+                  className="rounded bg-danger-strong px-3 py-1 text-on-strong hover:bg-danger-strong-hover"
                 >
                   最新で上書きする
                 </button>

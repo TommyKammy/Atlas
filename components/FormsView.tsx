@@ -195,7 +195,7 @@ export default function FormsView({
         </p>
       )}
       {error && !builder && !answering && (
-        <p role="alert" className="mt-3 rounded-md border border-danger-line bg-danger-soft px-3 py-2 text-[13px] text-red-700">
+        <p role="alert" className="mt-3 rounded-md border border-danger-line bg-danger-soft px-3 py-2 text-[13px] text-danger">
           {error}
         </p>
       )}

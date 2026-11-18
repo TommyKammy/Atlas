@@ -49,7 +49,7 @@ export default function SidebarHelpButton() {
         onClick={openMenu}
         aria-label="ヘルプ"
         title="ヘルプ"
-        className="flex h-7 w-7 items-center justify-center rounded-md text-inverse-text-muted hover:bg-overlay/10 hover:text-on-strong"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text-strong"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
           <circle cx="12" cy="12" r="9" />
@@ -122,7 +122,7 @@ export default function SidebarHelpButton() {
                 ))}
               </div>
               <div className="mt-4 text-right">
-                <button type="button" data-shortcuts-close onClick={() => setShortcuts(false)} className="rounded bg-inverse-surface px-3 py-1 text-sm text-on-strong">
+                <button type="button" data-shortcuts-close onClick={() => setShortcuts(false)} className="rounded bg-accent px-3 py-1 text-sm text-on-accent hover:bg-accent-hover">
                   閉じる
                 </button>
               </div>

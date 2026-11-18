@@ -1,24 +1,5 @@
 {
   "version": 1,
   "tool": "check-color-literals",
-  "counts": {
-    "app/portfolio/[portfolioId]/planning/error.tsx": 3,
-    "components/FormsView.tsx": 1,
-    "components/KnowledgeView.tsx": 1,
-    "components/TaskPane.tsx": 1,
-    "components/automation/RuleExecutionHistory.tsx": 2,
-    "components/automation/RuleWorkflowEditor.tsx": 3,
-    "components/board/BoardCard.tsx": 2,
-    "components/customize/AutomationRulesPanel.tsx": 4,
-    "components/fields/TimerCell.tsx": 3,
-    "components/knowledge/KnowledgeComposer.tsx": 1,
-    "components/knowledge/KnowledgeTrash.tsx": 1,
-    "components/portfolio/planning/ProposalDecisionForm.tsx": 1,
-    "components/portfolio/planning/ProposalReviewForm.tsx": 1,
-    "components/portfolio/planning/ui.tsx": 1,
-    "components/task/TaskApprovalBadge.tsx": 2,
-    "components/task/TaskDependenciesSection.tsx": 2,
-    "components/task/TaskSaveStatus.tsx": 4,
-    "components/ui/InlineError.tsx": 3
-  }
+  "counts": {}
 }

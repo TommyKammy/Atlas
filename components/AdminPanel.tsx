@@ -312,7 +312,7 @@ export default function AdminPanel({
           作成
         </button>
       </div>
-      <p className="mt-1 text-[11px] text-subtle">パスワード要件: {passwordPolicyText}</p>
+      <p className="mt-1 text-[11px] text-muted">パスワード要件: {passwordPolicyText}</p>
       {msg && <p className="mt-2 text-sm text-secondary">{msg}</p>}
 
       <h2 className="mt-6 font-semibold">メール招待</h2>

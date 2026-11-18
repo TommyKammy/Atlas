@@ -21,7 +21,7 @@ export default function SidebarToggle({ initialCollapsed }: { initialCollapsed: 
       onClick={toggle}
       aria-label={collapsed ? "サイドバーを展開" : "サイドバーを非表示にする"}
       title={collapsed ? "サイドバーを展開" : "サイドバーを非表示にする"}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-inverse-text-muted hover:bg-overlay/10 hover:text-on-strong"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text-strong"
     >
       <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
         <path d="M4 6h16M4 12h16M4 18h16" />

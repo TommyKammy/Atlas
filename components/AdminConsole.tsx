@@ -115,7 +115,7 @@ export default function AdminConsole({
     <div data-admin-console className="mt-4 flex flex-col gap-5 md:flex-row">
       <aside className="shrink-0 md:w-56">
         <div className="rounded-lg border border-line bg-surface p-2">
-          <div className="px-2 pb-1 pt-1 text-[11px] font-medium tracking-wide text-subtle">
+          <div className="px-2 pb-1 pt-1 text-[11px] font-medium tracking-wide text-muted">
             {initialWorkspace.name}
           </div>
           <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
@@ -132,7 +132,7 @@ export default function AdminConsole({
                 }`}
               >
                 <span className="block whitespace-nowrap">{tab.label}</span>
-                <span className="mt-0.5 hidden text-[10px] font-normal text-subtle md:block">
+                <span className="mt-0.5 hidden text-[10px] font-normal text-muted md:block">
                   {tab.description}
                 </span>
               </button>

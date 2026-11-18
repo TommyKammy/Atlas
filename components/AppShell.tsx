@@ -39,7 +39,7 @@ export default async function AppShell({
   const canCreateProject =
     currentUserId !== null && (await hasPermission(currentUserId, "projects.create"));
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface text-text">
+    <div className="flex h-screen flex-col overflow-hidden bg-bg text-text">
       <div className="flex min-h-0 flex-1">
         <ResizableSidebar collapsed={collapsed} initialWidth={sidebarWidth}>
           {collapsed ? (

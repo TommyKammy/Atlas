@@ -356,7 +356,7 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
       <p className="mt-1 leading-5">未入力の内容は下書きに保存できます。次の項目を修正すると公開できます。</p>
       <ul className="mt-2 space-y-1">{problems.map((problem, index) => <li key={index}><button type="button" onClick={() => selectProblem(problem)} className="text-left leading-5 underline decoration-warning/50 underline-offset-2 hover:decoration-warning focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">{problem.label}</button></li>)}</ul>
     </section>}
-    {(error || conflict) && <div role="alert" className="shrink-0 border-b border-rose-200 bg-rose-50 px-6 py-3 text-[12px] text-rose-700">
+    {(error || conflict) && <div role="alert" className="shrink-0 border-b border-danger-line bg-danger-soft px-6 py-3 text-[12px] text-danger">
       <p>{error}</p>{conflict && <div className="mt-2 flex flex-wrap items-center gap-3"><span>編集中の内容は保持しています。</span><button type="button" className={buttonClass} onClick={() => void reloadDraft()}>{conflict === "rule_conflict" ? "公開版から読み直す（編集内容を破棄）" : "最新の下書きを読み込む（編集内容を破棄）"}</button></div>}
     </div>}
     {tab === "editor" && <div className="relative flex min-h-0 flex-1">

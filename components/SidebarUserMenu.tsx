@@ -164,7 +164,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
         onClick={openMenu}
         aria-label="ユーザー設定"
         title="ユーザー設定"
-        className="flex h-7 w-7 items-center justify-center rounded-full hover:ring-2 hover:ring-overlay/20"
+        className="flex h-7 w-7 items-center justify-center rounded-full hover:ring-2 hover:ring-sidebar-muted"
       >
         <UserAvatar name={user.name} url={user.avatar_url} className="h-7 w-7" />
       </button>

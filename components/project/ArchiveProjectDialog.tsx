@@ -34,7 +34,7 @@ export default function ArchiveProjectDialog({
           </button>
           <button
             type="button"
-            className="flex h-8 items-center rounded-md bg-danger-action px-3 text-sm font-medium text-on-accent hover:bg-danger-action-hover disabled:opacity-60"
+            className="flex h-8 items-center rounded-md bg-danger-action px-3 text-sm font-medium text-on-strong hover:bg-danger-action-hover disabled:opacity-60"
             disabled={busy}
             onClick={onArchive}
           >

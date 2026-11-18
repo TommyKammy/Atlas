@@ -43,7 +43,7 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
       </div>
       <div className="min-h-[170px] flex-1 p-2">
         {members.length === 0 ? (
-          <div className="flex h-full min-h-[150px] items-center justify-center text-[12px] text-subtle">
+          <div className="flex h-full min-h-[150px] items-center justify-center text-[12px] text-muted">
             表示するメンバーがいません。
           </div>
         ) : (

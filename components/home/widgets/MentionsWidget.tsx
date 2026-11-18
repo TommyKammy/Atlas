@@ -40,7 +40,7 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line-strong text-[15px] text-subtle">
               @
             </span>
-            <p className="text-[12px] text-subtle">自分宛てのメンションはありません。</p>
+            <p className="text-[12px] text-muted">自分宛てのメンションはありません。</p>
           </div>
         ) : (
           mentions.slice(0, 6).map((mention) => (

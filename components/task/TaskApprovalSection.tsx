@@ -252,7 +252,7 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
         <div className="flex flex-wrap gap-2">
           {!approval && data.can_request && <button type="button" disabled={disabled || !selected} onClick={() => void submit("request")} className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50">承認を申請</button>}
           {approval?.status === "pending" && data.can_decide && <>
-            <button type="button" disabled={disabled} onClick={() => void submit("approve")} className="rounded bg-success-strong px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-success-strong-hover disabled:opacity-50">承認する</button>
+            <button type="button" disabled={disabled} onClick={() => void submit("approve")} className="rounded bg-success-strong px-3 py-1.5 text-[12px] font-medium text-on-strong hover:bg-success-strong-hover disabled:opacity-50">承認する</button>
             <button type="button" disabled={disabled} onClick={() => void submit("request_changes")} className={secondaryButton}>差し戻す</button>
             <button type="button" disabled={disabled} onClick={() => void submit("reject")} className={dangerSecondaryButton}>却下する</button>
           </>}

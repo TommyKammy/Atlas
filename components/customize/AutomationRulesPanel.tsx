@@ -539,7 +539,7 @@ export default function AutomationRulesPanel({
                         className={`rounded-full px-2 py-0.5 text-[10px] ${
                           rule.last_run_status === "success"
                             ? "bg-success-soft text-success"
-                            : "bg-rose-50 text-rose-700"
+                            : "bg-danger-soft text-danger"
                         }`}
                       >
                         最終実行: {rule.last_run_status}
@@ -727,7 +727,7 @@ export default function AutomationRulesPanel({
                           run.status === "success"
                             ? "bg-success-soft text-success"
                             : run.status === "failed"
-                              ? "bg-rose-50 text-rose-700"
+                              ? "bg-danger-soft text-danger"
                               : "bg-surface-muted text-secondary"
                         }`}
                       >

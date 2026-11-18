@@ -65,7 +65,7 @@ export default function ProjectsWidget({
       <div className="min-h-[190px] flex-1 p-3">
         {filtered.length === 0 ? (
           <div className="flex h-full min-h-[170px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-            <p className="text-[12px] text-subtle">
+            <p className="text-[12px] text-muted">
               {tab === "search" && query.trim() !== ""
                 ? "一致するプロジェクトがありません。"
                 : "プロジェクトがありません。"}

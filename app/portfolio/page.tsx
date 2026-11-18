@@ -41,10 +41,10 @@ export default async function PortfolioPage({
       <div className="mt-4 max-w-5xl">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold">マイポートフォリオ</h2>
-          <span className="text-xs text-subtle">{saved.length}件</span>
+          <span className="text-xs text-muted">{saved.length}件</span>
         </div>
         {saved.length === 0 ? (
-          <p className="mt-1 text-xs text-subtle">
+          <p className="mt-1 text-xs text-muted">
             サイドバーのプロジェクトを右クリック →「ポートフォリオに追加」でここに追加されます。
           </p>
         ) : (
@@ -91,7 +91,7 @@ export default async function PortfolioPage({
                 {p.min_due ?? "–"} 〜 {p.max_due ?? "–"}
               </span>
               <span className="text-secondary">{p.members}人</span>
-              <span className={p.overdue > 0 ? "font-semibold text-danger" : "text-subtle"}>
+              <span className={p.overdue > 0 ? "font-semibold text-danger" : "text-muted"}>
                 {p.overdue > 0 ? `${p.overdue}件` : "なし"}
               </span>
             </div>

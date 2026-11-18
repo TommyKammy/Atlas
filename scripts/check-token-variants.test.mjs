@@ -32,8 +32,8 @@ const FORM_CONTROL_CSS = [
   'html[data-theme="dark"] input,',
   'html[data-theme="dark"] select,',
   'html[data-theme="dark"] textarea {',
-  "  background-color: #2b2b2b;",
-  "  color: #ededed;",
+  "  background-color: #14181d;",
+  "  color: #e8eaed;",
   "}",
 ].join("\n");
 const FORM_CONTROLS = parseFormControlProperties(FORM_CONTROL_CSS);
@@ -155,6 +155,10 @@ test("classifies semantic token colors", () => {
   assert.equal(isSemanticTokenColor("bg-inverse-surface"), true);
   assert.equal(isSemanticTokenColor("text-inverse-text"), true);
   assert.equal(isSemanticTokenColor("border-inverse-line"), true);
+  assert.equal(isSemanticTokenColor("bg-sidebar"), true);
+  assert.equal(isSemanticTokenColor("text-sidebar-text"), true);
+  assert.equal(isSemanticTokenColor("border-sidebar-line"), true);
+  assert.equal(isSemanticTokenColor("bg-sidebar-active"), true);
   assert.equal(isSemanticTokenColor("border-data-line"), true);
   assert.equal(isSemanticTokenColor("text-on-strong"), true);
   assert.equal(isSemanticTokenColor("bg-danger-strong"), true);
@@ -271,24 +275,8 @@ test("splits stacked variants and keeps arbitrary variant colons intact", () => 
   assert.deepEqual(splitVariants("text-subtle"), { variants: [], base: "text-subtle" });
 });
 
-test("globals.css keeps only the data and AA-waiting dark overrides", () => {
-  assert.deepEqual(
-    [...parseDarkOverrides(GLOBALS_CSS).keys()].sort(),
-    [
-      "atlas-mention",
-      "atlas-rich-text",
-      "bg-[#aaaaaa]",
-      "bg-amber-400",
-      "bg-emerald-500",
-      "bg-red-100",
-      "bg-red-200",
-      "bg-rose-400",
-      "bg-sky-500",
-      "bg-violet-400",
-      "text-red-500",
-      "text-red-700",
-    ],
-  );
+test("globals.css has no unlayered dark class overrides after S3-2", () => {
+  assert.deepEqual([...parseDarkOverrides(GLOBALS_CSS).keys()].sort(), []);
 });
 
 test("reads dark overrides from escaped selectors and [class~=...] selectors", () => {
@@ -398,8 +386,8 @@ test("reads background-color and color values from the dark form-control rule", 
   assert.deepEqual(FORM_CONTROLS.get("input"), new Set(["bg", "text"]));
   assert.deepEqual(FORM_CONTROLS.get("select"), new Set(["bg", "text"]));
   assert.deepEqual(FORM_CONTROLS.get("textarea"), new Set(["bg", "text"]));
-  assert.equal(FORM_CONTROL_RULES.get("input").get("bg"), "#2b2b2b");
-  assert.equal(FORM_CONTROL_RULES.get("input").get("text"), "#ededed");
+  assert.equal(FORM_CONTROL_RULES.get("input").get("bg"), "#14181d");
+  assert.equal(FORM_CONTROL_RULES.get("input").get("text"), "#e8eaed");
   assert.deepEqual(
     parseFormControlProperties('html[data-theme="dark"] input { border-color: #000; }').get("input"),
     new Set(["border"]),
@@ -407,26 +395,26 @@ test("reads background-color and color values from the dark form-control rule", 
 });
 
 test("resolves token dark values from the dark variables and @theme inline mapping", () => {
-  assert.equal(TOKEN_DARK_VALUES.get("text-text"), "#ededed");
-  assert.equal(TOKEN_DARK_VALUES.get("text-foreground"), "#ededed");
-  assert.equal(TOKEN_DARK_VALUES.get("text-secondary"), "#cfcfcf");
-  assert.equal(TOKEN_DARK_VALUES.get("text-muted"), "#bdbdbd");
-  assert.equal(TOKEN_DARK_VALUES.get("bg-surface"), "#242424");
-  assert.equal(TOKEN_DARK_VALUES.get("bg-field"), "#2b2b2b");
-  assert.equal(TOKEN_DARK_VALUES.get("bg-surface-muted"), "#303030");
-  assert.equal(TOKEN_DARK_VALUES.get("bg-hover"), "#363636");
-  assert.equal(TOKEN_DARK_VALUES.get("bg-hover-strong"), "#3f3f3f");
-  assert.equal(TOKEN_DARK_VALUES.get("border-line-subtle"), "#333333");
-  assert.equal(TOKEN_DARK_VALUES.get("border-accent-line"), "#2f4a6d");
-  assert.equal(TOKEN_DARK_VALUES.get("border-danger-line"), "#5c3030");
+  assert.equal(TOKEN_DARK_VALUES.get("text-text"), "#e8eaed");
+  assert.equal(TOKEN_DARK_VALUES.get("text-foreground"), "#e8eaed");
+  assert.equal(TOKEN_DARK_VALUES.get("text-secondary"), "#c9cfd8");
+  assert.equal(TOKEN_DARK_VALUES.get("text-muted"), "#a3acb8");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-surface"), "#14181d");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-field"), "#14181d");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-surface-muted"), "#1d2229");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-hover"), "#191d23");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-hover-strong"), "#2a313a");
+  assert.equal(TOKEN_DARK_VALUES.get("border-line-subtle"), "#1d2229");
+  assert.equal(TOKEN_DARK_VALUES.get("border-accent-line"), "#3a424e");
+  assert.equal(TOKEN_DARK_VALUES.get("border-danger-line"), "#7a3a33");
 });
 
 test("detects a background/text token on an intrinsic form control (form-control)", () => {
   assert.deepEqual(findings('<input className="text-secondary" />'), [
     { kind: "form-control", conflict: "text-secondary", token: "text-secondary", element: "input" },
   ]);
-  assert.deepEqual(findings('<select className="bg-surface" />'), [
-    { kind: "form-control", conflict: "bg-surface", token: "bg-surface", element: "select" },
+  assert.deepEqual(findings('<select className="bg-surface-muted" />'), [
+    { kind: "form-control", conflict: "bg-surface-muted", token: "bg-surface-muted", element: "select" },
   ]);
   assert.deepEqual(findings('<textarea className="text-muted" />'), [
     { kind: "form-control", conflict: "text-muted", token: "text-muted", element: "textarea" },
@@ -434,10 +422,10 @@ test("detects a background/text token on an intrinsic form control (form-control
 });
 
 test("does not report a form-control token whose dark value equals the element rule", () => {
-  assert.deepEqual(FORM_CONTROL_RULES.get("input").get("text"), "#ededed");
+  assert.deepEqual(FORM_CONTROL_RULES.get("input").get("text"), "#e8eaed");
   assert.deepEqual(findings('<input className="text-text" />'), []);
   assert.deepEqual(findings('<input className="text-foreground" />'), []);
-  // The comparison is value-based: text-secondary is #cfcfcf, not #ededed.
+  // The comparison is value-based: text-secondary is #c9cfd8, not #e8eaed.
   assert.deepEqual(findings('<input className="text-secondary" />'), [
     { kind: "form-control", conflict: "text-secondary", token: "text-secondary", element: "input" },
   ]);

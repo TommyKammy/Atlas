@@ -37,8 +37,15 @@ export const PROJECT_STATUS_DOT_CLASSES = {
   muted: "bg-neutral-400",
 } as const;
 
-/** Avatar chips. The first character of the name selects one. */
-export const AVATAR_COLORS = ["bg-violet-400", "bg-amber-400", "bg-emerald-500", "bg-sky-500", "bg-rose-400"];
+/** Avatar chips. The first character of the name selects one. The dark ink is
+ * part of the chip because the pastel fill stays the same in both themes. */
+export const AVATAR_COLORS = [
+  "bg-violet-400 text-[#171717]",
+  "bg-amber-400 text-[#171717]",
+  "bg-emerald-500 text-[#171717]",
+  "bg-sky-500 text-[#171717]",
+  "bg-rose-400 text-[#171717]",
+];
 
 /** Comment author avatar chip. */
 export const COMMENT_AVATAR_CLASS = "bg-[#d8e3f3] text-[#38506e]";
@@ -56,15 +63,17 @@ export const CALENDAR_BAR_COLORS = [
   "border-[#c9e3e7] bg-[#e8f6f8] text-[#1f4e56]",
 ];
 
-/** Timeline bars whose fill encodes completion or critical path state. */
-export const TIMELINE_COMPLETED_BAR = "bg-[#aaaaaa]";
-export const TIMELINE_CRITICAL_BAR = "bg-red-200";
+/** Timeline bars whose fill encodes completion or critical path state. These
+ * use the theme's line tokens so the bar stays legible with text-text in both
+ * themes; the bar text ("完了" / task name) carries the state too. */
+export const TIMELINE_COMPLETED_BAR = "bg-line-strong";
+export const TIMELINE_CRITICAL_BAR = "bg-danger-line";
 export const TIMELINE_CRITICAL_LINE = "bg-[#46a75a]";
 
 /** Milestone marker colors. */
 export const MILESTONE_ICON_COLOR = "text-[#46a75a]";
-export const MILESTONE_CRITICAL_BACKGROUND = "bg-red-100";
-export const MILESTONE_CRITICAL_RING = "ring-red-400";
+export const MILESTONE_CRITICAL_BACKGROUND = "bg-danger-line";
+export const MILESTONE_CRITICAL_RING = "ring-danger";
 
 /** Capacity comparison bars: shortage is warm, remaining capacity is blue. */
 export const CAPACITY_BAR_COLORS = {

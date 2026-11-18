@@ -273,7 +273,7 @@ export default function ProfileForm({
             autoComplete="new-password"
             className={field}
           />
-          <p className="text-[11px] text-subtle">パスワード要件: {passwordPolicyText}</p>
+          <p className="text-[11px] text-muted">パスワード要件: {passwordPolicyText}</p>
           <button
             onClick={savePassword}
             className="self-start rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover"
@@ -424,7 +424,7 @@ export default function ProfileForm({
               <button
                 type="button"
                 onClick={() => { router.push("/"); router.refresh(); }}
-                className="mt-2 rounded bg-success-strong px-3 py-1.5 text-sm text-on-accent"
+                className="mt-2 rounded bg-success-strong px-3 py-1.5 text-sm text-on-strong"
               >
                 ホームへ進む
               </button>

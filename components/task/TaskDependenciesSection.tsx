@@ -36,7 +36,7 @@ export default function TaskDependenciesSection({
         )}
         {dependencies.map((dependency) => (
           <div key={dependency.id} className="flex min-h-7 items-center gap-1.5 text-[13px]">
-            <span className="shrink-0 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700">
+            <span className="shrink-0 rounded bg-danger-soft px-1.5 py-0.5 text-[10px] font-medium text-danger">
               先行
             </span>
             <Link

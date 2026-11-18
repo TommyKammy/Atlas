@@ -82,7 +82,7 @@ export default function ProposalDecisionForm({
 
       <label htmlFor={noteId} className="mt-2 block text-[12px] font-medium text-success">
         決定理由
-        <span className="ml-1 text-red-700" aria-hidden>
+        <span className="ml-1 text-danger" aria-hidden>
           *
         </span>
         <textarea

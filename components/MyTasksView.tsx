@@ -267,7 +267,7 @@ export default function MyTasksView({
             {bucket.items.length === 0 && (
               <div
                 data-my-task-empty={bucket.key}
-                className="mx-1 mt-1 rounded border border-dashed border-line px-3 py-2 text-[12px] text-subtle"
+                className="mx-1 mt-1 rounded border border-dashed border-line px-3 py-2 text-[12px] text-muted"
               >
                 ここにタスクをドラッグ
               </div>

@@ -156,7 +156,7 @@ export default function PortfolioWorkspace({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">共有ポートフォリオ</h2>
-          <p className="mt-0.5 text-xs text-subtle">
+          <p className="mt-0.5 text-xs text-muted">
             複数プロジェクトをまとめ、ポートフォリオ単位のルールを実行できます。
           </p>
         </div>
@@ -189,7 +189,7 @@ export default function PortfolioWorkspace({
           </div>
           <div className="mt-3 space-y-1 border-t border-line-subtle pt-3">
             {portfolios.length === 0 ? (
-              <p className="py-3 text-center text-[11px] text-subtle">
+              <p className="py-3 text-center text-[11px] text-muted">
                 ポートフォリオはまだありません。
               </p>
             ) : (
@@ -206,7 +206,7 @@ export default function PortfolioWorkspace({
                     <span className="block truncate text-[12px] font-medium text-text">
                       {portfolio.name}
                     </span>
-                    <span className="block text-[10px] text-subtle">
+                    <span className="block text-[10px] text-muted">
                       {portfolio.project_count}プロジェクト・{portfolio.rule_count}ルール
                     </span>
                   </span>
@@ -218,7 +218,7 @@ export default function PortfolioWorkspace({
 
         <div className="min-w-0">
           {detail === null ? (
-            <div className="rounded-lg border border-dashed border-line-strong bg-surface px-6 py-12 text-center text-[12px] text-subtle">
+            <div className="rounded-lg border border-dashed border-line-strong bg-surface px-6 py-12 text-center text-[12px] text-muted">
               ポートフォリオを選択するか、新規作成してください。
             </div>
           ) : (
@@ -242,7 +242,7 @@ export default function PortfolioWorkspace({
                     <p className="mt-0.5 text-[11px] text-muted">
                       {detail.portfolio.description || "説明はありません"}
                     </p>
-                    <p className="mt-1 text-[10px] text-subtle">
+                    <p className="mt-1 text-[10px] text-muted">
                       所有者: {detail.portfolio.owner_name ?? "不明"} ・{" "}
                       {detail.portfolio.project_count}プロジェクト
                     </p>
@@ -280,7 +280,7 @@ export default function PortfolioWorkspace({
                     </span>
                   ))}
                   {detail.projects.length === 0 && (
-                    <span className="text-[11px] text-subtle">
+                    <span className="text-[11px] text-muted">
                       プロジェクトがありません。
                     </span>
                   )}

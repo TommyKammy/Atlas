@@ -93,7 +93,7 @@ function NavLink({
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       <NavPending className="ml-auto" />
       {unread > 0 && (
-        <span className="rounded-full bg-danger-strong px-1.5 text-[11px] font-bold text-on-accent">{unread}</span>
+        <span className="rounded-full bg-danger-strong px-1.5 text-[11px] font-bold text-on-strong">{unread}</span>
       )}
     </Link>
   );
@@ -119,14 +119,14 @@ export default async function SidebarNav({
   const favorites = me ? await getFavorites(me.id) : [];
   const recents = me ? await getRecentProjects(me.id) : [];
 
-  const itemBase = "flex h-8 items-center gap-2 rounded-md px-2 text-[14px] leading-[22px] hover:bg-overlay/10";
-  const item = `${itemBase} text-inverse-text`;
-  const label = "px-2 pt-4 pb-1 text-[12px] font-normal tracking-normal text-inverse-text-muted";
+  const itemBase = "flex h-8 items-center gap-2 rounded-md px-2 text-[14px] leading-[22px] hover:bg-sidebar-hover";
+  const item = `${itemBase} text-sidebar-text`;
+  const label = "px-2 pt-4 pb-1 text-[12px] font-normal tracking-normal text-sidebar-muted";
   const favoriteIds = new Set(favorites.map((f) => f.id));
 
   return (
     <>
-      <div className="flex h-10 shrink-0 items-center gap-2 pl-3 pr-1 text-[14px] font-normal text-inverse-text-strong">
+      <div className="flex h-10 shrink-0 items-center gap-2 pl-3 pr-1 text-[14px] font-normal text-sidebar-text-strong">
         <span className="min-w-0 flex-1 truncate">{ws?.name ?? "Atlas"}</span>
         <SidebarToggle initialCollapsed={false} />
       </div>
@@ -141,7 +141,7 @@ export default async function SidebarNav({
           <NavLink key={entry.key} item={entry} className={item} unread={entry.key === "inbox" ? unread : 0} />
         ))}
         {me?.is_admin && <NavLink item={ADMIN_NAV} className={item} />}
-        <div aria-hidden className="my-2 border-t border-inverse-line" />
+        <div aria-hidden className="my-2 border-t border-sidebar-line" />
         {favorites.length > 0 && (
           <>
             <div className={label}>{NAV_LABELS.favorites}</div>
@@ -150,7 +150,7 @@ export default async function SidebarNav({
                 key={p.id}
                 project={p}
                 href={`/projects/${p.id}`}
-                className={`${itemBase} text-inverse-favorite`}
+                className={`${itemBase} text-sidebar-favorite`}
                 starred
                 leading="star"
               />
@@ -177,9 +177,9 @@ export default async function SidebarNav({
           {ws && cuid && canCreateProject && <SidebarAddProject />}
         </div>
         {ws && me && <SidebarProjectList key={`${ws.id}:${me.id}`} workspaceId={ws.id} projects={projects} favoriteIds={[...favoriteIds]} />}
-        {projects.length === 0 && <div className="px-3 py-1.5 text-inverse-text-muted">（なし）</div>}
+        {projects.length === 0 && <div className="px-3 py-1.5 text-sidebar-muted">（なし）</div>}
       </nav>
-      <div data-sidebar-footer className="border-t border-inverse-line-subtle p-2">
+      <div data-sidebar-footer className="border-t border-sidebar-line-subtle p-2">
         {me?.is_admin && (
           <div className="pb-2">
             <SidebarInviteButton />

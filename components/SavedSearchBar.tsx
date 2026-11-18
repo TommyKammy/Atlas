@@ -52,7 +52,7 @@ export default function SavedSearchBar({
   return (
     <div data-saved-searches className="mt-3 flex max-w-5xl flex-wrap items-center gap-2 text-[12px]">
       <span className="font-medium text-secondary">保存検索</span>
-      {saved.length === 0 && <span className="text-subtle">まだありません</span>}
+      {saved.length === 0 && <span className="text-muted">まだありません</span>}
       {saved.map((item) => (
         <span key={item.id} className="flex items-center gap-0.5 rounded-full border border-line bg-surface pl-2">
           <button

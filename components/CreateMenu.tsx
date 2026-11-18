@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 export type CreateMenuVariant = "sidebar" | "mobile" | "rail";
 
-const ACTION = "bg-danger-action text-on-accent hover:bg-danger-action-hover";
+const ACTION = "bg-accent text-on-accent hover:bg-accent-hover";
 const MENU_PANEL = "absolute z-50 w-48 rounded-lg border bg-surface py-1 text-sm text-text shadow-xl";
 const MENU_ITEM = "block w-full px-3 py-1.5 text-left hover:bg-hover";
 

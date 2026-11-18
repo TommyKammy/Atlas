@@ -52,10 +52,10 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line-strong text-subtle">
               📝
             </span>
-            <p className="text-[12px] text-subtle">
+            <p className="text-[12px] text-muted">
               {active === "published" ? "公開中のフォームはありません。" : "フォームはまだありません。"}
             </p>
-            <p className="text-[11px] text-subtle">
+            <p className="text-[11px] text-muted">
               プロジェクトの「フォーム」タブから作成できます。
             </p>
           </div>

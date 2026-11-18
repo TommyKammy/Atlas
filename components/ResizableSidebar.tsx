@@ -101,7 +101,7 @@ export default function ResizableSidebar({ children, collapsed, initialWidth }: 
       data-sidebar-collapsed={collapsed ? "true" : "false"}
       data-sidebar-resizing={resizing ? "true" : undefined}
       style={{ width: collapsed ? 65 : width, maxWidth: collapsed ? undefined : `max(${SIDEBAR_MIN_WIDTH}px, calc(100vw - ${SIDEBAR_CONTENT_MIN_WIDTH}px))` }}
-      className={`relative z-30 hidden shrink-0 border-r border-inverse-line bg-inverse-surface text-inverse-text [-webkit-font-smoothing:auto] md:flex ${resizing ? "" : "transition-[width] duration-150 motion-reduce:transition-none"}`}
+      className={`relative z-30 hidden shrink-0 border-r border-sidebar-line bg-sidebar text-sidebar-text [-webkit-font-smoothing:auto] md:flex ${resizing ? "" : "transition-[width] duration-150 motion-reduce:transition-none"}`}
     >
       {children}
       {!collapsed && (

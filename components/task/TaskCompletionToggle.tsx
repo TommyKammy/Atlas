@@ -44,7 +44,7 @@ export default function TaskCompletionToggle({
           ? `${size} flex shrink-0 items-center justify-center ${className}`
           : `${size} flex shrink-0 items-center justify-center rounded-full border ${
               completed
-                ? "border-success-strong bg-success-strong text-on-accent"
+                ? "border-success-strong bg-success-strong text-on-strong"
                 : "border-line-strong bg-surface/70 text-transparent hover:border-success-strong hover:text-success"
             } ${className}`
       }

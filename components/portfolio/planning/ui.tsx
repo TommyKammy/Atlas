@@ -80,7 +80,7 @@ export function Notice({
   const tones = {
     info: "border-accent-line bg-accent-soft text-accent-text",
     warn: "border-warning-line bg-warning-soft text-warning",
-    error: "border-danger-line bg-danger-soft text-red-900",
+    error: "border-danger-line bg-danger-soft text-danger",
     success: "border-success-line bg-success-soft text-success",
   };
   return (

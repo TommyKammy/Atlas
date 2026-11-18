@@ -38,8 +38,8 @@ export default function CommentDraftsWidget({ drafts }: { drafts: HomeCommentDra
             <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line-strong text-subtle">
               ✎
             </span>
-            <p className="text-[12px] text-subtle">コメントの下書きはありません。</p>
-            <p className="text-[11px] text-subtle">
+            <p className="text-[12px] text-muted">コメントの下書きはありません。</p>
+            <p className="text-[11px] text-muted">
               タスクのコメント入力中は自動で保存されます。
             </p>
           </div>

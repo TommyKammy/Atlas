@@ -47,7 +47,7 @@ export default function KnowledgeTrash({ projectId, onRestored, onBusyChange }: 
   return <section aria-label="ノートのゴミ箱" aria-busy={busy} className="max-w-4xl" data-knowledge-trash>
     <h3 className="text-lg font-semibold">ノートのゴミ箱</h3>
     <p className="mt-2 text-sm text-secondary">本文と保存履歴を保持しています。復元したノートは一覧の末尾に戻ります。</p>
-    {error && <div role="alert" className="mt-4 rounded-md bg-danger-soft p-3 text-sm text-red-700">{error}
+    {error && <div role="alert" className="mt-4 rounded-md bg-danger-soft p-3 text-sm text-danger">{error}
       <button className={`${button} ml-3`} disabled={busy} onClick={() => { setError(""); setRetry(value => value + 1); }}>再読み込み</button>
     </div>}
     {!loaded && !error && <p role="status" className="py-8 text-sm text-secondary">ゴミ箱を読み込み中…</p>}

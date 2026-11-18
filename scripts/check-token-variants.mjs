@@ -3,7 +3,8 @@
 //
 // Why this check exists
 // ---------------------
-// app/globals.css still carries the legacy dark overrides, e.g.
+// S3-2 removed every unlayered legacy dark override from app/globals.css.
+// The rules remain as a guard: if an override is reintroduced, e.g.
 //   html[data-theme="dark"] .text-neutral-400 { color: #a9a9a9; }
 // They are unlayered. An unlayered declaration always beats a utility that
 // lives inside Tailwind's @layer utilities, regardless of specificity. So an
@@ -296,6 +297,17 @@ const SEMANTIC_TOKEN_VALUES = new Set([
   "inverse-danger",
   "inverse-favorite",
   "on-strong",
+  "sidebar",
+  "sidebar-text",
+  "sidebar-text-strong",
+  "sidebar-muted",
+  "sidebar-line",
+  "sidebar-line-subtle",
+  "sidebar-hover",
+  "sidebar-active",
+  "sidebar-accent",
+  "sidebar-danger",
+  "sidebar-favorite",
   "line",
   "line-strong",
   "line-subtle",
