@@ -1,12 +1,23 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   colorProperty,
   findTokenVariantConflicts,
   isSemanticTokenColor,
   parseDarkOverriddenVariants,
+  parseDarkOverrides,
+  parseFormControlProperties,
+  parseFormControlRules,
+  parseTokenDarkValues,
   splitVariants,
 } from "./check-token-variants.mjs";
+
+const GLOBALS_CSS = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+const DARK_OVERRIDES = parseDarkOverrides(GLOBALS_CSS);
+const FORM_CONTROLS = parseFormControlProperties(GLOBALS_CSS);
+const FORM_CONTROL_RULES = parseFormControlRules(GLOBALS_CSS);
+const TOKEN_DARK_VALUES = parseTokenDarkValues(GLOBALS_CSS);
 
 const OVERRIDDEN = new Set([
   "hover:bg-white",
@@ -19,9 +30,28 @@ const OVERRIDDEN = new Set([
 ]);
 
 function conflicts(source, overridden = OVERRIDDEN) {
-  return findTokenVariantConflicts(source, { overriddenVariants: overridden }).map((finding) => ({
+  return findTokenVariantConflicts(source, {
+    overriddenVariants: overridden,
+    darkOverrides: DARK_OVERRIDES,
+    formControlRules: FORM_CONTROL_RULES,
+    tokenDarkValues: TOKEN_DARK_VALUES,
+  }).map((finding) => ({
     stateClass: finding.stateClass,
     token: finding.token,
+  }));
+}
+
+function findings(source) {
+  return findTokenVariantConflicts(source, {
+    overriddenVariants: OVERRIDDEN,
+    darkOverrides: DARK_OVERRIDES,
+    formControlRules: FORM_CONTROL_RULES,
+    tokenDarkValues: TOKEN_DARK_VALUES,
+  }).map((finding) => ({
+    kind: finding.kind,
+    conflict: finding.stateClass,
+    token: finding.token,
+    ...(finding.element ? { element: finding.element } : {}),
   }));
 }
 
@@ -91,7 +121,8 @@ test("does not mistake sizes, alignment, widths, or gradients for colors", () =>
 });
 
 test("ignores placeholder and other pseudo-element variants", () => {
-  assert.deepEqual(conflicts('<input className="text-subtle placeholder:text-neutral-400" />'), []);
+  assert.deepEqual(conflicts('<div className="text-subtle placeholder:text-neutral-400" />'), []);
+  assert.deepEqual(conflicts('<input className="placeholder:text-neutral-400" />'), []);
   assert.deepEqual(conflicts('<div className="bg-surface backdrop:bg-black/25" />'), []);
   assert.deepEqual(conflicts('<div className="bg-surface before:bg-red-500" />'), []);
 });
@@ -176,4 +207,101 @@ test("reads dark overrides from escaped selectors and [class~=...] selectors", (
     [...parseDarkOverriddenVariants(css)].sort(),
     ["bg-white", "hover:bg-neutral-50", "hover:bg-white"],
   );
+});
+
+test("detects a base token next to a legacy class with a dark override (legacy-overlap)", () => {
+  const source = '<button className={`text-muted ${open ? "text-neutral-700" : ""}`} />';
+  assert.deepEqual(findings(source), [
+    { kind: "legacy-overlap", conflict: "text-neutral-700", token: "text-muted" },
+  ]);
+  assert.deepEqual(findings('<div className="bg-surface p-2 bg-white" />'), [
+    { kind: "legacy-overlap", conflict: "bg-white", token: "bg-surface" },
+  ]);
+});
+
+test("does not report legacy/legacy, token/token, or mutually exclusive branches", () => {
+  assert.deepEqual(findings('<a className="text-neutral-500 text-neutral-700" />'), []);
+  assert.deepEqual(findings('<div className="text-muted text-secondary" />'), []);
+  assert.deepEqual(findings('<div className={open ? "text-muted" : "text-neutral-700"} />'), []);
+});
+
+test("matches the dark override property, not just the class name", () => {
+  // bg-violet-400 has a dark override only for color (avatar initials), so it
+  // does not compete with a background token.
+  assert.deepEqual(findings('<div className="bg-surface bg-violet-400" />'), []);
+  assert.deepEqual(findings('<div className="text-muted text-blue-700" />'), [
+    { kind: "legacy-overlap", conflict: "text-blue-700", token: "text-muted" },
+  ]);
+});
+
+test("reads background-color and color values from the dark form-control rule", () => {
+  assert.deepEqual(FORM_CONTROLS.get("input"), new Set(["bg", "text"]));
+  assert.deepEqual(FORM_CONTROLS.get("select"), new Set(["bg", "text"]));
+  assert.deepEqual(FORM_CONTROLS.get("textarea"), new Set(["bg", "text"]));
+  assert.equal(FORM_CONTROL_RULES.get("input").get("bg"), "#2b2b2b");
+  assert.equal(FORM_CONTROL_RULES.get("input").get("text"), "#ededed");
+  assert.deepEqual(
+    parseFormControlProperties('html[data-theme="dark"] input { border-color: #000; }').get("input"),
+    new Set(["border"]),
+  );
+});
+
+test("resolves token dark values from the dark variables and @theme inline mapping", () => {
+  assert.equal(TOKEN_DARK_VALUES.get("text-text"), "#ededed");
+  assert.equal(TOKEN_DARK_VALUES.get("text-foreground"), "#ededed");
+  assert.equal(TOKEN_DARK_VALUES.get("text-secondary"), "#cfcfcf");
+  assert.equal(TOKEN_DARK_VALUES.get("text-muted"), "#bdbdbd");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-surface"), "#242424");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-surface-muted"), "#303030");
+});
+
+test("detects a background/text token on an intrinsic form control (form-control)", () => {
+  assert.deepEqual(findings('<input className="text-secondary" />'), [
+    { kind: "form-control", conflict: "text-secondary", token: "text-secondary", element: "input" },
+  ]);
+  assert.deepEqual(findings('<select className="bg-surface" />'), [
+    { kind: "form-control", conflict: "bg-surface", token: "bg-surface", element: "select" },
+  ]);
+  assert.deepEqual(findings('<textarea className="text-muted" />'), [
+    { kind: "form-control", conflict: "text-muted", token: "text-muted", element: "textarea" },
+  ]);
+});
+
+test("does not report a form-control token whose dark value equals the element rule", () => {
+  assert.deepEqual(FORM_CONTROL_RULES.get("input").get("text"), "#ededed");
+  assert.deepEqual(findings('<input className="text-text" />'), []);
+  assert.deepEqual(findings('<input className="text-foreground" />'), []);
+  // The comparison is value-based: text-secondary is #cfcfcf, not #ededed.
+  assert.deepEqual(findings('<input className="text-secondary" />'), [
+    { kind: "form-control", conflict: "text-secondary", token: "text-secondary", element: "input" },
+  ]);
+});
+
+test("reports a form-control token when its dark value cannot be resolved", () => {
+  const [finding] = findTokenVariantConflicts('<input className="text-text" />', {
+    formControlRules: FORM_CONTROL_RULES,
+    tokenDarkValues: new Map(),
+  });
+  assert.equal(finding.kind, "form-control");
+  assert.equal(finding.stateClass, "text-text");
+  assert.equal(finding.element, "input");
+});
+
+test("does not report form controls for border tokens, other elements, or inherited tokens", () => {
+  assert.deepEqual(findings('<input className="border-line-strong" />'), []);
+  assert.deepEqual(findings('<div className="text-secondary" />'), []);
+  assert.deepEqual(findings('<div className="text-secondary"><input /></div>'), []);
+  assert.deepEqual(findings('<Input className="text-secondary" />'), []);
+});
+
+test("detects a form-control token passed through a same-file class constant", () => {
+  const source = [
+    'const inputClass = "text-secondary";',
+    "export function Field() {",
+    "  return <input className={inputClass} />;",
+    "}",
+  ].join("\n");
+  assert.deepEqual(findings(source), [
+    { kind: "form-control", conflict: "text-secondary", token: "text-secondary", element: "input" },
+  ]);
 });

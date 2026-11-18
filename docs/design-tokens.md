@@ -215,28 +215,48 @@ grep -rhoE "(bg|text|border|divide|ring|outline)-\[#[0-9a-fA-F]{3,8}\]" app comp
 4. 「未対応」は、トークンを増やすか、既存トークンへ寄せるかをデザイン判断してから着手する。この段階では勝手に新しい色を追加しない。
 5. `globals.css` 内の `.atlas-rich-text` や `.knowledge-document` の色は、トークンと完全一致しないため今回は触っていない。リッチテキスト用のトークン設計は別タスク。
 
-### 6.1 状態付きユーティリティと競合するときはトークン化しない
+### 6.1 旧ダーク上書きと競合するときはトークン化しない
 
-同じ要素のクラス集合に、次の (a) と (b) が同時にある場合は、**(a) をトークン化せず旧クラスのまま残す**。状態付きクラス (b) は変更しない。
+`globals.css` の旧ダーク上書き（例: `html[data-theme="dark"] .text-neutral-400 { color: #a9a9a9; }`）とフォーム要素のルール（`html[data-theme="dark"] input, select, textarea { background-color: #2b2b2b; color: #ededed; }`）は、どちらもレイヤー外（unlayered）にある。unlayered の宣言は `@layer utilities` 内のトークンより常に優先されるため、次の3種類の競合では**競合しているトークンのクラスだけを旧クラスに戻す**。状態付きクラスや旧クラス側は変更しない。
+
+#### 6.1.1 状態付きユーティリティとの競合（variant）
+
+同じ要素のクラス集合に、次の (a) と (b) が同時にある場合。
 
 - (a) 旧クラスにダーク上書きがあるトークン: `bg-surface` / `bg-surface-subtle` / `bg-surface-muted` / `bg-surface-strong` / `bg-line` / `bg-accent-soft` / `bg-danger-soft` / `bg-warning-soft` / `bg-success-soft` / `border-line` / `border-line-strong` / `text-text` / `text-secondary` / `text-muted` / `text-subtle` / `text-accent-text` / `text-danger` / `text-warning` / `text-success`。
 - (b) 同じプロパティ（背景色・文字色・枠線色）の状態付きユーティリティ: `hover:` / `focus:` / `focus-visible:` / `focus-within:` / `active:` / `disabled:` / `group-hover:` / `group-focus-within:` / `peer-*:` / `aria-*:` / `data-*:` / `open:` など。`first:` / `last:` / `odd:` / `even:` などの構造系バリアントも、旧上書きに負けていた点は同じなので対象に含める。`placeholder:` は対象外（`::placeholder` の色であり、要素自身の文字色ではないため）。`before:` / `after:` / `backdrop:` / `file:` / `marker:` / `selection:` などの擬似要素系も、要素自身のプロパティではないため対象外。
 
-理由: `globals.css` の旧ダーク上書き（例: `html[data-theme="dark"] .text-neutral-400 { color: #a9a9a9; }`）はレイヤー外（unlayered）にあり、`@layer utilities` 内の状態付きユーティリティより常に優先される。移行前はダークで状態付きユーティリティが負けていた。トークン（レイヤー内）へ置き換えると、ライトは同じまま、ダークだけ状態付きユーティリティが勝つようになり、ホバー・フォーカス・無効時の見た目が変わる。静止画の比較では写らないため、機械的な検査が必要になる。
+理由: 移行前はダークで状態付きユーティリティが unlayered の旧上書きに負けていた。トークン（レイヤー内）へ置き換えると、ライトは同じまま、ダークだけ状態付きユーティリティが勝つようになり、ホバー・フォーカス・無効時の見た目が変わる。静止画の比較では写らないため、機械的な検査が必要になる。
 
-例外:
+#### 6.1.2 同じプロパティの旧クラスとの競合（legacy-overlap）
+
+同じ要素に、トークンのクラスと、同じプロパティ（背景色・文字色・枠線色）の**状態なし**の旧クラスで、`globals.css` に unlayered のダーク上書きがあるものが同時に付きうる場合。
+
+例: シェブロンの基底 `text-neutral-500` と、メニューを開いたときだけ付く `text-neutral-700`。移行前はどちらも unlayered で、宣言順（または詳細度）によりダークでは `.text-neutral-700`（#dedede）が勝っていた。片方を `text-muted` / `text-secondary` などのトークンにすると、もう片方の旧クラスの unlayered 上書きが常に勝つため、ダークの色が変わる。条件分岐の片方にだけあるクラスも、同じ分岐で同時に付きうるなら対象。旧クラス同士（例: `text-neutral-500` と `text-neutral-700`）やトークン同士は対象外。
+
+#### 6.1.3 input / select / textarea の要素ルールとの競合（form-control）
+
+JSX の組み込み要素 `<input>` / `<select>` / `<textarea>` に、背景色または文字色のトークンが付いている場合。クラス定数を経由してその要素に渡っているものも含む。
+
+例: `ProjectShareDialog` の読み取り専用 URL 入力の `text-neutral-600`。移行前は旧クラスのダーク上書き `html[data-theme="dark"] .text-neutral-600 { color: #cfcfcf; }` が、要素セレクタのルールより詳細度が高く勝っていた。トークン化するとレイヤー内の宣言になり、unlayered の要素ルールが勝ってダークで `#ededed` になる。`background-color` も同様に `#2b2b2b` になる。
+
+**トークンのダーク値が要素ルールの同じプロパティの値と一致する場合は対象外**。例: `text-text` のダーク値 `#ededed` は要素ルールの `color: #ededed` と同じなので、要素ルールに負けても見た目は変わらない。値は `globals.css` の `html[data-theme="dark"]` ブロックの `--atlas-*` と、`@theme inline` の `--color-*` → `--atlas-*` の対応から解決し、小文字に正規化した値で比較する。解決できないトークンは従来どおり報告する。
+
+枠線色は要素ルールに含まれないため対象外（`border-line` / `border-line-strong` はそのまま）。`placeholder:` などの擬似要素バリアントも、要素自身の色ではないため対象外。
+
+#### 例外（6.1.1 の状態付きクラス）
 
 - **状態付きクラス自体がセマンティックトークンの場合は対象外**。例: `hover:text-text`、`hover:bg-surface-muted`、`hover:text-accent-text`、`focus:border-accent`。トークンはライト・ダークとも `--atlas-*` 変数から解決され、どちらもレイヤー内にあるため、旧クラスの unlayered ダーク上書きが関与しない。対象外にするトークン名は3章の `surface` 系 / `line` 系 / `text` / `secondary` / `muted` / `subtle` / `accent` 系 / `danger`・`warning`・`success` 系 / `focus-ring` / `scrim` など（互換エイリアスの `background` / `foreground` を含む）。
 - `bg-accent` / `border-accent` は対象外。旧クラス `bg-[#2c60b8]` / `border-[#2c60b8]` にはダーク上書きがなく、移行前から状態付きユーティリティが効いていた。
 - 状態付きクラス自体にレイヤー外のダーク上書きがある場合は、移行前後で見た目が変わらないため対象外。現在は `hover:bg-white` / `hover:bg-neutral-50` / `hover:bg-neutral-100` / `hover:bg-neutral-200` / `hover:text-black` / `hover:text-neutral-700` / `hover:text-neutral-800` の7つ。検査はこの一覧を `globals.css` から読む（ハードコードしない）。
 
-検査:
+#### 検査
 
 ```bash
 npm run check:token-variants
 ```
 
-`scripts/check-token-variants.mjs` が `app/` と `components/` の `.ts` / `.tsx` を TypeScript の構文木で走査し、`className` 属性・`cn()` / `clsx()` 呼び出し・モジュール内のクラス文字列定数を合成して判定する。条件分岐は同時に描画され得る組み合わせごとに評価する。違反があれば `ファイル:行  状態クラス  (with トークン)` を出力して終了コード 1。CI の `verify` ジョブでも `check:colors` の直後に実行する。既知の見落とし（実行時に組み立てるクラス、他モジュールから import した定数、`divide-line` など）はスクリプト冒頭のコメントに記載している。
+`scripts/check-token-variants.mjs` が `app/` と `components/` の `.ts` / `.tsx` を TypeScript の構文木で走査し、`className` 属性・`cn()` / `clsx()` 呼び出し・モジュール内のクラス文字列定数を合成して判定する。条件分岐は同時に描画され得る組み合わせごとに評価する。違反があれば `ファイル:行  [種類] 競合クラス  (with トークン / <要素>)` を出力して終了コード 1。種類は `variant` / `legacy-overlap` / `form-control`。CI の `verify` ジョブでも `check:colors` の直後に実行する。既知の見落とし（実行時に組み立てるクラス、他モジュールから import した定数、`divide-line`、`<Input>` などのラッパー越しのクラス、`:where()` / `:not()` を使った要素ルールなど）はスクリプト冒頭のコメントに記載している。
 
 第3段階（パレット切り替え・旧ダーク上書き削除）では、この制約を解く。旧上書きを削除したうえで状態付きクラスもトークン化し、ライト・ダーク両方のホバー・フォーカス・無効状態を意図的に確認して整える。この検査は第1〜2段階の「見た目を変えない」ためのガードであり、第3段階では前提（レイヤー外のダーク上書き）がなくなるため、役割を終えた時点で削除または目的に合わせた検査へ置き換える。
 

@@ -154,7 +154,7 @@
     "components/list/FieldTypeEditors.tsx": 95,
     "components/list/FieldTypeMenu.tsx": 28,
     "components/list/ListBulkToolbar.tsx": 17,
-    "components/list/ListColumnHeader.tsx": 15,
+    "components/list/ListColumnHeader.tsx": 16,
     "components/list/ListColumnHeaderRow.tsx": 3,
     "components/list/ListEmptyState.tsx": 2,
     "components/list/ListFilterMenu.tsx": 16,

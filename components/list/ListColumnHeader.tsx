@@ -374,7 +374,7 @@ export default function ListColumnHeader({
                 >
                   列を非表示
                 </button>
-                <button className={menuItem + " text-danger hover:bg-red-50"} onClick={() => { removeField(field); setMenuCol(null); }}>
+                <button className={menuItem + " text-red-600 hover:bg-red-50"} onClick={() => { removeField(field); setMenuCol(null); }}>
                   フィールドを削除
                 </button>
               </>
