@@ -24,7 +24,7 @@ export default function HomeTaskRow({
     <div
       data-home-task-row={task.id}
       data-home-task-bucket={bucket}
-      className="group flex items-center gap-2 border-b border-line-subtle px-4 py-2 text-[13px] last:border-b-0 hover:bg-neutral-50"
+      className="group flex items-center gap-2 border-b border-line-subtle px-4 py-2 text-[13px] last:border-b-0 hover:bg-hover"
     >
       <button
         type="button"
@@ -34,7 +34,7 @@ export default function HomeTaskRow({
         onClick={() => onToggle(task)}
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
           task.completed
-            ? "border-green-600 bg-green-600 text-[11px] text-white"
+            ? "border-green-600 bg-green-600 text-[11px] text-on-accent"
             : "border-neutral-400 hover:border-green-600"
         } disabled:opacity-50`}
       >

@@ -100,7 +100,7 @@ export default function HomeWidgetCard({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((value) => !value)}
-          className="flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
+          className="flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-subtle hover:bg-hover hover:text-secondary"
         >
           …
         </button>
@@ -120,7 +120,7 @@ export default function HomeWidgetCard({
                 setMenuOpen(false);
                 item.onClick();
               }}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100 ${
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover ${
                 item.danger ? "text-danger hover:bg-red-50" : ""
               }`}
             >

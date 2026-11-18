@@ -48,7 +48,7 @@ const ALL_QUICK: QuickFilterKey[] = ["open", "done", "mine", "week", "nextweek"]
 const quickFilterCls =
   "flex h-7 items-center rounded-full border px-2.5 text-[12px] transition-colors";
 const rowSelect =
-  "h-8 min-w-0 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]";
+  "h-8 min-w-0 flex-1 rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent";
 
 function initialFields(
   filters: ListFilters,
@@ -165,7 +165,7 @@ export default function ListFilterMenu({
       className={`${quickFilterCls} ${
         active
           ? "border-accent bg-accent-soft text-accent-text"
-          : "border-line bg-surface text-secondary hover:bg-neutral-50"
+          : "border-line bg-surface text-secondary hover:bg-hover"
       }`}
     >
       {label}
@@ -271,7 +271,7 @@ export default function ListFilterMenu({
           type="button"
           aria-label={`${labelFor(key)}フィルターを削除`}
           onClick={() => removeField(key)}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-secondary"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-secondary"
         >
           ×
         </button>
@@ -334,7 +334,7 @@ export default function ListFilterMenu({
           data-list-filter-add
           aria-expanded={addOpen}
           onClick={() => setAddOpen((open) => !open)}
-          className="flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-secondary hover:bg-neutral-100"
+          className="flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-secondary hover:bg-hover"
         >
           <span className="text-[14px] leading-none">＋</span>
           フィルターを追加
@@ -350,7 +350,7 @@ export default function ListFilterMenu({
                 type="button"
                 data-list-filter-add-option={key}
                 onClick={() => addField(key)}
-                className="flex h-8 w-full items-center px-3 text-left text-[13px] text-secondary hover:bg-neutral-100"
+                className="flex h-8 w-full items-center px-3 text-left text-[13px] text-secondary hover:bg-hover"
               >
                 {labelFor(key)}
               </button>

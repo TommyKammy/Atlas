@@ -95,7 +95,7 @@ function ProposalStages({ proposal }: { proposal: PlanningProposal }) {
             ? "border-line-strong bg-surface-subtle text-secondary"
             : review === "レビューで差し戻し"
               ? "border-amber-200 bg-warning-soft text-warning"
-              : "border-blue-200 bg-blue-50 text-blue-800"
+              : "border-accent-line bg-accent-soft text-accent-text"
         }`}
       >
         {review}
@@ -106,7 +106,7 @@ function ProposalStages({ proposal }: { proposal: PlanningProposal }) {
           proposal.status === "approved"
             ? "border-emerald-200 bg-emerald-50 text-emerald-800"
             : proposal.status === "pending_decision"
-              ? "border-blue-200 bg-blue-50 text-blue-800"
+              ? "border-accent-line bg-accent-soft text-accent-text"
               : "border-line-strong bg-surface-subtle text-secondary"
         }`}
       >
@@ -240,11 +240,11 @@ function ProposalDetail({
           <Notice tone="info">
             以下は提出時点（版{proposal.version}）の内容です。現在の計画を編集しても、この提案のスナップショットは変わりません。
           </Notice>
-          <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] text-blue-900">
+          <div className="rounded-md border border-accent-line bg-accent-soft px-3 py-2 text-[12px] text-accent-text">
             <div className="font-semibold">
               推奨シナリオ: {proposal.recommendedScenarioName}
             </div>
-            <div className="mt-1 text-[11px] font-semibold text-blue-800">
+            <div className="mt-1 text-[11px] font-semibold text-accent-text">
               申請者の理由 ・ {proposal.submitterName} ・ {formatDecisionDate(proposal.submittedAt)}
             </div>
             <p className="mt-0.5 whitespace-pre-wrap">{proposal.reason}</p>

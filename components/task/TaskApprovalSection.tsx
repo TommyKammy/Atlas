@@ -7,8 +7,8 @@ import type { TaskApprovalAction, TaskApprovalResponse, TaskApprovalSummary } fr
 import { TASK_APPROVAL_ACTION_LABELS, TASK_APPROVAL_STATUS_LABELS } from "@/lib/task-approval";
 import TaskApprovalBadge from "./TaskApprovalBadge";
 
-const inputClass = "w-full rounded border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-500 focus:border-[#2c60b8] focus:outline-none focus:ring-1 focus:ring-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500";
-const secondaryButtonBase = "rounded border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8] disabled:cursor-not-allowed disabled:opacity-50";
+const inputClass = "w-full rounded border border-line-strong bg-white px-2.5 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-500 focus:border-accent focus:outline-none focus:ring-1 focus:ring-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500";
+const secondaryButtonBase = "rounded border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:opacity-50";
 const secondaryButton = `${secondaryButtonBase} text-secondary`;
 const dangerSecondaryButton = `${secondaryButtonBase} text-rose-700`;
 
@@ -211,7 +211,7 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
     className="my-4 min-w-0 border-y border-line py-3 outline-none focus-visible:ring-2 focus-visible:ring-[#2c60b8]">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <button type="button" aria-expanded={expanded} aria-controls={`task-approval-${task.id}`} onClick={() => setExpanded((value) => !value)}
-        className="flex items-center gap-2 rounded px-1 py-1 text-[13px] font-semibold text-text hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-[#2c60b8]">
+        className="flex items-center gap-2 rounded px-1 py-1 text-[13px] font-semibold text-text hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus-ring">
         <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>{approval ? "承認タスク" : "承認を設定"}
       </button>
       {approval && <TaskApprovalBadge approval={approval} />}
@@ -250,14 +250,14 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
         </label>
         {data.can_decide && <p className="text-[11px] text-secondary">却下・差し戻しには理由が必要です。</p>}
         <div className="flex flex-wrap gap-2">
-          {!approval && data.can_request && <button type="button" disabled={disabled || !selected} onClick={() => void submit("request")} className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#244f99] disabled:opacity-50">承認を申請</button>}
+          {!approval && data.can_request && <button type="button" disabled={disabled || !selected} onClick={() => void submit("request")} className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50">承認を申請</button>}
           {approval?.status === "pending" && data.can_decide && <>
-            <button type="button" disabled={disabled} onClick={() => void submit("approve")} className="rounded bg-green-700 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-green-800 disabled:opacity-50">承認する</button>
+            <button type="button" disabled={disabled} onClick={() => void submit("approve")} className="rounded bg-green-700 px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-green-800 disabled:opacity-50">承認する</button>
             <button type="button" disabled={disabled} onClick={() => void submit("request_changes")} className={secondaryButton}>差し戻す</button>
             <button type="button" disabled={disabled} onClick={() => void submit("reject")} className={dangerSecondaryButton}>却下する</button>
           </>}
           {approval?.status === "pending" && data.can_manage && <button type="button" disabled={disabled || !selected || selected.id === approval.approver_id} onClick={() => void submit("reassign")} className={secondaryButton}>承認者を変更</button>}
-          {approval && approval.status !== "pending" && data.can_manage && <button type="button" disabled={disabled || !selected} onClick={() => void submit("resubmit")} className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#244f99] disabled:opacity-50">再申請する</button>}
+          {approval && approval.status !== "pending" && data.can_manage && <button type="button" disabled={disabled || !selected} onClick={() => void submit("resubmit")} className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50">再申請する</button>}
         </div>
       </div>}
       {approval?.status === "pending" && data && !data.can_decide && <p className="text-[12px] text-secondary">判断できるのは指定された承認者だけです。</p>}

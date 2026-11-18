@@ -189,7 +189,7 @@ export default function AdminPanel({
     }
   };
 
-  const field = "rounded border px-2 py-1.5 text-sm outline-none focus:border-blue-500";
+  const field = "rounded border px-2 py-1.5 text-sm outline-none focus:border-accent";
   return (
     <div className="mt-4">
       <div className="overflow-x-auto">
@@ -243,16 +243,16 @@ export default function AdminPanel({
               </span>
               <span className="text-secondary">{u.open_tasks ?? "–"}</span>
               <span className="flex gap-1 text-xs">
-                <button disabled={!u.can_manage} onClick={() => openEdit(u)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
+                <button disabled={!u.can_manage} onClick={() => openEdit(u)} className="rounded border px-1.5 py-0.5 hover:bg-hover">
                   編集
                 </button>
-                <button disabled={!u.can_manage} onClick={() => resetPw(u.id, u.name)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
+                <button disabled={!u.can_manage} onClick={() => resetPw(u.id, u.name)} className="rounded border px-1.5 py-0.5 hover:bg-hover">
                   PW
                 </button>
                 <button
                   onClick={() => toggleActive(u)}
                   disabled={!u.can_manage || u.id === currentUserId}
-                  className="rounded border px-1.5 py-0.5 text-secondary hover:bg-neutral-100 disabled:opacity-40"
+                  className="rounded border px-1.5 py-0.5 text-secondary hover:bg-hover disabled:opacity-40"
                 >
                   {u.deactivated_at ? "有効化" : "無効化"}
                 </button>
@@ -308,7 +308,7 @@ export default function AdminPanel({
             </option>
           ))}
         </select>
-        <button onClick={create} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700">
+        <button onClick={create} className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover">
           作成
         </button>
       </div>
@@ -334,20 +334,20 @@ export default function AdminPanel({
               </option>
             ))}
         </select>
-        <button onClick={invite} className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8]">
+        <button onClick={invite} className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover">
           招待
         </button>
       </div>
       {inviteResult && (
-        <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 p-2 text-xs">
-          <div className="font-medium text-blue-900">
+        <div className="mt-2 rounded-md border border-accent-line bg-accent-soft p-2 text-xs">
+          <div className="font-medium text-accent-text">
             {inviteResult.emailed ? "招待メールを送信しました" : "SMTP未設定: 下のリンクを招待者に共有してください"}
           </div>
           <div className="mt-1 flex gap-2">
             <input readOnly value={inviteResult.url} className="min-w-0 flex-1 rounded border bg-white px-2 py-1 font-mono" />
             <button
               onClick={() => navigator.clipboard?.writeText(inviteResult.url).catch(() => undefined)}
-              className="rounded border bg-white px-2 py-1 text-secondary hover:bg-neutral-50"
+              className="rounded border bg-surface px-2 py-1 text-secondary hover:bg-hover"
             >
               コピー
             </button>
@@ -364,7 +364,7 @@ export default function AdminPanel({
             </span>
             <button
               onClick={() => navigator.clipboard?.writeText(inv.url).catch(() => undefined)}
-              className="shrink-0 rounded border px-1.5 py-0.5 hover:bg-neutral-100"
+              className="shrink-0 rounded border px-1.5 py-0.5 hover:bg-hover"
             >
               リンク
             </button>
@@ -413,10 +413,10 @@ export default function AdminPanel({
               </label>
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setEditing(null)} className="rounded px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100">
+              <button onClick={() => setEditing(null)} className="rounded px-3 py-1.5 text-sm text-secondary hover:bg-hover">
                 キャンセル
               </button>
-              <button onClick={saveEdit} className="rounded bg-[#4075cf] px-4 py-1.5 text-sm text-white hover:bg-[#3567b8]">
+              <button onClick={saveEdit} className="rounded bg-accent px-4 py-1.5 text-sm text-on-accent hover:bg-accent-hover">
                 保存
               </button>
             </div>

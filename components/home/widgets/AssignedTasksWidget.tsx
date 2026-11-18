@@ -69,7 +69,7 @@ export default function AssignedTasksWidget({
               className={`rounded-full px-2 py-0.5 text-[12px] ${
                 active === item.key
                   ? "bg-accent-soft font-medium text-accent-text"
-                  : "text-muted hover:bg-neutral-100"
+                  : "text-muted hover:bg-hover"
               }`}
             >
               {item.label} ({item.count})
@@ -80,7 +80,7 @@ export default function AssignedTasksWidget({
           type="button"
           data-home-compose
           onClick={onCompose}
-          className="rounded px-1.5 py-0.5 text-[12px] text-muted hover:bg-neutral-100 hover:text-secondary"
+          className="rounded px-1.5 py-0.5 text-[12px] text-muted hover:bg-hover hover:text-secondary"
         >
           ＋ タスクを割り当てる
         </button>

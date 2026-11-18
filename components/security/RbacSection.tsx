@@ -103,7 +103,7 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
         <button
           onClick={openCreate}
           data-role-create
-          className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8]"
+          className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover"
         >
           役割を作成
         </button>
@@ -146,7 +146,7 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
                   <>
                     <button
                       onClick={() => openEdit(role)}
-                      className="rounded border px-1.5 py-0.5 hover:bg-neutral-100"
+                      className="rounded border px-1.5 py-0.5 hover:bg-hover"
                     >
                       編集
                     </button>
@@ -183,7 +183,7 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
           >
             <div className="flex items-start justify-between">
               <h3 className="text-lg font-semibold">{editing ? "役割を編集" : "カスタム役割を作成"}</h3>
-              <button onClick={() => setOpen(false)} aria-label="閉じる" className="rounded p-1 text-muted hover:bg-neutral-100">
+              <button onClick={() => setOpen(false)} aria-label="閉じる" className="rounded p-1 text-muted hover:bg-hover">
                 ×
               </button>
             </div>
@@ -227,7 +227,7 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
                       <label
                         key={permission.key}
                         className={`flex items-start gap-2 rounded px-1.5 py-1 text-xs ${
-                          disabled ? "opacity-40" : "hover:bg-neutral-50"
+                          disabled ? "opacity-40" : "hover:bg-hover"
                         }`}
                         title={permission.description}
                       >
@@ -253,13 +253,13 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
             </div>
             {msg && <p className="mt-3 text-sm text-danger">{msg}</p>}
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100">
+              <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-sm text-secondary hover:bg-hover">
                 キャンセル
               </button>
               <button
                 onClick={save}
                 disabled={saving || !name.trim()}
-                className="rounded bg-[#4075cf] px-4 py-1.5 text-sm text-white hover:bg-[#3567b8] disabled:opacity-50"
+                className="rounded bg-accent px-4 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
               >
                 {saving ? "保存中…" : editing ? "変更を保存" : "役割を作成"}
               </button>

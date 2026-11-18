@@ -115,7 +115,7 @@ export default async function SearchPage(props: {
               key={item}
               href={`/search?q=${encodeURIComponent(item)}`}
               data-search-history-item={item}
-              className="rounded-full border border-line px-2.5 py-1 hover:bg-neutral-50"
+              className="rounded-full border border-line px-2.5 py-1 hover:bg-hover"
             >
               {item}
             </Link>
@@ -236,7 +236,7 @@ export default async function SearchPage(props: {
         )}
 
         <div className="mt-3 flex items-center gap-2">
-          <button type="submit" className="rounded bg-blue-600 px-4 py-1.5 text-white hover:bg-blue-700">
+          <button type="submit" className="rounded bg-accent px-4 py-1.5 text-on-accent hover:bg-accent-hover">
             検索
           </button>
           <Link href="/search" className="text-[12px] text-muted hover:text-text">

@@ -206,17 +206,17 @@ export default function CalendarToolbar({
         <Link
           href={prevHref}
           aria-label={weekMode ? "前週" : "前月"}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-secondary hover:bg-neutral-100"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-secondary hover:bg-hover"
         >
           ‹
         </Link>
-        <Link href={todayHref} className="flex h-7 items-center rounded-md px-2 text-[13px] text-secondary hover:bg-neutral-100">
+        <Link href={todayHref} className="flex h-7 items-center rounded-md px-2 text-[13px] text-secondary hover:bg-hover">
           今日
         </Link>
         <Link
           href={nextHref}
           aria-label={weekMode ? "来週" : "来月"}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-secondary hover:bg-neutral-100"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-secondary hover:bg-hover"
         >
           ›
         </Link>
@@ -226,7 +226,7 @@ export default function CalendarToolbar({
         <details className="relative">
           <summary
             data-calendar-undated
-            className={`flex h-7 cursor-pointer list-none items-center rounded-md px-2 text-[13px] hover:bg-neutral-100 [&::-webkit-details-marker]:hidden ${
+            className={`flex h-7 cursor-pointer list-none items-center rounded-md px-2 text-[13px] hover:bg-hover [&::-webkit-details-marker]:hidden ${
               undated.length ? "text-secondary" : "text-subtle"
             }`}
           >
@@ -254,7 +254,7 @@ export default function CalendarToolbar({
                     if (dragging.current) return;
                     openTask(task.id);
                   }}
-                  className="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                  className="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-hover"
                   title="日付を設定するにはカレンダーへドラッグ"
                 >
                   {task.name}
@@ -280,10 +280,10 @@ export default function CalendarToolbar({
             <>
               <div className="fixed inset-0 z-30" onClick={() => setZoomOpen(false)} />
               <div className="absolute top-full right-0 z-40 mt-1 w-40 rounded-lg border border-line bg-surface p-1 shadow-lg">
-                <Link href={weekHref} onClick={() => setZoomOpen(false)} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
+                <Link href={weekHref} onClick={() => setZoomOpen(false)} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-hover">
                   <span className="w-3 text-secondary">{weekMode ? "✓" : ""}</span>週
                 </Link>
-                <Link href={monthHref} onClick={() => setZoomOpen(false)} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
+                <Link href={monthHref} onClick={() => setZoomOpen(false)} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-hover">
                   <span className="w-3 text-secondary">{!weekMode ? "✓" : ""}</span>月
                 </Link>
               </div>
@@ -367,7 +367,7 @@ export default function CalendarToolbar({
             placeholder="このビュー内で検索"
             aria-label="このビュー内で検索"
             autoFocus
-            className="h-7 w-44 rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#4075cf]"
+            className="h-7 w-44 rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
           />
         )}
         <button
@@ -379,7 +379,7 @@ export default function CalendarToolbar({
           data-calendar-search
           aria-label="このビューで検索"
           title="このビュー内で検索"
-          className={`flex h-7 w-7 items-center justify-center rounded-md hover:bg-neutral-100 ${
+          className={`flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover ${
             searchOpen ? "bg-accent-soft text-accent-text" : "text-muted"
           }`}
         >
@@ -416,7 +416,7 @@ export default function CalendarToolbar({
             <select
               value={colorBy}
               onChange={(event) => setColor(event.target.value)}
-              className="mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+              className="mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
             >
               {colorOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -425,12 +425,12 @@ export default function CalendarToolbar({
               ))}
             </select>
           </label>
-          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50">
-            <input type="checkbox" checked={showWeekends} onChange={(event) => setWeekends(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover">
+            <input type="checkbox" checked={showWeekends} onChange={(event) => setWeekends(event.target.checked)} className="h-3.5 w-3.5 accent-accent" />
             週末を表示
           </label>
-          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50">
-            <input type="checkbox" checked={showMulti} onChange={(event) => setMulti(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover">
+            <input type="checkbox" checked={showMulti} onChange={(event) => setMulti(event.target.checked)} className="h-3.5 w-3.5 accent-accent" />
             複数日にわたるタスクを表示
           </label>
           <label className="mt-1 block px-2 text-[12px] text-secondary">
@@ -438,7 +438,7 @@ export default function CalendarToolbar({
             <select
               value={weekStart}
               onChange={(event) => setWeekStartOn(event.target.value === "1" ? 1 : 0)}
-              className="mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+              className="mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
             >
               <option value={0}>日曜日</option>
               <option value={1}>月曜日</option>
@@ -452,7 +452,7 @@ export default function CalendarToolbar({
               href={weekHref}
               onClick={() => setOptionsOpen(false)}
               className={`flex h-8 flex-1 items-center justify-center rounded-md border text-[13px] ${
-                weekMode ? "border-accent bg-accent-soft text-accent-text" : "border-line text-secondary hover:bg-neutral-50"
+                weekMode ? "border-accent bg-accent-soft text-accent-text" : "border-line text-secondary hover:bg-hover"
               }`}
             >
               週
@@ -461,7 +461,7 @@ export default function CalendarToolbar({
               href={monthHref}
               onClick={() => setOptionsOpen(false)}
               className={`flex h-8 flex-1 items-center justify-center rounded-md border text-[13px] ${
-                !weekMode ? "border-accent bg-accent-soft text-accent-text" : "border-line text-secondary hover:bg-neutral-50"
+                !weekMode ? "border-accent bg-accent-soft text-accent-text" : "border-line text-secondary hover:bg-hover"
               }`}
             >
               月

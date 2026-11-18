@@ -48,7 +48,7 @@ export default function TrashList({
           <button
             onClick={() => restore(t.id)}
             disabled={!t.can_edit || busy === t.id}
-            className="shrink-0 rounded border px-2 py-0.5 hover:bg-neutral-100 disabled:opacity-50"
+            className="shrink-0 rounded border px-2 py-0.5 hover:bg-hover disabled:opacity-50"
           >
             復元
           </button>

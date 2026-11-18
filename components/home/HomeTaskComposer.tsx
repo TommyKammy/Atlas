@@ -72,7 +72,7 @@ export default function HomeTaskComposer({
             onKeyDown={(event) => !isImeComposing(event) && event.key === "Enter" && void create()}
             placeholder="タスク名"
             autoFocus
-            className="w-full rounded border border-neutral-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded border border-line px-2 py-1.5 text-sm outline-none focus:border-accent"
           />
           <select
             data-home-composer-project
@@ -108,7 +108,7 @@ export default function HomeTaskComposer({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-neutral-50"
+            className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-hover"
           >
             キャンセル
           </button>
@@ -117,7 +117,7 @@ export default function HomeTaskComposer({
             data-home-composer-submit
             disabled={busy || name.trim() === "" || projectId === ""}
             onClick={() => void create()}
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {busy ? "作成中…" : "作成"}
           </button>

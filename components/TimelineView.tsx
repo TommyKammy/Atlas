@@ -738,7 +738,7 @@ function TimelineViewContent({
                 data-timeline-section-row={group.section.id}
                 aria-expanded={!group.collapsed}
                 onClick={() => toggleSection(group.section.id)}
-                className="flex h-10 w-full items-center gap-1.5 pl-5 pr-2 text-left text-[14px] font-medium text-[#050505] hover:bg-neutral-50"
+                className="flex h-10 w-full items-center gap-1.5 pl-5 pr-2 text-left text-[14px] font-medium text-[#050505] hover:bg-hover"
               >
                 <svg
                   viewBox="0 0 12 12"
@@ -751,7 +751,7 @@ function TimelineViewContent({
                 </svg>
                 <span className="truncate">{group.section.name}</span>
                 {drag?.rowDrop?.sectionId === group.sectionId && (
-                  <span className="ml-auto shrink-0 text-[11px] font-medium text-[#24529c]">移動先</span>
+                  <span className="ml-auto shrink-0 text-[11px] font-medium text-accent-text">移動先</span>
                 )}
               </button>
               {!group.collapsed &&
@@ -802,7 +802,7 @@ function TimelineViewContent({
                 className="pointer-events-none absolute z-[1] border-x border-[#2c60b8]/20 bg-[#2c60b8]/5"
                 style={{ top: hover.top, height: hover.height, left: pct(hover.day), width: `${dayPct}%` }}
               >
-                <span className="absolute left-1/2 top-2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-accent text-[12px] leading-none text-white shadow-sm">
+                <span className="absolute left-1/2 top-2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-accent text-[12px] leading-none text-on-accent shadow-sm">
                   +
                 </span>
               </div>
@@ -915,7 +915,7 @@ function TimelineViewContent({
                 className="pointer-events-none absolute inset-x-0 z-[5] border-y border-[#2c60b8] bg-[#2c60b8]/10"
                 style={{ top: drag.rowDrop.top, height: ROW_PITCH }}
               >
-                <span data-timeline-drop-label className="sticky left-2 inline-block rounded-b bg-accent px-2 py-0.5 text-[11px] font-medium text-white">
+                <span data-timeline-drop-label className="sticky left-2 inline-block rounded-b bg-accent px-2 py-0.5 text-[11px] font-medium text-on-accent">
                   {groups.find((group) => group.sectionId === drag.rowDrop?.sectionId)?.section.name}・{drag.rowDrop.insert ? "挿入" : "行"} {drag.rowDrop.row + 1}
                 </span>
               </div>
@@ -963,7 +963,7 @@ function TimelineViewContent({
                     key={t.id}
                     type="button"
                     onClick={() => openTask(t.id)}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-hover"
                   >
                     <TaskAvatar name={t.assignee_name ?? "?"} className="h-6 w-6" />
                     <span title={t.name} dir="auto" className="min-w-0 flex-1 truncate">{t.name}</span>
@@ -978,7 +978,7 @@ function TimelineViewContent({
                   key={t.id}
                   type="button"
                   onClick={() => openTask(t.id)}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-neutral-100"
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-hover"
                 >
                   <span title={t.name} dir="auto" className="min-w-0 flex-1 truncate">{t.name}</span>
                   <span className="shrink-0 text-[11px] text-subtle">{t.due_on ?? "—"}</span>

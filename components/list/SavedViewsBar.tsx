@@ -22,7 +22,7 @@ export default function SavedViewsBar({
           key={view.id}
           className={`flex items-center gap-1 rounded-full border px-2 py-0.5 ${
             view.id === activeSavedId
-              ? "border-blue-600 bg-blue-50 text-blue-700"
+              ? "border-blue-600 bg-accent-soft text-accent-text"
               : "text-secondary"
           }`}
         >

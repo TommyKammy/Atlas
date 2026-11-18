@@ -34,7 +34,7 @@ export default function OrganizationPanel({ initial }: { initial: AdminWorkspace
     }
   };
 
-  const field = "mt-1 w-full max-w-md rounded border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-blue-500";
+  const field = "mt-1 w-full max-w-md rounded border border-line-strong px-3 py-2 text-sm outline-none focus:border-accent";
 
   return (
     <section data-admin-panel="workspace">
@@ -63,7 +63,7 @@ export default function OrganizationPanel({ initial }: { initial: AdminWorkspace
             onClick={save}
             disabled={saving || !name.trim() || name.trim() === workspace.name}
             data-admin-org-save
-            className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8] disabled:opacity-50"
+            className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>

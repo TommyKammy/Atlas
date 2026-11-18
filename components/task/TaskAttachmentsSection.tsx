@@ -38,7 +38,7 @@ export default function TaskAttachmentsSection({
             className={`flex h-6 w-6 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] justify-center rounded text-[16px] ${
               uploading
                 ? "cursor-wait text-subtle"
-                : "text-muted hover:bg-neutral-100 hover:text-text"
+                : "text-muted hover:bg-hover hover:text-text"
             }`}
             title={uploading ? "アップロード中…" : "添付を追加"}
           >
@@ -60,7 +60,7 @@ export default function TaskAttachmentsSection({
       />
 
       {attachments.length === 0 ? (
-        canEdit ? <label htmlFor={`${uploadId}-empty`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600">
+        canEdit ? <label htmlFor={`${uploadId}-empty`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[13px] text-neutral-400 hover:bg-hover hover:text-neutral-600">
           <span className="text-base leading-none">＋</span>
           <span>{uploading ? "アップロード中…" : "添付を追加"}</span>
           <input
@@ -93,7 +93,7 @@ export default function TaskAttachmentsSection({
                 </span>
                 <a
                   href={`/api/attachments/${attachment.id}`}
-                  className="min-w-0 flex-1 truncate text-[13px] font-medium text-neutral-800 hover:text-blue-700 hover:underline"
+                  className="min-w-0 flex-1 truncate text-[13px] font-medium text-text hover:text-accent-text hover:underline"
                   title={attachment.file_name}
                 >
                   {attachment.file_name}
@@ -101,7 +101,7 @@ export default function TaskAttachmentsSection({
                 {canEdit && <button
                   type="button"
                   onClick={() => onDelete(attachment.id)}
-                  className="opacity-0 shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 group-hover/att:opacity-100 group-focus-within/att:opacity-100 focus:opacity-100"
+                  className="opacity-0 shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-hover hover:text-red-600 group-hover/att:opacity-100 group-focus-within/att:opacity-100 focus:opacity-100"
                   title="添付を削除"
                   aria-label={`${attachment.file_name} を削除`}
                 >
@@ -118,7 +118,7 @@ export default function TaskAttachmentsSection({
               </div>
             </div>
           ))}
-          {canEdit && <label htmlFor={`${uploadId}-footer`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[12px] text-muted hover:bg-neutral-50 hover:text-secondary">
+          {canEdit && <label htmlFor={`${uploadId}-footer`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-secondary">
             <span className="text-sm leading-none">＋</span>
             {uploading ? "アップロード中…" : "ファイルを追加"}
             <input

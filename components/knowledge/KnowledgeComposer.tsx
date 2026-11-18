@@ -140,8 +140,8 @@ export default function KnowledgeComposer({ note, projectId, viewerId, template,
         {status === "saving" ? "保存中…" : status === "dirty" ? "未保存の変更" : status === "error" ? "保存できていません" : hasRecord ? "すべての変更を保存しました" : "新しいノート"}
       </p>
       <div className="flex items-center gap-2">
-        <button type="button" onClick={async () => { if (await save()) { try { sessionStorage.removeItem(storageKey); } catch {} onClose(); } }} className="rounded px-3 py-2 text-xs hover:bg-neutral-100">編集を終了</button>
-        <button type="button" data-knowledge-save disabled={status === "saving"} onClick={() => void save(!record.current)} className="rounded bg-accent px-3 py-2 text-xs font-medium text-white disabled:opacity-50">{status === "saving" ? "保存中…" : "今すぐ保存"}</button>
+        <button type="button" onClick={async () => { if (await save()) { try { sessionStorage.removeItem(storageKey); } catch {} onClose(); } }} className="rounded px-3 py-2 text-xs hover:bg-hover">編集を終了</button>
+        <button type="button" data-knowledge-save disabled={status === "saving"} onClick={() => void save(!record.current)} className="rounded bg-accent px-3 py-2 text-xs font-medium text-on-accent disabled:opacity-50">{status === "saving" ? "保存中…" : "今すぐ保存"}</button>
       </div>
     </div>
     {error && <div role="alert" className="mb-4 rounded-md border border-red-200 bg-danger-soft p-3 text-sm text-red-800">
@@ -152,7 +152,7 @@ export default function KnowledgeComposer({ note, projectId, viewerId, template,
         <button onClick={async () => { if (await confirmAction("未保存の変更を破棄して編集を終了しますか？必要な変更は先にファイルへ退避してください。")) { try { sessionStorage.removeItem(storageKey); } catch {} onClose(); } }} className="underline">変更を破棄して終了</button>
       </div>
     </div>}
-    {seed.recovered && <p className="mb-3 text-xs text-blue-800">このタブに残っていた未保存の下書きを復元しました。</p>}
+    {seed.recovered && <p className="mb-3 text-xs text-accent-text">このタブに残っていた未保存の下書きを復元しました。</p>}
     {note && !note.body_doc && <p className="mb-4 text-xs text-secondary">本文を編集するとブロック形式で保存します。元のMarkdownは履歴から復元できます。</p>}
     <input data-knowledge-title aria-label="ノートのタイトル" maxLength={300} value={draft.title} onChange={e => change({ ...latest.current, title: e.target.value })} placeholder="無題のノート" className="mb-4 w-full min-w-0 border-0 bg-transparent text-2xl font-semibold tracking-tight text-text outline-none placeholder:text-neutral-600" />
     {editor && <KnowledgeTools editor={editor} links={links} />}

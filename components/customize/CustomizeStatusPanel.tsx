@@ -45,7 +45,7 @@ export default function CustomizeStatusPanel({
           value={statusFieldName}
           disabled={!canAdmin}
           onChange={(event) => onStatusFieldName(event.target.value)}
-          className="mt-1 h-8 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8] disabled:bg-neutral-50"
+          className="mt-1 h-8 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-neutral-50"
         />
       </label>
       <div className="mt-4 text-[12px] font-medium text-secondary">選択肢</div>
@@ -58,14 +58,14 @@ export default function CustomizeStatusPanel({
               value={draft.value}
               disabled={!canAdmin}
               onChange={(event) => onChangeDraft(draft.key, event.target.value)}
-              className="h-8 min-w-0 flex-1 rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8] disabled:bg-neutral-50"
+              className="h-8 min-w-0 flex-1 rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-neutral-50"
             />
             {canAdmin && (
               <button
                 type="button"
                 aria-label="ステータスを削除"
                 onClick={() => onRemoveDraft(draft.key)}
-                className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
+                className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-hover hover:text-red-600"
               >
                 ×
               </button>

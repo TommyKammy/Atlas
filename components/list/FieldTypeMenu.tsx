@@ -178,7 +178,7 @@ export default function FieldTypeMenu({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="フィールドタイプを検索"
           aria-label="フィールドタイプを検索"
-          className="mt-1.5 h-8 w-full rounded border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+          className="mt-1.5 h-8 w-full rounded border border-line px-2 text-[12px] outline-none focus:border-accent"
         />
       </div>
       <div role="listbox" aria-label="フィールドタイプ" className="min-h-0 flex-1 overflow-y-auto p-1">
@@ -191,7 +191,7 @@ export default function FieldTypeMenu({
             data-field-type-option={item.type}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => onPick(item.type)}
-            className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left hover:bg-blue-50"
+            className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left hover:bg-accent-soft"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-line bg-surface text-[12px] font-semibold text-secondary">
               {item.icon}
@@ -212,7 +212,7 @@ export default function FieldTypeMenu({
             type="button"
             data-field-type-more
             onClick={() => setShowMore((current) => !current)}
-            className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[12px] text-muted hover:bg-neutral-50 hover:text-secondary"
+            className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[12px] text-muted hover:bg-hover hover:text-secondary"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-dashed border-line-strong text-[13px]">
               {showMore ? "−" : "＋"}
@@ -225,7 +225,7 @@ export default function FieldTypeMenu({
             type="button"
             data-field-library-toggle
             onClick={() => void loadLibrary()}
-            className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-line-subtle px-2 py-2 text-left text-[12px] text-muted hover:bg-neutral-50 hover:text-secondary"
+            className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-line-subtle px-2 py-2 text-left text-[12px] text-muted hover:bg-hover hover:text-secondary"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-line text-[12px]">
               ▤
@@ -239,7 +239,7 @@ export default function FieldTypeMenu({
               <div className="px-2 py-2 text-[11px] text-subtle">ライブラリは空です</div>
             )}
             {library.map((entry) => (
-              <div key={entry.id} className="flex items-center gap-1 rounded px-1.5 py-1 hover:bg-white">
+              <div key={entry.id} className="flex items-center gap-1 rounded px-1.5 py-1 hover:bg-hover">
                 <button
                   type="button"
                   onClick={() => onPickTemplate(entry)}
@@ -253,7 +253,7 @@ export default function FieldTypeMenu({
                   aria-label={`${entry.name}をライブラリから削除`}
                   disabled={removingLibrary === entry.id}
                   onClick={() => void removeLibraryEntry(entry.id)}
-                  className="shrink-0 rounded px-1 text-[11px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 disabled:opacity-40"
+                  className="shrink-0 rounded px-1 text-[11px] text-neutral-400 hover:bg-hover hover:text-red-600 disabled:opacity-40"
                 >
                   ×
                 </button>
@@ -266,7 +266,7 @@ export default function FieldTypeMenu({
             type="button"
             data-field-deleted-toggle
             onClick={() => void loadDeleted()}
-            className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-line-subtle px-2 py-2 text-left text-[12px] text-muted hover:bg-neutral-50 hover:text-secondary"
+            className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-line-subtle px-2 py-2 text-left text-[12px] text-muted hover:bg-hover hover:text-secondary"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-line text-[12px]">
               ♻
@@ -286,7 +286,7 @@ export default function FieldTypeMenu({
                   type="button"
                   disabled={restoring === field.id}
                   onClick={() => void restore(field.id)}
-                  className="rounded bg-white px-1.5 py-0.5 text-[10px] text-[#2f6fd0] shadow-sm hover:bg-blue-50 disabled:opacity-50"
+                  className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-accent-text shadow-sm hover:bg-accent-soft disabled:opacity-50"
                 >
                   {restoring === field.id ? "復元中…" : "復元"}
                 </button>

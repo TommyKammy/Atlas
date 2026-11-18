@@ -61,7 +61,7 @@ export default function ProjectAppearanceDialog({
               className={`flex h-8 w-8 items-center justify-center rounded-md border text-[11px] ${
                 icon === entry.key
                   ? "border-[#4075cf] bg-accent-soft text-accent-text"
-                  : "text-muted hover:bg-neutral-50"
+                  : "text-muted hover:bg-hover"
               }`}
             >
               {entry.key ? (

@@ -14,7 +14,7 @@ export default function TaskVisibilityBanner({ onShare }: { onShare: () => void 
       <button
         type="button"
         onClick={onShare}
-        className="shrink-0 rounded border border-line-strong bg-surface px-2 py-0.5 text-[11px] font-medium text-secondary hover:bg-neutral-50"
+        className="shrink-0 rounded border border-line-strong bg-surface px-2 py-0.5 text-[11px] font-medium text-secondary hover:bg-hover"
       >
         共有
       </button>

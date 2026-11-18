@@ -37,8 +37,8 @@ export default function HelpPage() {
           <li>受信トレイ、ポートフォリオ、フォーム、プロジェクトメール</li>
         </ul>
         <p className="mt-2">
-          まずは <Link href="/my-tasks" className="text-blue-700 hover:underline">マイタスク</Link> または
-          <Link href="/projects/1?view=list" className="ml-1 text-blue-700 hover:underline">デモプロジェクト</Link>
+          まずは <Link href="/my-tasks" className="text-accent-text hover:underline">マイタスク</Link> または
+          <Link href="/projects/1?view=list" className="ml-1 text-accent-text hover:underline">デモプロジェクト</Link>
           から始めてください。
         </p>
       </section>
@@ -49,7 +49,7 @@ export default function HelpPage() {
           プロジェクトの「カスタマイズ → アプリ」から Slack、Google Drive、GitHub、Webhook を追加できます。
           プロジェクト専用メールアドレスやフォームからもタスクを取り込めます。
         </p>
-        <Link href="/projects/1?view=list" className="mt-2 inline-block text-blue-700 hover:underline">
+        <Link href="/projects/1?view=list" className="mt-2 inline-block text-accent-text hover:underline">
           プロジェクトのカスタマイズを開く
         </Link>
       </section>
@@ -86,7 +86,7 @@ export default function HelpPage() {
         <p className="mt-1">
           この Atlas 環境は単一ワークスペース構成です。ワークスペースの追加やライセンス管理は管理者コンソールから行います。
         </p>
-        <Link href="/admin" className="mt-2 inline-block text-blue-700 hover:underline">
+        <Link href="/admin" className="mt-2 inline-block text-accent-text hover:underline">
           管理者コンソール
         </Link>
       </section>

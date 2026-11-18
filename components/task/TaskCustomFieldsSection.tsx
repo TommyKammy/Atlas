@@ -15,7 +15,7 @@ export default function TaskCustomFieldsSection({
   return (
     <div className="space-y-0.5" data-task-custom-fields>
       {customFields.map((field) => (
-        <div key={field.id} className="flex min-h-9 items-center gap-2 rounded-md px-1 py-1 hover:bg-neutral-50">
+        <div key={field.id} className="flex min-h-9 items-center gap-2 rounded-md px-1 py-1 hover:bg-hover">
           <span className="w-[88px] shrink-0 truncate text-[12px] text-muted" title={field.name}>
             {field.name}
           </span>

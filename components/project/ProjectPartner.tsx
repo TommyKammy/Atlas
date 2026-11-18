@@ -45,13 +45,13 @@ export function ProjectPartnerPanel({ partner: p, onClose, canEdit = true }: { p
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
   const close = () => { if (p.approving) return; p.close(); onClose?.(); }, r = p.result;
-  const sourceLink = (id: string) => { const source = r?.sources.find(s => s.id === id); return source ? <a key={id} href={source.href} className="inline-block rounded text-xs text-[#24529c] underline underline-offset-2">{source.label}</a> : null; };
+  const sourceLink = (id: string) => { const source = r?.sources.find(s => s.id === id); return source ? <a key={id} href={source.href} className="inline-block rounded text-xs text-accent-text underline underline-offset-2">{source.label}</a> : null; };
   return <section aria-label="プロジェクトパートナーの提案" data-project-partner-panel className="min-w-0 border-t border-line pt-5 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5" onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); close(); } }}>
     <div className="mb-2 flex items-center justify-between gap-2">
       <h2 ref={heading} tabIndex={-1} className="flex items-center gap-2 text-base font-semibold outline-none"><KnowledgeIcon name="ai" />プロジェクトパートナー</h2>
       <button className={`${knowledgeAction} size-8 shrink-0 border-transparent px-0`} aria-label="提案を閉じる" disabled={p.approving} onClick={close}><KnowledgeIcon name="close" /></button>
     </div>
-    <p className="text-sm font-medium text-[#24529c]">{partnerSkills[p.skill]}</p>
+    <p className="text-sm font-medium text-accent-text">{partnerSkills[p.skill]}</p>
     <p className="mt-2 mb-5 text-xs leading-5 text-secondary">{p.skill === "action_extract" ? "候補の内容を確認し、承認するとタスクを追加できます。" : "生成した報告は、概要ページの履歴に保存されます。"}</p>
     {p.busy && <div role="status" className="space-y-3"><p className="text-sm text-secondary">内容を確認しています…</p><div aria-hidden className="h-3 rounded bg-surface-muted motion-safe:animate-pulse" /><button className={knowledgeAction} onClick={p.cancel}>中止</button></div>}
     {p.error && <p role="alert" className="mb-3 text-sm text-red-700">{p.error}</p>}
@@ -89,12 +89,12 @@ export default function ProjectPartnerWorkspace({ projectId, canEdit, children }
       <div role="tablist" aria-label="概要の表示" className="flex min-w-0 items-center gap-1">
         {tabs.map(tab => <button key={tab} type="button" role="tab" id={`${id}-${tab}-tab`} aria-controls={`${id}-${tab}-panel`} aria-selected={view === tab} tabIndex={view === tab ? 0 : -1}
           disabled={partner.locked || reports.busy !== null} onClick={() => choose(tab)}
-          className={`inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 ${view === tab ? "bg-blue-50 text-[#24529c]" : "text-secondary hover:bg-neutral-50"}`}
+          className={`inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:opacity-50 ${view === tab ? "bg-accent-soft text-accent-text" : "text-secondary hover:bg-hover"}`}
           onKeyDown={e => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); const next = e.key === "Home" ? "overview" : e.key === "End" ? "reports" : tab === "overview" ? "reports" : "overview"; choose(next); focusTab(next); } }}>
           {tab === "overview" ? "全体像" : <>報告履歴{!reports.error && !reports.loading && reports.total > 0 && <span className="rounded bg-surface-muted px-1.5 py-0.5 text-xs tabular-nums text-secondary">{reports.total}</span>}</>}
         </button>)}
       </div>
-      {canEdit && <KnowledgeActionMenu label="プロジェクトパートナー" disabled={partner.locked || reports.busy !== null} className={`${knowledgeAction} border-blue-200 text-[#24529c] hover:bg-blue-50`}
+      {canEdit && <KnowledgeActionMenu label="プロジェクトパートナー" disabled={partner.locked || reports.busy !== null} className={`${knowledgeAction} border-accent-line text-accent-text hover:bg-accent-soft`}
         icon={<><KnowledgeIcon name="ai" /><span>プロジェクトパートナー</span><KnowledgeIcon name="chevron" /></>}>
         <button role="menuitem" className={knowledgeMenuItem} onClick={() => generate("project_status")}><KnowledgeIcon name="summary" />状況を確認</button>
         <button role="menuitem" className={knowledgeMenuItem} onClick={() => generate("weekly_report")}><KnowledgeIcon name="history" />週次報告を作成</button>
@@ -102,17 +102,17 @@ export default function ProjectPartnerWorkspace({ projectId, canEdit, children }
     </div>
     <div className={`grid min-w-0 gap-7 ${partner.open ? "xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]" : "grid-cols-1"}`}>
       <div className="min-w-0">
-        <div role="tabpanel" id={`${id}-overview-panel`} aria-labelledby={`${id}-overview-tab`} hidden={view !== "overview"} tabIndex={0} className="outline-blue-600">
+        <div role="tabpanel" id={`${id}-overview-panel`} aria-labelledby={`${id}-overview-tab`} hidden={view !== "overview"} tabIndex={0} className="outline-focus-ring">
           {children}
           <div data-overview-latest-report className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-4 text-xs text-secondary">
             <KnowledgeIcon name="history" />
-            {reports.loading ? <span role="status">報告を読み込み中…</span> : reports.error ? <><span role="alert">報告を読み込めませんでした。</span><button className="rounded text-[#24529c] underline" onClick={reports.reload}>再読み込み</button></> : latest ? <>
+            {reports.loading ? <span role="status">報告を読み込み中…</span> : reports.error ? <><span role="alert">報告を読み込めませんでした。</span><button className="rounded text-accent-text underline" onClick={reports.reload}>再読み込み</button></> : latest ? <>
               <span>最新の{partnerSkills[latest.skill]} · {date(latest.created_at)}</span>
-              <button className="rounded py-1 text-[#24529c] underline underline-offset-4 disabled:opacity-50" disabled={partner.locked || reports.busy !== null} onClick={() => { setView("reports"); void reports.open(latest.id); }}>報告を読む</button>
+              <button className="rounded py-1 text-accent-text underline underline-offset-4 disabled:opacity-50" disabled={partner.locked || reports.busy !== null} onClick={() => { setView("reports"); void reports.open(latest.id); }}>報告を読む</button>
             </> : <span>状況確認や週次報告は、生成すると報告履歴に保存されます。</span>}
           </div>
         </div>
-        <div role="tabpanel" id={`${id}-reports-panel`} aria-labelledby={`${id}-reports-tab`} hidden={view !== "reports"} tabIndex={0} className="outline-blue-600">
+        <div role="tabpanel" id={`${id}-reports-panel`} aria-labelledby={`${id}-reports-tab`} hidden={view !== "reports"} tabIndex={0} className="outline-focus-ring">
           <PartnerReportFeed reports={reports} canEdit={canEdit} disabled={partner.locked} />
         </div>
       </div>

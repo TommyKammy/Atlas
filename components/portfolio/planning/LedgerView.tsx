@@ -174,7 +174,7 @@ export default function LedgerView({
                     type="button"
                     onClick={() => onEdit(initiative)}
                     disabled={!canEdit}
-                    className="text-left text-[12px] font-semibold text-[#24529c] hover:underline disabled:cursor-not-allowed disabled:text-text disabled:no-underline"
+                    className="text-left text-[12px] font-semibold text-accent-text hover:underline disabled:cursor-not-allowed disabled:text-text disabled:no-underline"
                   >
                     {initiative.name}
                   </button>
@@ -202,7 +202,7 @@ export default function LedgerView({
                   {initiative.linkedProjectId && initiative.linkedProjectName ? (
                     <Link
                       href={`/projects/${initiative.linkedProjectId}?view=list`}
-                      className="text-[#24529c] hover:underline"
+                      className="text-accent-text hover:underline"
                     >
                       {initiative.linkedProjectName}
                     </Link>

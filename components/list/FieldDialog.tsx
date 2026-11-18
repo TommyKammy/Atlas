@@ -99,7 +99,7 @@ export default function FieldDialog({
 
   const label = "mt-3 block text-[11px] font-medium text-muted";
   const fieldClass =
-    "mt-1 h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-text outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10";
+    "mt-1 h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-text outline-none focus:border-accent focus:ring-2 focus:ring-[#4075cf]/10";
 
   return createPortal(
     <div
@@ -128,7 +128,7 @@ export default function FieldDialog({
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="rounded p-1 text-xl leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
+            className="rounded p-1 text-xl leading-none text-subtle hover:bg-hover hover:text-secondary"
           >
             ×
           </button>
@@ -198,7 +198,7 @@ export default function FieldDialog({
               onChange={(event) => setDescription(event.target.value)}
               rows={2}
               placeholder="説明を追加（任意）"
-              className="mt-1 w-full resize-y rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-[13px] outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10"
+              className="mt-1 w-full resize-y rounded-md border border-line-strong bg-white px-2.5 py-2 text-[13px] outline-none focus:border-accent focus:ring-2 focus:ring-[#4075cf]/10"
             />
           </label>
 
@@ -232,7 +232,7 @@ export default function FieldDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-[12px] text-secondary hover:bg-neutral-100"
+            className="rounded-md px-3 py-1.5 text-[12px] text-secondary hover:bg-hover"
           >
             キャンセル
           </button>
@@ -241,7 +241,7 @@ export default function FieldDialog({
             onClick={() => void save()}
             disabled={saving || name.trim() === ""}
             data-field-dialog-save
-            className="rounded-md bg-[#2f6fd0] px-4 py-1.5 text-[12px] font-medium text-white hover:bg-[#2459ad] disabled:bg-neutral-200 disabled:text-neutral-500"
+            className="rounded-md bg-accent px-4 py-1.5 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-neutral-200 disabled:text-neutral-500"
           >
             {saving
               ? "保存中…"

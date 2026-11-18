@@ -55,7 +55,7 @@ export function PasswordSection({
             max={64}
             value={minLength}
             onChange={(e) => setMinLength(e.target.value)}
-            className="mt-1 w-24 rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+            className="mt-1 w-24 rounded border border-line-strong px-2 py-1.5 text-sm outline-none focus:border-accent"
             data-password-min-length
           />
           <span className="mt-1 block text-[11px] text-subtle">
@@ -85,14 +85,14 @@ export function PasswordSection({
             onClick={save}
             disabled={saving}
             data-password-save
-            className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8] disabled:opacity-50"
+            className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
           {msg && <span className="text-sm text-secondary">{msg}</span>}
         </div>
       </div>
-      <div className="mt-3 max-w-xl rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
+      <div className="mt-3 max-w-xl rounded-lg border border-accent-line bg-accent-soft p-3 text-xs text-accent-text">
         パスワードはユーザー作成、管理者による再設定、招待の承諾、プロフィールからの変更時に検証されます。
       </div>
     </div>

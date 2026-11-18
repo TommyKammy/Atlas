@@ -60,7 +60,7 @@ export default function ListFooterRow({
             onClick={onAdd}
             disabled={disabled}
             data-add-task-open
-            className="flex h-9 w-full items-center rounded pr-2 pl-12 text-left text-[13px] whitespace-nowrap text-muted hover:bg-neutral-50 hover:text-secondary"
+            className="flex h-9 w-full items-center rounded pr-2 pl-12 text-left text-[13px] whitespace-nowrap text-muted hover:bg-hover hover:text-secondary"
           >
             タスクを追加
           </button>

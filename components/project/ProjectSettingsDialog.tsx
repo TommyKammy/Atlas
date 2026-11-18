@@ -143,7 +143,7 @@ export default function ProjectSettingsDialog({
   };
 
   const field =
-    "h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-sm outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20";
+    "h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20";
 
   return (
     <Dialog
@@ -169,7 +169,7 @@ export default function ProjectSettingsDialog({
           </button>
         </div>
         <div className="flex min-h-0 flex-1">
-          <nav className="w-52 shrink-0 border-r border-line bg-neutral-50/60 p-2" aria-label="設定タブ">
+          <nav className="w-52 shrink-0 border-r border-line bg-surface-subtle/60 p-2" aria-label="設定タブ">
             {TABS.map((entry) => (
               <button
                 key={entry.key}
@@ -204,7 +204,7 @@ export default function ProjectSettingsDialog({
                         value={description}
                         onChange={(event) => setDescription(event.target.value)}
                         rows={3}
-                        className="w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-sm outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20"
+                        className="w-full rounded-md border border-line-strong bg-white px-2.5 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
                         maxLength={5000}
                       />
                     </label>
@@ -251,8 +251,8 @@ export default function ProjectSettingsDialog({
                         key={mode}
                         className={`flex cursor-pointer items-start gap-2 rounded-md border p-3 ${
                           settings.dependency_buffer === mode
-                            ? "border-[#4075cf] bg-[#f4f8ff]"
-                            : "border-line hover:bg-neutral-50"
+                            ? "border-[#4075cf] bg-accent-soft"
+                            : "border-line hover:bg-hover"
                         }`}
                       >
                         <input
@@ -307,8 +307,8 @@ export default function ProjectSettingsDialog({
                               }
                               className={`h-9 w-10 rounded-md border text-sm ${
                                 active
-                                  ? "border-[#4075cf] bg-[#eaf2ff] font-semibold text-accent-text"
-                                  : "border-line bg-surface text-muted hover:bg-neutral-50"
+                                  ? "border-[#4075cf] bg-accent-soft font-semibold text-accent-text"
+                                  : "border-line bg-surface text-muted hover:bg-hover"
                               }`}
                             >
                               {label}

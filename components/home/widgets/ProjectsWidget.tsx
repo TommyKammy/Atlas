@@ -32,7 +32,7 @@ export default function ProjectsWidget({
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             tab === "recent"
               ? "bg-accent-soft font-medium text-accent-text"
-              : "text-muted hover:bg-neutral-100"
+              : "text-muted hover:bg-hover"
           }`}
         >
           最近
@@ -45,7 +45,7 @@ export default function ProjectsWidget({
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             tab === "search"
               ? "bg-accent-soft font-medium text-accent-text"
-              : "text-muted hover:bg-neutral-100"
+              : "text-muted hover:bg-hover"
           }`}
         >
           プロジェクトを探す
@@ -58,7 +58,7 @@ export default function ProjectsWidget({
             onChange={(event) => setQuery(event.target.value)}
             placeholder="プロジェクト名で検索"
             autoFocus
-            className="w-full rounded border border-neutral-200 px-2 py-1 text-[12px] outline-none focus:border-blue-500"
+            className="w-full rounded border border-line px-2 py-1 text-[12px] outline-none focus:border-accent"
           />
         </div>
       )}
@@ -72,7 +72,7 @@ export default function ProjectsWidget({
             </p>
             {canCreateProject && <Link
               href="/projects/new"
-              className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#24529c]"
+              className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-accent-hover"
             >
               ＋ 新規プロジェクト
             </Link>}
@@ -85,7 +85,7 @@ export default function ProjectsWidget({
                   key={project.id}
                   href={`/projects/${project.id}?view=list`}
                   data-home-project-row={project.id}
-                  className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-neutral-50"
+                  className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-hover"
                 >
                   <ProjectIcon
                     id={project.id}

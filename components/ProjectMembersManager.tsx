@@ -161,7 +161,7 @@ export default function ProjectMembersManager({
             type="button"
             onClick={add}
             disabled={busy || !addUserId}
-            className="h-8 rounded-md bg-[#4075cf] px-3 text-sm text-white hover:bg-[#3567b8] disabled:opacity-40"
+            className="h-8 rounded-md bg-accent px-3 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-40"
           >
             追加
           </button>

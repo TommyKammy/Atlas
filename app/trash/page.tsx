@@ -26,7 +26,7 @@ export default async function TrashPage() {
       <h2 className="mt-8 text-sm font-semibold">アーカイブ済みプロジェクト（{archived.length}件）</h2>
       <ArchivedProjects initial={archived} />
       <p className="mt-6 text-sm">
-        <Link href="/" className="text-blue-700 hover:underline">
+        <Link href="/" className="text-accent-text hover:underline">
           ← ホームに戻る
         </Link>
       </p>

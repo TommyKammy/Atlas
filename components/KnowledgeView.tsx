@@ -21,7 +21,7 @@ const templates = [
 ];
 type History = { revision: number; title: string; saved_at: string };
 const date = (value: string) => new Date(value).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-const button = "rounded-md border border-line px-3 py-2 text-xs text-secondary hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50";
+const button = "rounded-md border border-line px-3 py-2 text-xs text-secondary hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50";
 
 export default function KnowledgeView({ projectId, initial, canEdit = false, initialNoteId, viewerId }: {
   projectId: number; initial: ProjectKnowledge[]; canEdit?: boolean; initialNoteId?: number; viewerId: number;
@@ -159,7 +159,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
     <div className="grid min-w-0 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
       <aside aria-label="ノート一覧" className={`${editing ? "hidden lg:block" : ""} min-w-0 border-b border-line pb-4 lg:border-r lg:border-b-0 lg:pr-5`}>
         <label className="sr-only" htmlFor="knowledge-search">ノートを検索</label>
-        <input id="knowledge-search" type="search" value={search} maxLength={300} onChange={event => { searchRef.current = event.target.value; setSearch(event.target.value); setResults(null); setSearchMore(false); setError(""); }} placeholder="タイトル・本文を検索" className="mb-3 w-full rounded-md border border-line-strong px-3 py-2 text-sm placeholder:text-neutral-600 focus:outline-blue-600" />
+        <input id="knowledge-search" type="search" value={search} maxLength={300} onChange={event => { searchRef.current = event.target.value; setSearch(event.target.value); setResults(null); setSearchMore(false); setError(""); }} placeholder="タイトル・本文を検索" className="mb-3 w-full rounded-md border border-line-strong px-3 py-2 text-sm placeholder:text-neutral-600 focus:outline-focus-ring" />
         <p className="mb-2 text-xs text-secondary">{search && results === null ? "検索中…" : `${filtered.length} 件${(search ? searchMore : hasMore) ? "以上" : ""}のノート`}</p>
         <KnowledgeNoteList notes={filtered} selectedId={selectedId} disabled={busy} canReorder={canEdit && !search}
           onSelect={select} onMove={(id, target, placement) => void reorder(id, target, placement)} />
@@ -170,7 +170,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
         {canEdit && <div className="mt-5 border-t border-line pt-4">
           <p className="mb-2 text-xs font-medium text-secondary">テンプレートから作成</p>
           <div className="flex flex-wrap gap-2 lg:flex-col">
-            {templates.map(template => <button key={template.name} disabled={busy} onClick={() => create(template.body)} className="rounded px-2 py-2 text-left text-sm text-secondary hover:bg-neutral-100">＋ {template.name}</button>)}
+            {templates.map(template => <button key={template.name} disabled={busy} onClick={() => create(template.body)} className="rounded px-2 py-2 text-left text-sm text-secondary hover:bg-hover">＋ {template.name}</button>)}
           </div>
         </div>}
       </aside>
@@ -223,7 +223,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
           </div>
         </>}</KnowledgeAi> : <div className="py-16 text-center">
           <h3 className="text-lg font-semibold">チームの知識をここに</h3><p className="mt-2 text-sm text-secondary">ノートを選択して読むか、議事録や手順書を作成できます。</p>
-          {canEdit && <button onClick={() => create()} className="mt-5 rounded-md bg-accent px-4 py-2 text-sm text-white">ノートを作成</button>}
+          {canEdit && <button onClick={() => create()} className="mt-5 rounded-md bg-accent px-4 py-2 text-sm text-on-accent">ノートを作成</button>}
         </div>}
       </section>
     </div>

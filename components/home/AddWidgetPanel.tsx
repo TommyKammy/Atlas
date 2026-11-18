@@ -44,7 +44,7 @@ export default function AddWidgetPanel({
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded text-[18px] text-muted hover:bg-neutral-100"
+            className="flex h-8 w-8 items-center justify-center rounded text-[18px] text-muted hover:bg-hover"
           >
             ×
           </button>

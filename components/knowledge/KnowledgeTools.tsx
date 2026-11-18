@@ -23,7 +23,7 @@ export default function KnowledgeTools({ editor, links }: { editor: Editor; link
       <select aria-label="ノートへのリンクを挿入" value="" onChange={event => {
         const item = links.find(link => link.href === event.target.value);
         if (item) editor.chain().focus().insertContent({ type: "text", text: item.title, marks: [{ type: "link", attrs: { href: item.href } }] }).run();
-      }} className="h-8 max-w-48 rounded px-2 text-xs text-neutral-700 hover:bg-neutral-100">
+      }} className="h-8 max-w-48 rounded px-2 text-xs text-neutral-700 hover:bg-hover">
         <option value="">ノートへのリンク</option>
         {links.map(link => <option key={link.href} value={link.href}>{link.title}</option>)}
       </select>
@@ -43,7 +43,7 @@ export default function KnowledgeTools({ editor, links }: { editor: Editor; link
     }}>
       <label className="min-w-0 flex-1 text-xs">画像URL<input autoFocus aria-label="画像URL" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…" className="mt-1 w-full rounded border border-line-strong bg-white p-2 placeholder:text-neutral-600" /></label>
       <label className="min-w-0 flex-1 text-xs">画像の説明<input aria-label="画像の説明" value={alt} onChange={e => setAlt(e.target.value)} className="mt-1 w-full rounded border border-line-strong bg-white p-2" /></label>
-      <button className="rounded bg-accent px-3 py-2 text-xs text-white">画像を挿入</button>
+      <button className="rounded bg-accent px-3 py-2 text-xs text-on-accent">画像を挿入</button>
       <button type="button" className="p-2 text-xs" onClick={() => setImageForm(false)}>キャンセル</button>
       <p className="w-full text-xs text-secondary">閲覧時に外部サイトから画像を読み込みます。</p>
       {error && <p role="alert" className="text-xs text-red-700">{error}</p>}

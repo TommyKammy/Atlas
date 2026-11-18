@@ -73,7 +73,7 @@ export default function CustomizeAppsPanel({
                         type="button"
                         data-customize-app-toggle={app.id}
                         onClick={() => onToggle(app)}
-                        className="h-7 rounded-md border border-line px-2 text-[12px] text-secondary hover:bg-neutral-50"
+                        className="h-7 rounded-md border border-line px-2 text-[12px] text-secondary hover:bg-hover"
                       >
                         {app.enabled ? "無効化" : "有効化"}
                       </button>

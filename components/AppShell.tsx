@@ -69,7 +69,7 @@ export default async function AppShell({
           <div className="flex items-center gap-1 border-b bg-surface px-2 py-1.5 text-sm md:hidden">
             <nav aria-label="モバイルナビゲーション" className="flex min-w-0 flex-1 gap-1 overflow-x-auto whitespace-nowrap">
               {visibleNavItems(MOBILE_NAV, showPortfolio).map((entry) => (
-                <Link key={entry.href} href={entry.href} className="rounded px-2 py-1 hover:bg-neutral-100">
+                <Link key={entry.href} href={entry.href} className="rounded px-2 py-1 hover:bg-hover">
                   {entry.label}
                 </Link>
               ))}

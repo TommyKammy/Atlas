@@ -51,7 +51,7 @@ export default function CustomizeEmailPanel({
           checked={enabled}
           disabled={!canEdit || busy}
           onChange={(event) => onToggle(event.target.checked)}
-          className="h-4 w-4 accent-[#2c60b8]"
+          className="h-4 w-4 accent-accent"
         />
         メールからのタスク作成を有効にする
       </label>

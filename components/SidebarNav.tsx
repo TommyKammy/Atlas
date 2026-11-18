@@ -93,7 +93,7 @@ function NavLink({
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       <NavPending className="ml-auto" />
       {unread > 0 && (
-        <span className="rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">{unread}</span>
+        <span className="rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-on-accent">{unread}</span>
       )}
     </Link>
   );

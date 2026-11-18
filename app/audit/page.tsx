@@ -16,10 +16,10 @@ export default async function AuditPage() {
     <div className="p-6">
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-bold">監査ログ</h1>
-        <a href="/api/admin/audit/export?format=json" className="text-sm text-blue-700 hover:underline">
+        <a href="/api/admin/audit/export?format=json" className="text-sm text-accent-text hover:underline">
           JSON
         </a>
-        <a href="/api/admin/audit/export?format=csv" className="text-sm text-blue-700 hover:underline">
+        <a href="/api/admin/audit/export?format=csv" className="text-sm text-accent-text hover:underline">
           CSV
         </a>
       </div>

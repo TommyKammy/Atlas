@@ -23,7 +23,7 @@ export default function ProjectShareButton({
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="flex h-7 shrink-0 items-center justify-center rounded-md bg-[#4075cf] px-2.5 text-xs whitespace-nowrap text-white hover:bg-[#3567b8] md:@max-[700px]:w-7 md:@max-[700px]:px-0"
+        className="flex h-7 shrink-0 items-center justify-center rounded-md bg-accent px-2.5 text-xs whitespace-nowrap text-on-accent hover:bg-accent-hover md:@max-[700px]:w-7 md:@max-[700px]:px-0"
       >
         <svg
           aria-hidden="true"

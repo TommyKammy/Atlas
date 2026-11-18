@@ -45,7 +45,7 @@ export default function RuleMultiEntityPicker({ projectId, kind, fieldId, value,
           return <li key={index} className="flex max-w-full items-center gap-1 rounded-full bg-surface-muted py-1 pl-2.5 pr-1 text-[12px]">
             <span className="truncate">{name}</span>
             <button type="button" aria-label={`${name}を削除`} onClick={() => onChange(selected.filter((_, item) => item !== index))}
-              className="rounded-full px-1.5 text-muted hover:bg-neutral-200">×</button>
+              className="rounded-full px-1.5 text-muted hover:bg-hover-strong">×</button>
           </li>;
         })}
       </ul>}

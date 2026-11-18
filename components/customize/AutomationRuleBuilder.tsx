@@ -19,7 +19,7 @@ import Dialog from "../ui/Dialog";
 import AutomationActionEditor, { defaultParams } from "./AutomationActionEditor";
 
 const inputClass =
-  "mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[12px] outline-none focus:border-[#2c60b8]";
+  "mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[12px] outline-none focus:border-accent";
 type RuleSuggestion = { name: string; description: string; definition: RuleDefinition };
 
 export default function AutomationRuleBuilder({
@@ -219,33 +219,33 @@ export default function AutomationRuleBuilder({
           type="button"
           onClick={onClose}
           aria-label="閉じる"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-xl text-muted hover:bg-neutral-100"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-xl text-muted hover:bg-hover"
         >
           ×
         </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
-        <div className="rounded-lg border border-[#dbe7fb] bg-[#f5f9ff] p-3">
-          <div className="text-[12px] font-semibold text-[#24529c]">AIアシスト</div>
+        <div className="rounded-lg border border-accent-line bg-[#f5f9ff] p-3">
+          <div className="text-[12px] font-semibold text-accent-text">AIアシスト</div>
           <div className="mt-2 flex gap-2">
             <input
               value={aiPrompt}
               onChange={(event) => setAiPrompt(event.target.value)}
               placeholder="例: 新規タスクを進行中にして担当者を田中さんにする"
-              className="h-8 min-w-0 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-[12px] outline-none focus:border-[#2c60b8]"
+              className="h-8 min-w-0 flex-1 rounded-md border border-line bg-white px-2 text-[12px] outline-none focus:border-accent"
             />
             <button
               type="button"
               onClick={() => void suggest()}
               disabled={busy || aiPrompt.trim() === ""}
-              className="h-8 shrink-0 rounded-md bg-accent px-3 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+              className="h-8 shrink-0 rounded-md bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
             >
               提案
             </button>
           </div>
           {suggestion && (
-            <div className="mt-3 rounded-md border border-[#dbe7fb] bg-surface p-3 text-[12px]" role="status">
+            <div className="mt-3 rounded-md border border-accent-line bg-surface p-3 text-[12px]" role="status">
               <p className="font-medium text-text">AIの提案: {suggestion.name}</p>
               <p className="mt-1 text-muted">{suggestion.description}</p>
               <p className="mt-1 text-[11px] text-muted">適用すると、現在のトリガー・条件・アクション・分岐を提案全体で置き換えます。</p>
@@ -834,7 +834,7 @@ export default function AutomationRuleBuilder({
         <button
           type="button"
           onClick={onClose}
-          className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50"
+          className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-hover"
         >
           キャンセル
         </button>
@@ -842,7 +842,7 @@ export default function AutomationRuleBuilder({
           type="button"
           onClick={() => void save()}
           disabled={busy || conflict}
-          className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+          className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
         >
           {busy ? "保存中…" : rule ? "変更を保存" : "ルールを作成"}
         </button>

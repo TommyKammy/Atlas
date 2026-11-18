@@ -67,7 +67,7 @@ export default function TaskPaneHeader({
   };
 
   const iconButton =
-    "flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800";
+    "flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-hover hover:text-neutral-800";
   const collaboratorTitle = collaborators.map((person) => person.name).join("・");
 
   return (
@@ -80,8 +80,8 @@ export default function TaskPaneHeader({
         aria-label={task.approval ? "承認の操作を開く" : undefined}
         className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium ${
           task.completed
-            ? "border-green-700 bg-green-700 text-white hover:bg-green-800"
-            : "border-line-strong bg-surface text-secondary hover:bg-neutral-50"
+            ? "border-green-700 bg-green-700 text-on-accent hover:bg-green-800"
+            : "border-line-strong bg-surface text-secondary hover:bg-hover"
         }`}
       >
         {task.is_milestone ? (
@@ -124,7 +124,7 @@ export default function TaskPaneHeader({
         onClick={onShare}
         title="共有"
         aria-label="共有"
-        className="flex h-7 items-center gap-1 rounded-md border border-line-strong bg-surface px-2 text-[11px] font-medium text-secondary hover:bg-neutral-50"
+        className="flex h-7 items-center gap-1 rounded-md border border-line-strong bg-surface px-2 text-[11px] font-medium text-secondary hover:bg-hover"
       >
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.3">
           <circle cx="6" cy="8" r="2.2" />
@@ -198,7 +198,7 @@ export default function TaskPaneHeader({
               closeMenu(event);
               onCopyLink();
             }}
-            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-neutral-100"
+            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-hover"
           >
             タスクのリンクをコピー
           </button>
@@ -208,7 +208,7 @@ export default function TaskPaneHeader({
               closeMenu(event);
               onToggleFullscreen();
             }}
-            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-neutral-100"
+            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-hover"
           >
             {maximized ? "全画面を終了" : "フルスクリーン表示"}
           </button>
@@ -229,7 +229,7 @@ export default function TaskPaneHeader({
 
       <Link
         href={closeHref}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-hover hover:text-neutral-900"
         title="詳細を閉じる"
         aria-label="詳細を閉じる"
       >

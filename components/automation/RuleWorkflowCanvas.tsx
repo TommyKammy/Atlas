@@ -18,7 +18,7 @@ function Card({ title, category, children, selected, onClick, tone = "blue", tes
   invalid?: boolean;
 }) {
   return <button type="button" data-rule-node={testId} data-rule-node-invalid={invalid || undefined} aria-pressed={selected} onClick={onClick}
-    className={`w-full rounded-lg border bg-white p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8] ${selected ? "border-accent bg-[#eff4fd] ring-1 ring-[#2c60b8]" : invalid ? "border-rose-300 hover:border-rose-500" : "border-line hover:border-line-strong"}`}>
+    className={`w-full rounded-lg border bg-white p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring ${selected ? "border-accent bg-[#eff4fd] ring-1 ring-[#2c60b8]" : invalid ? "border-rose-300 hover:border-rose-500" : "border-line hover:border-line-strong"}`}>
     {category && <span className={`mb-2 block text-[11px] font-semibold ${tone === "amber" ? "text-amber-700" : "text-accent-text"}`}>{category}</span>}
     <span className="block break-words text-[13px] font-semibold text-text">{title}</span>
     {children && <span className="mt-2 block break-words text-[12px] leading-5 text-secondary">{children}</span>}
@@ -54,8 +54,8 @@ export default function RuleWorkflowCanvas({ document, descriptors, selected, re
     <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line bg-surface px-5 py-2 text-[11px] text-secondary">
       <span>きっかけ → 条件 → 実行すること</span>
       {document.useBranches && <span>分岐は上から最初に一致したパスを実行</span>}
-      {document.useBranches && document.conditions.length === 0 && <button type="button" onClick={() => onSelect({ kind: "conditions" })} className="rounded px-2 py-1 text-accent-text hover:bg-blue-50">共通の条件を追加</button>}
-      {!readOnly && <button type="button" aria-pressed={document.useBranches} onClick={onToggleBranches} className="ml-auto rounded border border-line px-2 py-1 hover:bg-neutral-50">{document.useBranches ? "単純なフローに切り替え" : "条件で分岐する"}</button>}
+      {document.useBranches && document.conditions.length === 0 && <button type="button" onClick={() => onSelect({ kind: "conditions" })} className="rounded px-2 py-1 text-accent-text hover:bg-accent-soft">共通の条件を追加</button>}
+      {!readOnly && <button type="button" aria-pressed={document.useBranches} onClick={onToggleBranches} className="ml-auto rounded border border-line px-2 py-1 hover:bg-hover">{document.useBranches ? "単純なフローに切り替え" : "条件で分岐する"}</button>}
     </div>
     <div className="min-h-0 flex-1 overflow-auto p-6 sm:p-10" data-rule-canvas>
       <div style={{ zoom }} className="flex min-w-[870px] items-start gap-0 py-12">

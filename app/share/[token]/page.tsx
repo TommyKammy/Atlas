@@ -62,7 +62,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
               <div key={t.id} className="flex items-center gap-3 border-b py-1.5 text-sm">
                 <span
                   className={`flex h-4 w-4 items-center justify-center rounded-full border text-[10px] ${
-                    t.completed ? "border-green-600 bg-green-600 text-white" : "border-line-strong"
+                    t.completed ? "border-green-600 bg-green-600 text-on-accent" : "border-line-strong"
                   }`}
                 >
                   {t.completed && "✓"}

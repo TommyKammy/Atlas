@@ -80,7 +80,7 @@ export default function ListSectionHeader({
       <button
         onClick={onToggle}
         title={collapsed ? "展開する" : "折りたたむ"}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted hover:bg-neutral-100 hover:text-text"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted hover:bg-hover hover:text-text"
       >
         <svg
           viewBox="0 0 12 12"
@@ -132,7 +132,7 @@ export default function ListSectionHeader({
                 onClick={() => onAddTask(sectionId)}
                 title="このセクションにタスクを追加"
                 aria-label="このセクションにタスクを追加"
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted transition-opacity hover:bg-neutral-200/70 hover:text-text ${controlVisibility}`}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted transition-opacity hover:bg-surface-strong/70 hover:text-text ${controlVisibility}`}
               >
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M8 3v10M3 8h10" strokeLinecap="round" />
@@ -146,7 +146,7 @@ export default function ListSectionHeader({
                 aria-label="セクションのその他のアクション"
                 aria-haspopup="menu"
                 aria-expanded={sectionMenuId === sectionId}
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted transition-opacity hover:bg-neutral-200/70 hover:text-text ${controlVisibility}`}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted transition-opacity hover:bg-surface-strong/70 hover:text-text ${controlVisibility}`}
               >
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
                   <circle cx="3" cy="8" r="1.3" />

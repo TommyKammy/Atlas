@@ -41,7 +41,7 @@ export default function FilesView({
               </div>
               <a
                 href={`/api/attachments/${a.id}`}
-                className="block truncate font-medium text-blue-700 hover:underline"
+                className="block truncate font-medium text-accent-text hover:underline"
               >
                 {a.file_name}
               </a>

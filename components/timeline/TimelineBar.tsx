@@ -145,7 +145,7 @@ function TimelineBar({
         <div
           data-timeline-drag-origin={task.id}
           aria-hidden="true"
-          className="pointer-events-none absolute top-[3px] rounded-[4px] border border-dashed border-line-strong bg-neutral-100/60"
+          className="pointer-events-none absolute top-[3px] rounded-[4px] border border-dashed border-line-strong bg-surface-muted/60"
           style={{ left: x1, width: `calc(${x2} - ${x1})`, minWidth: 8, height: TIMELINE_BAR_HEIGHT }}
         />
       )}

@@ -120,7 +120,7 @@ export default function TaskCommentComposer({
 
   const keepFocus = (event: MouseEvent) => event.preventDefault();
   const iconButton =
-    "flex h-6 w-6 items-center justify-center rounded text-[13px] text-muted hover:bg-neutral-100 hover:text-text";
+    "flex h-6 w-6 items-center justify-center rounded text-[13px] text-muted hover:bg-hover hover:text-text";
 
   return (
     <div className="shrink-0 border-t border-line bg-surface px-3 py-2.5" data-task-composer>
@@ -167,7 +167,7 @@ export default function TaskCommentComposer({
                   insert(emoji);
                   setEmojiOpen(false);
                 }}
-                className="rounded px-1 text-[16px] hover:bg-neutral-100"
+                className="rounded px-1 text-[16px] hover:bg-hover"
               >
                 {emoji}
               </button>
@@ -235,7 +235,7 @@ export default function TaskCommentComposer({
             title="コメント"
             disabled={!text.trim() || sending}
             onClick={() => void submit()}
-            className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#2f6fd0] text-white hover:bg-[#2459ad] disabled:bg-neutral-200 disabled:text-neutral-400"
+            className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover disabled:bg-neutral-200 disabled:text-neutral-400"
           >
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M8 12.5v-9M4.5 7 8 3.5 11.5 7" />

@@ -62,7 +62,7 @@ export default function SecurityPanel({
             className={`-mb-px rounded-t px-3 py-2 text-sm ${
               section === key
                 ? "border-b-2 border-[#4075cf] font-medium text-[#2f5fa8]"
-                : "text-muted hover:bg-neutral-50"
+                : "text-muted hover:bg-hover"
             }`}
           >
             {SECTION_LABEL[key]}

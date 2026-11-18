@@ -97,7 +97,7 @@ export default function TaskDescriptionSection({
           <button
             type="button"
             onClick={start}
-            className="rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-neutral-100 hover:text-secondary"
+            className="rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-hover hover:text-secondary"
           >
             編集
           </button>
@@ -128,14 +128,14 @@ export default function TaskDescriptionSection({
               <button
                 type="button"
                 onClick={cancel}
-                className="rounded px-2.5 py-1 text-[12px] text-secondary hover:bg-neutral-100"
+                className="rounded px-2.5 py-1 text-[12px] text-secondary hover:bg-hover"
               >
                 キャンセル
               </button>
               <button
                 type="button"
                 onClick={() => void save()}
-                className="rounded bg-[#2f6fd0] px-3 py-1 text-[12px] font-medium text-white hover:bg-[#2459ad]"
+                className="rounded bg-accent px-3 py-1 text-[12px] font-medium text-on-accent hover:bg-accent-hover"
               >
                 保存
               </button>
@@ -149,7 +149,7 @@ export default function TaskDescriptionSection({
             start();
           }}
           title={canEdit ? "クリックして編集" : undefined}
-          className={`min-h-[96px] rounded-lg px-2 py-2 ${canEdit ? "cursor-text hover:bg-neutral-50" : ""}`}
+          className={`min-h-[96px] rounded-lg px-2 py-2 ${canEdit ? "cursor-text hover:bg-hover" : ""}`}
         >
           <RichTextView doc={doc} legacy={legacy} mentionUsers={mentionUsers} />
         </div>
@@ -157,7 +157,7 @@ export default function TaskDescriptionSection({
         <button
           type="button"
           onClick={start}
-          className="min-h-[132px] w-full rounded-lg px-2 py-2 text-left text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-500"
+          className="min-h-[132px] w-full rounded-lg px-2 py-2 text-left text-[13px] text-neutral-400 hover:bg-hover hover:text-neutral-500"
         >
           このタスクの内容を入力します
         </button>

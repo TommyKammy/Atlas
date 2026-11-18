@@ -96,7 +96,7 @@ export function TwoFactorSection({
             onClick={save}
             disabled={saving}
             data-two-factor-save
-            className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8] disabled:opacity-50"
+            className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
@@ -107,7 +107,7 @@ export function TwoFactorSection({
       <div className="mt-4 max-w-2xl rounded-lg border border-line p-4">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold">メンバーの二要素認証</h4>
-          <a href="/profile#two-factor" className="text-xs text-blue-700 hover:underline">
+          <a href="/profile#two-factor" className="text-xs text-accent-text hover:underline">
             自分の設定を開く →
           </a>
         </div>
@@ -130,7 +130,7 @@ export function TwoFactorSection({
               <button
                 onClick={() => resetUser(user)}
                 disabled={!user.totp_enabled || !user.can_manage}
-                className="rounded border px-1.5 py-0.5 text-xs hover:bg-neutral-100 disabled:opacity-40"
+                className="rounded border px-1.5 py-0.5 text-xs hover:bg-hover disabled:opacity-40"
               >
                 リセット
               </button>

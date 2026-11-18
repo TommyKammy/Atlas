@@ -87,8 +87,8 @@ export default function OwnerPicker({
             data-owner-selected
             className={`mt-1 rounded-md border px-3 py-2 ${
               selectedIsInactive
-                ? "border-amber-300 bg-amber-50/70"
-                : "border-emerald-300 bg-emerald-50/70"
+                ? "border-amber-300 bg-warning-soft/70"
+                : "border-emerald-300 bg-success-soft/70"
             }`}
           >
             <p
@@ -108,7 +108,7 @@ export default function OwnerPicker({
         ) : value.type === "legacy" ? (
           <div
             data-owner-legacy
-            className="mt-1 rounded-md border border-amber-300 bg-amber-50/70 px-3 py-2"
+            className="mt-1 rounded-md border border-amber-300 bg-warning-soft/70 px-3 py-2"
           >
             <p
               data-owner-legacy-name
@@ -188,7 +188,7 @@ export default function OwnerPicker({
                   setOpen(false);
                 }
               }}
-              className="h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-text outline-none focus:border-[#2c60b8]"
+              className="h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-text outline-none focus:border-accent"
             />
             {open && (
               <div className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-md border border-line-strong bg-surface shadow-lg">
@@ -220,7 +220,7 @@ export default function OwnerPicker({
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => choose(candidate)}
                           className={`flex w-full items-start gap-2 px-3 py-2 text-left ${
-                            isSelected ? "bg-blue-50 hover:bg-blue-100" : "bg-surface hover:bg-neutral-100"
+                            isSelected ? "bg-blue-50 hover:bg-blue-100" : "bg-surface hover:bg-hover"
                           } ${isActive ? "ring-2 ring-[#2c60b8] ring-inset" : ""}`}
                         >
                           <span className="min-w-0 flex-1">
@@ -229,7 +229,7 @@ export default function OwnerPicker({
                                 {candidate.name}
                               </span>
                               {isSelected && (
-                                <span aria-hidden="true" className="text-[11px] font-semibold text-[#24529c]">
+                                <span aria-hidden="true" className="text-[11px] font-semibold text-accent-text">
                                   ✓
                                 </span>
                               )}
@@ -252,7 +252,7 @@ export default function OwnerPicker({
           data-owner-self
           onClick={chooseSelf}
           disabled={!selfCandidate}
-          className="inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-secondary hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-secondary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           自分を設定
         </button>

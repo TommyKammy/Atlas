@@ -8,8 +8,8 @@ import RuleConditionFields from "./RuleConditionFields";
 import type { RuleAction } from "@/lib/automation/types";
 import { toast } from "@/lib/ui-feedback";
 
-const inputClass = "mt-1 h-9 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]";
-const buttonBase = "rounded-md border border-line px-2 py-1.5 text-[12px] hover:bg-neutral-50 disabled:opacity-40";
+const inputClass = "mt-1 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent";
+const buttonBase = "rounded-md border border-line px-2 py-1.5 text-[12px] hover:bg-hover disabled:opacity-40";
 const buttonClass = `${buttonBase} text-secondary`;
 const dangerButtonClass = `${buttonBase} text-rose-600`;
 
@@ -57,7 +57,7 @@ export default function RuleStepInspector({ projectId, document, descriptors, se
   return <aside ref={panel} aria-label={title} data-rule-inspector className="absolute inset-y-0 right-0 z-20 flex w-[min(360px,100%)] shrink-0 flex-col border-l border-line bg-surface shadow-lg xl:static xl:w-[340px] xl:shadow-none">
     <div className="flex items-center justify-between border-b border-line px-5 py-4">
       <h2 className="text-[15px] font-semibold">{title}</h2>
-      <button type="button" aria-label="設定パネルを閉じる" onClick={onClose} className="h-7 w-7 rounded text-lg text-muted hover:bg-neutral-100">×</button>
+      <button type="button" aria-label="設定パネルを閉じる" onClick={onClose} className="h-7 w-7 rounded text-lg text-muted hover:bg-hover">×</button>
     </div>
     <fieldset disabled={readOnly} className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 disabled:opacity-75">
       {trigger && selected.kind === "trigger" && <>

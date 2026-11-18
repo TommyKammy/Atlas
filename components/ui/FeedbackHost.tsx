@@ -91,7 +91,7 @@ export default function FeedbackHost() {
           key={toastItem.id}
           role="status"
           data-toast
-          className="fixed bottom-6 left-1/2 z-[140] flex -translate-x-1/2 items-center gap-3 rounded-md bg-neutral-900 px-4 py-2 text-sm text-white shadow-lg"
+          className="fixed bottom-6 left-1/2 z-[140] flex -translate-x-1/2 items-center gap-3 rounded-md bg-neutral-900 px-4 py-2 text-sm text-on-accent shadow-lg"
         >
           <span>{toastItem.message}</span>
           {toastItem.action && (
@@ -124,7 +124,7 @@ export default function FeedbackHost() {
               autoFocus
               data-confirm-cancel
               onClick={() => finish(false)}
-              className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-neutral-50"
+              className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-hover"
             >
               {confirmRequest?.cancelLabel ?? "キャンセル"}
             </button>
@@ -132,7 +132,7 @@ export default function FeedbackHost() {
               type="button"
               data-confirm-ok
               onClick={() => finish(true)}
-              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-[#24529c]"
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover"
             >
               {confirmRequest?.confirmLabel ?? "OK"}
             </button>

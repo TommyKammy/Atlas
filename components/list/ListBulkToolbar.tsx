@@ -37,7 +37,7 @@ export default function ListBulkToolbar({
       data-bulk-toolbar
       role="toolbar"
       aria-label="複数タスクの一括編集"
-      className="fixed bottom-12 left-1/2 z-[75] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-lg bg-[#1e1e1e] px-3 py-2 text-white shadow-[0_0_0_1px_#eaeaea,0_6px_12px_rgba(118,118,118,0.24)]"
+      className="fixed bottom-12 left-1/2 z-[75] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-lg bg-[#1e1e1e] px-3 py-2 text-on-accent shadow-[0_0_0_1px_#eaeaea,0_6px_12px_rgba(118,118,118,0.24)]"
     >
       <span aria-live="polite" className="mr-1 whitespace-nowrap px-1 text-[13px] font-semibold">
         {selectedCount} 件のタスクを選択中

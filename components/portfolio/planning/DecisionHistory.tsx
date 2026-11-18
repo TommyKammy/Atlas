@@ -31,21 +31,21 @@ function ProposalTrail({
     );
   }
   return (
-    <div className="space-y-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] text-blue-950">
-      <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-blue-900">
+    <div className="space-y-2 rounded-md border border-accent-line bg-accent-soft px-3 py-2 text-[12px] text-accent-text">
+      <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-accent-text">
         <span>提案（版{proposal.version}）から採用</span>
         <a href="#proposal-history" className="font-normal underline">
           提案履歴を見る
         </a>
       </div>
       <div>
-        <div className="text-[11px] font-semibold text-blue-800">
+        <div className="text-[11px] font-semibold text-accent-text">
           申請者の理由 ・ {proposal.submitterName} ・ {formatDecisionDate(proposal.submittedAt)}
         </div>
         <p className="mt-0.5 whitespace-pre-wrap">{proposal.reason}</p>
       </div>
       <div>
-        <div className="text-[11px] font-semibold text-blue-800">
+        <div className="text-[11px] font-semibold text-accent-text">
           レビューの回答 ・ {proposalReviewStageLabel(proposal.reviewerUserId, proposal.reviewOutcome)}
           {proposal.reviewerName ? `（${proposal.reviewerName}）` : ""}
           {proposal.reviewedAt ? ` ・ ${formatDecisionDate(proposal.reviewedAt)}` : ""}
@@ -53,7 +53,7 @@ function ProposalTrail({
         {proposal.reviewNote ? (
           <p className="mt-0.5 whitespace-pre-wrap">{proposal.reviewNote}</p>
         ) : (
-          <p className="mt-0.5 text-blue-800">
+          <p className="mt-0.5 text-accent-text">
             {proposal.reviewOutcome === "not_required"
               ? "レビューは省略されました。"
               : proposalReviewOutcomeLabel(proposal.reviewOutcome ?? "not_required")}
@@ -61,7 +61,7 @@ function ProposalTrail({
         )}
       </div>
       <div>
-        <div className="text-[11px] font-semibold text-blue-800">
+        <div className="text-[11px] font-semibold text-accent-text">
           最終決裁の理由 ・ {decisionActorName} ・ {formatDecisionDate(decidedAt)}
         </div>
         <p className="mt-0.5 whitespace-pre-wrap">{decisionReason}</p>

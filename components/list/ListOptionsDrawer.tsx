@@ -15,7 +15,7 @@ export type ListColumnOption = {
 };
 
 const row =
-  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-secondary hover:bg-neutral-50";
+  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-secondary hover:bg-hover";
 const sectionTitle = "px-2 pt-3 pb-1 text-[11px] font-medium tracking-wide text-muted";
 
 const ICON_CHOICES = [
@@ -201,7 +201,7 @@ export default function ListOptionsDrawer({
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
+            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-hover hover:text-secondary"
           >
             ×
           </button>
@@ -218,7 +218,7 @@ export default function ListOptionsDrawer({
                 aria-expanded={iconOpen}
                 disabled={renameDisabled || iconBusy}
                 onClick={() => setIconOpen((value) => !value)}
-                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-line text-lg hover:bg-neutral-50 disabled:bg-neutral-50"
+                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-line text-lg hover:bg-hover disabled:bg-neutral-50"
               >
                 {iconDraft ?? "📋"}
               </button>
@@ -234,7 +234,7 @@ export default function ListOptionsDrawer({
                         type="button"
                         data-list-icon-choice={icon}
                         onClick={() => void chooseIcon(icon)}
-                        className={`flex h-7 w-7 items-center justify-center rounded text-base hover:bg-neutral-100 ${
+                        className={`flex h-7 w-7 items-center justify-center rounded text-base hover:bg-hover ${
                           iconDraft === icon ? "bg-accent-soft" : ""
                         }`}
                       >
@@ -245,7 +245,7 @@ export default function ListOptionsDrawer({
                   <button
                     type="button"
                     onClick={() => void chooseIcon(null)}
-                    className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-secondary hover:bg-neutral-50"
+                    className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-secondary hover:bg-hover"
                   >
                     アイコンをクリア
                   </button>
@@ -268,7 +268,7 @@ export default function ListOptionsDrawer({
                 disabled={renameDisabled || renameBusy}
                 aria-label="ビューの名前"
                 data-list-view-name
-                className="mt-1 h-9 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500"
+                className="mt-1 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-neutral-50 disabled:text-neutral-500"
               />
             </div>
           </div>
@@ -296,14 +296,14 @@ export default function ListOptionsDrawer({
                 {columns.map((column) => (
                   <label
                     key={column.key}
-                    className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50"
+                    className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover"
                   >
                     <input
                       type="checkbox"
                       checked={column.visible}
                       data-list-column-toggle={column.key}
                       onChange={() => onToggleColumn(column.key)}
-                      className="h-3.5 w-3.5 accent-[#2c60b8]"
+                      className="h-3.5 w-3.5 accent-accent"
                     />
                     <span className="min-w-0 flex-1 truncate">{column.label}</span>
                   </label>
@@ -311,7 +311,7 @@ export default function ListOptionsDrawer({
                 <button
                   type="button"
                   onClick={onAddField}
-                  className="mt-1 flex h-8 items-center gap-1 rounded px-2 text-[12px] text-secondary hover:bg-neutral-50"
+                  className="mt-1 flex h-8 items-center gap-1 rounded px-2 text-[12px] text-secondary hover:bg-hover"
                 >
                   <span className="text-[14px] leading-none">＋</span> フィールドを追加
                 </button>
@@ -372,9 +372,9 @@ export default function ListOptionsDrawer({
                   placeholder="ビュー名"
                   aria-label="保存するビュー名"
                   autoFocus
-                  className="h-8 w-32 rounded border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+                  className="h-8 w-32 rounded border border-line px-2 text-[13px] outline-none focus:border-accent"
                 />
-                <button onClick={saveView} aria-label="ビューを保存" className="h-8 rounded bg-accent px-2 text-[12px] text-white">
+                <button onClick={saveView} aria-label="ビューを保存" className="h-8 rounded bg-accent px-2 text-[12px] text-on-accent">
                   保存
                 </button>
                 <button onClick={() => setSaving(false)} aria-label="ビュー保存をキャンセル" className="text-sm text-muted">

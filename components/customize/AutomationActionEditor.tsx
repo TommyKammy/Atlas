@@ -6,9 +6,9 @@ import type { RuleAction } from "@/lib/automation/types";
 import AutomationCustomFieldValue from "./AutomationCustomFieldValue";
 
 const inputClass =
-  "mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[12px] outline-none focus:border-[#2c60b8]";
+  "mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[12px] outline-none focus:border-accent";
 const areaClass =
-  "mt-1 min-h-[68px] w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[12px] outline-none focus:border-[#2c60b8]";
+  "mt-1 min-h-[68px] w-full rounded-md border border-line bg-white px-2 py-1.5 text-[12px] outline-none focus:border-accent";
 
 function actionWithParam(action: RuleAction, name: string, value: unknown): RuleAction {
   const params = { ...action.params, [name]: value };

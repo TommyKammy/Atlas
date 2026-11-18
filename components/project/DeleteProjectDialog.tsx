@@ -97,7 +97,7 @@ export default function DeleteProjectDialog({
             type="button"
             onClick={() => void submit()}
             disabled={!matches || busy}
-            className="flex h-8 items-center rounded-md bg-[#c94848] px-3 text-sm font-medium text-white hover:bg-[#b83c3c] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-8 items-center rounded-md bg-[#c94848] px-3 text-sm font-medium text-on-accent hover:bg-[#b83c3c] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? "削除中…" : "プロジェクトを削除"}
           </button>

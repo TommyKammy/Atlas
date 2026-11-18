@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import type { PlanningScenarioResult } from "@/lib/planning/calculations";
 
 export const buttonPrimary =
-  "inline-flex min-h-9 items-center justify-center rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-9 items-center justify-center rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50";
 export const buttonSecondary =
-  "inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-secondary hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-secondary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
 export const buttonQuiet =
-  "inline-flex items-center rounded px-1 py-0.5 text-[13px] font-medium text-[#24529c] hover:underline disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center rounded px-1 py-0.5 text-[13px] font-medium text-accent-text hover:underline disabled:cursor-not-allowed disabled:opacity-50";
 export const inputClass =
-  "h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-text outline-none focus:border-[#2c60b8]";
+  "h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-text outline-none focus:border-accent";
 export const labelClass = "block text-[12px] font-medium text-secondary";
 export const sectionTitle = "text-[15px] font-semibold text-text";
 
@@ -21,7 +21,7 @@ export function Tag({
 }) {
   const tones = {
     neutral: "border-line-strong bg-surface-subtle text-secondary",
-    blue: "border-blue-200 bg-blue-50 text-blue-800",
+    blue: "border-accent-line bg-accent-soft text-accent-text",
     good: "border-emerald-200 bg-emerald-50 text-emerald-800",
     warn: "border-amber-200 bg-warning-soft text-warning",
     bad: "border-orange-300 bg-orange-50 text-orange-800",
@@ -78,7 +78,7 @@ export function Notice({
   children: ReactNode;
 }) {
   const tones = {
-    info: "border-blue-200 bg-blue-50 text-blue-900",
+    info: "border-accent-line bg-accent-soft text-accent-text",
     warn: "border-amber-200 bg-warning-soft text-amber-900",
     error: "border-red-200 bg-danger-soft text-red-900",
     success: "border-emerald-200 bg-emerald-50 text-emerald-900",

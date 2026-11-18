@@ -86,7 +86,7 @@ function CommentEditForm({
           type="button"
           data-comment-edit-cancel={comment.id}
           onClick={onCancel}
-          className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100"
+          className="rounded px-2 py-1 text-[11px] text-muted hover:bg-hover"
         >
           キャンセル
         </button>
@@ -95,7 +95,7 @@ function CommentEditForm({
           data-comment-edit-save={comment.id}
           disabled={!text.trim()}
           onClick={() => void save()}
-          className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad] disabled:bg-neutral-200 disabled:text-neutral-500"
+          className="rounded bg-accent px-3 py-1 text-[11px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-neutral-200 disabled:text-neutral-500"
         >
           保存
         </button>
@@ -226,8 +226,8 @@ export default function TaskFeedSection({
                 title="リアクション切替"
                 className={`rounded-full border px-1.5 py-0.5 text-[11px] ${
                   reaction.mine
-                    ? "border-blue-400 bg-blue-50 text-blue-700"
-                    : "border-line bg-surface text-secondary hover:bg-neutral-50"
+                    ? "border-blue-400 bg-accent-soft text-accent-text"
+                    : "border-line bg-surface text-secondary hover:bg-hover"
                 }`}
               >
                 {reaction.emoji} {reaction.n}
@@ -243,7 +243,7 @@ export default function TaskFeedSection({
                   data-comment-reaction-add={emoji}
                   onClick={() => onToggleReaction(comment.id, emoji)}
                   title="リアクションする"
-                  className="rounded-full border border-dashed border-line px-1.5 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
+                  className="rounded-full border border-dashed border-line px-1.5 py-0.5 text-[11px] text-neutral-400 hover:bg-hover hover:text-neutral-600"
                 >
                   {emoji} ＋
                 </button>
@@ -281,8 +281,8 @@ export default function TaskFeedSection({
           onClick={() => onFeedTab("comments")}
           className={`rounded-full px-2.5 py-1 text-[12px] ${
             feedTab === "comments"
-              ? "bg-blue-50 font-semibold text-blue-800"
-              : "text-muted hover:bg-neutral-100 hover:text-secondary"
+              ? "bg-accent-soft font-semibold text-accent-text"
+              : "text-muted hover:bg-hover hover:text-secondary"
           }`}
         >
           コメント{comments.length > 0 ? ` ${comments.length}` : ""}
@@ -292,8 +292,8 @@ export default function TaskFeedSection({
           onClick={() => onFeedTab("activity")}
           className={`rounded-full px-2.5 py-1 text-[12px] ${
             feedTab === "activity"
-              ? "bg-blue-50 font-semibold text-blue-800"
-              : "text-muted hover:bg-neutral-100 hover:text-secondary"
+              ? "bg-accent-soft font-semibold text-accent-text"
+              : "text-muted hover:bg-hover hover:text-secondary"
           }`}
         >
           すべてのアクティビティ
@@ -301,7 +301,7 @@ export default function TaskFeedSection({
         <button
           type="button"
           onClick={() => setOldestFirst((value) => !value)}
-          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted hover:bg-neutral-100 hover:text-secondary"
+          className="ml-auto flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted hover:bg-hover hover:text-secondary"
           title="並べ替え"
         >
           <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.2">
@@ -326,7 +326,7 @@ export default function TaskFeedSection({
               <button
                 type="button"
                 onClick={() => setExpandedUpdates(true)}
-                className="my-1 rounded px-1 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-50 hover:underline"
+                className="my-1 rounded px-1 py-0.5 text-[11px] font-medium text-accent-text hover:bg-accent-soft hover:underline"
               >
                 過去の更新を表示（{hiddenItems.length} 件）
               </button>

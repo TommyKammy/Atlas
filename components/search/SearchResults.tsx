@@ -11,7 +11,7 @@ import { fileHref, knowledgeHref, messageHref, projectHref, taskHref } from "@/l
 import { searchPageHref, type SearchPage, type SearchParams, type SearchPageKey } from "@/lib/search-pagination";
 
 const sectionTitle = "mb-1 mt-4 text-[13px] font-semibold text-secondary";
-const rowCls = "flex items-center gap-3 border-b border-line py-2 text-sm hover:bg-neutral-50";
+const rowCls = "flex items-center gap-3 border-b border-line py-2 text-sm hover:bg-hover";
 
 /** Full search result sections used by /search. */
 export default function SearchResults({
@@ -45,7 +45,7 @@ export default function SearchResults({
             <div key={task.id} data-search-result-id={task.id} className={rowCls}>
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                  task.completed ? "border-green-700 bg-green-700 text-white" : "border-line-strong"
+                  task.completed ? "border-green-700 bg-green-700 text-on-accent" : "border-line-strong"
                 }`}
               >
                 {task.completed && "✓"}
@@ -95,7 +95,7 @@ export default function SearchResults({
           <div className={sectionTitle}>メッセージ（{pagination.messages.total}件）</div>
           {messages.map((message) => (
             <div key={message.id} data-search-result-id={message.id} className={rowCls}>
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-100 text-[10px] text-blue-800">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-100 text-[10px] text-accent-text">
                 M
               </span>
               <Link href={messageHref(message)} className="min-w-0 flex-1 hover:underline">
@@ -170,7 +170,7 @@ function SearchPager({ page, pageKey, params, label }: {
 }) {
   const from = (page.page - 1) * page.pageSize + 1;
   const to = Math.min(page.page * page.pageSize, page.total);
-  const linkClass = "rounded border border-line px-3 py-1 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600";
+  const linkClass = "rounded border border-line px-3 py-1 hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus-ring";
   return (
     <nav data-search-pagination={pageKey} aria-label={`${label}の検索結果ページ`} className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-secondary">
       <span data-search-range>{from}–{to} / {page.total}件</span>

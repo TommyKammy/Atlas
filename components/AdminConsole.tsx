@@ -128,7 +128,7 @@ export default function AdminConsole({
                 className={`min-w-[110px] rounded-md px-2 py-2 text-left text-sm md:min-w-0 ${
                   active === tab.key
                     ? "bg-[#4075cf]/10 font-medium text-[#2f5fa8]"
-                    : "text-secondary hover:bg-neutral-100"
+                    : "text-secondary hover:bg-hover"
                 }`}
               >
                 <span className="block whitespace-nowrap">{tab.label}</span>
@@ -143,13 +143,13 @@ export default function AdminConsole({
           <div className="mt-2 hidden rounded-lg border border-line p-2 md:block">
             <a
               href="/audit"
-              className="block rounded px-2 py-1.5 text-xs text-secondary hover:bg-neutral-100"
+              className="block rounded px-2 py-1.5 text-xs text-secondary hover:bg-hover"
             >
               監査ログを開く →
             </a>
             <a
               href="/api/admin/audit/export?format=csv"
-              className="mt-1 block rounded px-2 py-1.5 text-xs text-secondary hover:bg-neutral-100"
+              className="mt-1 block rounded px-2 py-1.5 text-xs text-secondary hover:bg-hover"
             >
               CSV をエクスポート
             </a>

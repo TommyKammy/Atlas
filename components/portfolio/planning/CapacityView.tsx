@@ -108,8 +108,8 @@ export default function CapacityView({
               aria-pressed={preview === segment.value}
               className={`rounded px-3 py-1.5 text-[12px] font-medium ${
                 preview === segment.value
-                  ? "bg-accent text-white"
-                  : "text-secondary hover:bg-neutral-100"
+                  ? "bg-accent text-on-accent"
+                  : "text-secondary hover:bg-hover"
               }`}
             >
               {segment.label}

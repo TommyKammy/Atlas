@@ -198,7 +198,7 @@ export default function ProfileForm({
     }
   };
 
-  const field = "w-full rounded border px-2 py-1.5 text-sm outline-none focus:border-blue-500";
+  const field = "w-full rounded border px-2 py-1.5 text-sm outline-none focus:border-accent";
   return (
     <div className="mt-4 space-y-6">
       <section hidden={mfaPending} className="rounded-lg border p-4">
@@ -241,7 +241,7 @@ export default function ProfileForm({
         </div>
         <button
           onClick={saveProfile}
-          className="mt-3 rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+          className="mt-3 rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover"
         >
           プロフィールを保存
         </button>
@@ -276,7 +276,7 @@ export default function ProfileForm({
           <p className="text-[11px] text-subtle">パスワード要件: {passwordPolicyText}</p>
           <button
             onClick={savePassword}
-            className="self-start rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+            className="self-start rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover"
           >
             変更
           </button>
@@ -309,7 +309,7 @@ export default function ProfileForm({
             onClick={beginTotpSetup}
             disabled={twoFaBusy}
             data-two-factor-begin
-            className="mt-3 rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+            className="mt-3 rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {twoFaBusy ? "準備中…" : "二要素認証を設定"}
           </button>
@@ -347,7 +347,7 @@ export default function ProfileForm({
                   onClick={enableTotp}
                   disabled={twoFaBusy || totpCode.trim().length !== 6}
                   data-two-factor-enable
-                  className="mt-3 rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="mt-3 rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
                 >
                   {twoFaBusy ? "確認中…" : "有効化"}
                 </button>
@@ -368,13 +368,13 @@ export default function ProfileForm({
                 className={`${field} mt-1 w-48`}
               />
             </label>
-            <button type="submit" disabled={twoFaBusy || !totpCode.trim()} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+            <button type="submit" disabled={twoFaBusy || !totpCode.trim()} className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent disabled:opacity-50">
               確認
             </button>
             <button
               type="button"
               onClick={() => { setUseRecoveryCode(!useRecoveryCode); setTotpCode(""); }}
-              className="ml-2 text-sm text-blue-700"
+              className="ml-2 text-sm text-accent-text"
             >
               {useRecoveryCode ? "認証アプリを使う" : "リカバリーコードを使う"}
             </button>
@@ -424,7 +424,7 @@ export default function ProfileForm({
               <button
                 type="button"
                 onClick={() => { router.push("/"); router.refresh(); }}
-                className="mt-2 rounded bg-emerald-800 px-3 py-1.5 text-sm text-white"
+                className="mt-2 rounded bg-emerald-800 px-3 py-1.5 text-sm text-on-accent"
               >
                 ホームへ進む
               </button>

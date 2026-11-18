@@ -21,7 +21,7 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             tab === "week"
               ? "bg-accent-soft font-medium text-accent-text"
-              : "text-muted hover:bg-neutral-100"
+              : "text-muted hover:bg-hover"
           }`}
         >
           今週
@@ -34,7 +34,7 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             tab === "month"
               ? "bg-accent-soft font-medium text-accent-text"
-              : "text-muted hover:bg-neutral-100"
+              : "text-muted hover:bg-hover"
           }`}
         >
           今月
@@ -55,7 +55,7 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
                   key={member.id}
                   href={`/search?assignee=${member.id}`}
                   data-home-member-row={member.id}
-                  className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-neutral-50"
+                  className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-hover"
                 >
                   <UserAvatar name={member.name} url={member.avatar_url} className="h-7 w-7" />
                   <span className="min-w-0 flex-1">

@@ -36,7 +36,7 @@ export default async function PlanningPage(props: {
     return (
       <div className="mx-auto max-w-[820px] px-4 py-10 md:px-6">
         <nav aria-label="パンくず" className="text-[12px] text-muted">
-          <Link href={backHref} className="text-[#24529c] hover:underline">
+          <Link href={backHref} className="text-accent-text hover:underline">
             ポートフォリオ
           </Link>
           <span className="mx-1.5" aria-hidden>›</span>
@@ -49,7 +49,7 @@ export default async function PlanningPage(props: {
           </p>
           <Link
             href={backHref}
-            className="mt-4 inline-flex min-h-9 items-center rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c]"
+            className="mt-4 inline-flex min-h-9 items-center rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-on-accent hover:bg-accent-hover"
           >
             ポートフォリオに戻る
           </Link>

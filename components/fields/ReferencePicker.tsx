@@ -67,7 +67,7 @@ export default function ReferencePicker({
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="タスクを検索"
-        className="h-8 w-full rounded border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+        className="h-8 w-full rounded border border-line px-2 text-[12px] outline-none focus:border-accent"
       />
       <div className="mt-1.5 max-h-56 space-y-0.5 overflow-y-auto">
         {loading && <div className="px-1 py-3 text-[11px] text-subtle">読み込み中…</div>}
@@ -77,7 +77,7 @@ export default function ReferencePicker({
         {filtered.map((option) => (
           <label
             key={option.id}
-            className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-neutral-50"
+            className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-hover"
           >
             <input
               type="checkbox"
@@ -104,14 +104,14 @@ export default function ReferencePicker({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100"
+            className="rounded px-2 py-1 text-[11px] text-muted hover:bg-hover"
           >
             キャンセル
           </button>
           <button
             type="button"
             onClick={() => onSave(selected)}
-            className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]"
+            className="rounded bg-accent px-3 py-1 text-[11px] font-medium text-on-accent hover:bg-accent-hover"
           >
             保存
           </button>

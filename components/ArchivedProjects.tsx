@@ -38,7 +38,7 @@ export default function ArchivedProjects({
           <button
             onClick={() => restore(p.id)}
             disabled={!p.can_manage || busy === p.id}
-            className="shrink-0 rounded border px-2 py-0.5 hover:bg-neutral-100 disabled:opacity-50"
+            className="shrink-0 rounded border px-2 py-0.5 hover:bg-hover disabled:opacity-50"
           >
             復元
           </button>

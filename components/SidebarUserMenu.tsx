@@ -151,7 +151,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
     }
   };
 
-  const item = "flex h-9 w-full items-center gap-2 rounded px-3 text-left text-[13px] text-text hover:bg-neutral-100";
+  const item = "flex h-9 w-full items-center gap-2 rounded px-3 text-left text-[13px] text-text hover:bg-hover";
   const oooLabel = oooFrom ? `不在: ${oooFrom}${oooTo ? ` 〜 ${oooTo}` : ""}` : "";
 
   return (
@@ -192,7 +192,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                 <div className="truncate text-[11px] text-muted">{user.email ?? ""}</div>
                 {user.title && <div className="truncate text-[11px] text-muted">{user.title}</div>}
                 {oooLabel && (
-                  <div data-user-ooo-status className="mt-0.5 truncate text-[11px] text-blue-700">
+                  <div data-user-ooo-status className="mt-0.5 truncate text-[11px] text-accent-text">
                     {oooLabel}
                   </div>
                 )}
@@ -310,7 +310,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                 <button
                   type="button"
                   onClick={() => setOooOpen(false)}
-                  className="rounded px-3 py-1 text-secondary hover:bg-neutral-100"
+                  className="rounded px-3 py-1 text-secondary hover:bg-hover"
                 >
                   キャンセル
                 </button>
@@ -319,7 +319,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                   data-user-ooo-save
                   disabled={oooSaving || !oooFrom}
                   onClick={() => void saveOoo()}
-                  className="rounded bg-blue-600 px-4 py-1 text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded bg-accent px-4 py-1 text-on-accent hover:bg-accent-hover disabled:opacity-50"
                 >
                   保存
                 </button>

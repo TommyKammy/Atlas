@@ -498,7 +498,7 @@ function CalendarViewContent({
           colored ? color : "border-line bg-surface text-text"
         }`
       : `flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded px-1 text-[13px] ${
-          colored ? `border ${color}` : "text-text hover:bg-neutral-100"
+          colored ? `border ${color}` : "text-text hover:bg-hover"
         }`;
     return `${base} ${task.completed ? "opacity-70" : ""}`;
   };

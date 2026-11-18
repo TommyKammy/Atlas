@@ -97,7 +97,7 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
     }
   };
 
-  const field = "w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-500";
+  const field = "w-full rounded border px-3 py-2 text-sm outline-none focus:border-accent";
   return (
     <form onSubmit={submit} aria-busy={busy} className="flex w-80 flex-col gap-3 rounded-lg border bg-surface p-6 shadow" data-login-form>
       <h1 className="text-lg font-bold">Atlas にログイン</h1>
@@ -126,8 +126,8 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
         className={field}
       />
       {twoFactorRequired && (
-        <div className="rounded border border-blue-200 bg-blue-50 p-2" data-login-two-factor>
-          <p className="text-[11px] text-blue-900">二要素認証が必要です。</p>
+        <div className="rounded border border-accent-line bg-accent-soft p-2" data-login-two-factor>
+          <p className="text-[11px] text-accent-text">二要素認証が必要です。</p>
           <label htmlFor={`${formId}-verification`} className="mt-2 block text-sm font-medium">
             {useRecovery ? "リカバリーコード" : "認証アプリのコード"}
           </label>
@@ -160,7 +160,7 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
           <button
             type="button"
             onClick={() => setUseRecovery((prev) => !prev)}
-            className="mt-1 text-[11px] text-blue-700 hover:underline"
+            className="mt-1 text-[11px] text-accent-text hover:underline"
           >
             {useRecovery ? "認証アプリのコードを使う" : "リカバリーコードを使う"}
           </button>
@@ -168,14 +168,14 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
       )}
       {error && <p role="alert" data-auth-feedback className="text-sm text-danger">{error}</p>}
       {notice && <p className="text-xs text-secondary">{notice}</p>}
-      <button type="submit" disabled={busy} className="rounded bg-blue-600 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50">
+      <button type="submit" disabled={busy} className="rounded bg-accent py-2 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50">
         ログイン
       </button>
       {samlMode !== "off" && (
         <a
           href="/api/auth/saml/start"
           data-login-saml
-          className="rounded border border-[#4075cf] py-2 text-center text-sm text-[#2f5fa8] hover:bg-blue-50"
+          className="rounded border border-accent py-2 text-center text-sm text-accent-text hover:bg-accent-soft"
         >
           SAML SSO でログイン
         </a>

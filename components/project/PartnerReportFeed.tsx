@@ -55,7 +55,7 @@ export default function PartnerReportFeed({ reports, canEdit, disabled }: {
       {r.skill === "weekly_report" && <p className="mb-2 text-xs text-secondary">対象期間：{date(r.period_start)} 〜 {date(r.checked_at)}</p>}
       <p className="line-clamp-3 whitespace-pre-wrap break-words text-sm leading-7">{r.summary}</p>
       <footer className="mt-3 flex flex-wrap items-center gap-2"><button className={knowledgeAction} disabled={disabled || busy !== null} onClick={() => void open(r.id)}>報告を読む</button>
-        {canEdit && !r.reviewed_at && <button className="rounded px-2 py-2 text-xs text-[#24529c] hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50" disabled={disabled || busy !== null} onClick={() => void review(r.id)}>確認済みにする</button>}
+        {canEdit && !r.reviewed_at && <button className="rounded px-2 py-2 text-xs text-accent-text hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50" disabled={disabled || busy !== null} onClick={() => void review(r.id)}>確認済みにする</button>}
         {r.reviewed_at && <p className="text-xs text-secondary">{r.reviewer_name ?? "退会ユーザー"} が {date(r.reviewed_at)} に確認</p>}
       </footer>
     </article></li>)}</ol>

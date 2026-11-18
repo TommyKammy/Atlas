@@ -105,7 +105,7 @@ export default function ProjectPermissionsDialog({
                 <label
                   key={`edit-${option.value}`}
                   className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${
-                    settings?.who_can_edit === option.value ? "border-[#4075cf] bg-[#f4f8ff]" : "border-line"
+                    settings?.who_can_edit === option.value ? "border-[#4075cf] bg-accent-soft" : "border-line"
                   }`}
                 >
                   <input
@@ -134,7 +134,7 @@ export default function ProjectPermissionsDialog({
                 <label
                   key={`share-${option.value}`}
                   className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${
-                    settings?.who_can_share === option.value ? "border-[#4075cf] bg-[#f4f8ff]" : "border-line"
+                    settings?.who_can_share === option.value ? "border-[#4075cf] bg-accent-soft" : "border-line"
                   }`}
                 >
                   <input

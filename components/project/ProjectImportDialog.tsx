@@ -86,7 +86,7 @@ export default function ProjectImportDialog({
             if (dropped) choose(dropped);
           }}
           className={`mt-4 rounded-lg border-2 border-dashed p-8 text-center transition ${
-            dragging ? "border-[#4075cf] bg-[#f4f8ff]" : "border-line-strong bg-neutral-50/50"
+            dragging ? "border-[#4075cf] bg-accent-soft" : "border-line-strong bg-surface-subtle/50"
           }`}
         >
           <div className="text-sm font-medium text-secondary">
@@ -97,7 +97,7 @@ export default function ProjectImportDialog({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            className="mt-2 h-8 rounded-md border border-line-strong bg-surface px-3 text-sm text-secondary hover:bg-neutral-50 disabled:opacity-50"
+            className="mt-2 h-8 rounded-md border border-line-strong bg-surface px-3 text-sm text-secondary hover:bg-hover disabled:opacity-50"
           >
             ファイルを選択
           </button>

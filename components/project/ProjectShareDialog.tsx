@@ -31,9 +31,9 @@ export default function ProjectShareDialog({
 
   const url = `${origin}/projects/${projectId}?view=list`;
   const primary =
-    "flex h-8 items-center rounded-md bg-[#4075cf] px-3 text-sm font-medium text-white hover:bg-[#3567b8] disabled:opacity-60";
+    "flex h-8 items-center rounded-md bg-accent px-3 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60";
   const secondary =
-    "flex h-8 items-center rounded-md border bg-surface px-3 text-sm text-secondary hover:bg-neutral-50";
+    "flex h-8 items-center rounded-md border bg-surface px-3 text-sm text-secondary hover:bg-hover";
   return (
     <Dialog
       open

@@ -62,7 +62,7 @@ export default function DeletedProjects({ initial }: { initial: DeletedProject[]
             type="button"
             onClick={() => void restore(project.id)}
             disabled={!project.can_manage || busy === project.id}
-            className="shrink-0 rounded border px-2 py-0.5 hover:bg-neutral-100 disabled:opacity-50"
+            className="shrink-0 rounded border px-2 py-0.5 hover:bg-hover disabled:opacity-50"
           >
             復元
           </button>

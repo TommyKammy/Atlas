@@ -70,7 +70,7 @@ export default function SaveProjectTemplateDialog({
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={100}
-            className="h-9 w-full rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20"
+            className="h-9 w-full rounded-md border border-line-strong px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
           />
         </label>
         <div className="mt-4 space-y-1.5">

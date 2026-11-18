@@ -187,7 +187,7 @@ export default function StatusUpdatesWidget({
                 onChange={(event) => setBody(event.target.value)}
                 rows={5}
                 placeholder="プロジェクトの進捗、リスク、次のアクションを共有"
-                className="mt-1 w-full resize-y rounded border border-neutral-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                className="mt-1 w-full resize-y rounded border border-line px-2 py-1.5 text-sm outline-none focus:border-accent"
               />
             </label>
             {error !== "" && <p className="text-[12px] text-danger">{error}</p>}
@@ -196,7 +196,7 @@ export default function StatusUpdatesWidget({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-neutral-50"
+              className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-hover"
             >
               キャンセル
             </button>
@@ -205,7 +205,7 @@ export default function StatusUpdatesWidget({
               data-home-status-submit
               disabled={busy || body.trim() === "" || projectId === ""}
               onClick={() => void submit()}
-              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
             >
               {busy ? "投稿中…" : "投稿"}
             </button>

@@ -27,11 +27,11 @@ export default function ErrorState({
             type="button"
             data-error-retry
             onClick={() => reset()}
-            className="h-8 rounded-md bg-accent px-4 text-[13px] font-medium text-white hover:bg-[#24529c]"
+            className="h-8 rounded-md bg-accent px-4 text-[13px] font-medium text-on-accent hover:bg-accent-hover"
           >
             再試行
           </button>
-          <Link href="/" className="h-8 rounded-md border border-line px-3 text-[13px] leading-8 text-secondary hover:bg-neutral-50">
+          <Link href="/" className="h-8 rounded-md border border-line px-3 text-[13px] leading-8 text-secondary hover:bg-hover">
             ホームへ
           </Link>
         </div>

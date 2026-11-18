@@ -397,13 +397,13 @@ export default function AutomationRulesPanel({
         </div>
         {canEdit && (
           <div className="flex shrink-0 gap-2">
-          {projectId && projectId > 0 && <Link href={`/projects/${projectId}/rules/new`} data-automation-editor-add className="flex h-8 items-center rounded-md bg-accent px-3 text-[12px] text-white hover:bg-[#24529c]">＋ フローを作成</Link>}
+          {projectId && projectId > 0 && <Link href={`/projects/${projectId}/rules/new`} data-automation-editor-add className="flex h-8 items-center rounded-md bg-accent px-3 text-[12px] text-on-accent hover:bg-accent-hover">＋ フローを作成</Link>}
           <button
             type="button"
             data-customize-automation-add
             onClick={() => setBuilderRule(null)}
             disabled={!descriptors}
-            className="flex h-8 shrink-0 items-center rounded-md border border-line bg-surface px-3 text-[12px] text-secondary hover:bg-neutral-50 disabled:opacity-50"
+            className="flex h-8 shrink-0 items-center rounded-md border border-line bg-surface px-3 text-[12px] text-secondary hover:bg-hover disabled:opacity-50"
           >
             ＋ ルール
           </button>
@@ -488,7 +488,7 @@ export default function AutomationRulesPanel({
                 value={webhookName}
                 onChange={(event) => setWebhookName(event.target.value)}
                 placeholder="Webhook名"
-                className="h-8 min-w-[140px] flex-1 rounded-md border border-neutral-200 px-2 text-[11px] outline-none focus:border-[#2c60b8]"
+                className="h-8 min-w-[140px] flex-1 rounded-md border border-line px-2 text-[11px] outline-none focus:border-accent"
               />
               <input
                 type="password"
@@ -496,13 +496,13 @@ export default function AutomationRulesPanel({
                 onChange={(event) => setWebhookSecret(event.target.value)}
                 placeholder="署名シークレット（必須）"
                 maxLength={200}
-                className="h-8 min-w-[160px] flex-1 rounded-md border border-neutral-200 px-2 text-[11px] outline-none focus:border-[#2c60b8]"
+                className="h-8 min-w-[160px] flex-1 rounded-md border border-line px-2 text-[11px] outline-none focus:border-accent"
               />
               <button
                 type="button"
                 onClick={() => void createWebhook()}
                 disabled={webhookBusy || webhookName.trim() === "" || webhookSecret.trim() === ""}
-                className="h-8 rounded-md border border-line px-3 text-[11px] text-secondary hover:bg-neutral-50 disabled:opacity-50"
+                className="h-8 rounded-md border border-line px-3 text-[11px] text-secondary hover:bg-hover disabled:opacity-50"
               >
                 ＋ 作成
               </button>
@@ -560,18 +560,18 @@ export default function AutomationRulesPanel({
                 </div>
                 {canEdit && (
                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-                    {projectId && projectId > 0 && <Link href={`/projects/${projectId}/rules/${rule.id}`} data-automation-editor-link className="flex h-7 items-center rounded-md border border-[#dbe7fb] bg-[#eff4fd] px-2 text-[11px] text-accent-text hover:bg-blue-100">フロー編集</Link>}
+                    {projectId && projectId > 0 && <Link href={`/projects/${projectId}/rules/${rule.id}`} data-automation-editor-link className="flex h-7 items-center rounded-md border border-accent-line bg-[#eff4fd] px-2 text-[11px] text-accent-text hover:bg-blue-100">フロー編集</Link>}
                     <button
                       type="button"
                       onClick={() => setBuilderRule(rule)}
-                      className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-neutral-50"
+                      className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-hover"
                     >
                       編集
                     </button>
                     <button
                       type="button"
                       onClick={() => void openHistory(rule)}
-                      className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-neutral-50"
+                      className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-hover"
                     >
                       履歴
                     </button>
@@ -585,7 +585,7 @@ export default function AutomationRulesPanel({
                           setManualExecution(null);
                           setManualPollingStopped(false);
                         }}
-                        className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-neutral-50"
+                        className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-hover"
                       >
                         実行
                       </button>
@@ -594,7 +594,7 @@ export default function AutomationRulesPanel({
                       type="button"
                       onClick={() => void toggle(rule)}
                       disabled={busyId === rule.id}
-                      className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-neutral-50 disabled:opacity-50"
+                      className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-hover disabled:opacity-50"
                     >
                       {rule.enabled ? "無効化" : "有効化"}
                     </button>
@@ -652,7 +652,7 @@ export default function AutomationRulesPanel({
                 inputMode="numeric"
                 disabled={manualBusy || manualExecution?.status === "queued"}
                 placeholder="例: 123"
-                className="mt-1 h-9 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+                className="mt-1 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent"
               />
             </label>
             {manualError && <p className="mt-2 text-[11px] text-rose-600">{manualError}</p>}
@@ -672,7 +672,7 @@ export default function AutomationRulesPanel({
               <button
                 type="button"
                 onClick={closeManual}
-                className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50"
+                className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-hover"
               >
                 閉じる
               </button>
@@ -680,7 +680,7 @@ export default function AutomationRulesPanel({
                 type="button"
                 onClick={() => void runManual()}
                 disabled={manualBusy || manualExecution?.status === "queued"}
-                className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
               >
                 {manualBusy ? "実行中…" : manualPollingStopped ? "結果未確認" : manualExecution?.status === "queued" ? "実行待ち…" : "実行"}
               </button>
@@ -705,7 +705,7 @@ export default function AutomationRulesPanel({
               type="button"
               onClick={closeHistory}
               aria-label="閉じる"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-xl text-muted hover:bg-neutral-100"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-xl text-muted hover:bg-hover"
             >
               ×
             </button>

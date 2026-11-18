@@ -71,7 +71,7 @@ export default function InviteAcceptForm({ token }: { token: string }) {
     }
   };
 
-  const field = "w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-500";
+  const field = "w-full rounded border px-3 py-2 text-sm outline-none focus:border-accent";
   return (
     <div className="flex min-h-[70vh] items-center justify-center p-6">
       <div className="w-full max-w-md rounded-xl border border-line p-6 shadow-sm">
@@ -80,7 +80,7 @@ export default function InviteAcceptForm({ token }: { token: string }) {
           <div>
             <h1 className="text-lg font-semibold">招待を開けませんでした</h1>
             <p className="mt-2 text-sm text-danger">{error}</p>
-            <a href="/login" className="mt-4 inline-block text-sm text-blue-700 hover:underline">
+            <a href="/login" className="mt-4 inline-block text-sm text-accent-text hover:underline">
               ログインへ
             </a>
           </div>
@@ -128,7 +128,7 @@ export default function InviteAcceptForm({ token }: { token: string }) {
               type="button"
               onClick={accept}
               disabled={saving}
-              className="mt-4 w-full rounded-md bg-[#4075cf] px-4 py-2 text-sm font-medium text-white hover:bg-[#3567b8] disabled:opacity-50"
+              className="mt-4 w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
             >
               {saving ? "参加中…" : "招待を承認して参加"}
             </button>

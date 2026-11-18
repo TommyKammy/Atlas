@@ -9,7 +9,7 @@ import {
 import type { User } from "@/lib/data";
 
 const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted";
-const menuItem = "flex w-full items-center gap-1 rounded px-3 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-neutral-100";
+const menuItem = "flex w-full items-center gap-1 rounded px-3 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-hover";
 
 export default function ListColumnHeader({
   columnKey,
@@ -117,7 +117,7 @@ export default function ListColumnHeader({
         {colDropOver === columnKey && colDropSide && (
           <span
             data-column-drop-indicator={colDropSide}
-            className={`pointer-events-none absolute inset-y-0 z-10 w-[2px] bg-[#2f6fd0] ${
+            className={`pointer-events-none absolute inset-y-0 z-10 w-[2px] bg-accent ${
               colDropSide === "before" ? "-left-[1px]" : "-right-[1px]"
             }`}
           />
@@ -137,7 +137,7 @@ export default function ListColumnHeader({
         <button
           onClick={() => setMenuCol(open ? null : columnKey)}
           title="列メニュー"
-          className={`rounded px-0.5 text-[10px] leading-none text-muted hover:bg-neutral-200 hover:text-secondary ${
+          className={`rounded px-0.5 text-[10px] leading-none text-muted hover:bg-hover-strong hover:text-secondary ${
             open ? "opacity-100" : "opacity-0 group-hover/hd:opacity-100"
           }`}
         >
@@ -166,14 +166,14 @@ export default function ListColumnHeader({
                   <button
                     disabled={visibleCols[0] === columnKey}
                     onClick={() => moveCol(columnKey, -1)}
-                    className="rounded border px-2 py-0.5 text-xs hover:bg-neutral-100 disabled:opacity-40"
+                    className="rounded border px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-40"
                   >
                     ← 左へ
                   </button>
                   <button
                     disabled={visibleCols[visibleCols.length - 1] === columnKey}
                     onClick={() => moveCol(columnKey, 1)}
-                    className="rounded border px-2 py-0.5 text-xs hover:bg-neutral-100 disabled:opacity-40"
+                    className="rounded border px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-40"
                   >
                     右へ →
                   </button>

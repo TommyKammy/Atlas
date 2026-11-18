@@ -46,7 +46,7 @@ export default function TeamsPanel({
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const field = "w-full rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500";
+  const field = "w-full rounded border border-line-strong px-2 py-1.5 text-sm outline-none focus:border-accent";
   const activeUsers = users.filter((u) => !u.deactivated_at);
 
   const resetForm = () => {
@@ -142,7 +142,7 @@ export default function TeamsPanel({
         <button
           onClick={openCreate}
           data-admin-team-create
-          className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8]"
+          className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover"
         >
           チームを作成
         </button>
@@ -199,7 +199,7 @@ export default function TeamsPanel({
               </span>
               <span className="truncate text-xs text-muted">{team.created_by_name ?? "–"}</span>
               <span className="flex gap-1 text-xs">
-                <button onClick={() => openEdit(team)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
+                <button onClick={() => openEdit(team)} className="rounded border px-1.5 py-0.5 hover:bg-hover">
                   編集
                 </button>
                 <button
@@ -230,7 +230,7 @@ export default function TeamsPanel({
                 <h2 className="text-lg font-semibold">{editingId ? "チームを編集" : "チームを新規作成"}</h2>
                 <p className="mt-0.5 text-xs text-muted">チームの情報とメンバーを設定します。</p>
               </div>
-              <button onClick={() => setOpen(false)} aria-label="閉じる" className="rounded p-1 text-muted hover:bg-neutral-100">
+              <button onClick={() => setOpen(false)} aria-label="閉じる" className="rounded p-1 text-muted hover:bg-hover">
                 ×
               </button>
             </div>
@@ -343,14 +343,14 @@ export default function TeamsPanel({
             {msg && <p className="mt-3 text-sm text-danger">{msg}</p>}
 
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100">
+              <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-sm text-secondary hover:bg-hover">
                 キャンセル
               </button>
               <button
                 onClick={save}
                 disabled={saving || !name.trim()}
                 data-team-save
-                className="rounded bg-[#4075cf] px-4 py-1.5 text-sm text-white hover:bg-[#3567b8] disabled:opacity-50"
+                className="rounded bg-accent px-4 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
               >
                 {saving ? "保存中…" : editingId ? "変更を保存" : "チームを作成"}
               </button>

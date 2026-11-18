@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 type Config = { id?: string; revision?: number; name: string; provider: "openai" | "compatible"; base_url: string; model: string; enabled: boolean; external_allowed: boolean; project_ids: number[]; max_input_chars: number; max_output_tokens: number; timeout_seconds: number; daily_limit: number; key_configured?: boolean };
 type Settings = { connections: Config[]; projects: { id: number; name: string }[]; key_ready: boolean; local_origins: string[] };
 const empty: Config = { name: "", provider: "compatible", base_url: "", model: "", enabled: false, external_allowed: false, project_ids: [], max_input_chars: 20000, max_output_tokens: 2048, timeout_seconds: 120, daily_limit: 50 };
-const button = "rounded border border-line-strong px-3 py-2 text-sm hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50";
+const button = "rounded border border-line-strong px-3 py-2 text-sm hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50";
 const field = "mt-1 block w-full rounded border border-line-strong px-3 py-2 text-sm";
 async function api(path: string, body?: unknown) {
   const response = await fetch(path, body === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

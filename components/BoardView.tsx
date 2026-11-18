@@ -706,7 +706,7 @@ function BoardViewContent({
                   onClick={() =>
                     setCardLimits((current) => ({ ...current, [g.key]: (current[g.key] ?? 100) + 200 }))
                   }
-                  className="rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] text-secondary hover:bg-neutral-50"
+                  className="rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] text-secondary hover:bg-hover"
                 >
                   さらに表示（{cardLimits[g.key] ?? 100} / {g.items.length} 件）
                 </button>
@@ -732,14 +732,14 @@ function BoardViewContent({
                   placeholder="タスク名を入力"
                   data-add-task
                   autoFocus
-                  className="w-full rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
+                  className="w-full rounded border px-2 py-1 text-sm outline-none focus:border-accent"
                 />
                 <button
                   disabled={addingTask || !(drafts[g.key] ?? "").trim()}
                   onClick={() => {
                     void addTask(g);
                   }}
-                  className="shrink-0 rounded bg-blue-600 px-2 py-1 text-sm text-white"
+                  className="shrink-0 rounded bg-accent px-2 py-1 text-sm text-on-accent"
                 >
                   追加
                 </button>
@@ -751,7 +751,7 @@ function BoardViewContent({
                   : setAddingTo(g.key)}
                 disabled={!canEdit}
                 data-add-task-open
-                className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-secondary hover:bg-neutral-200/60 hover:text-secondary"
+                className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-secondary hover:bg-surface-strong/60 hover:text-secondary"
               >
                 ＋ タスクを追加
               </button>

@@ -8,7 +8,7 @@ import { VIEW_ICON_CHOICES } from "@/lib/view-icons";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
 const row =
-  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-secondary hover:bg-neutral-50";
+  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-secondary hover:bg-hover";
 
 /** Shared Asana-style right drawer for board/timeline/calendar view options. */
 export default function ViewOptionsDrawer({
@@ -129,7 +129,7 @@ export default function ViewOptionsDrawer({
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
+            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-hover hover:text-secondary"
           >
             ×
           </button>
@@ -145,7 +145,7 @@ export default function ViewOptionsDrawer({
                 aria-expanded={iconOpen}
                 disabled={renameDisabled || iconBusy}
                 onClick={() => setIconOpen((value) => !value)}
-                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-line text-lg hover:bg-neutral-50 disabled:bg-neutral-50"
+                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-line text-lg hover:bg-hover disabled:bg-neutral-50"
               >
                 {iconDraft ?? "📋"}
               </button>
@@ -157,7 +157,7 @@ export default function ViewOptionsDrawer({
                         key={icon}
                         type="button"
                         onClick={() => void chooseIcon(icon)}
-                        className={`flex h-7 w-7 items-center justify-center rounded text-base hover:bg-neutral-100 ${
+                        className={`flex h-7 w-7 items-center justify-center rounded text-base hover:bg-hover ${
                           iconDraft === icon ? "bg-accent-soft" : ""
                         }`}
                       >
@@ -168,7 +168,7 @@ export default function ViewOptionsDrawer({
                   <button
                     type="button"
                     onClick={() => void chooseIcon(null)}
-                    className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-secondary hover:bg-neutral-50"
+                    className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-secondary hover:bg-hover"
                   >
                     アイコンをクリア
                   </button>
@@ -190,7 +190,7 @@ export default function ViewOptionsDrawer({
                 }}
                 disabled={renameDisabled || renameBusy}
                 aria-label="ビューの名前"
-                className="mt-1 h-9 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500"
+                className="mt-1 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-neutral-50 disabled:text-neutral-500"
               />
             </div>
           </div>

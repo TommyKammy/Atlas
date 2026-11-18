@@ -52,7 +52,7 @@ export default function MessagesView({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="件名（任意）"
             autoFocus
-            className="w-full border-b px-1 py-1 text-sm font-semibold outline-none focus:border-blue-500"
+            className="w-full border-b px-1 py-1 text-sm font-semibold outline-none focus:border-accent"
           />
           <textarea
             value={body}
@@ -66,13 +66,13 @@ export default function MessagesView({
             <span className="flex-1" />
             <button
               onClick={() => setOpen(false)}
-              className="rounded px-3 py-1 text-sm text-muted hover:bg-neutral-100"
+              className="rounded px-3 py-1 text-sm text-muted hover:bg-hover"
             >
               キャンセル
             </button>
             <button
               onClick={post}
-              className="rounded bg-blue-600 px-4 py-1 text-sm text-white hover:bg-blue-700"
+              className="rounded bg-accent px-4 py-1 text-sm text-on-accent hover:bg-accent-hover"
             >
               投稿
             </button>
@@ -98,7 +98,7 @@ export default function MessagesView({
               </div>
               {m.title && <div className="mt-1.5 font-semibold">{m.title}</div>}
               <div
-                className="mt-1 text-sm [&_a]:text-blue-700 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
+                className="mt-1 text-sm [&_a]:text-accent-text [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
                 dangerouslySetInnerHTML={{ __html: renderMarkdown(m.body) }}
               />
             </div>

@@ -51,7 +51,7 @@ export default function ListSortMenu({
           type="button"
           data-list-sort-option="none"
           onClick={onClear}
-          className="flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[13px] text-secondary hover:bg-neutral-100"
+          className="flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[13px] text-secondary hover:bg-hover"
         >
           <span className="w-4 text-accent-text">{sortKey === "position" ? "✓" : ""}</span>
           なし
@@ -63,7 +63,7 @@ export default function ListSortMenu({
           type="button"
           data-list-sort-option={key}
           onClick={() => onSelect(key)}
-          className="flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[13px] text-secondary hover:bg-neutral-100"
+          className="flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[13px] text-secondary hover:bg-hover"
         >
           <span className="w-4 text-accent-text">{sortKey === key ? "✓" : ""}</span>
           <span className="min-w-0 flex-1 truncate">{key === "status" ? "Status" : LIST_SORT_LABELS[key]}</span>
@@ -77,7 +77,7 @@ export default function ListSortMenu({
           type="button"
           data-list-sort-dir
           onClick={onToggleDir}
-          className="mt-1 flex h-8 w-full items-center justify-between rounded border border-line px-2 text-[12px] text-secondary hover:bg-neutral-50"
+          className="mt-1 flex h-8 w-full items-center justify-between rounded border border-line px-2 text-[12px] text-secondary hover:bg-hover"
         >
           <span>並び方向</span>
           <span>{sortDir === "asc" ? "昇順 ↑" : "降順 ↓"}</span>

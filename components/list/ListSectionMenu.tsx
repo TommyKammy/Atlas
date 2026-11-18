@@ -26,7 +26,7 @@ export default function ListSectionMenu({
   const section = sections.find((item) => item.id === menu.id);
   if (!section) return null;
   const itemClass =
-    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-secondary hover:bg-neutral-100";
+    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-secondary hover:bg-hover";
 
   return (
     <>

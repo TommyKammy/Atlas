@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 
 export type CreateMenuVariant = "sidebar" | "mobile" | "rail";
 
-const ACTION = "bg-[#c94848] text-white hover:bg-[#b83c3c]";
+const ACTION = "bg-[#c94848] text-on-accent hover:bg-[#b83c3c]";
 const MENU_PANEL = "absolute z-50 w-48 rounded-lg border bg-surface py-1 text-sm text-text shadow-xl";
-const MENU_ITEM = "block w-full px-3 py-1.5 text-left hover:bg-neutral-100";
+const MENU_ITEM = "block w-full px-3 py-1.5 text-left hover:bg-hover";
 
 const BUTTON: Record<CreateMenuVariant, string> = {
   sidebar: `flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-md px-1.5 text-[13px] font-medium ${ACTION}`,

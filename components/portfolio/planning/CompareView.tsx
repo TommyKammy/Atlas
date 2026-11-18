@@ -451,7 +451,7 @@ export default function CompareView({
       {approval.enabled && (
         <section
           aria-label="投資提案の承認"
-          className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px] text-blue-900"
+          className="rounded-md border border-accent-line bg-accent-soft px-3 py-2.5 text-[12px] text-accent-text"
         >
           <div className="flex flex-wrap items-center gap-2">
             <Tag tone="blue">承認フロー有効</Tag>
@@ -498,7 +498,7 @@ export default function CompareView({
               </button>
             </div>
           ) : (
-            <p className="mt-1.5 text-[11px] text-blue-800">
+            <p className="mt-1.5 text-[11px] text-accent-text">
               {latestClosed
                 ? `前回の提案（版${latestClosed.version}・${proposalStatusLabel(latestClosed.status)}）は終了しました。内容を見直して新しい提案を提出できます。`
                 : "採用する案を選び、理由を添えて投資提案として提出します。提出時点のA案・B案が固定され、最終承認者が決定します。直接採用はできません。"}
@@ -526,8 +526,8 @@ export default function CompareView({
       )}
 
       {latest && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
-          <span className="min-w-0 text-[12px] text-blue-900">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-accent-line bg-accent-soft px-3 py-2">
+          <span className="min-w-0 text-[12px] text-accent-text">
             <b>採用記録　{latest.chosenScenarioName}</b>
             <span className="mx-2 text-blue-300">|</span>
             {latest.restricted ? "閲覧権限のない案件を含むため理由は非表示です" : latest.reason}

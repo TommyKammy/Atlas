@@ -80,7 +80,7 @@ export default function AddToPortfolioDialog({
           </button>
         </div>
         <div className="mt-4 flex items-center gap-3 rounded-lg border border-line p-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[#eaf2ff] text-accent-text">
+          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-soft text-accent-text">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5">
               <path d="M4 19V5M4 19h16M8 16V9M12 16V6M16 16v-4" strokeLinecap="round" />
             </svg>

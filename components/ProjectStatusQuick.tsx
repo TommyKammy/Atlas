@@ -84,7 +84,7 @@ export default function ProjectStatusQuick({
             disabled={!canEdit || busy}
             onClick={() => void update(option.label, option.color)}
             className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[13px] disabled:opacity-60 ${
-              status === option.label ? "border-blue-500 bg-blue-50" : "bg-surface hover:bg-neutral-50"
+              status === option.label ? "border-blue-500 bg-accent-soft" : "bg-surface hover:bg-hover"
             }`}
           >
             <span className={`h-2.5 w-2.5 rounded-full ${option.dot}`} />
@@ -97,7 +97,7 @@ export default function ProjectStatusQuick({
             data-overview-status-more
             aria-label="その他のステータス"
             onClick={() => setMore((v) => !v)}
-            className="flex h-8 w-8 items-center justify-center rounded-md border bg-surface text-muted hover:bg-neutral-50"
+            className="flex h-8 w-8 items-center justify-center rounded-md border bg-surface text-muted hover:bg-hover"
           >
             ⋯
           </button>
@@ -111,7 +111,7 @@ export default function ProjectStatusQuick({
                     type="button"
                     data-overview-status-option={option.label}
                     onClick={() => void update(option.label, option.color)}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-neutral-100"
+                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-hover"
                   >
                     <span className={`h-2.5 w-2.5 rounded-full ${option.dot}`} />
                     {option.label}

@@ -99,7 +99,7 @@ export default function ProjectHeaderStatus({
         aria-label={status ? `現在のステータス: ${status}` : "ステータスを設定"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs text-neutral-600 hover:bg-neutral-100"
+        className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs text-neutral-600 hover:bg-hover"
       >
         {body}
       </button>
@@ -116,7 +116,7 @@ export default function ProjectHeaderStatus({
                 type="button"
                 data-project-status-option={option.label}
                 onClick={() => void select(option.label, option.color)}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-secondary hover:bg-neutral-100"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-secondary hover:bg-hover"
               >
                 <span className={`h-3 w-3 rounded-full ${DOT[option.color]}`} />
                 {option.label}

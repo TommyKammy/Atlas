@@ -79,7 +79,7 @@ export default function ProjectMemberFacepile({
             aria-expanded={open}
             title={`ほか${overflow}人`}
             onClick={() => openDialog(false)}
-            className="relative inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-white bg-surface-muted px-1 text-[10px] font-semibold text-secondary hover:z-10 hover:bg-neutral-200 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4075cf] focus-visible:ring-offset-1"
+            className="relative inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-white bg-surface-muted px-1 text-[10px] font-semibold text-secondary hover:z-10 hover:bg-hover-strong focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4075cf] focus-visible:ring-offset-1"
           >
             +{overflow}
           </button>

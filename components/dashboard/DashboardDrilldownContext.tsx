@@ -80,10 +80,10 @@ export default function DashboardDrilldownContext({ projectId, selection, count,
         )}
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px]">
-        <a data-dashboard-return href={`/projects/${projectId}?view=dashboard`} className="rounded text-accent-text hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">
+        <a data-dashboard-return href={`/projects/${projectId}?view=dashboard`} className="rounded text-accent-text hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
           ダッシュボードへ戻る
         </a>
-        <a data-dashboard-clear href={`/projects/${projectId}?view=list`} className="rounded text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">
+        <a data-dashboard-clear href={`/projects/${projectId}?view=list`} className="rounded text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
           通常のリストに戻る
         </a>
       </div>

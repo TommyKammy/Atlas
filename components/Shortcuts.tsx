@@ -92,7 +92,7 @@ export default function Shortcuts({ projectId }: { projectId: number }) {
           ))}
         </div>
         <div className="mt-4 text-right">
-          <button onClick={() => setHelp(false)} className="rounded bg-neutral-800 px-3 py-1 text-sm text-white">
+          <button onClick={() => setHelp(false)} className="rounded bg-neutral-800 px-3 py-1 text-sm text-on-accent">
             閉じる
           </button>
         </div>

@@ -69,14 +69,14 @@ export default function ShareLinks({ projectId }: { projectId: number }) {
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="ラベル（任意）"
-          className="rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
+          className="rounded border px-2 py-1 text-sm outline-none focus:border-accent"
         />
         <select value={expiry} onChange={(e) => setExpiry(e.target.value)} className="rounded border px-2 py-1 text-sm">
           <option value="">無期限</option>
           <option value="7">7日間</option>
           <option value="30">30日間</option>
         </select>
-        <button onClick={create} className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700">
+        <button onClick={create} className="rounded bg-accent px-3 py-1 text-sm text-on-accent hover:bg-accent-hover">
           発行＋コピー
         </button>
       </div>}

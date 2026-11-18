@@ -148,11 +148,11 @@ export default function ProjectCustomizeButton({
   };
 
   const fieldTypeClass =
-    "mt-1 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]";
+    "mt-1 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent";
   const primaryButton =
-    "flex h-8 items-center justify-center rounded-md bg-accent px-3 text-[13px] font-medium text-white hover:bg-[#24549f] disabled:opacity-50";
+    "flex h-8 items-center justify-center rounded-md bg-accent px-3 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50";
   const secondaryButton =
-    "flex h-8 items-center justify-center rounded-md border border-line bg-surface px-3 text-[13px] text-secondary hover:bg-neutral-50 disabled:opacity-50";
+    "flex h-8 items-center justify-center rounded-md border border-line bg-surface px-3 text-[13px] text-secondary hover:bg-hover disabled:opacity-50";
 
   return (
     <>
@@ -166,7 +166,7 @@ export default function ProjectCustomizeButton({
         className={`hidden h-7 shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs whitespace-nowrap md:flex md:@max-[700px]:w-7 md:@max-[700px]:justify-center md:@max-[700px]:gap-0 md:@max-[700px]:px-0 ${
           open
             ? "border-accent bg-accent-soft text-accent-text"
-            : "border-line bg-surface text-secondary hover:bg-neutral-50"
+            : "border-line bg-surface text-secondary hover:bg-hover"
         }`}
       >
         <PaletteIcon />
@@ -195,7 +195,7 @@ export default function ProjectCustomizeButton({
                 type="button"
                 onClick={() => setPanel("home")}
                 aria-label="戻る"
-                className="mr-1 flex h-7 w-7 items-center justify-center rounded-md text-secondary hover:bg-neutral-100"
+                className="mr-1 flex h-7 w-7 items-center justify-center rounded-md text-secondary hover:bg-hover"
               >
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M13 8H3m4-4L3 8l4 4" />
@@ -207,7 +207,7 @@ export default function ProjectCustomizeButton({
               type="button"
               onClick={() => setOpen(false)}
               aria-label="閉じる"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-xl leading-none text-muted hover:bg-neutral-100"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-xl leading-none text-muted hover:bg-hover"
             >
               ×
             </button>
@@ -399,7 +399,7 @@ export default function ProjectCustomizeButton({
 
           <Toast
             message={toast}
-            className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-md bg-neutral-800 px-3 py-1.5 text-[12px] text-white shadow-lg"
+            className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-md bg-neutral-800 px-3 py-1.5 text-[12px] text-on-accent shadow-lg"
           />
           </aside>
         </>

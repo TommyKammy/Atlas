@@ -44,7 +44,7 @@ export default function PlanningHeader({
   return (
     <header className="space-y-3">
       <nav aria-label="パンくず" className="text-[12px] text-muted">
-        <Link href={backHref} className="text-[#24529c] hover:underline">
+        <Link href={backHref} className="text-accent-text hover:underline">
           ポートフォリオ
         </Link>
         <span className="mx-1.5" aria-hidden>›</span>
@@ -57,7 +57,7 @@ export default function PlanningHeader({
         <div className="flex min-w-0 items-start gap-3">
           <span
             aria-hidden
-            className="mt-0.5 hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#edf3fd] text-accent-text sm:flex"
+            className="mt-0.5 hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-text sm:flex"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5">
               <path d="M3 7h18v13H3z" />
@@ -73,7 +73,7 @@ export default function PlanningHeader({
               {approvalEnabled && <Tag tone="blue">承認フロー有効</Tag>}
             </div>
             <p className="mt-0.5 text-[12px] text-muted">共有ポートフォリオの投資計画</p>
-            <Link href={backHref} className="mt-1 inline-block text-[11px] text-[#24529c] hover:underline">
+            <Link href={backHref} className="mt-1 inline-block text-[11px] text-accent-text hover:underline">
               ← 選択中のポートフォリオに戻る
             </Link>
           </div>
@@ -133,7 +133,7 @@ export default function PlanningHeader({
               aria-current={current ? "page" : undefined}
               className={`-mb-px border-b-2 px-0.5 py-2 font-medium ${
                 current
-                  ? "border-accent text-[#24529c]"
+                  ? "border-accent text-accent-text"
                   : "border-transparent text-neutral-600 hover:border-neutral-300 hover:text-neutral-900"
               }`}
             >

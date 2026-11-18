@@ -29,7 +29,7 @@ function renderText(
         <span
           key={`${keyPrefix}-mention-${index}`}
           data-comment-mention={match[1]}
-          className="rounded bg-blue-50 px-1 font-medium text-blue-700"
+          className="rounded bg-accent-soft px-1 font-medium text-accent-text"
         >
           {match[0]}
         </span>,
@@ -86,7 +86,7 @@ function renderNode(
         <span
           key={key}
           data-comment-mention={label}
-          className="rounded bg-blue-50 px-1 font-medium text-blue-700"
+          className="rounded bg-accent-soft px-1 font-medium text-accent-text"
         >
           @{label}
         </span>

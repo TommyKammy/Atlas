@@ -79,7 +79,7 @@ export default function DuplicateProjectDialog({
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={100}
-            className="h-9 w-full rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20"
+            className="h-9 w-full rounded-md border border-line-strong px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
           />
         </label>
         <div className="mt-4 text-xs font-medium text-secondary">コピーする内容</div>
@@ -87,7 +87,7 @@ export default function DuplicateProjectDialog({
           {OPTIONS.map((option) => (
             <label
               key={option.key}
-              className="flex cursor-pointer items-start gap-2 rounded-md border border-line p-2.5 hover:bg-neutral-50"
+              className="flex cursor-pointer items-start gap-2 rounded-md border border-line p-2.5 hover:bg-hover"
             >
               <input
                 type="checkbox"

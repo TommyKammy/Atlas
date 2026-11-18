@@ -221,14 +221,14 @@ export default function DueDatePicker({
                   placeholder="開始日"
                   aria-label="開始日"
                   spellCheck={false}
-                  className="h-8 w-full rounded border border-neutral-300 px-2 pr-6 text-[12px] text-text outline-none focus:border-[#2c60b8]"
+                  className="h-8 w-full rounded border border-line-strong px-2 pr-6 text-[12px] text-text outline-none focus:border-accent"
                 />
                 {startText && (
                   <button
                     type="button"
                     aria-label="開始日をクリア"
                     onClick={() => applyRange("", parseShortDate(dueText) ?? due)}
-                    className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+                    className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-neutral-400 hover:bg-hover hover:text-neutral-600"
                   >
                     ×
                   </button>
@@ -253,14 +253,14 @@ export default function DueDatePicker({
                   placeholder="期日"
                   aria-label="期日"
                   spellCheck={false}
-                  className="h-8 w-full rounded border border-neutral-300 px-2 pr-6 text-[12px] text-text outline-none focus:border-[#2c60b8]"
+                  className="h-8 w-full rounded border border-line-strong px-2 pr-6 text-[12px] text-text outline-none focus:border-accent"
                 />
                 {dueText && (
                   <button
                     type="button"
                     aria-label="期日をクリア"
                     onClick={() => applyRange(parseShortDate(startText) ?? start, "")}
-                    className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+                    className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-neutral-400 hover:bg-hover hover:text-neutral-600"
                   >
                     ×
                   </button>
@@ -272,7 +272,7 @@ export default function DueDatePicker({
                 type="button"
                 aria-label="前月"
                 onClick={() => setViewMonth((current) => shiftMonthISO(current, -1))}
-                className="flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-neutral-100"
+                className="flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover"
               >
                 ‹
               </button>
@@ -281,7 +281,7 @@ export default function DueDatePicker({
                 type="button"
                 aria-label="翌月"
                 onClick={() => setViewMonth((current) => shiftMonthISO(current, 1))}
-                className="flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-neutral-100"
+                className="flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-hover"
               >
                 ›
               </button>
@@ -308,12 +308,12 @@ export default function DueDatePicker({
                     onClick={() => pickDay(iso)}
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-[12px] ${
                       selected
-                        ? "bg-accent font-medium text-white"
+                        ? "bg-accent font-medium text-on-accent"
                         : inRange
                           ? "bg-[#e8f0fe] text-accent-text"
                           : inMonth
-                            ? "text-secondary hover:bg-neutral-100"
-                            : "text-subtle hover:bg-neutral-100"
+                            ? "text-secondary hover:bg-hover"
+                            : "text-subtle hover:bg-hover"
                     } ${!selected && isToday ? "ring-1 ring-[#2c60b8]" : ""}`}
                   >
                     {Number(iso.slice(8, 10))}
@@ -327,7 +327,7 @@ export default function DueDatePicker({
                 type="button"
                 data-due-clear
                 onClick={clearRange}
-                className="rounded px-2 py-1 text-[12px] text-secondary hover:bg-neutral-100"
+                className="rounded px-2 py-1 text-[12px] text-secondary hover:bg-hover"
               >
                 クリア
               </button>

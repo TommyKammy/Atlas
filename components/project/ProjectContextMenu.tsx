@@ -110,7 +110,7 @@ export default function ProjectContextMenu({
   useMenuKeyboard({ containerRef: menuRef, onClose });
   if (typeof document === "undefined") return null;
   const item =
-    "flex h-9 w-full items-center gap-2 px-3 text-left text-[14px] text-text hover:bg-neutral-100";
+    "flex h-9 w-full items-center gap-2 px-3 text-left text-[14px] text-text hover:bg-hover";
   return createPortal(
     <>
       <div

@@ -26,7 +26,7 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             active === "published"
               ? "bg-accent-soft font-medium text-accent-text"
-              : "text-muted hover:bg-neutral-100"
+              : "text-muted hover:bg-hover"
           }`}
         >
           公開中 ({publishedCount})
@@ -39,7 +39,7 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             active === "all"
               ? "bg-accent-soft font-medium text-accent-text"
-              : "text-muted hover:bg-neutral-100"
+              : "text-muted hover:bg-hover"
           }`}
         >
           すべて ({forms.length})
@@ -65,7 +65,7 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
               key={form.id}
               href={`/projects/${form.project_id}?view=forms`}
               data-home-form-row={form.id}
-              className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-neutral-50"
+              className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-hover"
             >
               <ProjectIcon
                 id={form.project_id}

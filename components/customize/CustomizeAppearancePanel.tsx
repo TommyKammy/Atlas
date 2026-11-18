@@ -61,7 +61,7 @@ export default function CustomizeAppearancePanel({
             className={`flex h-9 w-9 items-center justify-center rounded-md border text-[10px] disabled:cursor-not-allowed disabled:opacity-50 ${
               icon === entry.key
                 ? "border-accent bg-accent-soft text-accent-text"
-                : "border-line text-muted hover:bg-neutral-50"
+                : "border-line text-muted hover:bg-hover"
             }`}
           >
             {entry.key ? (

@@ -121,7 +121,7 @@ export default function AssigneePicker({
                     data-assignee-option={user.id}
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => onPick(user.id)}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover"
                   >
                     <TaskAvatar
                       name={user.name}
@@ -151,7 +151,7 @@ export default function AssigneePicker({
                 data-assignee-unassign
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => onPick(null)}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-secondary hover:bg-neutral-100"
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-secondary hover:bg-hover"
               >
                 <EmptyCellIcon kind="assignee" />
                 <span className="flex-1">未割り当て</span>

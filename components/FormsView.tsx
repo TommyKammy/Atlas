@@ -241,7 +241,7 @@ export default function FormsView({
                     data-form-publish={form.id}
                     disabled={!canConfigure}
                     onClick={() => void togglePublish(form)}
-                    className="h-7 rounded-md border border-line px-2 text-[12px] text-secondary hover:bg-neutral-50"
+                    className="h-7 rounded-md border border-line px-2 text-[12px] text-secondary hover:bg-hover"
                   >
                     {form.published ? "非公開" : "公開"}
                   </button>
@@ -260,7 +260,7 @@ export default function FormsView({
                     disabled={!canConfigure}
                     aria-label={`${form.name}を編集`}
                     onClick={() => startEdit(form)}
-                    className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-secondary"
+                    className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-hover hover:text-secondary"
                   >
                     <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                       <path d="m10.5 2.5 3 3L6 13H3v-3z" />
@@ -319,7 +319,7 @@ export default function FormsView({
                 onChange={(event) => setBuilder({ ...builder, name: event.target.value })}
                 data-form-name
                 placeholder="例: 問い合わせフォーム"
-                className="mt-1 h-8 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+                className="mt-1 h-8 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent"
               />
             </label>
             <label className="mt-3 block text-[12px] font-medium text-secondary">
@@ -329,7 +329,7 @@ export default function FormsView({
                 onChange={(event) => setBuilder({ ...builder, description: event.target.value })}
                 data-form-description
                 rows={2}
-                className="mt-1 w-full rounded-md border border-neutral-200 px-2 py-1.5 text-[13px] outline-none focus:border-[#2c60b8]"
+                className="mt-1 w-full rounded-md border border-line px-2 py-1.5 text-[13px] outline-none focus:border-accent"
               />
             </label>
 
@@ -372,7 +372,7 @@ export default function FormsView({
                       onChange={(event) => updateField(index, { label: event.target.value })}
                       data-form-field-label={index}
                       placeholder={index === 0 ? "タスク名" : "項目名"}
-                      className="h-7 min-w-0 flex-1 rounded border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+                      className="h-7 min-w-0 flex-1 rounded border border-line px-2 text-[13px] outline-none focus:border-accent"
                     />
                     <select
                       value={field.type}
@@ -399,7 +399,7 @@ export default function FormsView({
                           checked={field.required}
                           onChange={(event) => updateField(index, { required: event.target.checked })}
                           data-form-field-required={index}
-                          className="h-3 w-3 accent-[#2c60b8]"
+                          className="h-3 w-3 accent-accent"
                         />
                         必須
                       </label>
@@ -431,7 +431,7 @@ export default function FormsView({
                       }
                       data-form-field-options={index}
                       placeholder="選択肢をカンマ区切り（例: 高, 中, 低）"
-                      className="mt-2 h-7 w-full rounded border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#2c60b8]"
+                      className="mt-2 h-7 w-full rounded border border-line px-2 text-[12px] outline-none focus:border-accent"
                     />
                   )}
                 </div>
@@ -442,7 +442,7 @@ export default function FormsView({
               <button
                 type="button"
                 onClick={() => setBuilder(null)}
-                className="rounded px-3 py-1.5 text-[13px] text-muted hover:bg-neutral-100"
+                className="rounded px-3 py-1.5 text-[13px] text-muted hover:bg-hover"
               >
                 キャンセル
               </button>
@@ -450,7 +450,7 @@ export default function FormsView({
                 type="submit"
                 data-form-save
                 disabled={busy}
-                className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
               >
                 保存
               </button>
@@ -501,7 +501,7 @@ export default function FormsView({
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
                       rows={3}
-                      className="mt-1 w-full rounded-md border border-neutral-200 px-2 py-1.5 text-[13px] outline-none focus:border-[#2c60b8]"
+                      className="mt-1 w-full rounded-md border border-line px-2 py-1.5 text-[13px] outline-none focus:border-accent"
                     />
                   ) : field.type === "select" ? (
                     <select
@@ -513,7 +513,7 @@ export default function FormsView({
                       value={answers[field.key] ?? ""}
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
-                      className="mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+                      className="mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
                     >
                       <option value="">選択してください</option>
                       {field.options.map((option) => (
@@ -533,7 +533,7 @@ export default function FormsView({
                       value={answers[field.key] ?? ""}
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
-                      className="mt-1 h-8 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+                      className="mt-1 h-8 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent"
                     />
                   )}
                 </label>
@@ -544,7 +544,7 @@ export default function FormsView({
               <button
                 type="button"
                 onClick={() => setAnswering(null)}
-                className="rounded px-3 py-1.5 text-[13px] text-muted hover:bg-neutral-100"
+                className="rounded px-3 py-1.5 text-[13px] text-muted hover:bg-hover"
               >
                 キャンセル
               </button>
@@ -552,7 +552,7 @@ export default function FormsView({
                 type="submit"
                 data-form-submit
                 disabled={busy}
-                className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
               >
                 送信
               </button>

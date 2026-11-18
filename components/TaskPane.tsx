@@ -38,7 +38,7 @@ import { QUICK_REACTIONS, useTaskPane } from "@/lib/use-task-pane";
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-9 items-start gap-2 rounded-md px-1 py-1 hover:bg-neutral-50">
+    <div className="flex min-h-9 items-start gap-2 rounded-md px-1 py-1 hover:bg-hover">
       <span className="w-[88px] shrink-0 truncate pt-1.5 text-[12px] text-muted" title={label}>
         {label}
       </span>
@@ -206,7 +206,7 @@ export default function TaskPane({
           <button
             type="button"
             onClick={() => setReferenceOpen(field.id)}
-            className="min-h-7 w-full rounded border border-transparent px-1 py-1 text-left text-[13px] text-secondary hover:border-line hover:bg-white"
+            className="min-h-7 w-full rounded border border-transparent px-1 py-1 text-left text-[13px] text-secondary hover:border-line hover:bg-hover"
           >
             {customFieldDisplay(field, value, task, users, customValues, customFields)}
           </button>
@@ -261,7 +261,7 @@ export default function TaskPane({
           onBlur={(event) =>
             setCustomValue(field.id, event.target.value === "" ? null : Number(event.target.value))
           }
-          className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
+          className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
         />
       );
     }
@@ -272,7 +272,7 @@ export default function TaskPane({
           defaultValue={value?.value_date ?? ""}
           key={`cf-${task.id}-${field.id}`}
           onBlur={(event) => setCustomValue(field.id, event.target.value || null)}
-          className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
+          className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
         />
       );
     }
@@ -310,7 +310,7 @@ export default function TaskPane({
           defaultValue={customValueToInput(field, value)}
           key={`cf-${task.id}-${field.id}`}
           onChange={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
-          className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
+          className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
         >
           <option value="">–</option>
           {field.options.map((option) => (
@@ -326,7 +326,7 @@ export default function TaskPane({
         defaultValue={customValueToInput(field, value)}
         key={`cf-${task.id}-${field.id}`}
         onBlur={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
-        className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
+        className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
       />
     );
   };
@@ -407,14 +407,14 @@ export default function TaskPane({
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={retryOverwrite}
-                  className="rounded bg-red-600 px-3 py-1 text-white hover:bg-red-700"
+                  className="rounded bg-red-600 px-3 py-1 text-on-accent hover:bg-red-700"
                 >
                   最新で上書きする
                 </button>
                 <button
                   onClick={discardConflict}
                   data-task-conflict-discard
-                  className="rounded border px-3 py-1 hover:bg-white"
+                  className="rounded border px-3 py-1 hover:bg-hover"
                 >
                   破棄して最新表示
                 </button>
@@ -433,7 +433,7 @@ export default function TaskPane({
             onSave={(value, stamp) => { if (value.trim()) return patch({ name: value.trim() }, stamp); }}
             normalize={(value) => value.trim()}
             enterBlurs
-            className="w-full border-b border-transparent bg-transparent pb-1 text-[24px] font-semibold leading-8 tracking-[-0.01em] text-text outline-none placeholder:text-subtle focus:border-[#4075cf]"
+            className="w-full border-b border-transparent bg-transparent pb-1 text-[24px] font-semibold leading-8 tracking-[-0.01em] text-text outline-none placeholder:text-subtle focus:border-accent"
             placeholder="タスク名を入力"
           />
 
@@ -466,7 +466,7 @@ export default function TaskPane({
                   type="button"
                   onClick={() => setAssigneeEditing(true)}
                   aria-label="担当者を設定"
-                  className="flex h-7 min-w-0 max-w-full items-center gap-2 rounded px-1 text-[13px] text-text hover:bg-neutral-100"
+                  className="flex h-7 min-w-0 max-w-full items-center gap-2 rounded px-1 text-[13px] text-text hover:bg-hover"
                 >
                   {assignee ? (
                     <TaskAvatar name={assignee.name} url={assignee.avatar_url} className="h-5 w-5" textClassName="text-[9px]" />
@@ -510,7 +510,7 @@ export default function TaskPane({
                   const isPrimary = membership.id === task.project_id;
                   return (
                     <div key={membership.id} className="flex min-h-7 items-center gap-1.5 text-[13px]">
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[#e8eef8] text-[#38506e]">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-accent-soft text-accent-text">
                         <svg viewBox="0 0 16 16" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                           <path d="M3 13V3h10v10zM3 6h10M6 6v7" />
                         </svg>
@@ -525,7 +525,7 @@ export default function TaskPane({
                         <button
                           type="button"
                           onClick={() => removeMembership(membership.id)}
-                          className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
+                          className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-hover hover:text-red-600"
                           title="所属を外す"
                           aria-label={`${membership.name} から外す`}
                         >
@@ -539,7 +539,7 @@ export default function TaskPane({
                   <button
                     type="button"
                     onClick={openAddProject}
-                    className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-secondary"
+                    className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-secondary"
                   >
                     <span className="text-sm leading-none">＋</span>
                     プロジェクトを追加
@@ -549,7 +549,7 @@ export default function TaskPane({
                     <select
                       value={newMemberProject}
                       onChange={(event) => onPickMemberProject(event.target.value)}
-                      className="h-8 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                      className="h-8 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-accent"
                       aria-label="プロジェクトを選択"
                     >
                       <option value="">プロジェクトを選択</option>
@@ -566,7 +566,7 @@ export default function TaskPane({
                         <select
                           value={newMemberSection}
                           onChange={(event) => setNewMemberSection(event.target.value)}
-                          className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                          className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-accent"
                           aria-label="セクションを選択"
                         >
                           <option value="">セクションなし</option>
@@ -579,7 +579,7 @@ export default function TaskPane({
                         <button
                           type="button"
                           onClick={addMembership}
-                          className="shrink-0 rounded bg-[#2f6fd0] px-3 text-[12px] font-medium text-white hover:bg-[#2459ad]"
+                          className="shrink-0 rounded bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover"
                         >
                           追加
                         </button>
@@ -588,7 +588,7 @@ export default function TaskPane({
                     <button
                       type="button"
                       onClick={closeAddProject}
-                      className="self-start rounded px-1 py-0.5 text-[11px] text-muted hover:bg-neutral-100"
+                      className="self-start rounded px-1 py-0.5 text-[11px] text-muted hover:bg-hover"
                     >
                       キャンセル
                     </button>
@@ -612,7 +612,7 @@ export default function TaskPane({
                   onSave={(value, stamp) => patch({ progress: Math.max(0, Math.min(100, Number(value))) }, stamp)}
                   normalize={(value) => String(Math.max(0, Math.min(100, Number(value))))}
                   label="進捗"
-                  className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
+                  className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
                 />
                 <span className="text-[10px] text-subtle">%</span>
                 <span className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-strong">
@@ -636,7 +636,7 @@ export default function TaskPane({
                           patch({ status: choice });
                           event.currentTarget.closest("details")?.removeAttribute("open");
                         }}
-                        className={`flex w-full items-center rounded px-2 py-1 text-left hover:bg-neutral-100 ${
+                        className={`flex w-full items-center rounded px-2 py-1 text-left hover:bg-hover ${
                           choice === task.status ? "font-semibold text-text" : "text-secondary"
                         }`}
                       >
@@ -652,7 +652,7 @@ export default function TaskPane({
               <select
                 value={task.recurrence ?? "none"}
                 onChange={(event) => patch({ recurrence: event.target.value })}
-                className="h-7 max-w-[180px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
+                className="h-7 max-w-[180px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
                 aria-label="繰り返し"
               >
                 <option value="none">なし</option>

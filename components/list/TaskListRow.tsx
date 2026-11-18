@@ -91,7 +91,7 @@ function MultiSelectEditor({
       <div className="max-h-48 space-y-0.5 overflow-y-auto">
         {options.length === 0 && <div className="px-1 py-2 text-[11px] text-subtle">選択肢がありません</div>}
         {options.map((option) => (
-          <label key={option} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-neutral-50">
+          <label key={option} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-hover">
             <input
               type="checkbox"
               checked={selected.includes(option)}
@@ -108,10 +108,10 @@ function MultiSelectEditor({
         ))}
       </div>
       <div className="mt-2 flex justify-end gap-1.5 border-t border-line-subtle pt-2">
-        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100">
+        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-muted hover:bg-hover">
           キャンセル
         </button>
-        <button type="button" onClick={() => onSave(selected)} className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]">
+        <button type="button" onClick={() => onSave(selected)} className="rounded bg-accent px-3 py-1 text-[11px] font-medium text-on-accent hover:bg-accent-hover">
           保存
         </button>
       </div>
@@ -139,7 +139,7 @@ function PeopleEditor({
       <div className="max-h-48 space-y-0.5 overflow-y-auto">
         {users.length === 0 && <div className="px-1 py-2 text-[11px] text-subtle">メンバーがいません</div>}
         {users.map((user) => (
-          <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-neutral-50">
+          <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-hover">
             <input
               type="checkbox"
               checked={selected.includes(user.id)}
@@ -156,10 +156,10 @@ function PeopleEditor({
         ))}
       </div>
       <div className="mt-2 flex justify-end gap-1.5 border-t border-line-subtle pt-2">
-        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100">
+        <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-muted hover:bg-hover">
           キャンセル
         </button>
-        <button type="button" onClick={() => onSave(selected)} className="rounded bg-[#2f6fd0] px-3 py-1 text-[11px] font-medium text-white hover:bg-[#2459ad]">
+        <button type="button" onClick={() => onSave(selected)} className="rounded bg-accent px-3 py-1 text-[11px] font-medium text-on-accent hover:bg-accent-hover">
           保存
         </button>
       </div>
@@ -288,7 +288,7 @@ export default function TaskListRow({
             ? "bg-accent-soft"
             : t.id === activeTaskId
               ? "bg-accent-soft"
-              : "hover:bg-neutral-50"
+              : "hover:bg-hover"
       } ${
         dropHint?.id === t.id
           ? dropHint.before
@@ -365,7 +365,7 @@ export default function TaskListRow({
             onClick={(e) => openEdit(e, t, "name", t.name)}
             title={`${t.name} — クリックで名前を編集`}
             dir="auto"
-            className="w-fit max-w-full min-w-0 flex-none cursor-text truncate rounded hover:bg-neutral-100"
+            className="w-fit max-w-full min-w-0 flex-none cursor-text truncate rounded hover:bg-hover"
           >
             {t.name || "タスク名を入力"}
           </span>
@@ -420,7 +420,7 @@ export default function TaskListRow({
           onClick={(e) => openEdit(e, t, "assignee", t.assignee_id === null ? "" : String(t.assignee_id))}
           title={t.assignee_name ? "クリックで編集" : "未割り当て — クリックで編集"}
           style={{ order: visibleCols.indexOf("assignee") }}
-          className="flex min-w-0 cursor-pointer items-center gap-1.5 truncate rounded pl-2 text-secondary hover:bg-neutral-100"
+          className="flex min-w-0 cursor-pointer items-center gap-1.5 truncate rounded pl-2 text-secondary hover:bg-hover"
         >
           {t.assignee_name ? (
             <>
@@ -444,7 +444,7 @@ export default function TaskListRow({
         </div>
       ) : (
         <span onClick={(e) => openDueEdit(e, t)} style={{ order: visibleCols.indexOf("due") }}
-          title="クリックで編集" className="cursor-pointer rounded py-0.5 pr-1 pl-2 hover:bg-neutral-100">
+          title="クリックで編集" className="cursor-pointer rounded py-0.5 pr-1 pl-2 hover:bg-hover">
           {t.start_on || t.due_on ? (
             (() => {
               const [s1, s2] = dueSegs(t.start_on, t.due_on);
@@ -464,7 +464,7 @@ export default function TaskListRow({
               onClick={(e) => openDueEdit(e, t)}
               title="期日を設定"
               aria-label="期日を設定"
-              className="flex h-5 w-5 items-center justify-center rounded-full text-[#767676] hover:bg-neutral-100"
+              className="flex h-5 w-5 items-center justify-center rounded-full text-[#767676] hover:bg-hover"
             >
               <EmptyCellIcon kind="due" />
             </button>
@@ -501,7 +501,7 @@ export default function TaskListRow({
           onClick={(e) => openEdit(e, t, "progress", String(t.progress))}
           title="クリックで編集"
           style={{ order: visibleCols.indexOf("progress") }}
-          className="flex min-h-5 cursor-pointer items-center gap-1.5 rounded pl-2 hover:bg-neutral-100"
+          className="flex min-h-5 cursor-pointer items-center gap-1.5 rounded pl-2 hover:bg-hover"
         >
           {t.progress > 0 ? (
             <>
@@ -540,7 +540,7 @@ export default function TaskListRow({
             onClick={(e) => openEdit(e, t, "status", t.status)}
             title="クリックで編集"
             style={{ order: visibleCols.indexOf("status") }}
-            className="min-h-5 cursor-pointer truncate rounded pl-2 hover:bg-neutral-100"
+            className="min-h-5 cursor-pointer truncate rounded pl-2 hover:bg-hover"
           >
             {t.status && t.status !== "inbox" ? (
               <TaskStatusChip status={t.status} compact />
@@ -604,7 +604,7 @@ export default function TaskListRow({
               onClick={(e) => openEdit(e, t, fieldKey, customRaw(t.id, f))}
               title="クリックで編集"
               style={{ order }}
-              className="cursor-pointer truncate rounded pl-2 text-secondary hover:bg-neutral-100"
+              className="cursor-pointer truncate rounded pl-2 text-secondary hover:bg-hover"
             >
               {display}
             </span>
@@ -749,11 +749,11 @@ export default function TaskListRow({
             }}
             placeholder="サブタスク名を入力"
             autoFocus
-            className="w-full max-w-md rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
+            className="w-full max-w-md rounded border px-2 py-1 text-sm outline-none focus:border-accent"
           />
           <button
             onClick={() => addSubtask(t)}
-            className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+            className="rounded bg-accent px-3 py-1 text-sm text-on-accent hover:bg-accent-hover"
           >
             追加
           </button>
@@ -761,7 +761,7 @@ export default function TaskListRow({
       ) : (
         <button
           onClick={() => setSubAdding(t.id)}
-          className="flex h-9 w-full items-center rounded pr-2 pl-[108px] text-left text-[13px] whitespace-nowrap text-muted hover:bg-neutral-50 hover:text-secondary"
+          className="flex h-9 w-full items-center rounded pr-2 pl-[108px] text-left text-[13px] whitespace-nowrap text-muted hover:bg-hover hover:text-secondary"
         >
           サブタスクを追加
         </button>

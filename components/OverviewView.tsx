@@ -8,7 +8,7 @@ import ProjectDescriptionEditor from "./ProjectDescriptionEditor";
 import ProjectStatusQuick from "./ProjectStatusQuick";
 import ProjectShareButton from "./ProjectShareButton";
 
-const link = "rounded text-sm text-[#24529c] hover:underline focus-visible:outline-2 focus-visible:outline-blue-600";
+const link = "rounded text-sm text-accent-text hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring";
 const day = (value: string | null) => value ? value.replaceAll("-", "/") : "未設定";
 export default function OverviewView({ projectId, stats, members, projectStatus, projectStatusColor, projectName, description, activity, canEdit, ownerId, dueOn, milestones }: {
   projectId: number; stats: ProjectStats; members: { id: number; name: string; role: string | null }[];
@@ -16,16 +16,16 @@ export default function OverviewView({ projectId, stats, members, projectStatus,
   ownerId: number | null; dueOn: string | null; milestones: { id: number; name: string; due_on: string | null; completed: boolean }[];
 }) {
   const owner = members.find(m => m.id === ownerId), progress = stats.total ? Math.round(stats.done / stats.total * 100) : 0;
-  const memberAvatar = (name: string) => <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-[#24529c]">{name.slice(0, 1)}</span>;
+  const memberAvatar = (name: string) => <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent-text">{name.slice(0, 1)}</span>;
   return <ProjectPartnerWorkspace key={projectId} projectId={projectId} canEdit={canEdit}>
     <div data-overview-hero className="min-w-0">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <details className="relative">
-          <summary className="cursor-pointer rounded-md px-2 py-1.5 text-xs text-secondary hover:bg-neutral-50 focus-visible:outline-blue-600">ステータス：{projectStatus && projectStatus !== "active" ? projectStatus : "未設定"}</summary>
+          <summary className="cursor-pointer rounded-md px-2 py-1.5 text-xs text-secondary hover:bg-hover focus-visible:outline-focus-ring">ステータス：{projectStatus && projectStatus !== "active" ? projectStatus : "未設定"}</summary>
           <div className="mt-2 rounded-lg border border-line bg-surface p-3"><ProjectStatusQuick projectId={projectId} initialStatus={projectStatus} initialColor={projectStatusColor ?? "none"} canEdit={canEdit} /></div>
         </details>
         <details className="relative">
-          <summary className="cursor-pointer rounded-md border border-line px-2.5 py-1.5 text-xs text-secondary hover:bg-neutral-50">オプション</summary>
+          <summary className="cursor-pointer rounded-md border border-line px-2.5 py-1.5 text-xs text-secondary hover:bg-hover">オプション</summary>
           <div className="absolute right-0 z-30 mt-2 flex w-60 max-w-[calc(100vw-48px)] flex-col gap-2 rounded-lg border border-line bg-surface p-4 text-sm shadow-sm">
             <span className="text-xs text-secondary">書き出す</span><a href={`/api/projects/${projectId}/export?format=json`} className={link}>JSON</a><a href={`/api/projects/${projectId}/export?format=csv`} className={link}>CSV</a>
             {canEdit && <><span className="mt-2 text-xs text-secondary">インポート</span><ImportForm projectId={projectId} /></>}
@@ -42,7 +42,7 @@ export default function OverviewView({ projectId, stats, members, projectStatus,
       <div role="progressbar" aria-label="タスクの完了率" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted"><div className="h-full rounded-full bg-accent" style={{ width: `${progress}%` }} /></div>
       <div className="mt-8 grid min-w-0 gap-7 border-t border-line pt-7 lg:grid-cols-2 lg:gap-10">
         <section aria-label="マイルストーン" className="min-w-0"><div className="flex items-center justify-between gap-3"><h2 className="text-base font-semibold">マイルストーン</h2><Link href={`/projects/${projectId}?view=list`} className={`${link} text-xs`}>一覧で見る</Link></div>
-          {!milestones.length ? <p className="mt-4 text-sm leading-6 text-secondary">マイルストーンはまだありません。リストから節目となるタスクを設定できます。</p> : <ul className="mt-3 divide-y divide-line-subtle">{milestones.map(m => <li key={m.id} className="flex items-start gap-3 py-3"><span aria-label={m.completed ? "完了" : "未完了"} className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border text-xs ${m.completed ? "border-accent bg-accent text-white" : "border-line-strong"}`}>{m.completed ? "✓" : ""}</span><div className="min-w-0"><Link href={`/projects/${projectId}?view=list&task=${m.id}`} className="break-words text-sm font-medium hover:text-[#24529c] hover:underline">{m.name}</Link><p className="mt-1 text-xs tabular-nums text-secondary">{day(m.due_on)}</p></div></li>)}</ul>}
+          {!milestones.length ? <p className="mt-4 text-sm leading-6 text-secondary">マイルストーンはまだありません。リストから節目となるタスクを設定できます。</p> : <ul className="mt-3 divide-y divide-line-subtle">{milestones.map(m => <li key={m.id} className="flex items-start gap-3 py-3"><span aria-label={m.completed ? "完了" : "未完了"} className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border text-xs ${m.completed ? "border-accent bg-accent text-on-accent" : "border-line-strong"}`}>{m.completed ? "✓" : ""}</span><div className="min-w-0"><Link href={`/projects/${projectId}?view=list&task=${m.id}`} className="break-words text-sm font-medium hover:text-accent-text hover:underline">{m.name}</Link><p className="mt-1 text-xs tabular-nums text-secondary">{day(m.due_on)}</p></div></li>)}</ul>}
         </section>
         <div className="min-w-0 space-y-6">
           <section id="roles"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-base font-semibold">メンバー <span className="ml-1 text-sm font-normal text-secondary">{members.length}</span></h2><ProjectShareButton projectId={projectId} projectName={projectName} label="メンバーを管理" /></div>
@@ -51,7 +51,7 @@ export default function OverviewView({ projectId, stats, members, projectStatus,
           <section className="border-t border-line pt-5"><h2 className="text-sm font-semibold">関連情報</h2><nav aria-label="プロジェクトの関連情報" className="mt-3 flex flex-wrap gap-x-5 gap-y-3">{[["knowledge", "知識・ノート"], ["files", "ファイル"], ["messages", "メッセージ"], ["dashboard", "ダッシュボード"]].map(([view, title]) => <Link key={view} href={`/projects/${projectId}?view=${view}`} className={link}>{title}</Link>)}</nav></section>
         </div>
       </div>
-      <details className="mt-7 border-t border-line pt-4" data-overview-details><summary className="cursor-pointer rounded py-1 text-sm text-secondary focus-visible:outline-blue-600">詳細な進捗とアクティビティ</summary>
+      <details className="mt-7 border-t border-line pt-4" data-overview-details><summary className="cursor-pointer rounded py-1 text-sm text-secondary focus-visible:outline-focus-ring">詳細な進捗とアクティビティ</summary>
         <div className="mt-5 space-y-7"><StatCards stats={stats} />
           <section><h2 className="text-sm font-semibold">セクション別進捗</h2><ul className="mt-3 space-y-3">{stats.bySection.map(s => <li key={s.id}><div className="flex justify-between gap-3 text-sm"><Link href={`/projects/${projectId}?view=list`} className="min-w-0 truncate hover:underline">{s.name}</Link><span className="shrink-0 text-xs text-secondary">{s.done} / {s.total}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded bg-surface-muted"><div className="h-full bg-accent" style={{width: `${s.total ? Math.round(s.done / s.total * 100) : 0}%`}} /></div></li>)}</ul></section>
           <section><h2 className="text-sm font-semibold">期限が近いタスク</h2>{!stats.upcoming.length && <p className="mt-2 text-sm text-secondary">期限付きの未完了タスクはありません。</p>}<ul className="mt-2 divide-y divide-line-subtle">{stats.upcoming.map(t => <li key={t.id} className="py-2"><Link className={link} href={`/projects/${projectId}?view=list&task=${t.id}`}>{t.name}</Link><p className="mt-1 text-xs text-secondary">{day(t.due_on)} · {t.assignee_name ?? "担当者未設定"}</p></li>)}</ul></section>

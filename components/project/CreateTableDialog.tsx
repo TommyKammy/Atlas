@@ -68,7 +68,7 @@ export default function CreateTableDialog({
             <div className="mt-3 flex gap-2">
               <a
                 href={`/tables/${created.id}`}
-                className="flex h-8 items-center rounded-md bg-[#4075cf] px-3 text-sm font-medium text-white hover:bg-[#3567b8]"
+                className="flex h-8 items-center rounded-md bg-accent px-3 text-sm font-medium text-on-accent hover:bg-accent-hover"
               >
                 テーブルを開く
               </a>
@@ -89,7 +89,7 @@ export default function CreateTableDialog({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 maxLength={120}
-                className="h-9 w-full rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20"
+                className="h-9 w-full rounded-md border border-line-strong px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
               />
             </label>
             <div className="mt-4 space-y-1.5">

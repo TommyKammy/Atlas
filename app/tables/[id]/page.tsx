@@ -42,13 +42,13 @@ export default async function ProjectTablePage({ params }: { params: Promise<{ i
         <h1 className="text-lg font-bold">{table.name}</h1>
         <a
           href={`/api/tables/${table.id}/export?format=csv`}
-          className="text-sm text-blue-700 hover:underline"
+          className="text-sm text-accent-text hover:underline"
         >
           CSV
         </a>
         <a
           href={`/api/tables/${table.id}/export?format=xlsx`}
-          className="text-sm text-blue-700 hover:underline"
+          className="text-sm text-accent-text hover:underline"
         >
           XLSX
         </a>
@@ -76,7 +76,7 @@ export default async function ProjectTablePage({ params }: { params: Promise<{ i
               </tr>
             )}
             {table.rows.map((row, rowIndex) => (
-              <tr key={rowIndex} className="odd:bg-white even:bg-neutral-50/50">
+              <tr key={rowIndex} className="odd:bg-white even:bg-surface-subtle/50">
                 {table.columns.map((column, columnIndex) => (
                   <td key={column.key} className="whitespace-nowrap border-b border-line-subtle px-3 py-1.5">
                     {String(row[columnIndex] ?? "")}

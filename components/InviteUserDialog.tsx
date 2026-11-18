@@ -48,7 +48,7 @@ export default function InviteUserDialog({
     }
   };
 
-  const field = "w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-[#4075cf]";
+  const field = "w-full rounded-md border border-line-strong px-3 py-2 text-sm outline-none focus:border-accent";
   return (
     <div
       className="fixed inset-0 z-[140] flex items-center justify-center bg-black/30 p-4"
@@ -94,15 +94,15 @@ export default function InviteUserDialog({
             type="button"
             onClick={invite}
             disabled={busy || !email.trim()}
-            className="w-full rounded-md bg-[#4075cf] px-4 py-2 text-sm font-medium text-white hover:bg-[#3567b8] disabled:opacity-40"
+            className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-40"
           >
             {busy ? "送信中…" : "招待を送る"}
           </button>
         </div>
         {msg && <p className="mt-2 text-xs text-secondary">{msg}</p>}
         {result && (
-          <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2 text-xs">
-            <div className="font-medium text-blue-900">
+          <div className="mt-3 rounded-md border border-accent-line bg-accent-soft p-2 text-xs">
+            <div className="font-medium text-accent-text">
               {result.emailed ? "招待メールを送信しました" : "SMTP未設定: 下のリンクを共有してください"}
             </div>
             <div className="mt-1 flex gap-1">
@@ -110,7 +110,7 @@ export default function InviteUserDialog({
               <button
                 type="button"
                 onClick={() => navigator.clipboard?.writeText(result.url).catch(() => undefined)}
-                className="rounded border bg-white px-2 py-1 text-secondary hover:bg-neutral-50"
+                className="rounded border bg-surface px-2 py-1 text-secondary hover:bg-hover"
               >
                 コピー
               </button>
@@ -119,7 +119,7 @@ export default function InviteUserDialog({
           </div>
         )}
         <div className="mt-4 text-right">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100">
+          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-secondary hover:bg-hover">
             閉じる
           </button>
         </div>

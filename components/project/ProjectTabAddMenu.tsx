@@ -157,7 +157,7 @@ export default function ProjectTabAddMenu({
                     data-project-tab-add-option={option.value}
                     disabled={busyView !== null}
                     onClick={() => onSelect(option)}
-                    className="flex items-start gap-3 rounded-md px-2 py-2 text-left hover:bg-neutral-50 focus-visible:bg-neutral-50 focus-visible:outline-none disabled:opacity-50"
+                    className="flex items-start gap-3 rounded-md px-2 py-2 text-left hover:bg-hover focus-visible:bg-neutral-50 focus-visible:outline-none disabled:opacity-50"
                   >
                     <ViewIcon view={option.value} />
                     <span className="min-w-0">

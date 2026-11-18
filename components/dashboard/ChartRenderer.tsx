@@ -31,7 +31,7 @@ function SvgDatumLink({
       data-dashboard-chart-link={kind}
       data-dashboard-chart-category={categoryKey}
       data-dashboard-chart-series={seriesIndex}
-      className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+      className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
     >
       {children}
     </a>
@@ -46,7 +46,7 @@ function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
     <details data-dashboard-chart-data onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-1 text-[11px] text-secondary">
       <summary
         aria-label={`${title ?? "チャート"}のデータを表示`}
-        className="w-fit cursor-pointer rounded px-1 py-1 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+        className="w-fit cursor-pointer rounded px-1 py-1 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
       >
         データを表示
       </summary>
@@ -77,7 +77,7 @@ function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
                             data-dashboard-chart-link="table"
                             data-dashboard-chart-category={category.key}
                             data-dashboard-chart-series={seriesIndex}
-                            className="inline-block rounded px-1 py-0.5 text-blue-700 underline underline-offset-2 hover:text-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+                            className="inline-block rounded px-1 py-0.5 text-accent-text underline underline-offset-2 hover:text-accent-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                           >
                             {value}
                           </a>
@@ -409,7 +409,7 @@ function DonutChart({ data, title, hrefFor }: ChartProps) {
               data-dashboard-chart-link="legend"
               data-dashboard-chart-category={slice.category.key}
               data-dashboard-chart-series={0}
-              className="flex items-center gap-2 rounded px-1 py-0.5 text-[12px] text-secondary hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+              className="flex items-center gap-2 rounded px-1 py-0.5 text-[12px] text-secondary hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >{content}</a>
           ) : <div key={slice.category.key ?? slice.categoryIndex} className="flex items-center gap-2 text-[12px] text-secondary">{content}</div>;
         })}
@@ -545,7 +545,7 @@ export default function ChartRenderer({
     return (
       <div className="flex min-h-[64px] flex-col items-center justify-center py-1">
         {href ? (
-          <a href={href} aria-label={datumLabel(title, "", "", value)} data-dashboard-chart-link="total" className={`${valueClass} rounded hover:underline hover:decoration-neutral-300 hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2c60b8]`}>
+          <a href={href} aria-label={datumLabel(title, "", "", value)} data-dashboard-chart-link="total" className={`${valueClass} rounded hover:underline hover:decoration-neutral-300 hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus-ring`}>
             {value}
           </a>
         ) : <div className={valueClass}>{value}</div>}

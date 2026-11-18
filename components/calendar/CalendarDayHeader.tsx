@@ -37,7 +37,7 @@ export default function CalendarDayHeader({
             <span
               className={`inline-flex items-center justify-center font-normal ${
                 isToday
-                  ? "h-7 min-w-7 rounded-lg bg-[#4075cf] px-1 text-[14px] text-white"
+                  ? "h-7 min-w-7 rounded-lg bg-accent px-1 text-[14px] text-on-accent"
                   : `text-[14px] ${sameMonth ? "text-text" : "text-subtle"}`
               }`}
             >
@@ -48,7 +48,7 @@ export default function CalendarDayHeader({
             <button
               type="button"
               onClick={() => onAdd(iso)}
-              className="mt-0.5 flex h-5 w-fit items-center rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-text"
+              className="mt-0.5 flex h-5 w-fit items-center rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-text"
             >
               ＋ タスクを追加
             </button>
@@ -58,7 +58,7 @@ export default function CalendarDayHeader({
         <span
           className={`inline-flex items-center justify-center text-xs ${
             isToday
-              ? "h-6 min-w-6 rounded-md bg-[#4075cf] px-1 font-medium text-white"
+              ? "h-6 min-w-6 rounded-md bg-accent px-1 font-medium text-on-accent"
               : sameMonth
                 ? "text-secondary"
                 : "text-subtle"

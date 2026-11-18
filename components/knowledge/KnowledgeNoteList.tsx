@@ -20,18 +20,18 @@ export default function KnowledgeNoteList({ notes, selectedId, disabled, canReor
     <div ref={listRef} role="navigation" data-reorder-scroll className="flex max-h-64 flex-col gap-1 overflow-y-auto overscroll-contain px-0.5 py-1 lg:max-h-[65vh]" aria-label="ノートを選択">
       {notes.map((note) => {
         const target = drag?.active && drag.target?.id === note.id && drag.id !== note.id ? drag.target.placement : null;
-        return <div key={note.id} data-note-row={note.id} data-reorder-id={note.id} className={`group relative flex shrink-0 items-center rounded-md ${selectedId === note.id ? "bg-blue-50 text-blue-800" : "hover:bg-neutral-50"} ${drag?.active && drag.id === note.id ? "opacity-40" : ""}`}>
-          {target && <span data-note-drop={target} className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded bg-blue-600 ${target === "before" ? "-top-0.5" : "-bottom-0.5"}`} />}
+        return <div key={note.id} data-note-row={note.id} data-reorder-id={note.id} className={`group relative flex shrink-0 items-center rounded-md ${selectedId === note.id ? "bg-accent-soft text-accent-text" : "hover:bg-hover"} ${drag?.active && drag.id === note.id ? "opacity-40" : ""}`}>
+          {target && <span data-note-drop={target} className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded bg-accent ${target === "before" ? "-top-0.5" : "-bottom-0.5"}`} />}
           <button {...(canReorder ? itemProps<HTMLButtonElement>(note.id, note.title) : {})}
             type="button" data-knowledge-note={note.id} data-note-reorder={canReorder ? note.id : undefined}
             aria-describedby={canReorder ? instructions : undefined} aria-current={selectedId === note.id ? "page" : undefined} aria-disabled={disabled}
-            onClick={() => { if (!disabled) onSelect(note.id); }} className="min-w-0 flex-1 rounded-md px-2 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-blue-600">
+            onClick={() => { if (!disabled) onSelect(note.id); }} className="min-w-0 flex-1 rounded-md px-2 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-focus-ring">
             <span data-reorder-label={canReorder ? true : undefined} className="block truncate text-sm font-medium" style={canReorder ? { touchAction: "none" } : undefined}>{note.title}</span>
             <span className="mt-1 block text-xs text-secondary">{date(note.updated_at)}</span>
           </button>
         </div>;
       })}
     </div>
-    {drag?.active && createPortal(<div aria-hidden="true" className="pointer-events-none fixed z-50 max-w-60 truncate rounded-md border border-blue-200 bg-surface px-3 py-2 text-sm text-blue-800 shadow-lg" style={{ left: drag.x + 12, top: drag.y + 12 }}>{drag.title}</div>, document.body)}
+    {drag?.active && createPortal(<div aria-hidden="true" className="pointer-events-none fixed z-50 max-w-60 truncate rounded-md border border-accent-line bg-surface px-3 py-2 text-sm text-accent-text shadow-lg" style={{ left: drag.x + 12, top: drag.y + 12 }}>{drag.title}</div>, document.body)}
   </>;
 }

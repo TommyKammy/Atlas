@@ -6,10 +6,10 @@ const subscribeReady = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
-export const knowledgeActionBase = "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50";
-export const knowledgeAction = `${knowledgeActionBase} border-neutral-200 text-neutral-700 hover:bg-neutral-50`;
-export const knowledgePrimaryAction = `${knowledgeActionBase} border-accent bg-accent text-white hover:bg-[#24529c]`;
-export const knowledgeMenuItem = "flex min-h-10 w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none disabled:opacity-50";
+export const knowledgeActionBase = "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:opacity-50";
+export const knowledgeAction = `${knowledgeActionBase} border-neutral-200 text-neutral-700 hover:bg-hover`;
+export const knowledgePrimaryAction = `${knowledgeActionBase} border-accent bg-accent text-on-accent hover:bg-accent-hover`;
+export const knowledgeMenuItem = "flex min-h-10 w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-hover focus-visible:bg-neutral-100 focus-visible:outline-none disabled:opacity-50";
 
 export function KnowledgeIcon({ name }: { name: "ai" | "download" | "edit" | "more" | "close" | "copy" | "history" | "trash" | "summary" | "chevron" }) {
   const paths = {

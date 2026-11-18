@@ -30,7 +30,7 @@ export default async function PortfolioPage({
     <div className="p-6">
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-bold">ポートフォリオ</h1>
-        {viewer.isAdmin && await hasPermission(viewerId, "audit.view") && <a href="/audit" className="text-sm text-blue-700 hover:underline">
+        {viewer.isAdmin && await hasPermission(viewerId, "audit.view") && <a href="/audit" className="text-sm text-accent-text hover:underline">
           監査ログ →
         </a>}
       </div>
@@ -52,7 +52,7 @@ export default async function PortfolioPage({
               <Link
                 key={p.id}
                 href={`/projects/${p.id}?view=list`}
-                className="rounded-full border bg-surface px-2.5 py-1 text-xs text-secondary hover:bg-neutral-50"
+                className="rounded-full border bg-surface px-2.5 py-1 text-xs text-secondary hover:bg-hover"
               >
                 {p.name}
               </Link>
@@ -73,7 +73,7 @@ export default async function PortfolioPage({
           return (
             <div
               key={p.id}
-              className="grid grid-cols-[minmax(0,1fr)_200px_120px_80px_220px] items-center gap-2 border-b px-2 py-2 text-sm hover:bg-neutral-50"
+              className="grid grid-cols-[minmax(0,1fr)_200px_120px_80px_220px] items-center gap-2 border-b px-2 py-2 text-sm hover:bg-hover"
             >
               <Link href={`/projects/${p.id}?view=list`} className="truncate font-medium hover:underline">
                 {p.name}

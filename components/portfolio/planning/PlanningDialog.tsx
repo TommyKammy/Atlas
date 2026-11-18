@@ -36,7 +36,7 @@ export default function PlanningDialog({
           type="button"
           onClick={onClose}
           aria-label="閉じる"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[20px] leading-none text-muted hover:bg-neutral-100 hover:text-text"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[20px] leading-none text-muted hover:bg-hover hover:text-text"
         >
           ×
         </button>

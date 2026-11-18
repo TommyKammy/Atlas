@@ -55,12 +55,12 @@ export default function ProjectTaskCreateButton({ projectId, sections: _sections
     {open && <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-line bg-surface p-1 text-[13px] text-text shadow-lg">
       {section === null ? <div role="menu" aria-label="追加の種類">
         {([['task', '○', 'タスク'], ['approval', '✓', '承認リクエスト'], ['milestone', '◇', 'マイルストーン'], ['section', '☷', 'セクション']] as const).map(([kind, icon, label], index) =>
-          <button key={kind} autoFocus={index === 0} type="button" role="menuitem" className="flex w-full items-center gap-3 rounded px-3 py-2 text-left hover:bg-neutral-100 focus:bg-blue-50 focus:outline-none"
+          <button key={kind} autoFocus={index === 0} type="button" role="menuitem" className="flex w-full items-center gap-3 rounded px-3 py-2 text-left hover:bg-hover focus:bg-accent-soft focus:outline-none"
             onClick={() => kind === "section" ? setSection("") : choose(kind)}><span aria-hidden className="w-4 text-center text-muted">{icon}</span>{label}</button>)}
-        {templates.length > 0 && <div className="mt-1 border-t pt-1"><p className="px-3 py-1 text-xs text-muted">テンプレートから作成</p>{templates.map(template => <button key={template.id} type="button" role="menuitem" className="w-full rounded px-3 py-2 text-left hover:bg-neutral-100" onClick={() => { setOpen(false); onTemplate?.(template.id); }}>{template.name}</button>)}</div>}
+        {templates.length > 0 && <div className="mt-1 border-t pt-1"><p className="px-3 py-1 text-xs text-muted">テンプレートから作成</p>{templates.map(template => <button key={template.id} type="button" role="menuitem" className="w-full rounded px-3 py-2 text-left hover:bg-hover" onClick={() => { setOpen(false); onTemplate?.(template.id); }}>{template.name}</button>)}</div>}
       </div> : <form className="space-y-2 p-2" onSubmit={event => { event.preventDefault(); void saveSection(); }}>
-        <label className="block text-xs font-medium">セクション名<input autoFocus aria-label="新しいセクション名" value={section} onChange={event => setSection(event.target.value)} disabled={busy} className="mt-2 h-8 w-full rounded border px-2 text-sm outline-blue-600" onKeyDown={event => { if (event.key === "Enter" && isImeComposing(event)) event.preventDefault(); }} /></label>
-        <button type="submit" disabled={busy || !section.trim()} className="h-7 rounded bg-accent px-3 text-xs text-white disabled:opacity-50">{busy ? "追加中…" : "セクションを追加"}</button>
+        <label className="block text-xs font-medium">セクション名<input autoFocus aria-label="新しいセクション名" value={section} onChange={event => setSection(event.target.value)} disabled={busy} className="mt-2 h-8 w-full rounded border px-2 text-sm outline-focus-ring" onKeyDown={event => { if (event.key === "Enter" && isImeComposing(event)) event.preventDefault(); }} /></label>
+        <button type="submit" disabled={busy || !section.trim()} className="h-7 rounded bg-accent px-3 text-xs text-on-accent disabled:opacity-50">{busy ? "追加中…" : "セクションを追加"}</button>
         {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
       </form>}
     </div>}

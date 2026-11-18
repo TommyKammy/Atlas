@@ -96,13 +96,13 @@ export function RuleEntityPicker({ projectId, kind, value, onChange, label, fiel
           }}
           className="h-9 min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] outline-none focus:border-[#4573d2] focus:ring-2 focus:ring-[#4573d2]/15 disabled:bg-neutral-50" />
         {value !== null && !disabled && <button type="button" aria-label={`${label}をクリア`}
-          onClick={() => { onChange(null); setQuery(""); }} className="rounded px-2 text-subtle hover:bg-neutral-100 hover:text-secondary">×</button>}
+          onClick={() => { onChange(null); setQuery(""); }} className="rounded px-2 text-subtle hover:bg-hover hover:text-secondary">×</button>}
       </div>
       {open && !disabled && (
         <div className="absolute top-full z-30 mt-1 max-h-64 w-full overflow-auto rounded-md border border-line bg-surface p-1 shadow-lg">
           <ul id={`${id}-list`} role="listbox" aria-label={`${label}の候補`}>
             {options.map((option, index) => <li key={option.value} id={`${id}-${index}`} role="option" aria-selected={option.value === value}
-              className={`rounded ${index === activeIndex ? "bg-blue-50" : ""}`}>
+              className={`rounded ${index === activeIndex ? "bg-accent-soft" : ""}`}>
               <button type="button" tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActive(index)}
                 onClick={() => choose(option)} className="w-full px-2.5 py-2 text-left text-[13px] text-text">
                 <span className="block break-words">{option.label}</span>

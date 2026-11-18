@@ -34,7 +34,7 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             active === "saved"
               ? "bg-accent-soft font-medium text-accent-text"
-              : "text-muted hover:bg-neutral-100"
+              : "text-muted hover:bg-hover"
           }`}
         >
           マイポートフォリオ ({savedCount})
@@ -47,7 +47,7 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             active === "all"
               ? "bg-accent-soft font-medium text-accent-text"
-              : "text-muted hover:bg-neutral-100"
+              : "text-muted hover:bg-hover"
           }`}
         >
           すべて ({projects.length})
@@ -95,7 +95,7 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
                 key={project.id}
                 href={`/projects/${project.id}?view=list`}
                 data-home-portfolio-row={project.id}
-                className="grid grid-cols-[minmax(0,1fr)_110px_58px] items-center gap-2 rounded-md px-2 py-2 hover:bg-neutral-50"
+                className="grid grid-cols-[minmax(0,1fr)_110px_58px] items-center gap-2 rounded-md px-2 py-2 hover:bg-hover"
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <ProjectIcon

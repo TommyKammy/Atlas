@@ -73,7 +73,7 @@ export default function ListGroupMenu({
           data-list-group-primary
           value={groupBy}
           onChange={(event) => onSelectPrimary(event.target.value as ListGroupBy)}
-          className="h-8 min-w-0 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+          className="h-8 min-w-0 flex-1 rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
         >
           {primaryOptions.map((key) => (
             <option key={key} value={key}>
@@ -89,7 +89,7 @@ export default function ListGroupMenu({
           data-list-group-dir
           value={groupDir}
           onChange={(event) => onSetGroupDir(event.target.value === "desc" ? "desc" : "asc")}
-          className="h-8 min-w-0 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+          className="h-8 min-w-0 flex-1 rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
         >
           <option value="asc">昇順</option>
           <option value="desc">降順</option>
@@ -107,7 +107,7 @@ export default function ListGroupMenu({
                 if (event.target.value === "") return;
                 onSelectSecondary(event.target.value as ListGroupBy);
               }}
-              className="h-8 min-w-0 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+              className="h-8 min-w-0 flex-1 rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
             >
               <option value="">選択…</option>
               {secondaryOptions.map((key) => (
@@ -122,7 +122,7 @@ export default function ListGroupMenu({
             type="button"
             data-list-group-add-subgroup
             onClick={() => setShowSecondary(true)}
-            className="mt-2 flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-secondary hover:bg-neutral-100"
+            className="mt-2 flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-secondary hover:bg-hover"
           >
             <span className="text-[14px] leading-none">＋</span>
             サブグループを追加
@@ -135,7 +135,7 @@ export default function ListGroupMenu({
             data-list-group-secondary
             value={group2}
             onChange={(event) => onSelectSecondary(event.target.value === "" ? null : (event.target.value as ListGroupBy))}
-            className="h-8 min-w-0 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+            className="h-8 min-w-0 flex-1 rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
           >
             <option value="">なし</option>
             {secondaryOptions.map((key) => (
@@ -151,7 +151,7 @@ export default function ListGroupMenu({
               onClearSecondary();
               setShowSecondary(false);
             }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-secondary"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-secondary"
           >
             ×
           </button>

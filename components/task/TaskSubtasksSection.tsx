@@ -55,7 +55,7 @@ export default function TaskSubtasksSection({
               onClick={onStartAdd}
               title="サブタスクを追加"
               aria-label="サブタスクを追加"
-              className="flex h-6 w-6 items-center justify-center rounded text-[16px] text-muted hover:bg-neutral-100 hover:text-text"
+              className="flex h-6 w-6 items-center justify-center rounded text-[16px] text-muted hover:bg-hover hover:text-text"
             >
               ＋
             </button>
@@ -65,8 +65,8 @@ export default function TaskSubtasksSection({
                 onClick={() => setHideDone((value) => !value)}
                 className={`ml-auto rounded px-1.5 py-0.5 text-[11px] ${
                   hideDone
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-muted hover:bg-neutral-100 hover:text-secondary"
+                    ? "bg-accent-soft text-accent-text"
+                    : "text-muted hover:bg-hover hover:text-secondary"
                 }`}
                 title="サブタスクの絞り込み"
               >
@@ -89,12 +89,12 @@ export default function TaskSubtasksSection({
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}&approval=1`}
               aria-label={`${subtask.name} の承認を開く`}
               title="承認の詳細を開く"
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-blue-300 text-[10px] text-blue-700 hover:bg-blue-50"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-blue-300 text-[10px] text-accent-text hover:bg-accent-soft"
             >承</Link> : <TaskCompletionToggle disabled={!canEdit} completed={subtask.completed} milestone={subtask.is_milestone} onToggle={() => onToggle(subtask)} />}
             <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}`}
-              className={`min-w-0 flex-1 truncate hover:text-blue-700 hover:underline ${
-                subtask.completed ? "text-neutral-400 line-through" : "text-neutral-800"
+              className={`min-w-0 flex-1 truncate hover:text-accent-text hover:underline ${
+                subtask.completed ? "text-subtle line-through" : "text-text"
               }`}
               title={subtask.name}
             >
@@ -110,7 +110,7 @@ export default function TaskSubtasksSection({
               onClick={() => onDelete(subtask)}
               title="サブタスクを削除"
               aria-label={`${subtask.name} を削除`}
-              className="invisible shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 group-hover/sub:visible"
+              className="invisible shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-hover hover:text-red-600 group-hover/sub:visible"
             >
               ×
             </button>
@@ -130,20 +130,20 @@ export default function TaskSubtasksSection({
             }}
             placeholder="サブタスク名を入力"
             autoFocus
-            className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+            className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-accent"
           />
           <button
             type="button"
             onClick={onAdd}
             disabled={!draft.trim()}
-            className="shrink-0 rounded bg-[#2f6fd0] px-3 text-[12px] font-medium text-white hover:bg-[#2459ad] disabled:bg-neutral-200 disabled:text-neutral-500"
+            className="shrink-0 rounded bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-neutral-200 disabled:text-neutral-500"
           >
             追加
           </button>
           <button
             type="button"
             onClick={onCancelAdd}
-            className="shrink-0 rounded px-2 text-[11px] text-muted hover:bg-neutral-100"
+            className="shrink-0 rounded px-2 text-[11px] text-muted hover:bg-hover"
           >
             キャンセル
           </button>
@@ -153,7 +153,7 @@ export default function TaskSubtasksSection({
           type="button"
           disabled={!canEdit}
           onClick={onStartAdd}
-          className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
+          className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-neutral-400 hover:bg-hover hover:text-neutral-600"
         >
           <span className="text-base leading-none">＋</span>
           <span className="min-w-0 flex-1 truncate">サブタスクを追加</span>

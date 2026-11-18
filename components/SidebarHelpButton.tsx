@@ -71,16 +71,16 @@ export default function SidebarHelpButton() {
             <div className="border-b border-line-subtle px-3 py-2 text-[12px] font-semibold text-muted">
               ヘルプと始め方
             </div>
-            <Link href="/help" data-help-features onClick={() => setOpen(false)} className="mt-1 block rounded px-3 py-2 hover:bg-neutral-100">
+            <Link href="/help" data-help-features onClick={() => setOpen(false)} className="mt-1 block rounded px-3 py-2 hover:bg-hover">
               機能に関するヘルプ
             </Link>
-            <a href="mailto:support@atlas.example" data-help-support onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+            <a href="mailto:support@atlas.example" data-help-support onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-hover">
               サポートに問い合わせる
             </a>
-            <Link href="/help#privacy" data-help-privacy onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+            <Link href="/help#privacy" data-help-privacy onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-hover">
               プライバシーステートメント
             </Link>
-            <Link href="/help#integrations" data-help-integrations onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+            <Link href="/help#integrations" data-help-integrations onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-hover">
               アプリと連携
             </Link>
             <button
@@ -90,17 +90,17 @@ export default function SidebarHelpButton() {
                 setOpen(false);
                 setShortcuts(true);
               }}
-              className="block w-full rounded px-3 py-2 text-left hover:bg-neutral-100"
+              className="block w-full rounded px-3 py-2 text-left hover:bg-hover"
             >
               キーボードショートカット
             </button>
-            <Link href="/help#videos" data-help-videos onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+            <Link href="/help#videos" data-help-videos onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-hover">
               動画チュートリアル
             </Link>
-            <Link href="/help#about" data-help-about onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+            <Link href="/help#about" data-help-about onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-hover">
               Atlas について
             </Link>
-            <Link href="/profile" data-help-profile onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-neutral-100">
+            <Link href="/profile" data-help-profile onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-hover">
               プロフィール
             </Link>
           </div>,
@@ -122,7 +122,7 @@ export default function SidebarHelpButton() {
                 ))}
               </div>
               <div className="mt-4 text-right">
-                <button type="button" data-shortcuts-close onClick={() => setShortcuts(false)} className="rounded bg-neutral-800 px-3 py-1 text-sm text-white">
+                <button type="button" data-shortcuts-close onClick={() => setShortcuts(false)} className="rounded bg-neutral-800 px-3 py-1 text-sm text-on-accent">
                   閉じる
                 </button>
               </div>

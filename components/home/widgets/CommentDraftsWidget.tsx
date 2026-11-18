@@ -48,7 +48,7 @@ export default function CommentDraftsWidget({ drafts }: { drafts: HomeCommentDra
             <div
               key={draft.task_id}
               data-home-draft-row={draft.task_id}
-              className="flex min-w-0 items-start gap-2 border-b border-line-subtle px-4 py-2.5 last:border-b-0 hover:bg-neutral-50"
+              className="flex min-w-0 items-start gap-2 border-b border-line-subtle px-4 py-2.5 last:border-b-0 hover:bg-hover"
             >
               <Link
                 href={`/projects/${draft.project_id}?view=list&task=${draft.task_id}`}

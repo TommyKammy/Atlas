@@ -61,7 +61,7 @@ export default function TimerCell({
           void act(isRunning ? "stop" : "start");
         }}
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] ${
-          isRunning ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-surface-muted text-secondary hover:bg-neutral-200"
+          isRunning ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-surface-muted text-secondary hover:bg-hover-strong"
         }`}
       >
         {isRunning ? "■" : "▶"}

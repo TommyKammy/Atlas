@@ -27,7 +27,7 @@ export default function CustomizeModal({
           type="button"
           onClick={onClose}
           aria-label="閉じる"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-xl leading-none text-muted hover:bg-neutral-100"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-xl leading-none text-muted hover:bg-hover"
         >
           ×
         </button>

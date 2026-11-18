@@ -157,7 +157,7 @@ function MenuItem({
       className={`flex h-8 w-full items-center gap-2.5 px-3 text-left text-[13px] ${
         danger
           ? "text-rose-600 hover:bg-rose-50 disabled:text-rose-300"
-          : "text-secondary hover:bg-neutral-100 disabled:text-subtle"
+          : "text-secondary hover:bg-hover disabled:text-subtle"
       }`}
     >
       <span className="w-4 shrink-0 text-subtle">
@@ -579,14 +579,14 @@ export default function ProjectTaskContextMenu({
                 if (event.key === "Enter") void createSubtask();
               }}
               placeholder="サブタスク名"
-              className="mt-3 h-9 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+              className="mt-3 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent"
             />
             {error && <p className="mt-2 text-[11px] text-rose-600">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setSubtaskFor(null)}
-                className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50"
+                className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-hover"
               >
                 キャンセル
               </button>
@@ -594,7 +594,7 @@ export default function ProjectTaskContextMenu({
                 type="button"
                 onClick={() => void createSubtask()}
                 disabled={busy || subtaskName.trim() === ""}
-                className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
               >
                 {busy ? "追加中…" : "追加"}
               </button>
@@ -630,7 +630,7 @@ export default function ProjectTaskContextMenu({
               <button
                 type="button"
                 onClick={() => setConvertFor(null)}
-                className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50"
+                className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-hover"
               >
                 キャンセル
               </button>
@@ -638,7 +638,7 @@ export default function ProjectTaskContextMenu({
                 type="button"
                 onClick={() => void convertToSubtask()}
                 disabled={busy || parentId === ""}
-                className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
               >
                 {busy ? "変換中…" : "変換"}
               </button>

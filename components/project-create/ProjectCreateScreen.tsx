@@ -119,12 +119,12 @@ export default function ProjectCreateScreen({
     `flex h-8 items-center rounded-md px-2.5 text-left text-[13px] ${
       active
         ? "bg-accent-soft font-medium text-accent-text"
-        : "text-secondary hover:bg-neutral-100"
+        : "text-secondary hover:bg-hover"
     }`;
   const primary =
-    "rounded-md bg-accent px-4 py-2 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50";
+    "rounded-md bg-accent px-4 py-2 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50";
   const secondary =
-    "rounded-md border border-line-strong bg-surface px-4 py-2 text-[13px] text-secondary hover:bg-neutral-50";
+    "rounded-md border border-line-strong bg-surface px-4 py-2 text-[13px] text-secondary hover:bg-hover";
 
   const templateCard = (template: ProjectTemplateSummary) => (
     <div key={template.id} className="group relative">
@@ -272,7 +272,7 @@ export default function ProjectCreateScreen({
                   className={`rounded-full px-2.5 py-1 text-[12px] ${
                     scope === "all"
                       ? "bg-accent-soft font-medium text-accent-text"
-                      : "text-muted hover:bg-neutral-100"
+                      : "text-muted hover:bg-hover"
                   }`}
                 >
                   すべて ({filtered.length})
@@ -285,7 +285,7 @@ export default function ProjectCreateScreen({
                   className={`rounded-full px-2.5 py-1 text-[12px] ${
                     scope === "mine"
                       ? "bg-accent-soft font-medium text-accent-text"
-                      : "text-muted hover:bg-neutral-100"
+                      : "text-muted hover:bg-hover"
                   }`}
                 >
                   あなたのテンプレート ({mine.length})
@@ -306,7 +306,7 @@ export default function ProjectCreateScreen({
                     className={`rounded-full border px-2 py-0.5 text-[11px] ${
                       category === "all"
                         ? "border-accent bg-accent-soft font-medium text-accent-text"
-                        : "border-line bg-surface text-muted hover:bg-neutral-50"
+                        : "border-line bg-surface text-muted hover:bg-hover"
                     }`}
                   >
                     すべて
@@ -321,7 +321,7 @@ export default function ProjectCreateScreen({
                       className={`rounded-full border px-2 py-0.5 text-[11px] ${
                         category === item
                           ? "border-accent bg-accent-soft font-medium text-accent-text"
-                          : "border-line bg-surface text-muted hover:bg-neutral-50"
+                          : "border-line bg-surface text-muted hover:bg-hover"
                       }`}
                     >
                       {item}
@@ -471,7 +471,7 @@ export default function ProjectCreateScreen({
                       onChange={(event) => setName(event.target.value)}
                       maxLength={200}
                       placeholder="例: 新製品リリース"
-                      className="mt-1.5 w-full rounded-md border border-neutral-300 px-3 py-2 text-[14px] font-normal outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20"
+                      className="mt-1.5 w-full rounded-md border border-line-strong px-3 py-2 text-[14px] font-normal outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
                     />
                   </label>
                   {error !== "" && <p className="mt-2 text-[12px] text-danger">{error}</p>}
@@ -600,7 +600,7 @@ export default function ProjectCreateScreen({
                       value={name}
                       onChange={(event) => setName(event.target.value)}
                       maxLength={200}
-                      className="mt-1.5 w-full rounded-md border border-neutral-300 px-3 py-2 text-[13px] font-normal outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20"
+                      className="mt-1.5 w-full rounded-md border border-line-strong px-3 py-2 text-[13px] font-normal outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
                     />
                   </label>
                   <p className="mt-2 text-[10px] leading-5 text-subtle">
@@ -619,7 +619,7 @@ export default function ProjectCreateScreen({
                   <button
                     type="button"
                     onClick={() => openGallery()}
-                    className="mt-2 w-full rounded-md px-3 py-1.5 text-[12px] text-muted hover:bg-neutral-50"
+                    className="mt-2 w-full rounded-md px-3 py-1.5 text-[12px] text-muted hover:bg-hover"
                   >
                     キャンセル
                   </button>

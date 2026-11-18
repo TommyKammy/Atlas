@@ -169,19 +169,19 @@ export default function PortfolioWorkspace({
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="新しいポートフォリオ名"
-              className="h-8 w-full rounded-md border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#2c60b8]"
+              className="h-8 w-full rounded-md border border-line px-2 text-[12px] outline-none focus:border-accent"
             />
             <input
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="説明（任意）"
-              className="h-8 w-full rounded-md border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#2c60b8]"
+              className="h-8 w-full rounded-md border border-line px-2 text-[12px] outline-none focus:border-accent"
             />
             <button
               type="button"
               onClick={() => void create()}
               disabled={busy || name.trim() === ""}
-              className="h-8 w-full rounded-md bg-accent text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+              className="h-8 w-full rounded-md bg-accent text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
             >
               ＋ ポートフォリオを作成
             </button>
@@ -199,7 +199,7 @@ export default function PortfolioWorkspace({
                   type="button"
                   onClick={() => setSelectedId(portfolio.id)}
                   className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left ${
-                    selectedId === portfolio.id ? "bg-accent-soft" : "hover:bg-neutral-50"
+                    selectedId === portfolio.id ? "bg-accent-soft" : "hover:bg-hover"
                   }`}
                 >
                   <span className="min-w-0 flex-1">
@@ -233,7 +233,7 @@ export default function PortfolioWorkspace({
                       {detail.portfolio.can_view_plan && (
                         <Link
                           href={`/portfolio/${detail.portfolio.id}/planning?view=ledger`}
-                          className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-[12px] font-medium text-white hover:bg-[#24529c]"
+                          className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover"
                         >
                           投資計画を開く →
                         </Link>
@@ -304,7 +304,7 @@ export default function PortfolioWorkspace({
                       type="button"
                       onClick={() => void addProject()}
                       disabled={busy || projectId === ""}
-                      className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50 disabled:opacity-50"
+                      className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-hover disabled:opacity-50"
                     >
                       プロジェクトを追加
                     </button>

@@ -27,7 +27,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     const mentioned =
       c.entry === "comment" && me != null && c.body.includes(`@${me.name}`);
     return (
-      <div key={`${c.entry}-${c.id}`} data-inbox-entry={`${c.entry}-${c.id}`} className="border-b py-3 text-sm hover:bg-neutral-50">
+      <div key={`${c.entry}-${c.id}`} data-inbox-entry={`${c.entry}-${c.id}`} className="border-b py-3 text-sm hover:bg-hover">
         <div className="flex items-center gap-2 text-xs text-muted">
           <span>{c.entry === "event" ? "⚡" : "💬"}</span>
           <span>{c.author_name ?? "–"}</span>
@@ -67,13 +67,13 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       <nav aria-label="通知の表示" className="mt-4 flex flex-wrap gap-2 text-sm">
         {[["unread", `未読（${page.unread}）`], ["read", `既読・自分の投稿（${page.read}）`], ["all", `すべて（${page.all}）`]].map(([key, label]) =>
           <Link key={key} href={`/inbox?filter=${key}`} aria-current={filter === key ? "page" : undefined}
-            data-inbox-filter={key} className={`rounded border px-3 py-1 ${filter === key ? "border-blue-300 bg-blue-50 text-blue-800" : "text-secondary"}`}>{label}</Link>)}
+            data-inbox-filter={key} className={`rounded border px-3 py-1 ${filter === key ? "border-blue-300 bg-accent-soft text-accent-text" : "text-secondary"}`}>{label}</Link>)}
       </nav>
       {invalidCursor && <p role="alert" className="mt-3 text-sm text-rose-700">通知の表示位置を読み込めなかったため、先頭から表示しています。</p>}
       <h2 data-inbox-total={page.total} className="mt-4 font-semibold">対象の通知：{page.total}件</h2>
       {items.length === 0 && <p className="mt-1 text-sm text-muted">{filter === "unread" && page.total === 0 ? "未読はありません。" : "この位置に通知はありません。"}</p>}
       <div className="max-w-4xl">{items.map((item) => row(item, !item.is_read && item.author_id !== me?.id))}</div>
-      <nav aria-label="通知のページ" className="mt-4 flex gap-4 text-sm text-blue-700">
+      <nav aria-label="通知のページ" className="mt-4 flex gap-4 text-sm text-accent-text">
         {cursor && <Link href={`/inbox?filter=${filter}`} data-inbox-first>先頭へ戻る</Link>}
         {page.nextCursor && <Link href={`/inbox?filter=${filter}&cursor=${encodeURIComponent(page.nextCursor)}`} data-inbox-next>次の通知を表示</Link>}
       </nav>

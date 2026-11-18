@@ -35,7 +35,7 @@ function AddMenu({ onPick }: { onPick: (kind: "chart" | "text") => void }) {
         role="menuitem"
         onClick={() => onPick("chart")}
         data-dashboard-add-chart
-        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-secondary hover:bg-neutral-100"
+        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-secondary hover:bg-hover"
       >
         <span className="flex h-4 w-4 items-end gap-[2px] text-muted">
           <span className="h-2 w-[3px] rounded-sm bg-current" />
@@ -49,7 +49,7 @@ function AddMenu({ onPick }: { onPick: (kind: "chart" | "text") => void }) {
         role="menuitem"
         onClick={() => onPick("text")}
         data-dashboard-add-text
-        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-secondary hover:bg-neutral-100"
+        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-secondary hover:bg-hover"
       >
         <span className="w-4 text-center text-[15px] font-serif text-muted">T</span>
         テキスト
@@ -227,7 +227,7 @@ export default function DashboardView({
           </div>
         )}
         <div className="ml-auto flex items-center gap-3">
-          <a href="/help" className="text-[12px] text-blue-700 hover:underline">
+          <a href="/help" className="text-[12px] text-accent-text hover:underline">
             フィードバックを送る
           </a>
           <details className="relative">
@@ -238,13 +238,13 @@ export default function DashboardView({
               <span className="text-[11px] font-medium text-muted">エクスポート</span>
               <a
                 href={`/api/projects/${projectId}/dashboard/export?format=json`}
-                className="rounded px-1 py-1 text-[13px] text-blue-700 hover:bg-neutral-50 hover:underline"
+                className="rounded px-1 py-1 text-[13px] text-accent-text hover:bg-hover hover:underline"
               >
                 JSON
               </a>
               <a
                 href={`/api/projects/${projectId}/dashboard/export?format=csv`}
-                className="rounded px-1 py-1 text-[13px] text-blue-700 hover:bg-neutral-50 hover:underline"
+                className="rounded px-1 py-1 text-[13px] text-accent-text hover:bg-hover hover:underline"
               >
                 CSV
               </a>
@@ -261,7 +261,7 @@ export default function DashboardView({
           action={
             <a
               href={`/projects/${projectId}?view=list`}
-              className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium leading-8 text-white hover:bg-[#24529c]"
+              className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium leading-8 text-on-accent hover:bg-accent-hover"
             >
               リストでタスクを追加
             </a>
@@ -295,7 +295,7 @@ export default function DashboardView({
               className={`group relative flex flex-col rounded-lg border bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${
                 isNumber ? "min-h-[140px]" : "min-h-[180px]"
               } ${
-                overId === widget.id && dragId !== null ? "border-[#4075cf] ring-2 ring-[#4075cf]/20" : "border-line"
+                overId === widget.id && dragId !== null ? "border-[#4075cf] ring-2 ring-focus-ring/20" : "border-line"
               } ${span}`}
             >
               <div className="flex items-start gap-2 px-4 pb-1 pt-3">
@@ -322,7 +322,7 @@ export default function DashboardView({
                       }}
                       aria-label="ウィジェットを移動"
                       title="ドラッグして移動"
-                      className="cursor-grab rounded p-0.5 text-neutral-300 opacity-0 hover:bg-neutral-100 hover:text-neutral-500 group-hover:opacity-100"
+                      className="cursor-grab rounded p-0.5 text-neutral-300 opacity-0 hover:bg-hover hover:text-neutral-500 group-hover:opacity-100"
                     >
                       <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
                         <circle cx="5" cy="4" r="1" />
@@ -341,7 +341,7 @@ export default function DashboardView({
                         aria-label="ウィジェットのオプション"
                         aria-haspopup="menu"
                         aria-expanded={menuId === widget.id}
-                        className="rounded p-0.5 text-subtle opacity-0 hover:bg-neutral-100 hover:text-secondary group-hover:opacity-100"
+                        className="rounded p-0.5 text-subtle opacity-0 hover:bg-hover hover:text-secondary group-hover:opacity-100"
                       >
                         <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
                           <circle cx="3" cy="8" r="1.2" />
@@ -359,7 +359,7 @@ export default function DashboardView({
                             type="button"
                             role="menuitem"
                             onClick={() => openEdit(widget)}
-                            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-neutral-100"
+                            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-hover"
                           >
                             編集
                           </button>
@@ -368,7 +368,7 @@ export default function DashboardView({
                             role="menuitem"
                             onClick={() => void duplicate(widget)}
                             disabled={busy}
-                            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-neutral-100 disabled:opacity-50"
+                            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-hover disabled:opacity-50"
                           >
                             複製
                           </button>
@@ -376,7 +376,7 @@ export default function DashboardView({
                             type="button"
                             role="menuitem"
                             onClick={() => move(widget, -1)}
-                            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-neutral-100"
+                            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-hover"
                           >
                             上へ移動
                           </button>
@@ -384,7 +384,7 @@ export default function DashboardView({
                             type="button"
                             role="menuitem"
                             onClick={() => move(widget, 1)}
-                            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-neutral-100"
+                            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-hover"
                           >
                             下へ移動
                           </button>
@@ -432,7 +432,7 @@ export default function DashboardView({
                     type="button"
                     onClick={() => canEdit && openEdit(widget)}
                     disabled={!canEdit}
-                    className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-neutral-100 disabled:hover:bg-transparent"
+                    className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-hover disabled:hover:bg-transparent"
                     title={canEdit ? "フィルターを編集" : undefined}
                   >
                     <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.3">
@@ -444,7 +444,7 @@ export default function DashboardView({
                     <a
                       href={dashboardDrilldownHref(projectId, data.drilldown)}
                       data-dashboard-show-all
-                      className="ml-auto rounded border border-line px-2 py-0.5 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+                      className="ml-auto rounded border border-line px-2 py-0.5 hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                     >
                       すべて表示
                     </a>

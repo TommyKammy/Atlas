@@ -72,7 +72,7 @@ export default function CustomizeTemplatesPanel({
                       data-customize-template-edit={template.id}
                       aria-label={`${template.name}を編集`}
                       onClick={() => onEdit(template)}
-                      className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-secondary"
+                      className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-hover hover:text-secondary"
                     >
                       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                         <path d="m10.5 2.5 3 3L6 13H3v-3z" />

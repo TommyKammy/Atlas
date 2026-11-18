@@ -36,7 +36,7 @@ export default function ListSectionBlock({
       {dropSide && (
         <span
           data-section-drop-indicator={dropSide}
-          className={`pointer-events-none absolute inset-x-0 z-20 h-[2px] bg-[#2f6fd0] ${
+          className={`pointer-events-none absolute inset-x-0 z-20 h-[2px] bg-accent ${
             dropSide === "before" ? "top-0" : "bottom-0"
           }`}
         />

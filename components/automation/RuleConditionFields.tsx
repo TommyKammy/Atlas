@@ -81,7 +81,7 @@ export function RuleConditionFields({ conditions, descriptors, projectId, onChan
       <button type="button" disabled={conditions.length >= descriptors.limits.conditionsPerPath} onClick={() => {
         const field = fields[0]?.id ?? "task.name";
         onChange([...conditions, changeRuleCondition({ field: "", op: "eq" }, field, "eq", descriptors)]);
-      }} className="rounded-md border border-line-strong px-3 py-2 text-[12px] font-medium hover:bg-neutral-50 disabled:opacity-40">条件を追加</button>
+      }} className="rounded-md border border-line-strong px-3 py-2 text-[12px] font-medium hover:bg-hover disabled:opacity-40">条件を追加</button>
     </div>
   );
 }

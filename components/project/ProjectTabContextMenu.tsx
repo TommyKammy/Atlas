@@ -32,7 +32,7 @@ export default function ProjectTabContextMenu({
 
   if (typeof document === "undefined") return null;
   const item =
-    "flex h-9 w-full items-center px-3 text-left text-[14px] text-neutral-800 hover:bg-neutral-100 disabled:cursor-default disabled:text-neutral-400 disabled:hover:bg-white";
+    "flex h-9 w-full items-center px-3 text-left text-[14px] text-neutral-800 hover:bg-hover disabled:cursor-default disabled:text-neutral-400 disabled:hover:bg-hover";
 
   return createPortal(
     <>
@@ -98,7 +98,7 @@ export default function ProjectTabContextMenu({
           data-project-tab-menu-item="delete"
           disabled={!canEdit || !canDelete || busy}
           onClick={() => onAction("delete")}
-          className={`${item} text-red-600 hover:bg-red-50 disabled:text-neutral-400 disabled:hover:bg-white`}
+          className={`${item} text-red-600 hover:bg-red-50 disabled:text-neutral-400 disabled:hover:bg-hover`}
         >
           削除
         </button>

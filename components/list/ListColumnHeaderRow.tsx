@@ -58,7 +58,7 @@ export default function ListColumnHeaderRow({
         aria-label="フィールドを追加"
         onClick={onAddField}
         title="フィールドを追加"
-        className="flex h-6 w-6 items-center justify-center justify-self-end rounded text-[15px] text-muted hover:bg-neutral-100 hover:text-text"
+        className="flex h-6 w-6 items-center justify-center justify-self-end rounded text-[15px] text-muted hover:bg-hover hover:text-text"
       >
         ＋
       </button>

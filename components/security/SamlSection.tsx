@@ -121,7 +121,7 @@ export function SamlSection({
                   max={30}
                   value={sessionDays}
                   onChange={(e) => setSessionDays(e.target.value)}
-                  className="w-20 rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                  className="w-20 rounded border border-line-strong px-2 py-1.5 text-sm outline-none focus:border-accent"
                   data-saml-session-days
                 />
                 <span className="text-sm text-muted">日</span>
@@ -139,7 +139,7 @@ export function SamlSection({
             onClick={save}
             disabled={saving}
             data-saml-save
-            className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8] disabled:opacity-50"
+            className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
@@ -154,7 +154,7 @@ export function SamlSection({
             <div className="text-muted">ACS URL</div>
             <div className="mt-0.5 flex gap-2">
               <input readOnly value={acsUrl} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
-              <button onClick={() => copy(acsUrl)} className="rounded border px-2 py-1 hover:bg-neutral-100">
+              <button onClick={() => copy(acsUrl)} className="rounded border px-2 py-1 hover:bg-hover">
                 コピー
               </button>
             </div>
@@ -163,7 +163,7 @@ export function SamlSection({
             <div className="text-muted">SP メタデータ URL</div>
             <div className="mt-0.5 flex gap-2">
               <input readOnly value={metadataUrl} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
-              <button onClick={() => copy(metadataUrl)} className="rounded border px-2 py-1 hover:bg-neutral-100">
+              <button onClick={() => copy(metadataUrl)} className="rounded border px-2 py-1 hover:bg-hover">
                 コピー
               </button>
             </div>
@@ -172,7 +172,7 @@ export function SamlSection({
             <div className="text-muted">Issuer / Entity ID</div>
             <div className="mt-0.5 flex gap-2">
               <input readOnly value={issuer} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
-              <button onClick={() => copy(issuer)} className="rounded border px-2 py-1 hover:bg-neutral-100">
+              <button onClick={() => copy(issuer)} className="rounded border px-2 py-1 hover:bg-hover">
                 コピー
               </button>
             </div>

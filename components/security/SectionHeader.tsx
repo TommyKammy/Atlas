@@ -1,7 +1,7 @@
 "use client";
 
 export const field =
-  "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500";
+  "mt-1 w-full rounded border border-line-strong px-2 py-1.5 text-sm outline-none focus:border-accent";
 
 export function SectionHeader({ title, description }: { title: string; description: string }) {
   return (

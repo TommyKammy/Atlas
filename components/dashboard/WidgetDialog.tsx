@@ -262,9 +262,9 @@ export default function WidgetDialog({
   };
 
   const field =
-    "mt-1 w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-sm outline-none focus:border-[#4075cf]";
+    "mt-1 w-full rounded-md border border-line-strong bg-white px-2.5 py-2 text-sm outline-none focus:border-accent";
   const smallField =
-    "mt-1 h-8 w-full rounded-md border border-neutral-300 bg-white px-2 text-[13px] outline-none focus:border-[#4075cf]";
+    "mt-1 h-8 w-full rounded-md border border-line-strong bg-white px-2 text-[13px] outline-none focus:border-accent";
   const sectionTitle = "text-[12px] font-semibold text-text";
   const label = "mt-3 block text-[11px] text-muted";
 
@@ -289,7 +289,7 @@ export default function WidgetDialog({
             type="button"
             onClick={onClose}
             aria-label="閉じる"
-            className="rounded p-1 text-xl leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
+            className="rounded p-1 text-xl leading-none text-subtle hover:bg-hover hover:text-secondary"
           >
             ×
           </button>
@@ -305,7 +305,7 @@ export default function WidgetDialog({
               }}
               placeholder={kind === "text" ? "テキストのタイトル" : "チャートのタイトル"}
               data-dashboard-widget-title
-              className="w-full border-0 border-b border-transparent bg-transparent px-1 py-1 text-[22px] font-medium text-text outline-none placeholder:text-subtle focus:border-[#4075cf]"
+              className="w-full border-0 border-b border-transparent bg-transparent px-1 py-1 text-[22px] font-medium text-text outline-none placeholder:text-subtle focus:border-accent"
             />
             <div className="mt-4 min-h-[260px] flex-1">
               {kind === "text" ? (
@@ -344,8 +344,8 @@ export default function WidgetDialog({
                       data-dashboard-chart-type={type}
                       className={`flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[10px] ${
                         chartType === type
-                          ? "border-[#4075cf] bg-accent-soft text-[#2f5fa8]"
-                          : "border-line text-muted hover:bg-neutral-50"
+                          ? "border-accent bg-accent-soft text-accent-text"
+                          : "border-line text-muted hover:bg-hover"
                       }`}
                     >
                       <ChartTypeIcon type={type} />
@@ -510,7 +510,7 @@ export default function WidgetDialog({
                       value={benchmark}
                       onChange={(event) => setBenchmark(event.target.value)}
                       placeholder="ベンチマーク（任意）"
-                      className="h-8 w-36 rounded-md border border-neutral-300 px-2 text-[13px] outline-none focus:border-[#4075cf]"
+                      className="h-8 w-36 rounded-md border border-line-strong px-2 text-[13px] outline-none focus:border-accent"
                     />
                     <span>ベンチマークライン</span>
                   </label>
@@ -540,7 +540,7 @@ export default function WidgetDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100"
+            className="rounded-md px-3 py-1.5 text-sm text-secondary hover:bg-hover"
           >
             キャンセル
           </button>
@@ -549,7 +549,7 @@ export default function WidgetDialog({
             onClick={save}
             disabled={saving}
             data-dashboard-widget-save
-            className="rounded-md bg-[#2f6fd0] px-4 py-1.5 text-sm font-medium text-white hover:bg-[#2459ad] disabled:opacity-50"
+            className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {saving ? "保存中…" : mode === "edit" ? "変更を保存" : kind === "text" ? "テキストを追加" : "チャートを追加"}
           </button>
