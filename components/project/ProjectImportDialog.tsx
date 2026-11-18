@@ -61,15 +61,15 @@ export default function ProjectImportDialog({
       onClose={onClose}
       title="インポート"
       backdropClassName="backdrop:bg-black/25"
-      panelClassName="w-[min(560px,94vw)] rounded-xl bg-white text-sm shadow-2xl"
+      panelClassName="w-[min(560px,94vw)] rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-import-dialog data-import-mode={initialMode} className="p-6">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-semibold">インポート</h2>
-            <p className="mt-0.5 text-xs text-neutral-500">{projectName} ・ CSV（最大5MB / 1,000行）</p>
+            <p className="mt-0.5 text-xs text-muted">{projectName} ・ CSV（最大5MB / 1,000行）</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-neutral-400 hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-neutral-700">
             ×
           </button>
         </div>
@@ -86,18 +86,18 @@ export default function ProjectImportDialog({
             if (dropped) choose(dropped);
           }}
           className={`mt-4 rounded-lg border-2 border-dashed p-8 text-center transition ${
-            dragging ? "border-[#4075cf] bg-[#f4f8ff]" : "border-neutral-300 bg-neutral-50/50"
+            dragging ? "border-[#4075cf] bg-[#f4f8ff]" : "border-line-strong bg-neutral-50/50"
           }`}
         >
           <div className="text-sm font-medium text-neutral-700">
             {busy ? "インポート中…" : "CSVファイルをドロップ"}
           </div>
-          <p className="mt-1 text-xs text-neutral-500">または</p>
+          <p className="mt-1 text-xs text-muted">または</p>
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            className="mt-2 h-8 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            className="mt-2 h-8 rounded-md border border-line-strong bg-surface px-3 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
           >
             ファイルを選択
           </button>
@@ -112,15 +112,15 @@ export default function ProjectImportDialog({
               if (chosen) choose(chosen);
             }}
           />
-          {file && <p className="mt-2 text-xs text-neutral-500">{file.name}</p>}
+          {file && <p className="mt-2 text-xs text-muted">{file.name}</p>}
         </div>
         {result && (
           <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800" data-import-result>
             {result.created}件を作成し、{result.skipped}件をスキップしました。
           </div>
         )}
-        {error && <p className="mt-4 text-xs text-red-600">{error}</p>}
-        <div className="mt-4 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+        {error && <p className="mt-4 text-xs text-danger">{error}</p>}
+        <div className="mt-4 rounded-md border border-neutral-200 bg-surface-subtle px-3 py-2 text-xs text-muted">
           1行目は「セクション, 種別, 名前, 完了, 担当者, 開始日, 期日, 進捗, Status, 繰返し, コメント」の順で指定してください。
         </div>
         <div className="mt-5 flex justify-end">

@@ -60,20 +60,20 @@ export default function DuplicateProjectDialog({
       onClose={onClose}
       title="プロジェクトを複製"
       backdropClassName="backdrop:bg-black/25"
-      panelClassName="max-h-[90vh] w-[min(580px,94vw)] overflow-y-auto rounded-xl bg-white text-sm shadow-2xl"
+      panelClassName="max-h-[90vh] w-[min(580px,94vw)] overflow-y-auto rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-duplicate-dialog className="p-6">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-semibold">プロジェクトを複製</h2>
-            <p className="mt-0.5 text-xs text-neutral-500">{projectName}</p>
+            <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-neutral-400 hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-neutral-700">
             ×
           </button>
         </div>
         <label className="mt-4 block">
-          <span className="mb-1 block text-xs font-medium text-neutral-600">プロジェクト名</span>
+          <span className="mb-1 block text-xs font-medium text-secondary">プロジェクト名</span>
           <input
             autoFocus
             value={name}
@@ -82,7 +82,7 @@ export default function DuplicateProjectDialog({
             className="h-9 w-full rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20"
           />
         </label>
-        <div className="mt-4 text-xs font-medium text-neutral-600">コピーする内容</div>
+        <div className="mt-4 text-xs font-medium text-secondary">コピーする内容</div>
         <div className="mt-2 space-y-1.5">
           {OPTIONS.map((option) => (
             <label
@@ -99,15 +99,15 @@ export default function DuplicateProjectDialog({
               />
               <span>
                 <span className="block font-medium">{option.label}</span>
-                <span className="block text-xs text-neutral-500">{option.description}</span>
+                <span className="block text-xs text-muted">{option.description}</span>
               </span>
             </label>
           ))}
         </div>
-        <p className="mt-3 text-xs text-neutral-400">
+        <p className="mt-3 text-xs text-subtle">
           複製先は元のプロジェクトから独立します。オートメーション、フォーム、タブ、コメント、添付、依存関係はコピーされません。
         </p>
-        {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-3 text-xs text-danger">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" className={PROJECT_DIALOG_SECONDARY} onClick={onClose} disabled={busy}>
             キャンセル

@@ -79,7 +79,7 @@ export default function ProjectMemberFacepile({
             aria-expanded={open}
             title={`ほか${overflow}人`}
             onClick={() => openDialog(false)}
-            className="relative inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-white bg-neutral-100 px-1 text-[10px] font-semibold text-neutral-600 hover:z-10 hover:bg-neutral-200 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4075cf] focus-visible:ring-offset-1"
+            className="relative inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-white bg-surface-muted px-1 text-[10px] font-semibold text-secondary hover:z-10 hover:bg-neutral-200 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4075cf] focus-visible:ring-offset-1"
           >
             +{overflow}
           </button>
@@ -92,7 +92,7 @@ export default function ProjectMemberFacepile({
           aria-expanded={open}
           title="メンバーを追加"
           onClick={() => openDialog(true)}
-          className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-neutral-300 bg-white text-neutral-500 transition hover:z-10 hover:border-[#4075cf] hover:text-[#4075cf] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4075cf] focus-visible:ring-offset-1"
+          className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-neutral-300 bg-surface text-neutral-500 transition hover:z-10 hover:border-[#4075cf] hover:text-[#4075cf] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4075cf] focus-visible:ring-offset-1"
         >
           <svg
             aria-hidden="true"

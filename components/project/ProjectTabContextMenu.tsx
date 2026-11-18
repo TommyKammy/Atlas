@@ -50,7 +50,7 @@ export default function ProjectTabContextMenu({
         aria-label={`${tab.name}のタブメニュー`}
         data-project-tab-menu
         style={{ left: pos.x, top: pos.y }}
-        className="fixed z-[90] w-[190px] rounded-md border border-neutral-200 bg-white py-1 shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
+        className="fixed z-[90] w-[190px] rounded-md border border-neutral-200 bg-surface py-1 shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
       >
         <button
           type="button"

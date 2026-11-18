@@ -151,19 +151,19 @@ export default function ProjectSettingsDialog({
       onClose={onClose}
       title="プロジェクト設定"
       backdropClassName="backdrop:bg-black/25"
-      panelClassName="flex max-h-[90vh] w-[min(880px,94vw)] flex-col overflow-hidden rounded-xl bg-white text-sm shadow-2xl"
+      panelClassName="flex max-h-[90vh] w-[min(880px,94vw)] flex-col overflow-hidden rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-settings-dialog className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-start justify-between border-b border-neutral-200 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">プロジェクト設定</h2>
-            <p className="mt-0.5 text-xs text-neutral-500">{projectName}</p>
+            <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="閉じる"
-            className="text-xl leading-none text-neutral-400 hover:text-neutral-700"
+            className="text-xl leading-none text-subtle hover:text-neutral-700"
           >
             ×
           </button>
@@ -179,8 +179,8 @@ export default function ProjectSettingsDialog({
                 onClick={() => setTab(entry.key)}
                 className={`flex h-9 w-full items-center rounded-md px-3 text-left text-[13px] ${
                   tab === entry.key
-                    ? "bg-white font-semibold text-neutral-900 shadow-sm ring-1 ring-neutral-200"
-                    : "text-neutral-600 hover:bg-white/70"
+                    ? "bg-surface font-semibold text-neutral-900 shadow-sm ring-1 ring-neutral-200"
+                    : "text-secondary hover:bg-white/70"
                 }`}
               >
                 {entry.label}
@@ -189,17 +189,17 @@ export default function ProjectSettingsDialog({
           </nav>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             {loading ? (
-              <p className="text-sm text-neutral-500">読み込み中…</p>
+              <p className="text-sm text-muted">読み込み中…</p>
             ) : (
               <>
                 {tab === "details" && (
                   <div className="space-y-4" data-project-settings-panel="details">
                     <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-neutral-600">名前</span>
+                      <span className="mb-1 block text-xs font-medium text-secondary">名前</span>
                       <input value={name} onChange={(event) => setName(event.target.value)} className={field} maxLength={100} />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-neutral-600">説明</span>
+                      <span className="mb-1 block text-xs font-medium text-secondary">説明</span>
                       <textarea
                         value={description}
                         onChange={(event) => setDescription(event.target.value)}
@@ -210,7 +210,7 @@ export default function ProjectSettingsDialog({
                     </label>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <label className="block">
-                        <span className="mb-1 block text-xs font-medium text-neutral-600">オーナー</span>
+                        <span className="mb-1 block text-xs font-medium text-secondary">オーナー</span>
                         <select value={ownerId} onChange={(event) => setOwnerId(event.target.value)} className={field}>
                           <option value="">未設定</option>
                           {users.map((user) => (
@@ -222,7 +222,7 @@ export default function ProjectSettingsDialog({
                         </select>
                       </label>
                       <label className="block">
-                        <span className="mb-1 block text-xs font-medium text-neutral-600">関連チーム</span>
+                        <span className="mb-1 block text-xs font-medium text-secondary">関連チーム</span>
                         <select value={teamId} onChange={(event) => setTeamId(event.target.value)} className={field}>
                           <option value="">チームなし</option>
                           {teams.map((team) => (
@@ -234,16 +234,16 @@ export default function ProjectSettingsDialog({
                       </label>
                     </div>
                     <label className="block max-w-xs">
-                      <span className="mb-1 block text-xs font-medium text-neutral-600">期日</span>
+                      <span className="mb-1 block text-xs font-medium text-secondary">期日</span>
                       <input type="date" value={dueOn} onChange={(event) => setDueOn(event.target.value)} className={field} />
                     </label>
-                    <p className="text-xs text-neutral-400">プロジェクトのテンプレートとつながっているポートフォリオは今後ここに表示されます。</p>
+                    <p className="text-xs text-subtle">プロジェクトのテンプレートとつながっているポートフォリオは今後ここに表示されます。</p>
                   </div>
                 )}
 
                 {tab === "dependencies" && (
                   <div className="space-y-2" data-project-settings-panel="dependencies">
-                    <p className="mb-3 text-xs text-neutral-500">
+                    <p className="mb-3 text-xs text-muted">
                       このプロジェクトにおいて、依存関係にあるタスクの日付をどのように調整するかを選択します。
                     </p>
                     {DEPENDENCY_BUFFER_MODES.map((mode) => (
@@ -269,7 +269,7 @@ export default function ProjectSettingsDialog({
                         />
                         <span>
                           <span className="block font-medium text-neutral-800">{DEPENDENCY_BUFFER_LABELS[mode]}</span>
-                          <span className="block text-xs text-neutral-500">
+                          <span className="block text-xs text-muted">
                             {mode === "buffer"
                               ? "依存関係にあるタスク同士の間隔を維持します。"
                               : mode === "fill"
@@ -284,11 +284,11 @@ export default function ProjectSettingsDialog({
 
                 {tab === "schedule" && (
                   <div className="space-y-4" data-project-settings-panel="schedule">
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-muted">
                       このプロジェクトの勤務日を設定して、依存タスクが非勤務日を考慮するようにします。
                     </p>
                     <div>
-                      <div className="mb-2 text-xs font-medium text-neutral-600">勤務日</div>
+                      <div className="mb-2 text-xs font-medium text-secondary">勤務日</div>
                       <div className="flex flex-wrap gap-1.5">
                         {WEEKDAY_LABELS.map((label, day) => {
                           const active = settings.work_days.includes(day);
@@ -307,8 +307,8 @@ export default function ProjectSettingsDialog({
                               }
                               className={`h-9 w-10 rounded-md border text-sm ${
                                 active
-                                  ? "border-[#4075cf] bg-[#eaf2ff] font-semibold text-[#2C60B8]"
-                                  : "border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50"
+                                  ? "border-[#4075cf] bg-[#eaf2ff] font-semibold text-accent-text"
+                                  : "border-neutral-200 bg-surface text-muted hover:bg-neutral-50"
                               }`}
                             >
                               {label}
@@ -319,7 +319,7 @@ export default function ProjectSettingsDialog({
                     </div>
                     <div className="grid max-w-sm grid-cols-2 gap-3">
                       <label className="block">
-                        <span className="mb-1 block text-xs font-medium text-neutral-600">勤務開始</span>
+                        <span className="mb-1 block text-xs font-medium text-secondary">勤務開始</span>
                         <input
                           type="time"
                           value={settings.work_hours.start}
@@ -333,7 +333,7 @@ export default function ProjectSettingsDialog({
                         />
                       </label>
                       <label className="block">
-                        <span className="mb-1 block text-xs font-medium text-neutral-600">勤務終了</span>
+                        <span className="mb-1 block text-xs font-medium text-secondary">勤務終了</span>
                         <input
                           type="time"
                           value={settings.work_hours.end}
@@ -352,7 +352,7 @@ export default function ProjectSettingsDialog({
 
                 {tab === "notifications" && (
                   <div className="space-y-3" data-project-settings-panel="notifications">
-                    <p className="text-xs text-neutral-500">プロジェクトの更新をどこで受け取るかを選択します。</p>
+                    <p className="text-xs text-muted">プロジェクトの更新をどこで受け取るかを選択します。</p>
                     <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-3">
                       <input
                         type="checkbox"
@@ -367,11 +367,11 @@ export default function ProjectSettingsDialog({
                       />
                       <span>
                         <span className="block font-medium">メール通知</span>
-                        <span className="block text-xs text-neutral-500">課題の割り当て・コメント・期日の変更をメールで受け取ります。</span>
+                        <span className="block text-xs text-muted">課題の割り当て・コメント・期日の変更をメールで受け取ります。</span>
                       </span>
                     </label>
                     <div data-notification-email-status={!delivery ? "unknown" : !delivery.smtp_configured ? "unconfigured" : !delivery.worker_running ? "worker_stopped" : "ready"}
-                      className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+                      className="rounded-md border border-neutral-200 bg-surface-subtle p-3 text-xs text-secondary">
                       <p className="font-medium text-neutral-700">メールの配信状況</p>
                       <p className="mt-1">{!delivery ? "配信状況を取得できていません。" : !delivery.smtp_configured
                         ? "SMTPまたはアプリの公開URLが未設定のため、メールは未接続です。タスクの変更は保存されます。"
@@ -400,21 +400,21 @@ export default function ProjectSettingsDialog({
                       />
                       <span>
                         <span className="block font-medium">アプリ内通知</span>
-                        <span className="block text-xs text-neutral-500">受信トレイにプロジェクトの更新を表示します。</span>
+                        <span className="block text-xs text-muted">受信トレイにプロジェクトの更新を表示します。</span>
                       </span>
                     </label>
-                    <div className="rounded-md border border-dashed border-neutral-300 p-3 text-xs text-neutral-500">
+                    <div className="rounded-md border border-dashed border-line-strong p-3 text-xs text-muted">
                       <div className="font-medium text-neutral-700">Slack / Microsoft Teams</div>
                       <p className="mt-1">外部チャンネル連携は未接続です。接続設定は今後追加されます。</p>
                     </div>
-                    <p className="text-[11px] text-neutral-400">
+                    <p className="text-[11px] text-subtle">
                       保存後に設定が反映されます。アプリ内通知をオフにすると、受信トレイと未読件数から除外します。
                     </p>
                   </div>
                 )}
               </>
             )}
-            {error && <p className="mt-4 text-xs text-red-600">{error}</p>}
+            {error && <p className="mt-4 text-xs text-danger">{error}</p>}
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-neutral-200 px-6 py-3">

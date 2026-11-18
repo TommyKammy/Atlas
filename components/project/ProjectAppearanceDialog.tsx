@@ -29,7 +29,7 @@ export default function ProjectAppearanceDialog({
       onClose={onClose}
       title="カラーとアイコンを設定"
       backdropClassName="backdrop:bg-black/25"
-      panelClassName="max-h-[90vh] w-[min(480px,90vw)] overflow-y-auto rounded-lg bg-white text-sm shadow-xl"
+      panelClassName="max-h-[90vh] w-[min(480px,90vw)] overflow-y-auto rounded-lg bg-surface text-sm shadow-xl"
     >
       <div data-project-appearance-dialog className="p-5">
         <h2 className="text-lg font-semibold">カラーとアイコンを設定</h2>
@@ -60,8 +60,8 @@ export default function ProjectAppearanceDialog({
               onClick={() => onSave({ icon: entry.key })}
               className={`flex h-8 w-8 items-center justify-center rounded-md border text-[11px] ${
                 icon === entry.key
-                  ? "border-[#4075cf] bg-[#eff4fd] text-[#2C60B8]"
-                  : "text-neutral-500 hover:bg-neutral-50"
+                  ? "border-[#4075cf] bg-accent-soft text-accent-text"
+                  : "text-muted hover:bg-neutral-50"
               }`}
             >
               {entry.key ? (
@@ -78,7 +78,7 @@ export default function ProjectAppearanceDialog({
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-neutral-400">変更はすぐに保存されます。</p>
+        <p className="mt-3 text-xs text-subtle">変更はすぐに保存されます。</p>
         <div className="mt-4 flex justify-end">
           <button type="button" className={PROJECT_DIALOG_PRIMARY} onClick={onDone}>
             完了

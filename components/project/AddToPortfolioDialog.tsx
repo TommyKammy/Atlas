@@ -67,33 +67,33 @@ export default function AddToPortfolioDialog({
       onClose={onClose}
       title="ポートフォリオに追加"
       backdropClassName="backdrop:bg-black/25"
-      panelClassName="w-[min(480px,94vw)] rounded-xl bg-white text-sm shadow-2xl"
+      panelClassName="w-[min(480px,94vw)] rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-portfolio-dialog className="p-6">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-semibold">ポートフォリオに追加</h2>
-            <p className="mt-0.5 text-xs text-neutral-500">{projectName}</p>
+            <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-neutral-400 hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-neutral-700">
             ×
           </button>
         </div>
         <div className="mt-4 flex items-center gap-3 rounded-lg border border-neutral-200 p-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[#eaf2ff] text-[#2C60B8]">
+          <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[#eaf2ff] text-accent-text">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5">
               <path d="M4 19V5M4 19h16M8 16V9M12 16V6M16 16v-4" strokeLinecap="round" />
             </svg>
           </span>
           <div className="min-w-0 flex-1">
             <div className="font-medium">マイポートフォリオ</div>
-            <div className="text-xs text-neutral-500">このプロジェクトを個人のポートフォリオ一覧に表示します。</div>
+            <div className="text-xs text-muted">このプロジェクトを個人のポートフォリオ一覧に表示します。</div>
           </div>
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${inPortfolio ? "bg-green-100 text-green-800" : "bg-neutral-100 text-neutral-500"}`}>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${inPortfolio ? "bg-success-soft text-green-800" : "bg-surface-muted text-muted"}`}>
             {loading ? "確認中" : inPortfolio ? "追加済み" : "未追加"}
           </span>
         </div>
-        {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-3 text-xs text-danger">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" className={PROJECT_DIALOG_SECONDARY} onClick={onClose}>
             閉じる

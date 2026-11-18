@@ -7,7 +7,7 @@ import Dialog from "../ui/Dialog";
 export const PROJECT_DIALOG_PRIMARY =
   "flex h-8 items-center rounded-md bg-[#4075cf] px-3 text-sm font-medium text-white hover:bg-[#3567b8] disabled:opacity-60";
 export const PROJECT_DIALOG_SECONDARY =
-  "flex h-8 items-center rounded-md border bg-white px-3 text-sm text-neutral-700 hover:bg-neutral-50";
+  "flex h-8 items-center rounded-md border bg-surface px-3 text-sm text-neutral-700 hover:bg-neutral-50";
 
 /** Rename project dialog. */
 export default function RenameProjectDialog({
@@ -29,7 +29,7 @@ export default function RenameProjectDialog({
       onClose={onClose}
       title="名前を変更"
       backdropClassName="backdrop:bg-black/25"
-      panelClassName="w-[min(420px,90vw)] rounded-lg bg-white text-sm shadow-xl"
+      panelClassName="w-[min(420px,90vw)] rounded-lg bg-surface text-sm shadow-xl"
     >
       <div className="p-5">
         <h2 className="text-lg font-semibold">名前を変更</h2>
