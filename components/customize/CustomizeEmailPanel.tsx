@@ -24,13 +24,13 @@ export default function CustomizeEmailPanel({
 }) {
   return (
     <div className="p-5">
-      <p className="text-[13px] text-neutral-600">
+      <p className="text-[13px] text-secondary">
         プロジェクト専用のメールアドレスです。受信ゲートウェイに届いたメールは、件名をタスク名、本文を説明として取り込みます。
       </p>
-      <div className="mt-4 rounded-lg border border-[#e1e1e1] bg-neutral-50 p-3">
-        <div className="text-[11px] font-medium text-neutral-500">プロジェクトのメールアドレス</div>
+      <div className="mt-4 rounded-lg border border-[#e1e1e1] bg-surface-subtle p-3">
+        <div className="text-[11px] font-medium text-muted">プロジェクトのメールアドレス</div>
         <div className="mt-1 flex items-center gap-2">
-          <code data-customize-email-address className="min-w-0 flex-1 break-all rounded bg-white px-2 py-1.5 text-[12px] text-neutral-800">
+          <code data-customize-email-address className="min-w-0 flex-1 break-all rounded bg-surface px-2 py-1.5 text-[12px] text-neutral-800">
             {address || "生成中…"}
           </code>
           <button
@@ -61,12 +61,12 @@ export default function CustomizeEmailPanel({
           data-customize-email-regenerate
           disabled={busy}
           onClick={onRegenerate}
-          className="mt-4 text-[12px] text-[#2c60b8] hover:underline"
+          className="mt-4 text-[12px] text-accent-text hover:underline"
         >
           アドレスを再生成
         </button>
       )}
-      <p className="mt-5 rounded-md bg-neutral-50 px-3 py-2 text-[11px] leading-4 text-neutral-500">
+      <p className="mt-5 rounded-md bg-surface-subtle px-3 py-2 text-[11px] leading-4 text-muted">
         実際のSMTP受信には外部ゲートウェイが必要です。Atlasでは認証済みの取り込みAPIで同じ処理を検証できます。
       </p>
     </div>

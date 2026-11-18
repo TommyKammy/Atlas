@@ -30,11 +30,11 @@ export default function CustomizeStatusPanel({
 }) {
   return (
     <div className="p-5">
-      <p className="text-[13px] text-neutral-600">
+      <p className="text-[13px] text-secondary">
         ステータスフィールドの名前と選択肢を編集します。選択肢名を変更すると、既存タスクの値も一緒に更新されます。
       </p>
       {!canAdmin && (
-        <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+        <p className="mt-2 rounded-md bg-warning-soft px-3 py-2 text-[12px] text-warning">
           ステータスの変更はプロジェクト管理者のみ可能です。
         </p>
       )}
@@ -79,12 +79,12 @@ export default function CustomizeStatusPanel({
             type="button"
             data-customize-status-add
             onClick={onAddDraft}
-            className="mt-3 flex h-8 items-center gap-1 rounded-md px-2 text-[13px] text-[#2c60b8] hover:bg-[#eff4fd]"
+            className="mt-3 flex h-8 items-center gap-1 rounded-md px-2 text-[13px] text-accent-text hover:bg-[#eff4fd]"
           >
             ＋ ステータスを追加
           </button>
           <div className="mt-5 flex items-center justify-between">
-            <button type="button" onClick={onDelete} className="text-[12px] text-red-600 hover:underline">
+            <button type="button" onClick={onDelete} className="text-[12px] text-danger hover:underline">
               フィールドを削除
             </button>
             <button type="button" data-customize-status-save onClick={onSave} disabled={busy} className={primaryButton}>

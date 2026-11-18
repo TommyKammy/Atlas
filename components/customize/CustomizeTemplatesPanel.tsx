@@ -29,7 +29,7 @@ export default function CustomizeTemplatesPanel({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-[14px] font-semibold text-neutral-900">タスクテンプレート</h3>
-          <p className="mt-0.5 text-[12px] text-neutral-500">繰り返し使うタスクをワンクリックで作成</p>
+          <p className="mt-0.5 text-[12px] text-muted">繰り返し使うタスクをワンクリックで作成</p>
         </div>
         {canEdit && (
           <button
@@ -44,7 +44,7 @@ export default function CustomizeTemplatesPanel({
       </div>
       <div className="mt-4 space-y-2">
         {templates.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-neutral-200 px-4 py-6 text-center text-[13px] text-neutral-500">
+          <p className="rounded-lg border border-dashed border-neutral-200 px-4 py-6 text-center text-[13px] text-muted">
             テンプレートがありません。よく使うタスクを登録しておくと便利です。
           </p>
         ) : (
@@ -53,10 +53,10 @@ export default function CustomizeTemplatesPanel({
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="text-[14px] font-medium text-neutral-900">{template.name}</div>
-                  <div className="mt-0.5 truncate text-[12px] text-neutral-600">
+                  <div className="mt-0.5 truncate text-[12px] text-secondary">
                     タスク: {template.title_template}
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted">
                     <span>担当: {template.assignee_name ?? "なし"}</span>
                     <span>
                       期日: {template.due_offset_days === null ? "なし" : `今日 +${template.due_offset_days}日`}
@@ -72,7 +72,7 @@ export default function CustomizeTemplatesPanel({
                       data-customize-template-edit={template.id}
                       aria-label={`${template.name}を編集`}
                       onClick={() => onEdit(template)}
-                      className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                      className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-neutral-700"
                     >
                       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                         <path d="m10.5 2.5 3 3L6 13H3v-3z" />
@@ -82,7 +82,7 @@ export default function CustomizeTemplatesPanel({
                       type="button"
                       data-customize-template-use={template.id}
                       onClick={() => onUse(template)}
-                      className="h-7 rounded-md bg-[#eff4fd] px-2 text-[12px] font-medium text-[#2c60b8] hover:bg-[#e1ecfc]"
+                      className="h-7 rounded-md bg-[#eff4fd] px-2 text-[12px] font-medium text-accent-text hover:bg-[#e1ecfc]"
                     >
                       使用
                     </button>}

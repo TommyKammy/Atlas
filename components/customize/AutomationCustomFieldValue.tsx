@@ -15,8 +15,8 @@ export default function AutomationCustomFieldValue({ field, users, value, onChan
   onChange: (value: unknown) => void;
 }) {
   const [referenceOpen, setReferenceOpen] = useState(false);
-  if (!field) return <p className="mt-1 text-[12px] text-neutral-500">編集できるフィールドを選択してください。</p>;
-  const label = <span className="block text-[11px] font-medium text-neutral-600">値</span>;
+  if (!field) return <p className="mt-1 text-[12px] text-muted">編集できるフィールドを選択してください。</p>;
+  const label = <span className="block text-[11px] font-medium text-secondary">値</span>;
   const selectedIds = Array.isArray(value) ? value.map(Number) : [];
 
   if (field.field_type === "reference") {
@@ -43,9 +43,9 @@ export default function AutomationCustomFieldValue({ field, users, value, onChan
       : typeof value === "string" ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
     return (
       <fieldset className="min-w-0" data-automation-custom-value={field.field_type}>
-        <legend className="text-[11px] font-medium text-neutral-600">値</legend>
-        <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-neutral-200 bg-white p-2">
-          {options.length === 0 && <p className="text-[12px] text-neutral-400">選択肢がありません</p>}
+        <legend className="text-[11px] font-medium text-secondary">値</legend>
+        <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-neutral-200 bg-surface p-2">
+          {options.length === 0 && <p className="text-[12px] text-subtle">選択肢がありません</p>}
           {options.map((option) => (
             <label key={option.value} className="flex items-center gap-2 text-[12px] text-neutral-700">
               <input type="checkbox" checked={selected.some((entry) => entry === option.value)}

@@ -23,11 +23,11 @@ export default function CustomizeAppearancePanel({
 }) {
   return (
     <div className="p-5">
-      <p className="text-[13px] text-neutral-600">
+      <p className="text-[13px] text-secondary">
         プロジェクトのカラーとアイコンを変更します。変更はすぐに保存されます。
       </p>
       {!canAdmin && (
-        <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+        <p className="mt-2 rounded-md bg-warning-soft px-3 py-2 text-[12px] text-warning">
           色とアイコンの変更はプロジェクト管理者のみ可能です。
         </p>
       )}
@@ -60,8 +60,8 @@ export default function CustomizeAppearancePanel({
             onClick={() => onSave({ icon: entry.key })}
             className={`flex h-9 w-9 items-center justify-center rounded-md border text-[10px] disabled:cursor-not-allowed disabled:opacity-50 ${
               icon === entry.key
-                ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]"
-                : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                ? "border-accent bg-accent-soft text-accent-text"
+                : "border-neutral-200 text-muted hover:bg-neutral-50"
             }`}
           >
             {entry.key ? (

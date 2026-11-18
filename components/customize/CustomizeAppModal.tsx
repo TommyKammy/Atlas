@@ -56,7 +56,7 @@ export default function CustomizeAppModal({
           if (!definition) return null;
           return (
             <>
-              <p className="mt-2 text-[12px] text-neutral-500">{definition.description}</p>
+              <p className="mt-2 text-[12px] text-muted">{definition.description}</p>
               {definition.fields.map((field) => (
                 <label key={field.key} className="mt-3 block text-[12px] font-medium text-neutral-700">
                   {field.label}

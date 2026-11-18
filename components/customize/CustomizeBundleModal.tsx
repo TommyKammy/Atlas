@@ -66,7 +66,7 @@ export default function CustomizeBundleModal({
                 fields: [...draft.fields, { name: "", field_type: "text", options: [] }],
               })
             }
-            className="text-[12px] text-[#2c60b8] hover:underline"
+            className="text-[12px] text-accent-text hover:underline"
           >
             ＋ フィールドを追加
           </button>
@@ -150,7 +150,7 @@ export default function CustomizeBundleModal({
         {availableRules.length > 0 && (
           <div className="mt-4">
             <div className="text-[12px] font-medium text-neutral-700">ルールを含める</div>
-            <p className="mt-0.5 text-[10px] text-neutral-400">
+            <p className="mt-0.5 text-[10px] text-subtle">
               現在のプロジェクトのルールをバンドルに同梱できます。
             </p>
             <div className="mt-2 space-y-1.5">
@@ -175,7 +175,7 @@ export default function CustomizeBundleModal({
                   <span>
                     <span className="block font-medium text-neutral-800">{rule.name}</span>
                     {rule.description && (
-                      <span className="block text-[10px] text-neutral-500">{rule.description}</span>
+                      <span className="block text-[10px] text-muted">{rule.description}</span>
                     )}
                   </span>
                 </label>

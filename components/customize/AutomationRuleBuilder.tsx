@@ -204,14 +204,14 @@ export default function AutomationRuleBuilder({
       open
       onClose={onClose}
       title={rule ? "ルールを編集" : "ルールを作成"}
-      panelClassName="flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
+      panelClassName="flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
         <div>
           <h3 className="text-[17px] font-semibold text-neutral-900">
             {rule ? "ルールを編集" : "ルールを作成"}
           </h3>
-          <p className="mt-0.5 text-[11px] text-neutral-500">
+          <p className="mt-0.5 text-[11px] text-muted">
             トリガー、条件、複数アクションを組み合わせます。
           </p>
         </div>
@@ -219,7 +219,7 @@ export default function AutomationRuleBuilder({
           type="button"
           onClick={onClose}
           aria-label="閉じる"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-xl text-neutral-500 hover:bg-neutral-100"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-xl text-muted hover:bg-neutral-100"
         >
           ×
         </button>
@@ -239,27 +239,27 @@ export default function AutomationRuleBuilder({
               type="button"
               onClick={() => void suggest()}
               disabled={busy || aiPrompt.trim() === ""}
-              className="h-8 shrink-0 rounded-md bg-[#2c60b8] px-3 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+              className="h-8 shrink-0 rounded-md bg-accent px-3 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
             >
               提案
             </button>
           </div>
           {suggestion && (
-            <div className="mt-3 rounded-md border border-[#dbe7fb] bg-white p-3 text-[12px]" role="status">
+            <div className="mt-3 rounded-md border border-[#dbe7fb] bg-surface p-3 text-[12px]" role="status">
               <p className="font-medium text-neutral-800">AIの提案: {suggestion.name}</p>
-              <p className="mt-1 text-neutral-500">{suggestion.description}</p>
-              <p className="mt-1 text-[11px] text-neutral-500">適用すると、現在のトリガー・条件・アクション・分岐を提案全体で置き換えます。</p>
+              <p className="mt-1 text-muted">{suggestion.description}</p>
+              <p className="mt-1 text-[11px] text-muted">適用すると、現在のトリガー・条件・アクション・分岐を提案全体で置き換えます。</p>
               <button type="button" disabled={busy} onClick={() => {
                 setDraft(ruleEditorDraft(suggestion));
                 setSuggestion(null);
                 toast("AIの提案を適用しました");
-              }} className="mt-2 text-[#2c60b8] hover:underline disabled:opacity-50">AIの提案を適用</button>
+              }} className="mt-2 text-accent-text hover:underline disabled:opacity-50">AIの提案を適用</button>
             </div>
           )}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block text-[11px] font-medium text-neutral-600">
+          <label className="block text-[11px] font-medium text-secondary">
             ルール名
             <input
               value={name}
@@ -268,7 +268,7 @@ export default function AutomationRuleBuilder({
               className={inputClass}
             />
           </label>
-          <label className="block text-[11px] font-medium text-neutral-600">
+          <label className="block text-[11px] font-medium text-secondary">
             説明（任意）
             <input
               value={description}
@@ -282,7 +282,7 @@ export default function AutomationRuleBuilder({
         <section className="mt-5">
           <div className="flex items-center justify-between">
             <h4 className="text-[12px] font-semibold text-neutral-800">
-              トリガー <span className="text-neutral-400">({triggers.length})</span>
+              トリガー <span className="text-subtle">({triggers.length})</span>
             </h4>
             <button
               type="button"
@@ -301,9 +301,9 @@ export default function AutomationRuleBuilder({
               return (
                 <div
                   key={`trigger-${index}`}
-                  className="flex flex-wrap items-end gap-2 rounded-lg border border-neutral-200 bg-white p-2.5"
+                  className="flex flex-wrap items-end gap-2 rounded-lg border border-neutral-200 bg-surface p-2.5"
                 >
-                  <label className="min-w-[220px] flex-1 text-[11px] text-neutral-600">
+                  <label className="min-w-[220px] flex-1 text-[11px] text-secondary">
                     きっかけ
                     <select
                       value={trigger.event}
@@ -325,7 +325,7 @@ export default function AutomationRuleBuilder({
                     </select>
                   </label>
                   {descriptor?.days && (
-                    <label className="w-32 text-[11px] text-neutral-600">
+                    <label className="w-32 text-[11px] text-secondary">
                       {descriptor.days.label}
                       <input
                         type="number"
@@ -364,18 +364,18 @@ export default function AutomationRuleBuilder({
         <section className="mt-5">
           <div className="flex items-center justify-between">
             <h4 className="text-[12px] font-semibold text-neutral-800">
-              条件（すべて満たす） <span className="text-neutral-400">({conditions.length})</span>
+              条件（すべて満たす） <span className="text-subtle">({conditions.length})</span>
             </h4>
             <button
               type="button"
               onClick={addCondition}
-              className="text-[11px] text-[#2c60b8] hover:underline"
+              className="text-[11px] text-accent-text hover:underline"
             >
               ＋ 条件を追加
             </button>
           </div>
           {conditions.length === 0 ? (
-            <p className="mt-2 rounded-md border border-dashed border-neutral-200 px-3 py-2 text-[11px] text-neutral-400">
+            <p className="mt-2 rounded-md border border-dashed border-neutral-200 px-3 py-2 text-[11px] text-subtle">
               条件なしで、トリガー発生時に毎回実行します。
             </p>
           ) : (
@@ -388,9 +388,9 @@ export default function AutomationRuleBuilder({
                 return (
                   <div
                     key={`condition-${index}`}
-                    className="grid grid-cols-1 gap-2 rounded-lg border border-neutral-200 bg-white p-2.5 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
+                    className="grid grid-cols-1 gap-2 rounded-lg border border-neutral-200 bg-surface p-2.5 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
                   >
-                    <label className="text-[11px] text-neutral-600">
+                    <label className="text-[11px] text-secondary">
                       フィールド
                       <select
                         value={condition.field}
@@ -412,7 +412,7 @@ export default function AutomationRuleBuilder({
                         ))}
                       </select>
                     </label>
-                    <label className="text-[11px] text-neutral-600">
+                    <label className="text-[11px] text-secondary">
                       演算子
                       <select
                         value={condition.op}
@@ -437,10 +437,10 @@ export default function AutomationRuleBuilder({
                         ))}
                       </select>
                     </label>
-                    <div className="text-[11px] text-neutral-600">
+                    <div className="text-[11px] text-secondary">
                       <span className="block font-medium">値</span>
                       {!needsValue ? (
-                        <span className="mt-1 flex h-8 items-center text-[11px] text-neutral-400">
+                        <span className="mt-1 flex h-8 items-center text-[11px] text-subtle">
                           値は不要です
                         </span>
                       ) : field?.options ? (
@@ -521,10 +521,10 @@ export default function AutomationRuleBuilder({
             {branches.map((branch, branchIndex) => (
               <div
                 key={`branch-${branchIndex}`}
-                className="rounded-lg border border-neutral-200 bg-white p-3"
+                className="rounded-lg border border-neutral-200 bg-surface p-3"
               >
                 <div className="flex flex-wrap items-end gap-2">
-                  <label className="min-w-[180px] flex-1 text-[11px] text-neutral-600">
+                  <label className="min-w-[180px] flex-1 text-[11px] text-secondary">
                     パス名
                     <input
                       value={branch.name}
@@ -538,7 +538,7 @@ export default function AutomationRuleBuilder({
                       className={inputClass}
                     />
                   </label>
-                  <label className="mb-1 flex items-center gap-1 text-[11px] text-neutral-600">
+                  <label className="mb-1 flex items-center gap-1 text-[11px] text-secondary">
                     <input
                       type="checkbox"
                       checked={branch.else === true}
@@ -570,7 +570,7 @@ export default function AutomationRuleBuilder({
                 {branch.else !== true && (
                   <div className="mt-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-medium text-neutral-600">条件</span>
+                      <span className="text-[11px] font-medium text-secondary">条件</span>
                       <button
                         type="button"
                         onClick={() =>
@@ -588,7 +588,7 @@ export default function AutomationRuleBuilder({
                             }),
                           )
                         }
-                        className="text-[10px] text-[#2c60b8] hover:underline"
+                        className="text-[10px] text-accent-text hover:underline"
                       >
                         ＋ 条件
                       </button>
@@ -603,7 +603,7 @@ export default function AutomationRuleBuilder({
                         return (
                           <div
                             key={`branch-${branchIndex}-condition-${conditionIndex}`}
-                            className="grid grid-cols-1 gap-1.5 rounded border border-neutral-100 bg-neutral-50 p-2 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
+                            className="grid grid-cols-1 gap-1.5 rounded border border-neutral-100 bg-surface-subtle p-2 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
                           >
                             <select
                               value={condition.field}
@@ -661,7 +661,7 @@ export default function AutomationRuleBuilder({
                               ))}
                             </select>
                             {!needsValue ? (
-                              <span className="flex h-8 items-center text-[10px] text-neutral-400">
+                              <span className="flex h-8 items-center text-[10px] text-subtle">
                                 値は不要
                               </span>
                             ) : field?.options ? (
@@ -745,7 +745,7 @@ export default function AutomationRuleBuilder({
 
                 <div className="mt-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-neutral-600">アクション</span>
+                    <span className="text-[11px] font-medium text-secondary">アクション</span>
                     <button
                       type="button"
                       onClick={() =>
@@ -757,7 +757,7 @@ export default function AutomationRuleBuilder({
                           ),
                         )
                       }
-                      className="text-[10px] text-[#2c60b8] hover:underline"
+                      className="text-[10px] text-accent-text hover:underline"
                     >
                       ＋ アクション
                     </button>
@@ -780,7 +780,7 @@ export default function AutomationRuleBuilder({
             <button
               type="button"
               onClick={addBranch}
-              className="h-8 rounded-md border border-dashed border-neutral-300 px-3 text-[11px] text-[#2c60b8] hover:bg-[#f5f9ff]"
+              className="h-8 rounded-md border border-dashed border-line-strong px-3 text-[11px] text-accent-text hover:bg-[#f5f9ff]"
             >
               ＋ パスを追加
             </button>
@@ -791,7 +791,7 @@ export default function AutomationRuleBuilder({
         <section className="mt-5">
           <div className="flex items-center justify-between">
             <h4 className="text-[12px] font-semibold text-neutral-800">
-              アクション <span className="text-neutral-400">({actions.length})</span>
+              アクション <span className="text-subtle">({actions.length})</span>
             </h4>
             <button
               type="button"
@@ -815,16 +815,16 @@ export default function AutomationRuleBuilder({
 
         {error !== "" && <p className="mt-4 text-[12px] text-rose-600">{error}</p>}
         {conflict && (
-          <div className="mt-2 text-[12px] text-neutral-600" role="alert">
+          <div className="mt-2 text-[12px] text-secondary" role="alert">
             編集中の内容は保持しています。最新のルールを読み込んでから編集を続けてください。
             <button type="button" onClick={() => void reloadLatest()} disabled={busy}
-              className="mt-2 block text-[#2c60b8] hover:underline disabled:opacity-50">
+              className="mt-2 block text-accent-text hover:underline disabled:opacity-50">
               最新のルールを読み込む（編集中の内容を破棄）
             </button>
           </div>
         )}
 
-        <div className="mt-5 rounded-md bg-neutral-50 px-3 py-2 text-[10px] text-neutral-500">
+        <div className="mt-5 rounded-md bg-surface-subtle px-3 py-2 text-[10px] text-muted">
           変数: <code>{"{{task.name}}"}</code>, <code>{"{{task.due_on}}"}</code>,{" "}
           <code>{"{{project.name}}"}</code> などがアクション内で使えます。
         </div>
@@ -842,7 +842,7 @@ export default function AutomationRuleBuilder({
           type="button"
           onClick={() => void save()}
           disabled={busy || conflict}
-          className="h-8 rounded-md bg-[#2c60b8] px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+          className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
         >
           {busy ? "保存中…" : rule ? "変更を保存" : "ルールを作成"}
         </button>

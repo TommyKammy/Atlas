@@ -111,7 +111,7 @@ export default function CustomizeTemplateModal({
               rows={2}
               className="mt-1 w-full rounded-md border border-neutral-200 px-2 py-1.5 text-[13px] outline-none focus:border-[#2c60b8]"
             />
-            <span className="mt-1 block text-[11px] font-normal text-neutral-400">カンマまたは改行で区切ってください。</span>
+            <span className="mt-1 block text-[11px] font-normal text-subtle">カンマまたは改行で区切ってください。</span>
           </label>
         </div>
         <div className="mt-6 flex justify-end gap-2">

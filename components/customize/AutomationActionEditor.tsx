@@ -29,9 +29,9 @@ function ActionParamField({ action, descriptors, param, value, onChange }: {
       <div>
         <AutomationCustomFieldValue key={field?.id ?? "none"} field={field} value={value} onChange={onChange}
           users={descriptors.conditionFields.find((entry) => entry.id === "task.assignee_id")?.options ?? []} />
-        {field && <button type="button" className="mt-1 text-[11px] text-neutral-500 hover:text-neutral-800"
+        {field && <button type="button" className="mt-1 text-[11px] text-muted hover:text-neutral-800"
           onClick={() => onChange(null)}>値をクリア</button>}
-        {value === null && <p className="mt-1 text-[11px] text-neutral-500">実行すると値をクリアします。</p>}
+        {value === null && <p className="mt-1 text-[11px] text-muted">実行すると値をクリアします。</p>}
       </div>
     );
   }
@@ -62,7 +62,7 @@ function ParamField({
   onChange: (value: unknown) => void;
 }) {
   const label = (
-    <span className="block text-[11px] font-medium text-neutral-600">
+    <span className="block text-[11px] font-medium text-secondary">
       {param.label}
       {param.required ? <span className="ml-0.5 text-rose-500">*</span> : null}
     </span>
@@ -77,7 +77,7 @@ function ParamField({
           placeholder={param.placeholder}
           className={areaClass}
         />
-        {param.help && <span className="mt-0.5 block text-[10px] text-neutral-400">{param.help}</span>}
+        {param.help && <span className="mt-0.5 block text-[10px] text-subtle">{param.help}</span>}
       </label>
     );
   }
@@ -110,7 +110,7 @@ function ParamField({
         placeholder={param.placeholder}
         className={inputClass}
       />
-      {param.help && <span className="mt-0.5 block text-[10px] text-neutral-400">{param.help}</span>}
+      {param.help && <span className="mt-0.5 block text-[10px] text-subtle">{param.help}</span>}
     </label>
   );
 }
@@ -141,9 +141,9 @@ export default function AutomationActionEditor({ action, descriptors, taskTrigge
     </select>
   );
   return (
-    <div className={compact ? "rounded border border-neutral-100 bg-neutral-50 p-2" : "rounded-lg border border-neutral-200 bg-white p-3"}>
+    <div className={compact ? "rounded border border-neutral-100 bg-surface-subtle p-2" : "rounded-lg border border-neutral-200 bg-surface p-3"}>
       <div className="flex items-end gap-2">
-        {compact ? select : <label className="min-w-0 flex-1 text-[11px] text-neutral-600">アクション{select}</label>}
+        {compact ? select : <label className="min-w-0 flex-1 text-[11px] text-secondary">アクション{select}</label>}
         <button type="button" aria-label="アクションを削除" onClick={onRemove}
           className={`mb-0.5 flex h-8 w-8 ${compact ? "shrink-0 " : ""}items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600`}>×</button>
       </div>
@@ -155,7 +155,7 @@ export default function AutomationActionEditor({ action, descriptors, taskTrigge
           ))}
         </div>
       )}
-      {!compact && descriptor?.description && <p className="mt-1 text-[10px] text-neutral-400">{descriptor.description}</p>}
+      {!compact && descriptor?.description && <p className="mt-1 text-[10px] text-subtle">{descriptor.description}</p>}
     </div>
   );
 }
