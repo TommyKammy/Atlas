@@ -91,7 +91,7 @@ export default function CustomizeTemplatesPanel({
                       data-customize-template-delete={template.id}
                       aria-label={`${template.name}を削除`}
                       onClick={() => onDelete(template)}
-                      className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                      className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
                     >
                       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                         <path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.6 8h5.8l.6-8M6.5 7v3M9.5 7v3" />

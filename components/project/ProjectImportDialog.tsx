@@ -115,7 +115,7 @@ export default function ProjectImportDialog({
           {file && <p className="mt-2 text-xs text-muted">{file.name}</p>}
         </div>
         {result && (
-          <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800" data-import-result>
+          <div className="mt-4 rounded-md border border-success-line bg-success-soft px-3 py-2 text-sm text-success" data-import-result>
             {result.created}件を作成し、{result.skipped}件をスキップしました。
           </div>
         )}

@@ -25,7 +25,7 @@ function ProposalTrail({
 }) {
   if (proposal.restricted) {
     return (
-      <p className="rounded-md border border-amber-200 bg-warning-soft px-3 py-2 text-[11px] text-amber-900">
+      <p className="rounded-md border border-warning-line bg-warning-soft px-3 py-2 text-[11px] text-warning">
         この提案の詳細は閲覧権限のため表示できません。
       </p>
     );

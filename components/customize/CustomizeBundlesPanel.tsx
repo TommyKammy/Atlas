@@ -51,7 +51,7 @@ export default function CustomizeBundlesPanel({
                   <div className="flex items-center gap-2">
                     <span className="text-[14px] font-medium text-text">{bundle.name}</span>
                     {bundle.applied && (
-                      <span className="rounded-full bg-success-soft px-2 py-0.5 text-[11px] text-green-800">
+                      <span className="rounded-full bg-success-soft px-2 py-0.5 text-[11px] text-success">
                         適用済み
                       </span>
                     )}
@@ -92,7 +92,7 @@ export default function CustomizeBundlesPanel({
                       data-customize-bundle-remove={bundle.id}
                       aria-label={`${bundle.name}を削除`}
                       onClick={() => onRemove(bundle)}
-                      className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                      className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
                     >
                       ×
                     </button>

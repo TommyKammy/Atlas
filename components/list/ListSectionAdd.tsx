@@ -75,7 +75,7 @@ export default function ListSectionAdd({
           <button type="button" onClick={onCancel} disabled={saving} className={`text-muted disabled:opacity-50 ${compact ? "px-1 text-xs" : "px-2 text-sm"}`}>
             キャンセル
           </button>
-          {error && <p id={errorId} role="alert" className="w-full text-sm text-red-700">{error}</p>}
+          {error && <p id={errorId} role="alert" className="w-full text-sm text-danger">{error}</p>}
         </div>
       ) : (
         <button type="button" ref={startRef} onClick={onStart} className="text-left text-sm text-muted hover:text-text">

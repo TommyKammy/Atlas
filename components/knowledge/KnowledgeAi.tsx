@@ -74,7 +74,7 @@ export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, 
     <KnowledgeActionMenu label="AIアシスト" onOpen={() => void load()} className={`${knowledgeActionBase} border-accent-line bg-blue-50 text-accent-text hover:bg-blue-100`}
       icon={<><KnowledgeIcon name="ai" /><span>AIアシスト</span><KnowledgeIcon name="chevron" /></>}>
         {loading && <p role="status" className="px-3 py-2 text-sm text-secondary">準備中…</p>}
-        {error && !open && <p role="alert" className="px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && !open && <p role="alert" className="px-3 py-2 text-sm text-danger">{error}</p>}
         {loaded && !loading && !selected && !error && <p className="px-3 py-2 text-sm text-secondary">このノートではAIアシストを利用できません。管理者にお問い合わせください。</p>}
         {(["summary", "improve"] as const).map(kind => <button key={kind} role="menuitem" className={knowledgeMenuItem} disabled={!loaded || loading || !selected || busy || saving || partner.locked} onClick={() => void generate(kind)}><KnowledgeIcon name={kind === "summary" ? "summary" : "edit"} />{labels[kind]}を生成</button>)}
         <p className="mt-1 border-t border-line-subtle px-3 pt-3 pb-1 text-xs text-muted">プロジェクトパートナー</p>
@@ -95,7 +95,7 @@ export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, 
     </div>
     <div id={`${id}-result`} role="tabpanel" aria-labelledby={`${id}-${operation}`} className="space-y-4">
       {busy && <div role="status" className="space-y-3 py-2"><p className="text-sm text-secondary">{labels[operation]}を生成中…</p><div aria-hidden="true" className="space-y-2 motion-safe:animate-pulse"><div className="h-3 rounded bg-surface-muted" /><div className="h-3 w-4/5 rounded bg-surface-muted" /><div className="h-3 w-3/5 rounded bg-surface-muted" /></div><button className={knowledgeAction} onClick={cancel}>中止</button></div>}
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
       {notice && <p role="status" className="text-sm text-secondary">{notice}</p>}
       {!result && !busy && <button className={knowledgeAction} disabled={!selected || loading || saving} onClick={() => void generate(operation)}>{labels[operation]}を生成</button>}
       {result && proposal && <div className="space-y-4" data-ai-result>

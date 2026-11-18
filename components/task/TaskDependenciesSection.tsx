@@ -49,7 +49,7 @@ export default function TaskDependenciesSection({
             <button
               type="button"
               onClick={() => onRemove(dependency.id)}
-              className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-hover hover:text-red-600"
+              className="shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-hover hover:text-danger"
               title="依存を外す"
               aria-label={`${dependency.name} の依存を外す`}
             >

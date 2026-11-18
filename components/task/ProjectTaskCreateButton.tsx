@@ -61,7 +61,7 @@ export default function ProjectTaskCreateButton({ projectId, sections: _sections
       </div> : <form className="space-y-2 p-2" onSubmit={event => { event.preventDefault(); void saveSection(); }}>
         <label className="block text-xs font-medium">セクション名<input autoFocus aria-label="新しいセクション名" value={section} onChange={event => setSection(event.target.value)} disabled={busy} className="mt-2 h-8 w-full rounded border px-2 text-sm outline-focus-ring" onKeyDown={event => { if (event.key === "Enter" && isImeComposing(event)) event.preventDefault(); }} /></label>
         <button type="submit" disabled={busy || !section.trim()} className="h-7 rounded bg-accent px-3 text-xs text-on-accent disabled:opacity-50">{busy ? "追加中…" : "セクションを追加"}</button>
-        {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+        {error && <p role="alert" className="text-xs text-danger">{error}</p>}
       </form>}
     </div>}
   </span>;

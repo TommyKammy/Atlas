@@ -160,7 +160,7 @@ export default function ApprovalSettingsDialog({
           <div className="space-y-3">
             <label className={labelClass}>
               最終承認者
-              <span className="ml-1 text-red-700" aria-hidden>
+              <span className="ml-1 text-danger" aria-hidden>
                 *
               </span>
               <select

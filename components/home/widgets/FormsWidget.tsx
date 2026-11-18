@@ -82,7 +82,7 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
                   <span
                     className={`shrink-0 rounded px-1 py-px text-[9px] ${
                       form.published
-                        ? "bg-green-50 text-success"
+                        ? "bg-success-soft text-success"
                         : "bg-surface-muted text-muted"
                     }`}
                   >

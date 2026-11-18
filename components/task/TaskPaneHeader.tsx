@@ -220,7 +220,7 @@ export default function TaskPaneHeader({
               closeMenu(event);
               onRemove();
             }}
-            className="flex w-full rounded px-2.5 py-1.5 text-left text-danger hover:bg-red-50"
+            className="flex w-full rounded px-2.5 py-1.5 text-left text-danger hover:bg-danger-soft"
           >
             タスクを削除
           </button>

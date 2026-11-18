@@ -121,7 +121,7 @@ export default function HomeWidgetCard({
                 item.onClick();
               }}
               className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover ${
-                item.danger ? "text-danger hover:bg-red-50" : ""
+                item.danger ? "text-danger hover:bg-danger-soft" : ""
               }`}
             >
               <span className="w-4 shrink-0 text-center">

@@ -721,7 +721,7 @@ export default function TaskListRow({
       <button
         style={{ order: 999 }}
         onClick={() => remove(t)}
-        className="invisible justify-self-end text-neutral-300 hover:text-red-600 group-hover:visible"
+        className="invisible justify-self-end text-subtle hover:text-danger group-hover:visible"
         title="削除"
       >
         ×

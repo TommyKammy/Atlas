@@ -87,7 +87,7 @@ export default function OwnerPicker({
             data-owner-selected
             className={`mt-1 rounded-md border px-3 py-2 ${
               selectedIsInactive
-                ? "border-amber-300 bg-warning-soft/70"
+                ? "border-warning-line bg-warning-soft/70"
                 : "border-emerald-300 bg-success-soft/70"
             }`}
           >
@@ -108,7 +108,7 @@ export default function OwnerPicker({
         ) : value.type === "legacy" ? (
           <div
             data-owner-legacy
-            className="mt-1 rounded-md border border-amber-300 bg-warning-soft/70 px-3 py-2"
+            className="mt-1 rounded-md border border-warning-line bg-warning-soft/70 px-3 py-2"
           >
             <p
               data-owner-legacy-name
@@ -116,7 +116,7 @@ export default function OwnerPicker({
             >
               {value.name}
             </p>
-            <p className="mt-0.5 text-[11px] text-amber-900">旧入力・このまま保持</p>
+            <p className="mt-0.5 text-[11px] text-warning">旧入力・このまま保持</p>
           </div>
         ) : null}
       </div>

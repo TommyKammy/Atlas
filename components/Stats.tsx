@@ -163,7 +163,7 @@ export function OverdueList({
         <div key={t.id} className="flex items-center gap-3 border-b py-1.5 text-sm">
           <a
             href={`/projects/${projectId}?view=list&task=${t.id}`}
-            className="min-w-0 flex-1 truncate font-semibold text-red-700 hover:underline"
+            className="min-w-0 flex-1 truncate font-semibold text-danger hover:underline"
           >
             {t.name}
           </a>

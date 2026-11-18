@@ -8,9 +8,9 @@ export default function TaskApprovalBadge({ approval, href, onClick }: {
   onClick?: () => void;
 }) {
   const className = `inline-flex max-w-full shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${
-    approval.status === "approved" ? "bg-green-50 text-green-800"
+    approval.status === "approved" ? "bg-success-soft text-success"
       : approval.status === "pending" ? "bg-warning-soft text-warning"
-        : approval.status === "rejected" ? "bg-rose-50 text-rose-800" : "bg-orange-50 text-orange-800"
+        : approval.status === "rejected" ? "bg-rose-50 text-rose-800" : "bg-warning-soft text-warning"
   }`;
   const label = TASK_APPROVAL_STATUS_LABELS[approval.status];
   const title = `${label}${approval.approver_name ? ` · 承認者: ${approval.approver_name}` : ""}`;

@@ -22,9 +22,9 @@ export function Tag({
   const tones = {
     neutral: "border-line-strong bg-surface-subtle text-secondary",
     blue: "border-accent-line bg-accent-soft text-accent-text",
-    good: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    warn: "border-amber-200 bg-warning-soft text-warning",
-    bad: "border-orange-300 bg-orange-50 text-orange-800",
+    good: "border-success-line bg-success-soft text-success",
+    warn: "border-warning-line bg-warning-soft text-warning",
+    bad: "border-warning-line bg-warning-soft text-warning",
   };
   return (
     <span
@@ -59,7 +59,7 @@ export function Stat({
       <div className="text-[11px] text-muted">{label}</div>
       <div
         className={`mt-0.5 text-[22px] leading-tight font-semibold tabular-nums ${
-          tone === "bad" ? "text-orange-700" : tone === "warn" ? "text-warning" : "text-text"
+          tone === "bad" ? "text-warning" : tone === "warn" ? "text-warning" : "text-text"
         }`}
       >
         {value}
@@ -79,9 +79,9 @@ export function Notice({
 }) {
   const tones = {
     info: "border-accent-line bg-accent-soft text-accent-text",
-    warn: "border-amber-200 bg-warning-soft text-amber-900",
-    error: "border-red-200 bg-danger-soft text-red-900",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    warn: "border-warning-line bg-warning-soft text-warning",
+    error: "border-danger-line bg-danger-soft text-red-900",
+    success: "border-success-line bg-success-soft text-success",
   };
   return (
     <div role={tone === "error" ? "alert" : "status"} className={`rounded-md border px-3 py-2 text-[12px] ${tones[tone]}`}>

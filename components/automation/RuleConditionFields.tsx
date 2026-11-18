@@ -67,7 +67,7 @@ export function RuleConditionFields({ conditions, descriptors, projectId, onChan
             </select>
           </label>
           <button type="button" aria-label={`条件${index + 1}を削除`} onClick={() => onChange(conditions.filter((_, item) => item !== index))}
-            className="mt-6 rounded px-2 py-1 text-neutral-400 hover:bg-rose-50 hover:text-rose-600">×</button>
+            className="mt-6 rounded px-2 py-1 text-subtle hover:bg-danger-soft hover:text-danger">×</button>
         </div>
         <label className="block text-[12px] font-medium text-secondary">比較方法
           <select value={condition.op} className={`${ruleInputClass} mt-1`}
@@ -76,7 +76,7 @@ export function RuleConditionFields({ conditions, descriptors, projectId, onChan
           </select>
         </label>
         <div data-rule-condition-value>{valueEditor(condition, index, problem)}</div>
-        {problem && <p id={`${errorPrefix}-${index}-error`} data-rule-condition-error className="text-[12px] leading-5 text-rose-700"><span aria-hidden="true" className="mr-1 font-semibold">!</span>{problem}</p>}
+        {problem && <p id={`${errorPrefix}-${index}-error`} data-rule-condition-error className="text-[12px] leading-5 text-danger"><span aria-hidden="true" className="mr-1 font-semibold">!</span>{problem}</p>}
       </div>; })}
       <button type="button" disabled={conditions.length >= descriptors.limits.conditionsPerPath} onClick={() => {
         const field = fields[0]?.id ?? "task.name";

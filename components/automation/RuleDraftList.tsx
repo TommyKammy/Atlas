@@ -44,7 +44,7 @@ export default function RuleDraftList({ projectId }: { projectId: number }) {
     <h3 className="text-[13px] font-semibold text-text">自分の下書き</h3>
     {loading ? <p role="status" className="text-[12px] text-secondary">下書きを読み込んでいます…</p>
       : current.status === "error" ? <div className="flex flex-wrap items-center gap-3">
-        <p role="alert" className="text-[12px] text-rose-700">下書きを取得できませんでした。</p>
+        <p role="alert" className="text-[12px] text-danger">下書きを取得できませんでした。</p>
         <button type="button" onClick={() => setGeneration((value) => value + 1)} className="rounded-md border border-line-strong px-3 py-1.5 text-[12px] text-secondary hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">再読み込み</button>
       </div>
       : current.status === "ready" && (current.drafts.length === 0

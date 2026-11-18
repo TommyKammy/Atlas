@@ -55,7 +55,7 @@ export default function TrashList({
           <button
             onClick={() => purge(t.id, t.name)}
             disabled={!t.can_edit || busy === t.id}
-            className="shrink-0 rounded border border-red-300 px-2 py-0.5 text-danger hover:bg-red-50 disabled:opacity-50"
+            className="shrink-0 rounded border border-danger-line px-2 py-0.5 text-danger hover:bg-danger-soft disabled:opacity-50"
           >
             完全削除
           </button>

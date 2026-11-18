@@ -11,7 +11,7 @@ import { toast } from "@/lib/ui-feedback";
 const inputClass = "mt-1 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent";
 const buttonBase = "rounded-md border border-line px-2 py-1.5 text-[12px] hover:bg-hover disabled:opacity-40";
 const buttonClass = `${buttonBase} text-secondary`;
-const dangerButtonClass = `${buttonBase} text-rose-600`;
+const dangerButtonClass = `${buttonBase} text-danger`;
 
 export default function RuleStepInspector({ projectId, document, descriptors, selected, readOnly, onChange, onSelect, onClose, onAddAction, focusCondition }: {
   projectId: number; document: RuleEditorDocument; descriptors: RuleDescriptors; selected: RuleEditorSelection;
@@ -95,7 +95,7 @@ export default function RuleStepInspector({ projectId, document, descriptors, se
         <label className="flex items-center gap-2 text-[12px] text-secondary"><input type="checkbox" checked={branch.else === true} disabled={document.branches.some((entry, i) => i !== selected.index && entry.else)}
           onChange={(event) => onChange({ ...document, branches: document.branches.map((entry, i) => i === selected.index ? { ...entry, else: event.target.checked } : entry) })} />それ以外のパス</label>
         {branch.else ? <p className="text-[12px] leading-5 text-secondary">他のパスがどれも一致しない場合に実行します。</p> : <RuleConditionFields conditions={branch.conditions} descriptors={descriptors} projectId={projectId} onChange={(conditions) => onChange({ ...document, branches: document.branches.map((entry, i) => i === selected.index ? { ...entry, conditions } : entry) })} />}
-        {branch.else && branch.conditions.length > 0 && <div className="space-y-2 rounded-md border border-amber-200 bg-warning-soft p-3 text-[12px] leading-5 text-amber-900">
+        {branch.else && branch.conditions.length > 0 && <div className="space-y-2 rounded-md border border-warning-line bg-warning-soft p-3 text-[12px] leading-5 text-warning">
           <p>「それ以外のパス」では条件を使いません。残っている条件を削除するか、通常のパスに戻して修正してください。</p>
           <button type="button" data-rule-clear-inactive-conditions className={buttonClass} onClick={() => onChange({ ...document, branches: document.branches.map((entry, i) => i === selected.index ? { ...entry, conditions: [] } : entry) })}>残っている条件を削除</button>
         </div>}

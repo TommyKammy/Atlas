@@ -68,7 +68,7 @@ export default function SavedSearchBar({
             data-saved-search-delete={item.id}
             aria-label={`${item.name}を削除`}
             onClick={() => void remove(item.id)}
-            className="px-1 text-neutral-400 hover:text-red-600"
+            className="px-1 text-subtle hover:text-danger"
           >
             ×
           </button>

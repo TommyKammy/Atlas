@@ -53,8 +53,8 @@ export default function PartnerActionApproval({ projectId, batchId, actions, onC
   };
   if (!actions.length) return <p className="text-secondary">明示されたアクションはありません。</p>;
   return <div data-partner-approval className="space-y-4">
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    {notice && <p role="status" className="text-sm text-green-800">{notice}</p>}
+    {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+    {notice && <p role="status" className="text-sm text-success">{notice}</p>}
     {!options && !error && <p role="status" className="text-sm text-secondary">担当者・セクションを読み込み中…</p>}
     {!options && error && <button className={knowledgeAction} onClick={() => setReload(v => v + 1)}>もう一度読み込む</button>}
     {review ? <div className="space-y-4" data-partner-approval-review>
@@ -69,7 +69,7 @@ export default function PartnerActionApproval({ projectId, batchId, actions, onC
         const approved = options?.approved.find(v => v.index === index), checked = selected.includes(index), d = drafts[index], suggestion = options?.suggestions[index];
         return <li key={index} data-partner-action className="space-y-3 py-4 first:pt-0">
           <div className="flex items-start gap-2">{!approved && <input aria-label={`候補${index + 1}を選択`} type="checkbox" disabled={!options} checked={checked} className="mt-2 size-4 accent-accent" onChange={e => setSelected(old => e.target.checked ? [...old, index].sort((a,b) => a-b) : old.filter(i => i !== index))} />}<p className="min-w-0 flex-1 font-medium">{approved?.title ?? a.title}</p></div>
-          {approved ? <p className="text-xs text-green-800">{approved.task_id ? <a href={`/projects/${projectId}?view=list&task=${approved.task_id}`} className="underline underline-offset-2">追加済み · タスクを開く</a> : "追加済み（現在はタスクを参照できません）"}</p> : checked ? <fieldset className="space-y-3" disabled={busy}>
+          {approved ? <p className="text-xs text-success">{approved.task_id ? <a href={`/projects/${projectId}?view=list&task=${approved.task_id}`} className="underline underline-offset-2">追加済み · タスクを開く</a> : "追加済み（現在はタスクを参照できません）"}</p> : checked ? <fieldset className="space-y-3" disabled={busy}>
             <label className="block text-xs text-secondary">タスク名<input aria-label={`候補${index + 1}のタスク名`} maxLength={300} className={inputClass} value={d.title} onChange={e => edit(index, { title: e.target.value })} /></label>
             <label className="block text-xs text-secondary">担当者<select aria-label={`候補${index + 1}の担当者`} className={inputClass} value={d.assignee} onChange={e => edit(index, { assignee: e.target.value })}><option value="">担当者を選択</option>{options?.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select><span className="mt-1 block text-secondary">ノートの記載：{a.assignee ?? "要確認"}</span></label>
             <label className="block text-xs text-secondary">期限<input aria-label={`候補${index + 1}の期限`} type="date" min="0001-01-01" max="9999-12-31" className={inputClass} value={d.due} onChange={e => edit(index, { due: e.target.value })} /><span className="mt-1 block text-secondary">ノートの記載：{a.due ?? "要確認"}</span>{suggestion?.date_reason && d.due === suggestion.due_on && <span className="mt-1 block leading-5 text-secondary">{suggestion.date_reason}</span>}</label>

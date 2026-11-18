@@ -94,7 +94,7 @@ function ProposalStages({ proposal }: { proposal: PlanningProposal }) {
           review === "レビュー省略"
             ? "border-line-strong bg-surface-subtle text-secondary"
             : review === "レビューで差し戻し"
-              ? "border-amber-200 bg-warning-soft text-warning"
+              ? "border-warning-line bg-warning-soft text-warning"
               : "border-accent-line bg-accent-soft text-accent-text"
         }`}
       >
@@ -104,7 +104,7 @@ function ProposalStages({ proposal }: { proposal: PlanningProposal }) {
       <li
         className={`rounded-full border px-2 py-0.5 font-semibold ${
           proposal.status === "approved"
-            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            ? "border-success-line bg-success-soft text-success"
             : proposal.status === "pending_decision"
               ? "border-accent-line bg-accent-soft text-accent-text"
               : "border-line-strong bg-surface-subtle text-secondary"
@@ -284,8 +284,8 @@ function ProposalDetail({
           )}
 
           {proposal.status === "withdrawn" && proposal.withdrawReason && (
-            <div className="rounded-md border border-amber-200 bg-warning-soft px-3 py-2 text-[12px] text-amber-950">
-              <div className="text-[11px] font-semibold text-amber-900">
+            <div className="rounded-md border border-warning-line bg-warning-soft px-3 py-2 text-[12px] text-warning">
+              <div className="text-[11px] font-semibold text-warning">
                 取り下げ ・ {proposal.withdrawnByName ?? "申請者"} ・{" "}
                 {proposal.withdrawnAt ? formatDecisionDate(proposal.withdrawnAt) : "—"}
               </div>
@@ -457,7 +457,7 @@ export default function ProposalHistory({
                 </div>
 
                 {proposal.restricted ? (
-                  <p className="mt-2 rounded-md border border-amber-200 bg-warning-soft px-2.5 py-1.5 text-[11px] text-amber-900">
+                  <p className="mt-2 rounded-md border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[11px] text-warning">
                     閲覧権限のない元プロジェクトを含むため、理由・合計・両案の内訳は非表示です。取り下げはこの詳細画面から行えます。
                   </p>
                 ) : (

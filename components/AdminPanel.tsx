@@ -259,7 +259,7 @@ export default function AdminPanel({
                 <button
                   onClick={() => remove(u.id, u.name)}
                   disabled={!u.can_manage || u.id === currentUserId}
-                  className="rounded border border-red-300 px-1.5 py-0.5 text-danger hover:bg-red-50 disabled:opacity-40"
+                  className="rounded border border-danger-line px-1.5 py-0.5 text-danger hover:bg-danger-soft disabled:opacity-40"
                 >
                   削除
                 </button>
@@ -368,7 +368,7 @@ export default function AdminPanel({
             >
               リンク
             </button>
-            <button onClick={() => revokeInvite(inv.id)} className="shrink-0 text-neutral-400 hover:text-red-600">
+            <button onClick={() => revokeInvite(inv.id)} className="shrink-0 text-subtle hover:text-danger">
               ×
             </button>
           </div>

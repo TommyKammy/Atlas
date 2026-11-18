@@ -472,7 +472,7 @@ export default function AutomationRulesPanel({
                         type="button"
                         onClick={() => void removeWebhook(endpoint)}
                         aria-label={`${endpoint.name}を削除`}
-                        className="text-neutral-400 hover:text-rose-600"
+                        className="text-subtle hover:text-danger"
                       >
                         ×
                       </button>
@@ -529,7 +529,7 @@ export default function AutomationRulesPanel({
                     <span className="text-[14px] font-medium text-text">{rule.name}</span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] ${
-                        rule.enabled ? "bg-success-soft text-green-800" : "bg-surface-muted text-muted"
+                        rule.enabled ? "bg-success-soft text-success" : "bg-surface-muted text-muted"
                       }`}
                     >
                       {rule.enabled ? "有効" : "無効"}
@@ -538,7 +538,7 @@ export default function AutomationRulesPanel({
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] ${
                           rule.last_run_status === "success"
-                            ? "bg-emerald-50 text-emerald-700"
+                            ? "bg-success-soft text-success"
                             : "bg-rose-50 text-rose-700"
                         }`}
                       >
@@ -603,7 +603,7 @@ export default function AutomationRulesPanel({
                       onClick={() => void remove(rule)}
                       disabled={busyId === rule.id}
                       aria-label={`${rule.name}を削除`}
-                      className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                      className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger disabled:opacity-50"
                     >
                       ×
                     </button>
@@ -655,7 +655,7 @@ export default function AutomationRulesPanel({
                 className="mt-1 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent"
               />
             </label>
-            {manualError && <p className="mt-2 text-[11px] text-rose-600">{manualError}</p>}
+            {manualError && <p className="mt-2 text-[11px] text-danger">{manualError}</p>}
             {manualExecution && (
               <p role="status" className="mt-2 text-[12px] text-secondary">
                 {manualExecution.status === "success" ? "ルールの実行が成功しました。"
@@ -714,7 +714,7 @@ export default function AutomationRulesPanel({
             {historyLoading ? (
               <p role="status" className="py-8 text-center text-[12px] text-subtle">実行履歴を読み込んでいます…</p>
             ) : historyError ? (
-              <p role="alert" className="py-8 text-center text-[12px] text-rose-600">{historyError}</p>
+              <p role="alert" className="py-8 text-center text-[12px] text-danger">{historyError}</p>
             ) : runs.length === 0 ? (
               <p className="py-8 text-center text-[12px] text-subtle">実行履歴はありません。</p>
             ) : (
@@ -725,7 +725,7 @@ export default function AutomationRulesPanel({
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] ${
                           run.status === "success"
-                            ? "bg-emerald-50 text-emerald-700"
+                            ? "bg-success-soft text-success"
                             : run.status === "failed"
                               ? "bg-rose-50 text-rose-700"
                               : "bg-surface-muted text-secondary"
@@ -737,7 +737,7 @@ export default function AutomationRulesPanel({
                       <span className="text-subtle">
                         {run.actions_succeeded}/{run.actions_total} アクション成功
                       </span>
-                      {run.error && <span className="text-rose-600">{run.error}</span>}
+                      {run.error && <span className="text-danger">{run.error}</span>}
                     </div>
                     {run.details.length > 0 && (
                       <ul className="mt-1.5 space-y-0.5 text-[10px] text-muted">

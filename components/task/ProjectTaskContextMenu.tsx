@@ -581,7 +581,7 @@ export default function ProjectTaskContextMenu({
               placeholder="サブタスク名"
               className="mt-3 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent"
             />
-            {error && <p className="mt-2 text-[11px] text-rose-600">{error}</p>}
+            {error && <p className="mt-2 text-[11px] text-danger">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
@@ -625,7 +625,7 @@ export default function ProjectTaskContextMenu({
                 </option>
               ))}
             </select>
-            {error && <p className="mt-2 text-[11px] text-rose-600">{error}</p>}
+            {error && <p className="mt-2 text-[11px] text-danger">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"

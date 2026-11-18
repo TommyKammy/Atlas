@@ -169,7 +169,7 @@ export default function ProjectCreateScreen({
           aria-label={`テンプレート「${template.name}」を削除`}
           title="テンプレートを削除"
           onClick={() => void removeTemplate(template)}
-          className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-neutral-200 bg-surface text-[14px] text-neutral-400 opacity-0 shadow-sm transition hover:border-red-200 hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100"
+          className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface text-[14px] text-subtle opacity-0 shadow-sm transition hover:border-danger-line hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
         >
           ×
         </button>

@@ -54,7 +54,7 @@ export function ProjectPartnerPanel({ partner: p, onClose, canEdit = true }: { p
     <p className="text-sm font-medium text-accent-text">{partnerSkills[p.skill]}</p>
     <p className="mt-2 mb-5 text-xs leading-5 text-secondary">{p.skill === "action_extract" ? "候補の内容を確認し、承認するとタスクを追加できます。" : "生成した報告は、概要ページの履歴に保存されます。"}</p>
     {p.busy && <div role="status" className="space-y-3"><p className="text-sm text-secondary">内容を確認しています…</p><div aria-hidden className="h-3 rounded bg-surface-muted motion-safe:animate-pulse" /><button className={knowledgeAction} onClick={p.cancel}>中止</button></div>}
-    {p.error && <p role="alert" className="mb-3 text-sm text-red-700">{p.error}</p>}
+    {p.error && <p role="alert" className="mb-3 text-sm text-danger">{p.error}</p>}
     {p.notice && <p role="status" className="mb-3 text-sm text-secondary">{p.notice}</p>}
     {canEdit && !r && !p.busy && <button className={knowledgeAction} onClick={() => void p.retry()}>もう一度生成</button>}
     {r && <div data-partner-result className="space-y-5 break-words text-sm leading-7">

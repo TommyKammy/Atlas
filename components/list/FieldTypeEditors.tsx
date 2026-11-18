@@ -398,7 +398,7 @@ export function SelectOptionsEditor({ dialog }: { dialog: FieldDialogState }) {
                     <button
                       type="button"
                       onClick={() => setOptions((current) => current.filter((_, i) => i !== index))}
-                      className="rounded px-1.5 text-[12px] text-neutral-400 hover:bg-hover hover:text-red-600"
+                      className="rounded px-1.5 text-[12px] text-subtle hover:bg-hover hover:text-danger"
                       aria-label="選択肢を削除"
                     >
                       ×

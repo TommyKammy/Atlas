@@ -122,7 +122,7 @@ export default function CapacityView({
         <span className="text-[12px] font-semibold text-text">{result.name}</span>
         <StatusTag result={result} />
         {result.shortages.length > 0 && (
-          <span className="text-[11px] text-orange-800">
+          <span className="text-[11px] text-warning">
             {result.shortages
               .map(
                 (shortage) =>
@@ -221,7 +221,7 @@ export default function CapacityView({
                           <span className={`${planningTableStyles.meter} ${hot ? planningTableStyles.meterHot : ""}`}>
                             <span style={{ width: `${meterWidth}%` }} />
                           </span>
-                          <span className={`block text-[10px] ${hot ? "font-semibold text-orange-700" : "text-muted"}`}>
+                          <span className={`block text-[10px] ${hot ? "font-semibold text-warning" : "text-muted"}`}>
                             {label}
                           </span>
                         </button>
@@ -242,7 +242,7 @@ export default function CapacityView({
                     <td key={monthIndex} className="px-3 py-2 text-[11px] text-secondary tabular-nums">
                       需要 {formatDays(demand)} 人日
                       {shortages > 0 && (
-                        <span className="ml-1 font-semibold text-orange-700">不足 {formatDays(shortages)}</span>
+                        <span className="ml-1 font-semibold text-warning">不足 {formatDays(shortages)}</span>
                       )}
                     </td>
                   );

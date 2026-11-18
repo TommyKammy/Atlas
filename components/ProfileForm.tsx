@@ -296,7 +296,7 @@ export default function ProfileForm({
           </span>
         </div>
         {twoFactorPolicy === "required" && !totpEnabled && (
-          <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900" data-two-factor-required>
+          <p className="mt-2 rounded border border-warning-line bg-warning-soft px-2 py-1.5 text-[11px] text-warning" data-two-factor-required>
             このワークスペースでは二要素認証が必須です。設定を完了してください。
           </p>
         )}
@@ -399,7 +399,7 @@ export default function ProfileForm({
                 onClick={disableTotp}
                 disabled={twoFaBusy || disablePassword === ""}
                 data-two-factor-disable
-                className="shrink-0 rounded border border-red-300 px-3 py-1.5 text-sm text-danger hover:bg-red-50 disabled:opacity-50"
+                className="shrink-0 rounded border border-danger-line px-3 py-1.5 text-sm text-danger hover:bg-danger-soft disabled:opacity-50"
               >
                 無効化
               </button>
@@ -408,16 +408,16 @@ export default function ProfileForm({
         )}
 
         {recoveryCodes.length > 0 && (
-          <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-3" data-two-factor-recovery>
-            <div className="text-xs font-medium text-emerald-900">
+          <div className="mt-3 rounded border border-success-line bg-success-soft p-3" data-two-factor-recovery>
+            <div className="text-xs font-medium text-success">
               リカバリーコード（この画面を閉じると再表示できません）
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-1 font-mono text-[12px] text-emerald-900 sm:grid-cols-4">
+            <div className="mt-2 grid grid-cols-2 gap-1 font-mono text-[12px] text-success sm:grid-cols-4">
               {recoveryCodes.map((code) => (
                 <span key={code}>{code}</span>
               ))}
             </div>
-            <p className="mt-2 text-[11px] text-emerald-800">
+            <p className="mt-2 text-[11px] text-success">
               安全な場所に保管してください。各コードは1回だけ使用できます。
             </p>
             {mfaPending && (

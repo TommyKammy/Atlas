@@ -31,7 +31,7 @@ export default function LlmSettings() {
   };
   return <div className="space-y-5" data-llm-settings>
     <div><h2 className="text-lg font-semibold">AI接続</h2><p className="mt-1 text-sm text-secondary">プロジェクトで使用する接続・モデルを管理者が指定します。利用者はモデルを変更できません。</p></div>
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="text-sm text-danger">{error}</p>}
     {notice && <p role="status" className="whitespace-pre-wrap text-sm text-secondary">{notice}</p>}
     {data && <>
       {!data.key_ready && <p role="alert" className="text-sm text-warning">サーバーに LLM_ENCRYPTION_KEY が必要です。設定手順は docs/llm.md を確認してください。</p>}

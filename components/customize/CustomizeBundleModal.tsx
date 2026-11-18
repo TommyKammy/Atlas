@@ -114,7 +114,7 @@ export default function CustomizeBundleModal({
                     onClick={() =>
                       onDraft({ ...draft, fields: draft.fields.filter((_, i) => i !== index) })
                     }
-                    className="text-neutral-400 hover:text-red-600"
+                    className="text-subtle hover:text-danger"
                   >
                     ×
                   </button>

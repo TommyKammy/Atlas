@@ -22,7 +22,7 @@ function Card({ title, category, children, selected, onClick, tone = "blue", tes
     {category && <span className={`mb-2 block text-[11px] font-semibold ${tone === "amber" ? "text-amber-700" : "text-accent-text"}`}>{category}</span>}
     <span className="block break-words text-[13px] font-semibold text-text">{title}</span>
     {children && <span className="mt-2 block break-words text-[12px] leading-5 text-secondary">{children}</span>}
-    {invalid && <span className="mt-2 block text-[11px] font-semibold text-rose-700">! 入力を確認してください</span>}
+    {invalid && <span className="mt-2 block text-[11px] font-semibold text-danger">! 入力を確認してください</span>}
   </button>;
 }
 

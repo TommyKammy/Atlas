@@ -105,7 +105,7 @@ export default function TemplateBar({
         使う
       </button>
       {picked && (
-        <button onClick={remove} className="text-neutral-400 hover:text-red-600" title="テンプレートを削除">
+        <button onClick={remove} className="text-subtle hover:text-danger" title="テンプレートを削除">
           ×
         </button>
       )}

@@ -10,7 +10,7 @@ import TaskApprovalBadge from "./TaskApprovalBadge";
 const inputClass = "w-full rounded border border-line-strong bg-white px-2.5 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-500 focus:border-accent focus:outline-none focus:ring-1 focus:ring-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500";
 const secondaryButtonBase = "rounded border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:opacity-50";
 const secondaryButton = `${secondaryButtonBase} text-secondary`;
-const dangerSecondaryButton = `${secondaryButtonBase} text-rose-700`;
+const dangerSecondaryButton = `${secondaryButtonBase} text-danger`;
 
 export default function TaskApprovalSection({ task, viewerId, canEdit, openSignal, onSummaryChange, onChanged }: {
   task: TaskRow;
@@ -217,7 +217,7 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
       {approval && <TaskApprovalBadge approval={approval} />}
     </div>
     {(displayError || notice) && <div className="mt-2" aria-live="polite">
-      {displayError && <p role="alert" className="text-[12px] leading-5 text-rose-700">{displayError}</p>}
+      {displayError && <p role="alert" className="text-[12px] leading-5 text-danger">{displayError}</p>}
       {notice && <p role="status" className="text-[12px] leading-5 text-secondary">{notice}</p>}
       {displayError && <button type="button" disabled={busy || loading} onClick={() => void load(true)} className={`${secondaryButton} mt-2`}>最新の承認情報を読み込む</button>}
     </div>}

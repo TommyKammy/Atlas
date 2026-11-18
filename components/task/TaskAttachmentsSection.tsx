@@ -101,7 +101,7 @@ export default function TaskAttachmentsSection({
                 {canEdit && <button
                   type="button"
                   onClick={() => onDelete(attachment.id)}
-                  className="opacity-0 shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-hover hover:text-red-600 group-hover/att:opacity-100 group-focus-within/att:opacity-100 focus:opacity-100"
+                  className="opacity-0 shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-hover hover:text-danger group-hover/att:opacity-100 group-focus-within/att:opacity-100 focus:opacity-100"
                   title="添付を削除"
                   aria-label={`${attachment.file_name} を削除`}
                 >

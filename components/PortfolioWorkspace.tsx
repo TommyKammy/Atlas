@@ -185,7 +185,7 @@ export default function PortfolioWorkspace({
             >
               ＋ ポートフォリオを作成
             </button>
-            {error && <p className="text-[11px] text-rose-600">{error}</p>}
+            {error && <p className="text-[11px] text-danger">{error}</p>}
           </div>
           <div className="mt-3 space-y-1 border-t border-line-subtle pt-3">
             {portfolios.length === 0 ? (
@@ -252,7 +252,7 @@ export default function PortfolioWorkspace({
                       type="button"
                       onClick={() => void remove(detail.portfolio)}
                       disabled={busy}
-                      className="text-[11px] text-neutral-400 hover:text-rose-600 disabled:opacity-50"
+                      className="text-[11px] text-subtle hover:text-danger disabled:opacity-50"
                     >
                       ポートフォリオを削除
                     </button>
@@ -272,7 +272,7 @@ export default function PortfolioWorkspace({
                           aria-label={`${project.name}を外す`}
                           onClick={() => void removeProject(project)}
                           disabled={busy}
-                          className="text-neutral-400 hover:text-rose-600"
+                          className="text-subtle hover:text-danger"
                         >
                           ×
                         </button>

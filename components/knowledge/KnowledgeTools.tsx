@@ -46,7 +46,7 @@ export default function KnowledgeTools({ editor, links }: { editor: Editor; link
       <button className="rounded bg-accent px-3 py-2 text-xs text-on-accent">画像を挿入</button>
       <button type="button" className="p-2 text-xs" onClick={() => setImageForm(false)}>キャンセル</button>
       <p className="w-full text-xs text-secondary">閲覧時に外部サイトから画像を読み込みます。</p>
-      {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+      {error && <p role="alert" className="text-xs text-danger">{error}</p>}
     </form>}
   </div>;
 }

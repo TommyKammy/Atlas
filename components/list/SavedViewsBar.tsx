@@ -30,7 +30,7 @@ export default function SavedViewsBar({
           <button
             onClick={() => void onDelete(view.id)}
             title="保存ビューを削除"
-            className="text-neutral-300 hover:text-red-600"
+            className="text-subtle hover:text-danger"
           >
             ×
           </button>

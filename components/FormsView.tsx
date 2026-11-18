@@ -190,12 +190,12 @@ export default function FormsView({
       </p>
 
       {message && (
-        <p role="status" className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-[13px] text-green-800">
+        <p role="status" className="mt-3 rounded-md border border-success-line bg-success-soft px-3 py-2 text-[13px] text-success">
           {message}
         </p>
       )}
       {error && !builder && !answering && (
-        <p role="alert" className="mt-3 rounded-md border border-red-200 bg-danger-soft px-3 py-2 text-[13px] text-red-700">
+        <p role="alert" className="mt-3 rounded-md border border-danger-line bg-danger-soft px-3 py-2 text-[13px] text-red-700">
           {error}
         </p>
       )}
@@ -221,7 +221,7 @@ export default function FormsView({
                     <span
                       className={`rounded-full px-2 py-0.5 text-[11px] ${
                         form.published
-                          ? "bg-success-soft text-green-800"
+                          ? "bg-success-soft text-success"
                           : "bg-surface-muted text-muted"
                       }`}
                     >
@@ -272,7 +272,7 @@ export default function FormsView({
                     disabled={!canConfigure}
                     aria-label={`${form.name}を削除`}
                     onClick={() => void remove(form)}
-                    className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                    className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
                   >
                     <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                       <path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.6 8h5.8l.6-8M6.5 7v3M9.5 7v3" />
@@ -415,7 +415,7 @@ export default function FormsView({
                             fields: builder.fields.filter((_, i) => i !== index),
                           })
                         }
-                        className="text-neutral-400 hover:text-red-600"
+                        className="text-subtle hover:text-danger"
                       >
                         ×
                       </button>

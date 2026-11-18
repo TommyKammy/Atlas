@@ -63,16 +63,16 @@ export default function ProposalWithdrawForm({
       noValidate
       aria-label="投資提案の取り下げ"
       onSubmit={(event) => void submit(event)}
-      className="rounded-md border border-amber-200 bg-warning-soft px-3 py-3"
+      className="rounded-md border border-warning-line bg-warning-soft px-3 py-3"
     >
-      <h3 className="text-[13px] font-semibold text-amber-950">提案を取り下げる</h3>
-      <p className="mt-1 text-[11px] text-amber-900">
+      <h3 className="text-[13px] font-semibold text-warning">提案を取り下げる</h3>
+      <p className="mt-1 text-[11px] text-warning">
         取り下げた版は履歴に残ります。現在の計画で新しい版を提出できます。
       </p>
 
-      <label htmlFor={reasonId} className="mt-2 block text-[12px] font-medium text-amber-950">
+      <label htmlFor={reasonId} className="mt-2 block text-[12px] font-medium text-warning">
         取り下げ理由
-        <span className="ml-1 text-red-700" aria-hidden>
+        <span className="ml-1 text-danger" aria-hidden>
           *
         </span>
         <textarea

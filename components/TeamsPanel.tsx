@@ -204,7 +204,7 @@ export default function TeamsPanel({
                 </button>
                 <button
                   onClick={() => remove(team)}
-                  className="rounded border border-red-300 px-1.5 py-0.5 text-danger hover:bg-red-50"
+                  className="rounded border border-danger-line px-1.5 py-0.5 text-danger hover:bg-danger-soft"
                 >
                   削除
                 </button>

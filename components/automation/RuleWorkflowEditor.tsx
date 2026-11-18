@@ -20,7 +20,7 @@ import RuleExecutionHistory from "./RuleExecutionHistory";
 const inputClass = "h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent";
 const buttonBase = "inline-flex h-8 items-center justify-center rounded-md border border-line bg-surface px-3 text-[12px] hover:bg-hover disabled:opacity-40";
 const buttonClass = `${buttonBase} text-secondary`;
-const dangerButtonClass = `${buttonBase} text-rose-600`;
+const dangerButtonClass = `${buttonBase} text-danger`;
 type Suggestion = { name: string; description: string; definition: RuleDefinition };
 
 export default function RuleWorkflowEditor({ project, descriptors, initialRule, initialDraft, canEdit }: {
@@ -333,7 +333,7 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
         }}>←</Link>
         <label className="min-w-[180px] flex-1"><span className="sr-only">ルール名</span><input ref={nameInput} aria-label="ルール名" value={document.name} placeholder="ルール名を入力" maxLength={120} readOnly={!canEdit || editingBusy}
           onChange={(event) => change({ ...document, name: event.target.value })} className="w-full rounded border border-transparent bg-transparent px-1 py-1 text-[18px] font-semibold outline-none hover:border-line focus:border-accent" /></label>
-        <span className={`rounded px-2 py-1 text-[11px] ${published ? "bg-success-soft text-green-800" : "bg-surface-muted text-secondary"}`}>{published ? document.enabled ? "公開済み" : "停止中" : "下書き"}</span>
+        <span className={`rounded px-2 py-1 text-[11px] ${published ? "bg-success-soft text-success" : "bg-surface-muted text-secondary"}`}>{published ? document.enabled ? "公開済み" : "停止中" : "下書き"}</span>
         <span role="status" aria-live="polite" className="text-[11px] text-muted" data-rule-save-status>{saveState === "saving" ? "保存中…" : saveState === "error" ? "保存できませんでした" : changed ? "未保存の変更" : "✓ 保存済み"}</span>
         {canEdit && <div className="flex items-center gap-2">
           <button type="button" className={buttonClass} disabled={Boolean(conflict) || editingBusy} onClick={() => void persist(document).catch(() => undefined)}>下書きを保存</button>
@@ -351,7 +351,7 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
       </nav>
     </header>
     {!canEdit && <p className="border-b border-line bg-surface-subtle px-6 py-3 text-[12px] text-secondary">閲覧モードです。ルールの編集・公開は所有者が行えます。</p>}
-    {canEdit && problems.length > 0 && <section data-rule-validation-summary aria-labelledby="rule-validation-heading" className="max-h-44 shrink-0 overflow-y-auto border-b border-amber-200 bg-warning-soft px-6 py-3 text-[12px] text-amber-950">
+    {canEdit && problems.length > 0 && <section data-rule-validation-summary aria-labelledby="rule-validation-heading" className="max-h-44 shrink-0 overflow-y-auto border-b border-warning-line bg-warning-soft px-6 py-3 text-[12px] text-warning">
       <h2 id="rule-validation-heading" className="font-semibold">公開前に入力を確認してください</h2>
       <p className="mt-1 leading-5">未入力の内容は下書きに保存できます。次の項目を修正すると公開できます。</p>
       <ul className="mt-2 space-y-1">{problems.map((problem, index) => <li key={index}><button type="button" onClick={() => selectProblem(problem)} className="text-left leading-5 underline decoration-amber-700/50 underline-offset-2 hover:decoration-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">{problem.label}</button></li>)}</ul>

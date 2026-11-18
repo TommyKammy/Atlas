@@ -98,7 +98,7 @@ export default function ProjectTabContextMenu({
           data-project-tab-menu-item="delete"
           disabled={!canEdit || !canDelete || busy}
           onClick={() => onAction("delete")}
-          className={`${item} text-red-600 hover:bg-red-50 disabled:text-neutral-400 disabled:hover:bg-hover`}
+          className={`${item} text-red-600 hover:bg-danger-soft disabled:text-neutral-400 disabled:hover:bg-hover`}
         >
           削除
         </button>

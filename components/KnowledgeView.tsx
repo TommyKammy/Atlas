@@ -190,7 +190,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
               {canEdit && <button data-knowledge-edit aria-label="ノートを編集" className={knowledgePrimaryAction} disabled={busy} onClick={edit}><KnowledgeIcon name="edit" />編集</button>}
               <KnowledgeActionMenu key={selected.id} label="ノートのその他の操作" disabled={busy} className={`${knowledgeAction} w-9 px-0`} icon={<KnowledgeIcon name="more" />}>
                 <button role="menuitem" className={knowledgeMenuItem} disabled={busy} onClick={() => { void action(async () => setHistory(history ? null : await api(`/api/knowledge/${selected.id}?history=1`))); }}><KnowledgeIcon name="history" />{history ? "履歴を閉じる" : "履歴"}</button>
-                {canEdit && <button role="menuitem" className={`${knowledgeMenuItem} text-red-700`} disabled={busy} onClick={() => { void action(async () => {
+                {canEdit && <button role="menuitem" className={`${knowledgeMenuItem} text-danger`} disabled={busy} onClick={() => { void action(async () => {
                   if (!await confirmAction(`「${selected.title}」をゴミ箱に移しますか？本文と保存履歴は保持され、後から復元できます。`, { confirmLabel: "ゴミ箱に移す" })) return;
                   await api(`/api/knowledge/${selected.id}?revision=${selected.revision}`, { method: "DELETE" });
                   setNotes(items => items.filter(note => note.id !== selected.id)); setSelectedId(null); setHistory(null);

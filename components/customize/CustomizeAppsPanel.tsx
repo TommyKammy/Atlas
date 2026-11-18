@@ -52,7 +52,7 @@ export default function CustomizeAppsPanel({
                       </span>
                       <span
                         className={`rounded-full px-2 py-0.5 text-[11px] ${
-                          app.enabled ? "bg-success-soft text-green-800" : "bg-surface-muted text-muted"
+                          app.enabled ? "bg-success-soft text-success" : "bg-surface-muted text-muted"
                         }`}
                       >
                         {app.enabled ? "有効" : "無効"}
@@ -82,7 +82,7 @@ export default function CustomizeAppsPanel({
                         data-customize-app-remove={app.id}
                         aria-label={`${definition?.name ?? app.app_key}を削除`}
                         onClick={() => onRemove(app)}
-                        className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                        className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
                       >
                         ×
                       </button>

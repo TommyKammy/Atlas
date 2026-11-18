@@ -212,7 +212,7 @@ export default function ProjectMembersManager({
                   type="button"
                   onClick={() => remove(m)}
                   disabled={busy}
-                  className="text-neutral-300 hover:text-red-600"
+                  className="text-subtle hover:text-danger"
                   title="プロジェクトから除外"
                 >
                   ×

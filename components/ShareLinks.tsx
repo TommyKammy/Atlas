@@ -59,7 +59,7 @@ export default function ShareLinks({ projectId }: { projectId: number }) {
             {t.label || "(無題)"} ・ {t.created_at}
             {t.expires_at ? ` ・ 期限:${t.expires_at.slice(0, 10)}` : " ・ 無期限"}
           </span>
-          <button onClick={() => revoke(t.id)} className="shrink-0 text-neutral-400 hover:text-red-600" title="無効化">
+          <button onClick={() => revoke(t.id)} className="shrink-0 text-subtle hover:text-danger" title="無効化">
             ×
           </button>
         </div>

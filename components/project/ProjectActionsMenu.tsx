@@ -93,7 +93,7 @@ export default function ProjectActionsMenu({
   const topButtons = groups.flatMap((group) => group.items);
   const itemClass = (danger: boolean | undefined) =>
     `flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13.5px] leading-5 outline-none transition focus-visible:bg-[#eef3fb] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${
-      danger ? "text-[#b42318] hover:bg-[#fdf2f1] focus-visible:bg-[#fdf2f1]" : "text-text hover:bg-hover"
+      danger ? "text-danger hover:bg-[#fdf2f1] focus-visible:bg-[#fdf2f1]" : "text-text hover:bg-hover"
     }`;
 
   return createPortal(
@@ -197,7 +197,7 @@ export default function ProjectActionsMenu({
                 >
                   <ProjectMenuIcon
                     name={item.icon}
-                    className={item.danger ? "h-4 w-4 text-[#b42318]" : "h-4 w-4 text-muted"}
+                    className={item.danger ? "h-4 w-4 text-danger" : "h-4 w-4 text-muted"}
                   />
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   {hasSubmenu && (

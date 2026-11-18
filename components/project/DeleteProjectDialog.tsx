@@ -55,7 +55,7 @@ export default function DeleteProjectDialog({
       <div data-project-delete-dialog className="p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-[#b42318]">プロジェクトを削除しますか？</h2>
+            <h2 className="text-lg font-semibold text-danger">プロジェクトを削除しますか？</h2>
             <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-secondary">

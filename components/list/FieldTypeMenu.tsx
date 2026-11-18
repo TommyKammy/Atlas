@@ -253,7 +253,7 @@ export default function FieldTypeMenu({
                   aria-label={`${entry.name}をライブラリから削除`}
                   disabled={removingLibrary === entry.id}
                   onClick={() => void removeLibraryEntry(entry.id)}
-                  className="shrink-0 rounded px-1 text-[11px] text-neutral-400 hover:bg-hover hover:text-red-600 disabled:opacity-40"
+                  className="shrink-0 rounded px-1 text-[11px] text-subtle hover:bg-hover hover:text-danger disabled:opacity-40"
                 >
                   ×
                 </button>

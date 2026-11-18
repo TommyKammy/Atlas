@@ -187,7 +187,7 @@ function ScenarioCard({
               <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
                 <span
                   className={`text-[20px] font-semibold tabular-nums ${
-                    focusCell.shortageDays > 0 ? "text-orange-800" : "text-text"
+                    focusCell.shortageDays > 0 ? "text-warning" : "text-text"
                   }`}
                 >
                   {formatDays(focusCell.demandDays)} /{" "}
@@ -197,7 +197,7 @@ function ScenarioCard({
                 <span
                   className={`ml-auto text-[11px] ${
                     focusCell.shortageDays > 0
-                      ? "font-semibold text-orange-800"
+                      ? "font-semibold text-warning"
                       : focusCell.capacityMissing || focusCell.demandMissing
                         ? "text-warning"
                         : "font-semibold text-text"
@@ -234,7 +234,7 @@ function ScenarioCard({
             {formatManYen(result.knownCostYen)}{" "}
             <span className="text-[12px] font-normal text-muted">万円</span>
           </div>
-          <div className={`mt-0.5 text-[11px] ${result.overBudget ? "font-semibold text-orange-700" : "text-muted"}`}>
+          <div className={`mt-0.5 text-[11px] ${result.overBudget ? "font-semibold text-warning" : "text-muted"}`}>
             {budgetText(result)}
           </div>
         </div>
@@ -253,7 +253,7 @@ function ScenarioCard({
         </div>
         <div className="sm:col-span-2">
           {result.shortages.length > 0 && (
-            <p className="rounded-md border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-[11px] font-medium text-orange-900">
+            <p className="rounded-md border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[11px] font-medium text-warning">
               不足:{" "}
               {result.shortages
                 .map(
@@ -264,13 +264,13 @@ function ScenarioCard({
             </p>
           )}
           {result.overBudget && (
-            <p className="mt-1 rounded-md border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-[11px] font-medium text-orange-900">
+            <p className="mt-1 rounded-md border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[11px] font-medium text-warning">
               予算を {formatManYen(-result.budgetRemainingYen)} 万円超過
               （投資額 {formatManYen(result.knownCostYen)} 万円）
             </p>
           )}
           {missing && (
-            <p className="mt-1 rounded-md border border-amber-200 bg-warning-soft px-2.5 py-1.5 text-[11px] text-amber-900">
+            <p className="mt-1 rounded-md border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[11px] text-warning">
               未設定: {missing}。既知の不足は上に表示していますが、未設定が解消するまで「制約内」の判定はできません。
             </p>
           )}
@@ -508,17 +508,17 @@ export default function CompareView({
             <p>申請者・最終承認者から独立した有効なレビュー担当が必要です。担当が設定と異なる提案は取り下げてください。</p>
           )}
           {submissionBlock === "self_approval" && !openProposal && (
-            <p className="mt-1.5 rounded border border-amber-300 bg-warning-soft px-2.5 py-1.5 text-[11px] text-amber-900">
+            <p className="mt-1.5 rounded border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[11px] text-warning">
               あなたは最終承認者に設定されているため、自分の提案を提出できません。別のメンバーに提案を依頼するか、承認設定を変更してください。
             </p>
           )}
           {submissionBlock === "approver_missing" && (
-            <p className="mt-1.5 rounded border border-amber-300 bg-warning-soft px-2.5 py-1.5 text-[11px] text-amber-900">
+            <p className="mt-1.5 rounded border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[11px] text-warning">
               最終承認者が未設定または無効です。承認設定を確認してください。
             </p>
           )}
           {approverIneligible && (
-            <p className="mt-1.5 rounded border border-amber-300 bg-warning-soft px-2.5 py-1.5 text-[11px] text-amber-900">
+            <p className="mt-1.5 rounded border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[11px] text-warning">
               最終承認者がこの投資計画を完全に閲覧できません。承認設定で有効なメンバーを選び直してください。
             </p>
           )}
@@ -703,7 +703,7 @@ export default function CompareView({
                     {[cellA, cellB].map((cell, index) => (
                       <td key={index} className="px-3 py-2 text-[11px] tabular-nums">
                         {cell ? (
-                          <span className={cell.shortageDays > 0 ? "font-semibold text-orange-700" : "text-secondary"}>
+                          <span className={cell.shortageDays > 0 ? "font-semibold text-warning" : "text-secondary"}>
                             {formatDays(cell.demandDays)} / {cell.capacityDays === null ? "未設定" : formatDays(cell.capacityDays)}
                             {cell.shortageDays > 0
                               ? `（不足 ${formatDays(cell.shortageDays)}）`

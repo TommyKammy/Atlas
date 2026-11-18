@@ -259,7 +259,7 @@ export default function MyTasksView({
           >
             <h2
               className={`px-1 font-semibold ${
-                bucket.alert && bucket.items.length > 0 ? "text-red-700" : ""
+                bucket.alert && bucket.items.length > 0 ? "text-danger" : ""
               }`}
             >
               {bucket.label}（{bucket.items.length}）

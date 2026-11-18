@@ -389,7 +389,7 @@ export default function TaskPane({
           <TaskSaveStatus states={saveStates} reloading={reloading} onReload={reloadTask} />
           {!canEdit && <p role="status" data-task-readonly className="mb-2 text-[12px] text-secondary">タスクの項目は閲覧のみです。変更には編集権限が必要です。</p>}
           {conflict && (
-            <div className="mb-3 rounded-lg border border-red-300 bg-danger-soft p-3 text-sm">
+            <div className="mb-3 rounded-lg border border-danger-line bg-danger-soft p-3 text-sm">
               <div className="font-semibold text-red-700">他のユーザーが先に更新しました</div>
               <div className="mt-1 space-y-0.5">
                 {Object.keys(conflict.attempted)
@@ -438,7 +438,7 @@ export default function TaskPane({
           />
 
           {task.is_milestone && (
-            <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-[#2f7d43]">
+            <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-success">
               <TaskMilestoneIcon />
               マイルストーン
             </div>
@@ -525,7 +525,7 @@ export default function TaskPane({
                         <button
                           type="button"
                           onClick={() => removeMembership(membership.id)}
-                          className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-hover hover:text-red-600"
+                          className="shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-hover hover:text-danger"
                           title="所属を外す"
                           aria-label={`${membership.name} から外す`}
                         >

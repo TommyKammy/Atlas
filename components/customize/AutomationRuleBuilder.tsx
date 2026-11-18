@@ -351,7 +351,7 @@ export default function AutomationRuleBuilder({
                     onClick={() =>
                       setTriggers((current) => current.filter((_, entryIndex) => entryIndex !== index))
                     }
-                    className="mb-0.5 flex h-8 w-8 items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
+                    className="mb-0.5 flex h-8 w-8 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
                   >
                     ×
                   </button>
@@ -495,7 +495,7 @@ export default function AutomationRuleBuilder({
                           current.filter((_, entryIndex) => entryIndex !== index),
                         )
                       }
-                      className="mt-5 flex h-8 w-8 items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
+                      className="mt-5 flex h-8 w-8 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
                     >
                       ×
                     </button>
@@ -561,7 +561,7 @@ export default function AutomationRuleBuilder({
                     onClick={() =>
                       setBranches((current) => current.filter((_, entryIndex) => entryIndex !== branchIndex))
                     }
-                    className="mb-0.5 flex h-8 w-8 items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
+                    className="mb-0.5 flex h-8 w-8 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
                   >
                     ×
                   </button>
@@ -732,7 +732,7 @@ export default function AutomationRuleBuilder({
                                   ),
                                 )
                               }
-                              className="flex h-8 w-8 items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600"
+                              className="flex h-8 w-8 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
                             >
                               ×
                             </button>
@@ -813,7 +813,7 @@ export default function AutomationRuleBuilder({
         </section>
         )}
 
-        {error !== "" && <p className="mt-4 text-[12px] text-rose-600">{error}</p>}
+        {error !== "" && <p className="mt-4 text-[12px] text-danger">{error}</p>}
         {conflict && (
           <div className="mt-2 text-[12px] text-secondary" role="alert">
             編集中の内容は保持しています。最新のルールを読み込んでから編集を続けてください。

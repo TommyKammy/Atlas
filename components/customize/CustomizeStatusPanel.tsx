@@ -65,7 +65,7 @@ export default function CustomizeStatusPanel({
                 type="button"
                 aria-label="ステータスを削除"
                 onClick={() => onRemoveDraft(draft.key)}
-                className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-hover hover:text-red-600"
+                className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-hover hover:text-danger"
               >
                 ×
               </button>

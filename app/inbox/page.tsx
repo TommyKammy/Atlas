@@ -69,7 +69,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           <Link key={key} href={`/inbox?filter=${key}`} aria-current={filter === key ? "page" : undefined}
             data-inbox-filter={key} className={`rounded border px-3 py-1 ${filter === key ? "border-blue-300 bg-accent-soft text-accent-text" : "text-secondary"}`}>{label}</Link>)}
       </nav>
-      {invalidCursor && <p role="alert" className="mt-3 text-sm text-rose-700">通知の表示位置を読み込めなかったため、先頭から表示しています。</p>}
+      {invalidCursor && <p role="alert" className="mt-3 text-sm text-danger">通知の表示位置を読み込めなかったため、先頭から表示しています。</p>}
       <h2 data-inbox-total={page.total} className="mt-4 font-semibold">対象の通知：{page.total}件</h2>
       {items.length === 0 && <p className="mt-1 text-sm text-muted">{filter === "unread" && page.total === 0 ? "未読はありません。" : "この位置に通知はありません。"}</p>}
       <div className="max-w-4xl">{items.map((item) => row(item, !item.is_read && item.author_id !== me?.id))}</div>

@@ -117,7 +117,7 @@ export default function BreakdownDialog({
                 <th scope="row" className="px-3 py-2 text-left text-[12px] font-semibold text-text">
                   {cell.shortageDays > 0 ? "不足" : "既知の残り"}
                 </th>
-                <td className={`px-3 py-2 text-right text-[12px] font-semibold tabular-nums ${cell.shortageDays > 0 ? "text-orange-700" : ""}`}>
+                <td className={`px-3 py-2 text-right text-[12px] font-semibold tabular-nums ${cell.shortageDays > 0 ? "text-warning" : ""}`}>
                   {cell.gapDays === null
                     ? "配賦枠未設定"
                     : cell.shortageDays > 0
@@ -129,7 +129,7 @@ export default function BreakdownDialog({
           </PlanningTable>
         )}
         {incomplete && (
-          <p className="rounded-md border border-amber-200 bg-warning-soft px-3 py-2 text-[12px] text-amber-900">
+          <p className="rounded-md border border-warning-line bg-warning-soft px-3 py-2 text-[12px] text-warning">
             {cell.demandMissing && "需要が未設定の案件があります。"}
             {cell.capacityMissing && "配賦枠が未設定です。"}
             既知の不足は上に表示していますが、未設定項目が解消するまで「制約内」の判定はできません。

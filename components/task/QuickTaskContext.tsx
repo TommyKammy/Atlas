@@ -214,6 +214,6 @@ export function QuickTaskName({ task, children }: { task: { id: number; name: st
         if (event.key === "Enter") { event.preventDefault(); void context.finish(draft); }
         if (event.key === "Escape") { event.preventDefault(); context.cancel(draft); }
       }} />
-    {draft.error && <span role="alert" className="absolute left-0 top-full z-50 mt-1 w-64 whitespace-normal rounded border border-red-200 bg-white p-2 text-xs text-red-700 shadow">{draft.error}</span>}
+    {draft.error && <span role="alert" className="absolute left-0 top-full z-50 mt-1 w-64 whitespace-normal rounded border border-danger-line bg-white p-2 text-xs text-danger shadow">{draft.error}</span>}
   </span>;
 }

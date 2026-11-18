@@ -70,7 +70,7 @@ export default function DeletedProjects({ initial }: { initial: DeletedProject[]
             type="button"
             onClick={() => void purge(project)}
             disabled={!project.can_manage || busy === project.id}
-            className="shrink-0 rounded border border-red-200 px-2 py-0.5 text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="shrink-0 rounded border border-danger-line px-2 py-0.5 text-danger hover:bg-danger-soft disabled:opacity-50"
           >
             完全に削除
           </button>

@@ -212,7 +212,7 @@ export default function InitiativeDialog({
               type="button"
               onClick={() => void remove()}
               disabled={busy}
-              className="mr-auto min-h-9 rounded-md px-2 text-[12px] font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+              className="mr-auto min-h-9 rounded-md px-2 text-[12px] font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
             >
               この四半期から外す
             </button>

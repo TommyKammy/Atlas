@@ -145,7 +145,7 @@ export default function AutomationActionEditor({ action, descriptors, taskTrigge
       <div className="flex items-end gap-2">
         {compact ? select : <label className="min-w-0 flex-1 text-[11px] text-secondary">アクション{select}</label>}
         <button type="button" aria-label="アクションを削除" onClick={onRemove}
-          className={`mb-0.5 flex h-8 w-8 ${compact ? "shrink-0 " : ""}items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600`}>×</button>
+          className={`mb-0.5 flex h-8 w-8 ${compact ? "shrink-0 " : ""}items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger`}>×</button>
       </div>
       {descriptor && descriptor.params.length > 0 && (
         <div className={compact ? "mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2" : "mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2"}>

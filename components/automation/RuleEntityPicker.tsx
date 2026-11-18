@@ -111,7 +111,7 @@ export function RuleEntityPicker({ projectId, kind, value, onChange, label, fiel
             </li>)}
           </ul>
           {result?.key !== resultKey && <p role="status" className="px-2 py-3 text-[12px] text-muted">検索中…</p>}
-          {result?.key === resultKey && result.error && <p role="alert" className="px-2 py-3 text-[12px] text-rose-600">{result.error}</p>}
+          {result?.key === resultKey && result.error && <p role="alert" className="px-2 py-3 text-[12px] text-danger">{result.error}</p>}
           {result?.key === resultKey && !result.error && options.length === 0 && <p role="status" className="px-2 py-3 text-[12px] text-muted">該当する項目がありません</p>}
           {result?.key === resultKey && result.hasMore && <p className="border-t border-line-subtle px-2 py-2 text-[11px] text-muted">名前を入力すると、候補を絞り込めます。</p>}
         </div>

@@ -89,7 +89,7 @@ export default function AddToPortfolioDialog({
             <div className="font-medium">マイポートフォリオ</div>
             <div className="text-xs text-muted">このプロジェクトを個人のポートフォリオ一覧に表示します。</div>
           </div>
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${inPortfolio ? "bg-success-soft text-green-800" : "bg-surface-muted text-muted"}`}>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${inPortfolio ? "bg-success-soft text-success" : "bg-surface-muted text-muted"}`}>
             {loading ? "確認中" : inPortfolio ? "追加済み" : "未追加"}
           </span>
         </div>

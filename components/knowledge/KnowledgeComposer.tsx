@@ -136,7 +136,7 @@ export default function KnowledgeComposer({ note, projectId, viewerId, template,
   const change = (next: Draft) => { latest.current = next; setDraft(next); persist(); if (!blocked.current) setStatus("dirty"); };
   return <div data-knowledge-composer className="min-w-0">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
-      <p role="status" data-knowledge-save-status className={`text-xs ${status === "error" ? "text-red-700" : "text-secondary"}`}>
+      <p role="status" data-knowledge-save-status className={`text-xs ${status === "error" ? "text-danger" : "text-secondary"}`}>
         {status === "saving" ? "保存中…" : status === "dirty" ? "未保存の変更" : status === "error" ? "保存できていません" : hasRecord ? "すべての変更を保存しました" : "新しいノート"}
       </p>
       <div className="flex items-center gap-2">
@@ -144,7 +144,7 @@ export default function KnowledgeComposer({ note, projectId, viewerId, template,
         <button type="button" data-knowledge-save disabled={status === "saving"} onClick={() => void save(!record.current)} className="rounded bg-accent px-3 py-2 text-xs font-medium text-on-accent disabled:opacity-50">{status === "saving" ? "保存中…" : "今すぐ保存"}</button>
       </div>
     </div>
-    {error && <div role="alert" className="mb-4 rounded-md border border-red-200 bg-danger-soft p-3 text-sm text-red-800">
+    {error && <div role="alert" className="mb-4 rounded-md border border-danger-line bg-danger-soft p-3 text-sm text-red-800">
       <p>{error}</p><p className="mt-1">未保存の変更はこの画面に残っています。</p>
       <div className="mt-2 flex flex-wrap gap-3">
         <button onClick={() => void save(true)} className="underline">再試行</button>
