@@ -75,11 +75,11 @@ export default function AddToPortfolioDialog({
             <h2 className="text-lg font-semibold">ポートフォリオに追加</h2>
             <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-secondary">
             ×
           </button>
         </div>
-        <div className="mt-4 flex items-center gap-3 rounded-lg border border-neutral-200 p-3">
+        <div className="mt-4 flex items-center gap-3 rounded-lg border border-line p-3">
           <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[#eaf2ff] text-accent-text">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5">
               <path d="M4 19V5M4 19h16M8 16V9M12 16V6M16 16v-4" strokeLinecap="round" />

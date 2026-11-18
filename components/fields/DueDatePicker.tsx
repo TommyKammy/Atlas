@@ -178,7 +178,7 @@ export default function DueDatePicker({
 
   return (
     <span ref={rootRef} data-due-picker className="relative z-[140] min-w-0">
-      <span className="flex h-8 w-full min-w-0 items-center truncate rounded border border-blue-500 bg-surface px-2 text-[12px] text-neutral-700">
+      <span className="flex h-8 w-full min-w-0 items-center truncate rounded border border-blue-500 bg-surface px-2 text-[12px] text-secondary">
         {rangeText || "期日"}
       </span>
       {position && (
@@ -194,7 +194,7 @@ export default function DueDatePicker({
                 close();
               }
             }}
-            className="fixed z-[140] w-[308px] rounded-lg border border-[#e1e1e1] bg-surface p-3 shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+            className="fixed z-[140] w-[308px] rounded-lg border border-line bg-surface p-3 shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
             style={{
               left: position.left,
               ...(position.top !== undefined ? { top: position.top } : { bottom: position.bottom }),
@@ -221,7 +221,7 @@ export default function DueDatePicker({
                   placeholder="開始日"
                   aria-label="開始日"
                   spellCheck={false}
-                  className="h-8 w-full rounded border border-neutral-300 px-2 pr-6 text-[12px] text-neutral-800 outline-none focus:border-[#2c60b8]"
+                  className="h-8 w-full rounded border border-neutral-300 px-2 pr-6 text-[12px] text-text outline-none focus:border-[#2c60b8]"
                 />
                 {startText && (
                   <button
@@ -253,7 +253,7 @@ export default function DueDatePicker({
                   placeholder="期日"
                   aria-label="期日"
                   spellCheck={false}
-                  className="h-8 w-full rounded border border-neutral-300 px-2 pr-6 text-[12px] text-neutral-800 outline-none focus:border-[#2c60b8]"
+                  className="h-8 w-full rounded border border-neutral-300 px-2 pr-6 text-[12px] text-text outline-none focus:border-[#2c60b8]"
                 />
                 {dueText && (
                   <button
@@ -276,7 +276,7 @@ export default function DueDatePicker({
               >
                 ‹
               </button>
-              <span className="text-[13px] font-medium text-neutral-700">{monthTitle(viewMonth)}</span>
+              <span className="text-[13px] font-medium text-secondary">{monthTitle(viewMonth)}</span>
               <button
                 type="button"
                 aria-label="翌月"
@@ -312,7 +312,7 @@ export default function DueDatePicker({
                         : inRange
                           ? "bg-[#e8f0fe] text-accent-text"
                           : inMonth
-                            ? "text-neutral-700 hover:bg-neutral-100"
+                            ? "text-secondary hover:bg-neutral-100"
                             : "text-subtle hover:bg-neutral-100"
                     } ${!selected && isToday ? "ring-1 ring-[#2c60b8]" : ""}`}
                   >
@@ -321,7 +321,7 @@ export default function DueDatePicker({
                 );
               })}
             </div>
-            <div className="mt-2 flex items-center justify-between border-t border-neutral-200 pt-2">
+            <div className="mt-2 flex items-center justify-between border-t border-line pt-2">
               <span className="text-[11px] text-subtle">期間を選択</span>
               <button
                 type="button"

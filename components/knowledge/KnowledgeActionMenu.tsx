@@ -57,7 +57,7 @@ export default function KnowledgeActionMenu({ label, children, className = knowl
   return <>
     <button ref={trigger} type="button" className={className} aria-label={label} aria-haspopup="menu" aria-controls={id} aria-expanded={open} disabled={disabled || !ready} onClick={show}
       onKeyDown={event => { if (event.key === "ArrowDown") { event.preventDefault(); if (!open) show(); menu.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus(); } }}>{icon}</button>
-    <div ref={menu} id={id} popover="auto" role="menu" tabIndex={-1} aria-label={label} className="fixed m-0 w-[248px] max-w-[calc(100vw-24px)] rounded-lg border border-neutral-200 bg-surface p-1.5 text-neutral-900 shadow-sm outline-none" style={{ ...position, maxHeight: "60vh", overflowY: "auto" }}
+    <div ref={menu} id={id} popover="auto" role="menu" tabIndex={-1} aria-label={label} className="fixed m-0 w-[248px] max-w-[calc(100vw-24px)] rounded-lg border border-line bg-surface p-1.5 text-text shadow-sm outline-none" style={{ ...position, maxHeight: "60vh", overflowY: "auto" }}
       onClickCapture={event => { if ((event.target as HTMLElement).closest('button[role="menuitem"]:not(:disabled)')) close(); }}
       onToggle={event => setOpen(event.newState === "open")}
       onKeyDown={event => {

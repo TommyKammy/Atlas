@@ -706,7 +706,7 @@ function BoardViewContent({
                   onClick={() =>
                     setCardLimits((current) => ({ ...current, [g.key]: (current[g.key] ?? 100) + 200 }))
                   }
-                  className="rounded-md border border-[#e1e1e1] bg-surface px-2 py-1.5 text-[12px] text-secondary hover:bg-neutral-50"
+                  className="rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] text-secondary hover:bg-neutral-50"
                 >
                   さらに表示（{cardLimits[g.key] ?? 100} / {g.items.length} 件）
                 </button>
@@ -751,7 +751,7 @@ function BoardViewContent({
                   : setAddingTo(g.key)}
                 disabled={!canEdit}
                 data-add-task-open
-                className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-secondary hover:bg-neutral-200/60 hover:text-neutral-700"
+                className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-secondary hover:bg-neutral-200/60 hover:text-secondary"
               >
                 ＋ タスクを追加
               </button>

@@ -69,7 +69,7 @@ export default function ProjectImportDialog({
             <h2 className="text-lg font-semibold">インポート</h2>
             <p className="mt-0.5 text-xs text-muted">{projectName} ・ CSV（最大5MB / 1,000行）</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-secondary">
             ×
           </button>
         </div>
@@ -89,7 +89,7 @@ export default function ProjectImportDialog({
             dragging ? "border-[#4075cf] bg-[#f4f8ff]" : "border-line-strong bg-neutral-50/50"
           }`}
         >
-          <div className="text-sm font-medium text-neutral-700">
+          <div className="text-sm font-medium text-secondary">
             {busy ? "インポート中…" : "CSVファイルをドロップ"}
           </div>
           <p className="mt-1 text-xs text-muted">または</p>
@@ -97,7 +97,7 @@ export default function ProjectImportDialog({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            className="mt-2 h-8 rounded-md border border-line-strong bg-surface px-3 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            className="mt-2 h-8 rounded-md border border-line-strong bg-surface px-3 text-sm text-secondary hover:bg-neutral-50 disabled:opacity-50"
           >
             ファイルを選択
           </button>
@@ -120,7 +120,7 @@ export default function ProjectImportDialog({
           </div>
         )}
         {error && <p className="mt-4 text-xs text-danger">{error}</p>}
-        <div className="mt-4 rounded-md border border-neutral-200 bg-surface-subtle px-3 py-2 text-xs text-muted">
+        <div className="mt-4 rounded-md border border-line bg-surface-subtle px-3 py-2 text-xs text-muted">
           1行目は「セクション, 種別, 名前, 完了, 担当者, 開始日, 期日, 進捗, Status, 繰返し, コメント」の順で指定してください。
         </div>
         <div className="mt-5 flex justify-end">

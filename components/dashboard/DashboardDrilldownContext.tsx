@@ -61,20 +61,20 @@ export default function DashboardDrilldownContext({ projectId, selection, count,
       data-dashboard-drilldown
       data-dashboard-drilldown-count={count}
       aria-label="ダッシュボードからの絞り込み"
-      className="mx-4 mb-2 mt-3 flex flex-col gap-3 rounded-md border border-neutral-200 bg-surface-subtle px-3 py-2.5 sm:flex-row sm:items-center"
+      className="mx-4 mb-2 mt-3 flex flex-col gap-3 rounded-md border border-line bg-surface-subtle px-3 py-2.5 sm:flex-row sm:items-center"
     >
       <div className="min-w-0 flex-1">
         {selection ? (
           <>
             <p className="text-[12px] text-secondary">ダッシュボードからの絞り込み</p>
-            <p data-dashboard-drilldown-title className="break-words text-[14px] font-medium text-neutral-800">{selection.title}</p>
-            <p data-dashboard-drilldown-conditions className="mt-0.5 break-words text-[12px] leading-5 text-neutral-700">
+            <p data-dashboard-drilldown-title className="break-words text-[14px] font-medium text-text">{selection.title}</p>
+            <p data-dashboard-drilldown-conditions className="mt-0.5 break-words text-[12px] leading-5 text-secondary">
               {labels.length ? labels.join(" · ") : "すべてのタスク"}
               <span className="ml-2 whitespace-nowrap font-medium">元の集計対象 {count} 件</span>
             </p>
           </>
         ) : (
-          <p role="alert" className="text-[13px] leading-5 text-neutral-700">
+          <p role="alert" className="text-[13px] leading-5 text-secondary">
             集計条件を読み取れませんでした。ダッシュボードに戻って、もう一度選択してください。
           </p>
         )}
@@ -83,7 +83,7 @@ export default function DashboardDrilldownContext({ projectId, selection, count,
         <a data-dashboard-return href={`/projects/${projectId}?view=dashboard`} className="rounded text-accent-text hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">
           ダッシュボードへ戻る
         </a>
-        <a data-dashboard-clear href={`/projects/${projectId}?view=list`} className="rounded text-neutral-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">
+        <a data-dashboard-clear href={`/projects/${projectId}?view=list`} className="rounded text-secondary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">
           通常のリストに戻る
         </a>
       </div>

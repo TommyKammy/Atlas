@@ -46,7 +46,7 @@ export function ProjectPartnerPanel({ partner: p, onClose, canEdit = true }: { p
   useEffect(() => { heading.current?.focus(); }, []);
   const close = () => { if (p.approving) return; p.close(); onClose?.(); }, r = p.result;
   const sourceLink = (id: string) => { const source = r?.sources.find(s => s.id === id); return source ? <a key={id} href={source.href} className="inline-block rounded text-xs text-[#24529c] underline underline-offset-2">{source.label}</a> : null; };
-  return <section aria-label="プロジェクトパートナーの提案" data-project-partner-panel className="min-w-0 border-t border-neutral-200 pt-5 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5" onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); close(); } }}>
+  return <section aria-label="プロジェクトパートナーの提案" data-project-partner-panel className="min-w-0 border-t border-line pt-5 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5" onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); close(); } }}>
     <div className="mb-2 flex items-center justify-between gap-2">
       <h2 ref={heading} tabIndex={-1} className="flex items-center gap-2 text-base font-semibold outline-none"><KnowledgeIcon name="ai" />プロジェクトパートナー</h2>
       <button className={`${knowledgeAction} size-8 shrink-0 border-transparent px-0`} aria-label="提案を閉じる" disabled={p.approving} onClick={close}><KnowledgeIcon name="close" /></button>
@@ -70,7 +70,7 @@ export function ProjectPartnerPanel({ partner: p, onClose, canEdit = true }: { p
       {r.skill === "action_extract" && <div><h3 className="mb-3 font-semibold">アクション候補</h3>{r.action_batch_id ? <PartnerActionApproval key={r.action_batch_id} projectId={p.projectId} batchId={r.action_batch_id} actions={r.actions} onCommitting={p.setApproving} /> : <p className="text-secondary">タスクを追加するには、もう一度アクションを抽出してください。</p>}</div>}
       {!!r.questions.length && <div><h3 className="mb-2 font-semibold">確認したいこと</h3><ul className="list-disc space-y-2 pl-5">{r.questions.map((q, i) => <li key={i}>{q}</li>)}</ul></div>}
       <div className="flex flex-wrap gap-2"><button className={knowledgeAction} onClick={p.copy}><KnowledgeIcon name="copy" />コピー</button>{canEdit && <button className={knowledgeAction} disabled={p.approving} onClick={() => void p.retry()}>再生成</button>}</div>
-      <details className="border-t border-neutral-100 pt-3 text-xs text-secondary"><summary className="cursor-pointer">参照元を確認</summary><ul className="mt-3 space-y-3">{r.sources.map(s => <li key={s.id}>{sourceLink(s.id)}<p className="whitespace-pre-wrap">{s.excerpt}</p></li>)}</ul></details>
+      <details className="border-t border-line-subtle pt-3 text-xs text-secondary"><summary className="cursor-pointer">参照元を確認</summary><ul className="mt-3 space-y-3">{r.sources.map(s => <li key={s.id}>{sourceLink(s.id)}<p className="whitespace-pre-wrap">{s.excerpt}</p></li>)}</ul></details>
     </div>}
   </section>;
 }
@@ -85,7 +85,7 @@ export default function ProjectPartnerWorkspace({ projectId, canEdit, children }
   const generate = (skill: "project_status" | "weekly_report") => { setView("reports"); void partner.generate(skill); };
   const latest = reports.items[0];
   return <div data-overview-workspace className="mx-auto max-w-7xl px-4 pb-16 sm:px-7">
-    <div ref={toolbar} className="mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-4 pt-2">
+    <div ref={toolbar} className="mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4 pt-2">
       <div role="tablist" aria-label="概要の表示" className="flex min-w-0 items-center gap-1">
         {tabs.map(tab => <button key={tab} type="button" role="tab" id={`${id}-${tab}-tab`} aria-controls={`${id}-${tab}-panel`} aria-selected={view === tab} tabIndex={view === tab ? 0 : -1}
           disabled={partner.locked || reports.busy !== null} onClick={() => choose(tab)}
@@ -104,7 +104,7 @@ export default function ProjectPartnerWorkspace({ projectId, canEdit, children }
       <div className="min-w-0">
         <div role="tabpanel" id={`${id}-overview-panel`} aria-labelledby={`${id}-overview-tab`} hidden={view !== "overview"} tabIndex={0} className="outline-blue-600">
           {children}
-          <div data-overview-latest-report className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-neutral-200 pt-4 text-xs text-secondary">
+          <div data-overview-latest-report className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-4 text-xs text-secondary">
             <KnowledgeIcon name="history" />
             {reports.loading ? <span role="status">報告を読み込み中…</span> : reports.error ? <><span role="alert">報告を読み込めませんでした。</span><button className="rounded text-[#24529c] underline" onClick={reports.reload}>再読み込み</button></> : latest ? <>
               <span>最新の{partnerSkills[latest.skill]} · {date(latest.created_at)}</span>

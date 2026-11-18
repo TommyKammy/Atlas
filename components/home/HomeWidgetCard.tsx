@@ -67,11 +67,11 @@ export default function HomeWidgetCard({
       data-home-widget-size={size}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`relative flex min-w-0 flex-col rounded-lg border border-[#e1e1e1] bg-surface ${
+      className={`relative flex min-w-0 flex-col rounded-lg border border-line bg-surface ${
         dragging ? "opacity-50" : ""
       } ${className}`}
     >
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[#eeeeee] px-4">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-4">
         <span
           draggable
           data-home-widget-drag-handle
@@ -86,7 +86,7 @@ export default function HomeWidgetCard({
         >
           ⠿
         </span>
-        <h2 className="min-w-0 truncate text-[14px] font-semibold text-neutral-800">{title}</h2>
+        <h2 className="min-w-0 truncate text-[14px] font-semibold text-text">{title}</h2>
         {locked && (
           <span title="非公開" className="text-[11px] text-subtle">
             🔒
@@ -100,7 +100,7 @@ export default function HomeWidgetCard({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((value) => !value)}
-          className="flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+          className="flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
         >
           …
         </button>
@@ -109,7 +109,7 @@ export default function HomeWidgetCard({
         <div
           role="menu"
           data-home-widget-menu
-          className="absolute right-2 top-11 z-30 w-56 rounded-lg border border-neutral-200 bg-surface py-1 text-[13px] text-neutral-700 shadow-xl"
+          className="absolute right-2 top-11 z-30 w-56 rounded-lg border border-line bg-surface py-1 text-[13px] text-secondary shadow-xl"
         >
           {menuItems.map((item, index) => (
             <button

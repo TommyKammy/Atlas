@@ -56,9 +56,9 @@ export function RuleConditionFields({ conditions, descriptors, projectId, onChan
       <p className="text-[12px] leading-relaxed text-muted">すべての条件を満たしたときに進みます。条件がない場合は、毎回この先へ進みます。</p>
       {conditions.map((condition, index) => {
         const problem = conditionInputProblem(condition, ruleConditionType(condition.field, descriptors));
-        return <div key={index} data-rule-condition-index={index} className={`space-y-3 rounded-lg border bg-surface p-3 ${problem ? "border-rose-300" : "border-neutral-200"}`}>
+        return <div key={index} data-rule-condition-index={index} className={`space-y-3 rounded-lg border bg-surface p-3 ${problem ? "border-rose-300" : "border-line"}`}>
         <div className="flex items-start gap-2">
-          <label className="min-w-0 flex-1 text-[12px] font-medium text-neutral-700">条件の項目
+          <label className="min-w-0 flex-1 text-[12px] font-medium text-secondary">条件の項目
             <select value={condition.field} className={`${ruleInputClass} mt-1`}
               onChange={(event) => update(index, changeRuleCondition(condition, event.target.value, condition.op, descriptors))}>
               {!fields.some((field) => field.id === condition.field) && <option value={condition.field}>保存済みの項目</option>}
@@ -69,7 +69,7 @@ export function RuleConditionFields({ conditions, descriptors, projectId, onChan
           <button type="button" aria-label={`条件${index + 1}を削除`} onClick={() => onChange(conditions.filter((_, item) => item !== index))}
             className="mt-6 rounded px-2 py-1 text-neutral-400 hover:bg-rose-50 hover:text-rose-600">×</button>
         </div>
-        <label className="block text-[12px] font-medium text-neutral-700">比較方法
+        <label className="block text-[12px] font-medium text-secondary">比較方法
           <select value={condition.op} className={`${ruleInputClass} mt-1`}
             onChange={(event) => update(index, changeRuleCondition(condition, condition.field, event.target.value as RuleCondition["op"], descriptors))}>
             {ruleConditionOperators(condition.field, descriptors).map((operator) => <option key={operator.value} value={operator.value}>{operator.label}</option>)}

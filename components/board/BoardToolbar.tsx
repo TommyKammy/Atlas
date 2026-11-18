@@ -24,7 +24,7 @@ const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
 const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
 const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
-const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-surface shadow-lg";
+const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-line bg-surface shadow-lg";
 
 export type BoardCardFields = {
   assignee: boolean;
@@ -370,9 +370,9 @@ export default function BoardToolbar({
           setGroupOpen(true);
         }}
       >
-        <div className="mt-3 border-t border-neutral-100 pt-3">
+        <div className="mt-3 border-t border-line-subtle pt-3">
           <div className="px-2 text-[11px] font-medium text-muted">レイアウトオプション</div>
-          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50">
             <input
               type="checkbox"
               checked={showEmptyGroups}
@@ -381,7 +381,7 @@ export default function BoardToolbar({
             />
             空のグループを表示
           </label>
-          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50">
             <input
               type="checkbox"
               checked={autoRefresh}
@@ -391,7 +391,7 @@ export default function BoardToolbar({
             20秒ごとに自動更新
           </label>
         </div>
-        <div className="mt-2 border-t border-neutral-100 pt-3">
+        <div className="mt-2 border-t border-line-subtle pt-3">
           <div className="px-2 text-[11px] font-medium text-muted">フィールドを表示 / 非表示</div>
           {(
             [
@@ -403,7 +403,7 @@ export default function BoardToolbar({
           ).map(([key, label]) => (
             <label
               key={key}
-              className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50"
+              className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50"
             >
               <input
                 type="checkbox"

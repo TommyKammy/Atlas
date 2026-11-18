@@ -34,7 +34,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           <span>{c.entry === "event" ? c.body : "→"}</span>
           <Link
             href={`/projects/${c.project_id}?view=list&task=${c.task_id}`}
-            className="font-semibold text-neutral-700 hover:underline"
+            className="font-semibold text-secondary hover:underline"
           >
             {c.task_name}
           </Link>

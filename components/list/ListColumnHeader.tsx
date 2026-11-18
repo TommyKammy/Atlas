@@ -137,7 +137,7 @@ export default function ListColumnHeader({
         <button
           onClick={() => setMenuCol(open ? null : columnKey)}
           title="列メニュー"
-          className={`rounded px-0.5 text-[10px] leading-none text-muted hover:bg-neutral-200 hover:text-neutral-700 ${
+          className={`rounded px-0.5 text-[10px] leading-none text-muted hover:bg-neutral-200 hover:text-secondary ${
             open ? "opacity-100" : "opacity-0 group-hover/hd:opacity-100"
           }`}
         >

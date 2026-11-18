@@ -45,7 +45,7 @@ export default function TaskDueDateField({
         type="button"
         onClick={() => setOpen(true)}
         className={`flex h-7 min-w-0 items-center gap-1.5 rounded px-1 text-[13px] ${
-          overdue ? "font-medium text-red-700" : "text-neutral-800"
+          overdue ? "font-medium text-red-700" : "text-text"
         } hover:bg-neutral-100`}
         aria-label="期日を設定"
       >
@@ -61,7 +61,7 @@ export default function TaskDueDateField({
           onClick={() => onPatch({ start_on: null, due_on: null })}
           aria-label="期日をクリアする"
           title="期日をクリアする"
-          className="ml-0.5 rounded p-0.5 text-[12px] text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+          className="ml-0.5 rounded p-0.5 text-[12px] text-subtle hover:bg-neutral-100 hover:text-secondary"
         >
           ×
         </button>

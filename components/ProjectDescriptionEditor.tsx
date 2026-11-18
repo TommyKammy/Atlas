@@ -99,7 +99,7 @@ export default function ProjectDescriptionEditor({
               setEditing(true);
             }
           }}
-          className={`prose-sm mt-2 max-w-none text-sm text-neutral-700 [&_a]:text-blue-700 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 ${
+          className={`prose-sm mt-2 max-w-none text-sm text-secondary [&_a]:text-blue-700 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 ${
             canEdit ? "cursor-text rounded p-2 hover:bg-neutral-50" : ""
           }`}
           dangerouslySetInnerHTML={{ __html: renderMarkdown(initial) }}
@@ -114,7 +114,7 @@ export default function ProjectDescriptionEditor({
             setValue("");
             setEditing(true);
           }}
-          className="mt-2 w-full rounded-md border border-dashed border-neutral-200 px-3 py-4 text-left text-sm text-muted hover:bg-neutral-50 disabled:cursor-default"
+          className="mt-2 w-full rounded-md border border-dashed border-line px-3 py-4 text-left text-sm text-muted hover:bg-neutral-50 disabled:cursor-default"
         >
           プロジェクトの説明を追加
         </button>

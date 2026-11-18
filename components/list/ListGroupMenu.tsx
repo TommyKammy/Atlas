@@ -56,7 +56,7 @@ export default function ListGroupMenu({
   return (
     <div data-list-group-menu className="p-3">
       <div className="flex items-center justify-between">
-        <span className="text-[13px] font-semibold text-neutral-800">グループ</span>
+        <span className="text-[13px] font-semibold text-text">グループ</span>
         <button
           type="button"
           onClick={onClear}
@@ -151,14 +151,14 @@ export default function ListGroupMenu({
               onClearSecondary();
               setShowSecondary(false);
             }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-secondary"
           >
             ×
           </button>
         </div>
       ))}
 
-      <div className="mt-3 border-t border-neutral-100 px-1 pt-2">
+      <div className="mt-3 border-t border-line-subtle px-1 pt-2">
         <a href="/help" className="text-[12px] text-[#6d5bd0] hover:underline">
           フィードバックを送る
         </a>

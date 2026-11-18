@@ -495,10 +495,10 @@ function CalendarViewContent({
     const color = colored ? colorFor(colorKeyFor(task)) : "";
     const base = bar
       ? `flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden border px-1.5 text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:brightness-[0.98] ${
-          colored ? color : "border-neutral-200 bg-surface text-neutral-900"
+          colored ? color : "border-line bg-surface text-text"
         }`
       : `flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded px-1 text-[13px] ${
-          colored ? `border ${color}` : "text-neutral-900 hover:bg-neutral-100"
+          colored ? `border ${color}` : "text-text hover:bg-neutral-100"
         }`;
     return `${base} ${task.completed ? "opacity-70" : ""}`;
   };
@@ -614,12 +614,12 @@ function CalendarViewContent({
                 </div>
                 {lanes.length > 0 && (
                   <div
-                    className="relative border-b border-neutral-200"
+                    className="relative border-b border-line"
                     style={{ minHeight: lanes.length * 36 + 8 }}
                   >
                     <div className="pointer-events-none absolute inset-0 grid" style={{ gridTemplateColumns: cols }}>
                       {visibleWeekDays.map((day) => (
-                        <div key={day} className="border-r border-neutral-200" />
+                        <div key={day} className="border-r border-line" />
                       ))}
                     </div>
                     <div

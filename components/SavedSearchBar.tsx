@@ -54,7 +54,7 @@ export default function SavedSearchBar({
       <span className="font-medium text-secondary">保存検索</span>
       {saved.length === 0 && <span className="text-subtle">まだありません</span>}
       {saved.map((item) => (
-        <span key={item.id} className="flex items-center gap-0.5 rounded-full border border-neutral-200 bg-surface pl-2">
+        <span key={item.id} className="flex items-center gap-0.5 rounded-full border border-line bg-surface pl-2">
           <button
             type="button"
             data-saved-search-apply={item.id}

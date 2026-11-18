@@ -135,7 +135,7 @@ export default function ProjectMembersManager({
             value={addUserId}
             onChange={(e) => setAddUserId(e.target.value)}
             aria-label="追加するユーザー"
-            className="h-8 min-w-40 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-sm"
+            className="h-8 min-w-40 flex-1 rounded-md border border-line bg-white px-2 text-sm"
           >
             <option value="">ユーザーを選択…</option>
             {candidates.map((u) => (
@@ -148,7 +148,7 @@ export default function ProjectMembersManager({
           <select
             value={addRole}
             onChange={(e) => setAddRole(e.target.value as ProjectRole)}
-            className="h-8 rounded-md border border-neutral-200 bg-white px-2 text-xs"
+            className="h-8 rounded-md border border-line bg-white px-2 text-xs"
             title={PROJECT_ROLE_DESCRIPTIONS[addRole]}
           >
             {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (
@@ -168,12 +168,12 @@ export default function ProjectMembersManager({
         </div>
       )}
 
-      <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-neutral-100">
+      <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-line-subtle">
         {members.length === 0 && (
           <div className="px-3 py-3 text-sm text-muted">メンバーがいません。</div>
         )}
         {members.map((m) => (
-          <div key={m.id} className="flex items-center gap-2 border-b border-neutral-100 px-2 py-1.5 last:border-b-0">
+          <div key={m.id} className="flex items-center gap-2 border-b border-line-subtle px-2 py-1.5 last:border-b-0">
             <UserAvatar name={m.name} url={m.avatar_url} className="h-7 w-7" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1">
@@ -199,7 +199,7 @@ export default function ProjectMembersManager({
                   value={m.role}
                   onChange={(e) => changeRole(m.id, e.target.value as ProjectRole)}
                   disabled={busy}
-                  className="h-7 rounded border border-neutral-200 bg-white px-1 text-xs"
+                  className="h-7 rounded border border-line bg-white px-1 text-xs"
                   title={PROJECT_ROLE_DESCRIPTIONS[m.role]}
                 >
                   {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (

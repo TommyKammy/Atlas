@@ -119,18 +119,18 @@ export default function CapacityDialog({
           <PlanningTable
             label="月別の配賦枠入力"
             caption="月別の配賦枠入力"
-            className="rounded-lg border border-neutral-200"
+            className="rounded-lg border border-line"
           >
             <thead className="bg-surface-subtle">
               <tr>
-                <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">
+                <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">
                   職種 / 人日
                 </th>
                 {PLANNING_MONTHS.map((monthIndex) => (
                   <th
                     key={monthIndex}
                     scope="col"
-                    className="border-b border-neutral-200 px-2 py-2 text-left text-[11px] font-semibold text-secondary"
+                    className="border-b border-line px-2 py-2 text-left text-[11px] font-semibold text-secondary"
                   >
                     {monthLabelFromStart(startMonth, monthIndex)}
                   </th>
@@ -139,8 +139,8 @@ export default function CapacityDialog({
             </thead>
             <tbody>
               {roles.map((role) => (
-                <tr key={role.id} className="border-b border-neutral-100 last:border-b-0">
-                  <th scope="row" className="bg-surface px-3 py-2 text-left text-[12px] font-medium text-neutral-800">
+                <tr key={role.id} className="border-b border-line-subtle last:border-b-0">
+                  <th scope="row" className="bg-surface px-3 py-2 text-left text-[12px] font-medium text-text">
                     {role.name}
                   </th>
                   {PLANNING_MONTHS.map((monthIndex) => (

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "tool": "ui-contrast",
-  "generatedAt": "2026-11-17T11:58:31.705Z",
+  "generatedAt": "2026-11-18T07:39:59.687Z",
   "clock": "2026-11-17T10:00:00+09:00",
   "violations": [
     {
@@ -12,7 +12,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "🔒",
-      "selector": "div.mt-4.grid > section.relative.flex > header.flex.h-12 > span.text-[11px].text-neutral-400",
+      "selector": "div.mt-4.grid > section.relative.flex > header.flex.h-12 > span.text-[11px].text-subtle",
       "page": "home",
       "theme": "light",
       "key": "home | light | rgb(161, 161, 161) | rgb(255, 255, 255) | 11 | 400"
@@ -25,7 +25,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "この期間のタスクはありません。",
-      "selector": "div.flex.min-h-0 > div.min-h-[170px].flex-1 > div.flex.h-full > p.text-[12px].text-neutral-400",
+      "selector": "div.flex.min-h-0 > div.min-h-[170px].flex-1 > div.flex.h-full > p.text-[12px].text-subtle",
       "page": "home",
       "theme": "light",
       "key": "home | light | rgb(161, 161, 161) | rgb(255, 255, 255) | 12 | 400"
@@ -142,7 +142,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "▾",
-      "selector": "div.flex.min-w-0 > span.relative.ml-1 > button.flex.h-7 > span.text-[10px].text-neutral-400",
+      "selector": "div.col-start-1.row-start-1 > span.relative.ml-1 > button.flex.h-7 > span.text-[10px].text-neutral-400",
       "page": "projects-1-list",
       "theme": "light",
       "key": "projects-1-list | light | rgb(161, 161, 161) | rgb(255, 255, 255) | 10 | 400"
@@ -168,7 +168,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "▾",
-      "selector": "div.flex.min-w-0 > span.relative.ml-1 > button.flex.h-7 > span.text-[10px].text-neutral-400",
+      "selector": "div.col-start-1.row-start-1 > span.relative.ml-1 > button.flex.h-7 > span.text-[10px].text-neutral-400",
       "page": "projects-1-board",
       "theme": "light",
       "key": "projects-1-board | light | rgb(161, 161, 161) | rgb(255, 255, 255) | 10 | 400"
@@ -194,7 +194,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "▾",
-      "selector": "div.flex.min-w-0 > span.relative.ml-1 > button.flex.h-7 > span.text-[10px].text-neutral-400",
+      "selector": "div.col-start-1.row-start-1 > span.relative.ml-1 > button.flex.h-7 > span.text-[10px].text-neutral-400",
       "page": "projects-1-timeline",
       "theme": "light",
       "key": "projects-1-timeline | light | rgb(161, 161, 161) | rgb(255, 255, 255) | 10 | 400"
@@ -207,7 +207,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "▾",
-      "selector": "div.relative.flex > span.relative > button.inline-flex.h-7 > span.text-[10px].text-neutral-400",
+      "selector": "div.relative.flex > span.relative > button.inline-flex.h-7 > span.text-[10px].text-subtle",
       "page": "projects-1-timeline",
       "theme": "light",
       "key": "projects-1-timeline | light | rgb(161, 161, 161) | rgb(255, 255, 255) | 10 | 500"
@@ -246,7 +246,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "0件",
-      "selector": "div.p-6 > div.mt-4.max-w-5xl > div.flex.items-center > span.text-xs.text-neutral-400",
+      "selector": "div.p-6 > div.mt-4.max-w-5xl > div.flex.items-center > span.text-xs.text-subtle",
       "page": "portfolio",
       "theme": "light",
       "key": "portfolio | light | rgb(161, 161, 161) | rgb(255, 255, 255) | 12 | 400"
@@ -272,7 +272,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "まだありません",
-      "selector": "main.min-h-0.flex-1 > div.p-6 > div.mt-3.flex > span.text-neutral-400",
+      "selector": "main.min-h-0.flex-1 > div.p-6 > div.mt-3.flex > span.text-subtle",
       "page": "search",
       "theme": "light",
       "key": "search | light | rgb(161, 161, 161) | rgb(255, 255, 255) | 12 | 400"
@@ -428,7 +428,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "概要",
-      "selector": "div.min-w-0.flex-1 > nav.relative.flex > div.relative.flex > a.flex.h-7",
+      "selector": "div.col-span-2.row-start-2 > nav.relative.flex > div.flex.shrink-0 > a.flex.h-7",
       "page": "projects-1-list",
       "theme": "dark",
       "key": "projects-1-list | dark | rgb(99, 99, 99) | rgb(36, 36, 36) | 14 | 500"
@@ -454,7 +454,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "概要",
-      "selector": "div.min-w-0.flex-1 > nav.relative.flex > div.relative.flex > a.flex.h-7",
+      "selector": "div.col-span-2.row-start-2 > nav.relative.flex > div.flex.shrink-0 > a.flex.h-7",
       "page": "projects-1-board",
       "theme": "dark",
       "key": "projects-1-board | dark | rgb(99, 99, 99) | rgb(36, 36, 36) | 14 | 500"
@@ -480,7 +480,7 @@
       "threshold": 4.5,
       "ratio": 2.58,
       "sample": "概要",
-      "selector": "div.min-w-0.flex-1 > nav.relative.flex > div.relative.flex > a.flex.h-7",
+      "selector": "div.col-span-2.row-start-2 > nav.relative.flex > div.flex.shrink-0 > a.flex.h-7",
       "page": "projects-1-timeline",
       "theme": "dark",
       "key": "projects-1-timeline | dark | rgb(99, 99, 99) | rgb(36, 36, 36) | 14 | 500"
@@ -497,32 +497,6 @@
       "page": "portfolio",
       "theme": "dark",
       "key": "portfolio | dark | rgb(255, 255, 255) | rgb(255, 32, 86) | 11 | 700"
-    },
-    {
-      "fg": "rgb(207, 207, 207)",
-      "bg": "rgb(164, 164, 164)",
-      "fontSize": 12,
-      "fontWeight": 400,
-      "threshold": 4.5,
-      "ratio": 1.59,
-      "sample": "期日（自）",
-      "selector": "form.mt-3.max-w-5xl > details.mt-3.rounded-lg > div.mt-2.flex > label.flex.flex-col",
-      "page": "search",
-      "theme": "dark",
-      "key": "search | dark | rgb(207, 207, 207) | rgb(164, 164, 164) | 12 | 400"
-    },
-    {
-      "fg": "rgb(222, 222, 222)",
-      "bg": "rgb(164, 164, 164)",
-      "fontSize": 12,
-      "fontWeight": 500,
-      "threshold": 4.5,
-      "ratio": 1.84,
-      "sample": "日付条件",
-      "selector": "div.p-6 > form.mt-3.max-w-5xl > details.mt-3.rounded-lg > summary.cursor-pointer.text-[12px]",
-      "page": "search",
-      "theme": "dark",
-      "key": "search | dark | rgb(222, 222, 222) | rgb(164, 164, 164) | 12 | 500"
     },
     {
       "fg": "rgb(255, 255, 255)",

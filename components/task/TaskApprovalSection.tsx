@@ -8,7 +8,9 @@ import { TASK_APPROVAL_ACTION_LABELS, TASK_APPROVAL_STATUS_LABELS } from "@/lib/
 import TaskApprovalBadge from "./TaskApprovalBadge";
 
 const inputClass = "w-full rounded border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-500 focus:border-[#2c60b8] focus:outline-none focus:ring-1 focus:ring-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500";
-const secondaryButton = "rounded border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8] disabled:cursor-not-allowed disabled:opacity-50";
+const secondaryButtonBase = "rounded border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8] disabled:cursor-not-allowed disabled:opacity-50";
+const secondaryButton = `${secondaryButtonBase} text-secondary`;
+const dangerSecondaryButton = `${secondaryButtonBase} text-rose-700`;
 
 export default function TaskApprovalSection({ task, viewerId, canEdit, openSignal, onSummaryChange, onChanged }: {
   task: TaskRow;
@@ -206,17 +208,17 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
   if (data && !approval && !data.can_request && !canEdit) return null;
 
   return <section ref={sectionRef} tabIndex={-1} data-task-approval aria-label="承認" aria-busy={busy || loading}
-    className="my-4 min-w-0 border-y border-neutral-200 py-3 outline-none focus-visible:ring-2 focus-visible:ring-[#2c60b8]">
+    className="my-4 min-w-0 border-y border-line py-3 outline-none focus-visible:ring-2 focus-visible:ring-[#2c60b8]">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <button type="button" aria-expanded={expanded} aria-controls={`task-approval-${task.id}`} onClick={() => setExpanded((value) => !value)}
-        className="flex items-center gap-2 rounded px-1 py-1 text-[13px] font-semibold text-neutral-800 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-[#2c60b8]">
+        className="flex items-center gap-2 rounded px-1 py-1 text-[13px] font-semibold text-text hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-[#2c60b8]">
         <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>{approval ? "承認タスク" : "承認を設定"}
       </button>
       {approval && <TaskApprovalBadge approval={approval} />}
     </div>
     {(displayError || notice) && <div className="mt-2" aria-live="polite">
       {displayError && <p role="alert" className="text-[12px] leading-5 text-rose-700">{displayError}</p>}
-      {notice && <p role="status" className="text-[12px] leading-5 text-neutral-700">{notice}</p>}
+      {notice && <p role="status" className="text-[12px] leading-5 text-secondary">{notice}</p>}
       {displayError && <button type="button" disabled={busy || loading} onClick={() => void load(true)} className={`${secondaryButton} mt-2`}>最新の承認情報を読み込む</button>}
     </div>}
     <div id={`task-approval-${task.id}`} hidden={!expanded} className="mt-3 space-y-3">
@@ -229,10 +231,10 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
       {approval?.status === "approved" && <p className="text-[12px] leading-5 text-secondary">内容を変更して再確認が必要な場合は、再申請してください。</p>}
       {!approval && data && !data.can_request && <p className="text-[12px] leading-5 text-secondary">承認の申請には、主プロジェクトの編集権限が必要です。マイルストーンと繰り返しタスクは承認タスクにできません。</p>}
       {canConfigure && <div className="space-y-2">
-        <label className="block text-[12px] font-medium text-neutral-700">承認者を検索
+        <label className="block text-[12px] font-medium text-secondary">承認者を検索
           <input type="search" aria-label="承認者を検索" value={query} disabled={disabled} onChange={(event) => setQuery(event.target.value)} placeholder="名前で検索" className={`${inputClass} mt-1`} />
         </label>
-        <label className="block text-[12px] font-medium text-neutral-700">承認者
+        <label className="block text-[12px] font-medium text-secondary">承認者
           <select ref={selectRef} aria-label="承認者" value={approverId} disabled={disabled || candidates.length === 0} onChange={(event) => setApproverId(event.target.value)} className={`${inputClass} mt-1`}>
             <option value="">承認者を選択</option>
             {selected && !visibleCandidates.some((person) => person.id === selected.id) && <option value={selected.id}>{selected.name}</option>}
@@ -243,7 +245,7 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
           : visibleCandidates.length === 0 && query && <p className="text-[12px] text-secondary">検索に一致する承認者がいません。</p>}
       </div>}
       {data && (canConfigure || data.can_decide) && <div className="space-y-2">
-        <label className="block text-[12px] font-medium text-neutral-700">コメント・理由
+        <label className="block text-[12px] font-medium text-secondary">コメント・理由
           <textarea ref={commentRef} aria-label="承認のコメント・理由" value={comment} maxLength={2000} rows={3} disabled={disabled} onChange={(event) => setComment(event.target.value)} placeholder="申請の説明、判断の理由など" className={`${inputClass} mt-1 resize-y`} />
         </label>
         {data.can_decide && <p className="text-[11px] text-secondary">却下・差し戻しには理由が必要です。</p>}
@@ -252,17 +254,17 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
           {approval?.status === "pending" && data.can_decide && <>
             <button type="button" disabled={disabled} onClick={() => void submit("approve")} className="rounded bg-green-700 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-green-800 disabled:opacity-50">承認する</button>
             <button type="button" disabled={disabled} onClick={() => void submit("request_changes")} className={secondaryButton}>差し戻す</button>
-            <button type="button" disabled={disabled} onClick={() => void submit("reject")} className={`${secondaryButton} text-rose-700`}>却下する</button>
+            <button type="button" disabled={disabled} onClick={() => void submit("reject")} className={dangerSecondaryButton}>却下する</button>
           </>}
           {approval?.status === "pending" && data.can_manage && <button type="button" disabled={disabled || !selected || selected.id === approval.approver_id} onClick={() => void submit("reassign")} className={secondaryButton}>承認者を変更</button>}
           {approval && approval.status !== "pending" && data.can_manage && <button type="button" disabled={disabled || !selected} onClick={() => void submit("resubmit")} className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#244f99] disabled:opacity-50">再申請する</button>}
         </div>
       </div>}
       {approval?.status === "pending" && data && !data.can_decide && <p className="text-[12px] text-secondary">判断できるのは指定された承認者だけです。</p>}
-      {data && data.history.length > 0 && <details className="border-t border-neutral-100 pt-3">
-        <summary className="cursor-pointer text-[12px] font-semibold text-neutral-700">承認履歴（{data.history.length}件）</summary>
+      {data && data.history.length > 0 && <details className="border-t border-line-subtle pt-3">
+        <summary className="cursor-pointer text-[12px] font-semibold text-secondary">承認履歴（{data.history.length}件）</summary>
         <ol data-approval-history className="mt-2 space-y-3">
-          {data.history.map((entry) => <li key={entry.id} data-approval-history-action={entry.action} className="border-l-2 border-neutral-200 pl-3 text-[12px] leading-5 text-neutral-700">
+          {data.history.map((entry) => <li key={entry.id} data-approval-history-action={entry.action} className="border-l-2 border-line pl-3 text-[12px] leading-5 text-secondary">
             <p><span className="font-medium">{entry.actor_name}</span>が{TASK_APPROVAL_ACTION_LABELS[entry.action]} <span className="text-secondary">· 第{entry.round}回</span></p>
             <p className="text-[11px] text-secondary">承認者: {entry.approver_name} · {new Date(entry.created_at).toLocaleString("ja-JP")}</p>
             {entry.comment && <p className="mt-1 whitespace-pre-wrap break-words">{entry.comment}</p>}

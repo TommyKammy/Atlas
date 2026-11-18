@@ -15,7 +15,7 @@ export type ListColumnOption = {
 };
 
 const row =
-  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50";
+  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-secondary hover:bg-neutral-50";
 const sectionTitle = "px-2 pt-3 pb-1 text-[11px] font-medium tracking-wide text-muted";
 
 const ICON_CHOICES = [
@@ -192,16 +192,16 @@ export default function ListOptionsDrawer({
         style={{ top: panelTop, height: `calc(100vh - ${panelTop}px)` }}
         className="project-drawer-enter project-drawer-enter-options fixed right-0 z-[80] flex w-[min(480px,100vw)] flex-col overflow-y-auto bg-surface shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
       >
-        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-neutral-100 bg-surface px-4">
+        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-line-subtle bg-surface px-4">
           <svg viewBox="0 0 24 24" className="h-4 w-4 text-accent-text" fill="none" stroke="currentColor" strokeWidth="1.6">
             <path d="M8 6h13M8 12h13M8 18h13M3 6h.2M3 12h.2M3 18h.2" />
           </svg>
-          <span className="flex-1 text-[15px] font-semibold text-neutral-900">リスト</span>
+          <span className="flex-1 text-[15px] font-semibold text-text">リスト</span>
           <button
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
           >
             ×
           </button>
@@ -218,14 +218,14 @@ export default function ListOptionsDrawer({
                 aria-expanded={iconOpen}
                 disabled={renameDisabled || iconBusy}
                 onClick={() => setIconOpen((value) => !value)}
-                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 text-lg hover:bg-neutral-50 disabled:bg-neutral-50"
+                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-line text-lg hover:bg-neutral-50 disabled:bg-neutral-50"
               >
                 {iconDraft ?? "📋"}
               </button>
               {iconOpen && (
                 <div
                   data-list-icon-picker
-                  className="absolute top-full left-0 z-20 mt-1 w-[250px] rounded-lg border border-neutral-200 bg-surface p-2 shadow-lg"
+                  className="absolute top-full left-0 z-20 mt-1 w-[250px] rounded-lg border border-line bg-surface p-2 shadow-lg"
                 >
                   <div className="grid grid-cols-8 gap-1">
                     {ICON_CHOICES.map((icon) => (
@@ -289,14 +289,14 @@ export default function ListOptionsDrawer({
               <span className="text-[11px] text-subtle">{hiddenCount} 件が非表示</span>
             </button>
             {columnsOpen && (
-              <div data-list-columns-panel className="mt-1 ml-2 border-l border-neutral-100 pl-3">
+              <div data-list-columns-panel className="mt-1 ml-2 border-l border-line-subtle pl-3">
                 <p className="px-2 pb-1 text-[11px] text-muted">
                   このビューの列の表示、非表示、並び替えができます
                 </p>
                 {columns.map((column) => (
                   <label
                     key={column.key}
-                    className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50"
+                    className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50"
                   >
                     <input
                       type="checkbox"
@@ -403,7 +403,7 @@ export default function ListOptionsDrawer({
             <TemplateBar projectId={projectId} sections={sections} users={users} />
           </div>
 
-          <div className="mt-4 border-t border-neutral-100 px-2 pt-3">
+          <div className="mt-4 border-t border-line-subtle px-2 pt-3">
             <a href="/help" className="text-[12px] text-[#6d5bd0] hover:underline">
               フィードバックを送る
             </a>

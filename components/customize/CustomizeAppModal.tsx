@@ -34,7 +34,7 @@ export default function CustomizeAppModal({
   return (
     <CustomizeModal title="アプリを追加" onClose={onClose}>
       <form onSubmit={onSubmit} data-customize-app-form className="p-5">
-        <label className="block text-[12px] font-medium text-neutral-700">
+        <label className="block text-[12px] font-medium text-secondary">
           アプリ
           <select
             value={draft.app_key}
@@ -58,7 +58,7 @@ export default function CustomizeAppModal({
             <>
               <p className="mt-2 text-[12px] text-muted">{definition.description}</p>
               {definition.fields.map((field) => (
-                <label key={field.key} className="mt-3 block text-[12px] font-medium text-neutral-700">
+                <label key={field.key} className="mt-3 block text-[12px] font-medium text-secondary">
                   {field.label}
                   {field.required && <span className="ml-1 text-red-500">*</span>}
                   <input

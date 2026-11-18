@@ -26,7 +26,7 @@ export default async function ProjectPrintPage({ params }: { params: Promise<{ i
     : sections;
 
   return (
-    <div data-print-view className="mx-auto max-w-5xl bg-surface p-8 text-neutral-900 print:p-0">
+    <div data-print-view className="mx-auto max-w-5xl bg-surface p-8 text-text print:p-0">
       <div className="flex items-start justify-between print:hidden">
         <p className="text-xs text-subtle">Atlas 印刷ビュー</p>
         <PrintButton />
@@ -58,7 +58,7 @@ export default async function ProjectPrintPage({ params }: { params: Promise<{ i
                   {sectionTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="grid grid-cols-[minmax(0,1fr)_112px_96px_80px] gap-2 border-b border-neutral-100 py-1.5"
+                      className="grid grid-cols-[minmax(0,1fr)_112px_96px_80px] gap-2 border-b border-line-subtle py-1.5"
                     >
                       <span className={task.completed ? "text-subtle line-through" : ""}>{task.name}</span>
                       <span className="truncate text-xs text-secondary">{task.assignee_name ?? "—"}</span>

@@ -56,7 +56,7 @@ export default function AssignedTasksWidget({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex flex-wrap items-center gap-1 border-b border-line-subtle px-4 py-1.5">
         {tabs
           .filter((item) => !item.hidden)
           .map((item) => (
@@ -80,7 +80,7 @@ export default function AssignedTasksWidget({
           type="button"
           data-home-compose
           onClick={onCompose}
-          className="rounded px-1.5 py-0.5 text-[12px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
+          className="rounded px-1.5 py-0.5 text-[12px] text-muted hover:bg-neutral-100 hover:text-secondary"
         >
           ＋ タスクを割り当てる
         </button>

@@ -58,14 +58,14 @@ export default function DeleteProjectDialog({
             <h2 className="text-lg font-semibold text-[#b42318]">プロジェクトを削除しますか？</h2>
             <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-secondary">
             ×
           </button>
         </div>
-        <p className="mt-4 text-neutral-700">
+        <p className="mt-4 text-secondary">
           「{projectName}」を削除済みに移動します。次のデータがプロジェクトと一緒に非表示になります。
         </p>
-        <ul className="mt-2 space-y-1 rounded-md border border-neutral-200 bg-surface-subtle px-4 py-3 text-xs text-secondary">
+        <ul className="mt-2 space-y-1 rounded-md border border-line bg-surface-subtle px-4 py-3 text-xs text-secondary">
           {CONSEQUENCES.map((item) => (
             <li key={item} className="flex gap-2">
               <span className="text-subtle">•</span>

@@ -22,9 +22,9 @@ export default function RuleCollectionField({ label, value, onChange, options, t
   const selected = ruleCollectionValues(value, { scalar: true, commaSeparated });
   return (
     <fieldset aria-invalid={invalid || undefined} aria-describedby={describedBy} className="min-w-0 space-y-2">
-      <legend className="mb-1 text-[12px] font-medium text-neutral-700">{label}</legend>
+      <legend className="mb-1 text-[12px] font-medium text-secondary">{label}</legend>
       {options ? (
-        <div className="rounded-md border border-neutral-200 p-2">
+        <div className="rounded-md border border-line p-2">
           <input aria-label={`${label}の選択肢を検索`} aria-invalid={invalid || undefined} aria-describedby={describedBy} value={query} onChange={(event) => setQuery(event.target.value)}
             placeholder="選択肢を検索" className={`${ruleInputClass} mb-2`} />
           <div className="max-h-40 space-y-1 overflow-auto">
@@ -53,7 +53,7 @@ export default function RuleCollectionField({ label, value, onChange, options, t
       </ul>}
       {variables && <RuleVariableMenu variables={variables} target="text_collection"
         onSelect={(variable) => onChange(insertRuleVariable(selected, variable, "text_collection") as unknown[])} />}
-      <button type="button" onClick={() => onChange([])} className="text-[11px] text-muted hover:text-neutral-800">選択をクリア</button>
+      <button type="button" onClick={() => onChange([])} className="text-[11px] text-muted hover:text-text">選択をクリア</button>
     </fieldset>
   );
 }

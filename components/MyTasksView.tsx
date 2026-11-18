@@ -222,7 +222,7 @@ export default function MyTasksView({
       <h1 className="text-lg font-bold">マイタスク（{viewerName}）</h1>
       <InlineError message={persistError} onDismiss={syncRequired ? undefined : () => setPersistError(null)} className="mt-2 max-w-4xl" />
       {syncRequired && <button type="button" onClick={() => void retrySynchronization()} disabled={busy} data-my-task-resync
-        className="mt-2 rounded border border-line-strong px-3 py-1 text-[12px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">最新状態を再取得</button>}
+        className="mt-2 rounded border border-line-strong px-3 py-1 text-[12px] text-secondary hover:bg-neutral-50 disabled:opacity-50">最新状態を再取得</button>}
       <MutationFeedback pending={busy} pendingLabel={refreshPending && !saving ? "最新状態を表示しています…" : "保存中…"} className="mt-1" />
       {tooMany && <p role="status" data-my-task-order-limit className="mt-2 text-[12px] text-secondary">
         並び替え・バケット移動は{MY_TASK_MOVE_TASK_LIMIT.toLocaleString("ja-JP")}件まで対応しています。現在は表示とタスク詳細の操作を利用できます。
@@ -267,7 +267,7 @@ export default function MyTasksView({
             {bucket.items.length === 0 && (
               <div
                 data-my-task-empty={bucket.key}
-                className="mx-1 mt-1 rounded border border-dashed border-neutral-200 px-3 py-2 text-[12px] text-subtle"
+                className="mx-1 mt-1 rounded border border-dashed border-line px-3 py-2 text-[12px] text-subtle"
               >
                 ここにタスクをドラッグ
               </div>
@@ -297,7 +297,7 @@ export default function MyTasksView({
                   setOverBucket(bucket.key);
                 }}
                 onDrop={(e) => dropOnRow(e, task.id, bucket.key)}
-                className={`group flex cursor-grab items-center gap-3 border-b border-neutral-200 py-2 text-sm hover:bg-neutral-50 ${
+                className={`group flex cursor-grab items-center gap-3 border-b border-line py-2 text-sm hover:bg-neutral-50 ${
                   draggingId === task.id ? "opacity-50" : ""
                 }`}
               >
@@ -308,7 +308,7 @@ export default function MyTasksView({
                 >
                   ⠿
                 </span>
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-neutral-400" />
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line-strong" />
                 <Link
                   href={`/projects/${task.project_id}?view=list&task=${task.id}`}
                   title={task.name}

@@ -151,7 +151,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
     }
   };
 
-  const item = "flex h-9 w-full items-center gap-2 rounded px-3 text-left text-[13px] text-neutral-800 hover:bg-neutral-100";
+  const item = "flex h-9 w-full items-center gap-2 rounded px-3 text-left text-[13px] text-text hover:bg-neutral-100";
   const oooLabel = oooFrom ? `不在: ${oooFrom}${oooTo ? ` 〜 ${oooTo}` : ""}` : "";
 
   return (
@@ -177,10 +177,10 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
             ref={menuRef}
             role="menu"
             data-user-menu
-            className="fixed z-[130] w-64 rounded-lg border border-neutral-200 bg-surface py-1 text-neutral-900 shadow-xl"
+            className="fixed z-[130] w-64 rounded-lg border border-line bg-surface py-1 text-text shadow-xl"
             style={{ left: pos.left, bottom: pos.bottom }}
           >
-            <div className="flex items-center gap-2 border-b border-neutral-100 px-3 py-2.5">
+            <div className="flex items-center gap-2 border-b border-line-subtle px-3 py-2.5">
               <UserAvatar name={user.name} url={user.avatar_url} className="h-10 w-10" textClassName="text-sm" />
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
@@ -228,7 +228,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                   <MenuIcon name="user-plus" />
                   メンバーを招待
                 </button>
-                <div className="my-1 border-t border-neutral-100" />
+                <div className="my-1 border-t border-line-subtle" />
               </>
             )}
             <Link href="/profile" onClick={() => setOpen(false)} data-user-menu-profile className={item}>
@@ -239,7 +239,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
               <MenuIcon name="gear" />
               設定
             </Link>
-            <div className="my-1 border-t border-neutral-100" />
+            <div className="my-1 border-t border-line-subtle" />
             <button
               type="button"
               data-user-switch-account
@@ -266,7 +266,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
           >
             <div
               data-user-ooo-dialog
-              className="w-[26rem] max-w-[92vw] rounded-lg bg-surface p-5 text-neutral-900 shadow-xl"
+              className="w-[26rem] max-w-[92vw] rounded-lg bg-surface p-5 text-text shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className="font-bold">不在に設定</h2>

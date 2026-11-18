@@ -31,7 +31,7 @@ export default function CustomizeAppearancePanel({
           色とアイコンの変更はプロジェクト管理者のみ可能です。
         </p>
       )}
-      <div className="mt-5 text-[12px] font-semibold text-neutral-700">カラー</div>
+      <div className="mt-5 text-[12px] font-semibold text-secondary">カラー</div>
       <div className="mt-2 grid grid-cols-8 gap-2">
         {PROJECT_COLORS.map((entry) => (
           <button
@@ -49,7 +49,7 @@ export default function CustomizeAppearancePanel({
           </button>
         ))}
       </div>
-      <div className="mt-5 text-[12px] font-semibold text-neutral-700">アイコン</div>
+      <div className="mt-5 text-[12px] font-semibold text-secondary">アイコン</div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {PROJECT_ICONS.map((entry) => (
           <button
@@ -61,7 +61,7 @@ export default function CustomizeAppearancePanel({
             className={`flex h-9 w-9 items-center justify-center rounded-md border text-[10px] disabled:cursor-not-allowed disabled:opacity-50 ${
               icon === entry.key
                 ? "border-accent bg-accent-soft text-accent-text"
-                : "border-neutral-200 text-muted hover:bg-neutral-50"
+                : "border-line text-muted hover:bg-neutral-50"
             }`}
           >
             {entry.key ? (

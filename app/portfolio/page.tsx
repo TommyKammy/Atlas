@@ -52,7 +52,7 @@ export default async function PortfolioPage({
               <Link
                 key={p.id}
                 href={`/projects/${p.id}?view=list`}
-                className="rounded-full border bg-surface px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
+                className="rounded-full border bg-surface px-2.5 py-1 text-xs text-secondary hover:bg-neutral-50"
               >
                 {p.name}
               </Link>

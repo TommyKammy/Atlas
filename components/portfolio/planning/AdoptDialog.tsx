@@ -108,7 +108,7 @@ export default function AdoptDialog({
       }
     >
       <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-4">
-        <div className="rounded-md border border-neutral-200 bg-surface-subtle px-3 py-2 text-[12px] text-neutral-800">
+        <div className="rounded-md border border-line bg-surface-subtle px-3 py-2 text-[12px] text-text">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">{periodLabel(period.year, period.quarter)}</span>
             <Tag tone={result.status === "within" ? "good" : result.status === "unknown" ? "warn" : "bad"}>
@@ -127,17 +127,17 @@ export default function AdoptDialog({
         )}
         <div className="grid gap-3 md:grid-cols-2">
           <section>
-            <h3 className="text-[13px] font-semibold text-neutral-900">今期に実施</h3>
-            <p className="mt-1 text-[12px] text-neutral-700">
+            <h3 className="text-[13px] font-semibold text-text">今期に実施</h3>
+            <p className="mt-1 text-[12px] text-secondary">
               {result.included.map((initiative) => initiative.name).join("、") || "なし"}
             </p>
           </section>
           <section>
-            <h3 className="text-[13px] font-semibold text-neutral-900">今期は見送り</h3>
+            <h3 className="text-[13px] font-semibold text-text">今期は見送り</h3>
             {result.skipped.length === 0 ? (
-              <p className="mt-1 text-[12px] text-neutral-700">なし</p>
+              <p className="mt-1 text-[12px] text-secondary">なし</p>
             ) : (
-              <ul className="mt-1 space-y-1 text-[12px] text-neutral-700">
+              <ul className="mt-1 space-y-1 text-[12px] text-secondary">
                 {result.skipped.map((initiative) => (
                   <li key={initiative.id}>
                     <span className="font-medium">{initiative.name}</span>
@@ -153,7 +153,7 @@ export default function AdoptDialog({
           <textarea
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            className="mt-1 min-h-24 w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
+            className="mt-1 min-h-24 w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-text outline-none focus:border-[#2c60b8]"
             maxLength={1000}
             placeholder="見送る効果や、不足への対応も記録できます"
             autoFocus

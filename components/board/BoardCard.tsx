@@ -105,7 +105,7 @@ export default function BoardCard({
                 className={`rounded-full px-1.5 py-0.5 ${
                   !task.completed && task.due_on !== null && task.due_on < today
                     ? "bg-red-100 font-semibold text-red-700"
-                    : "bg-surface-muted text-neutral-700"
+                    : "bg-surface-muted text-secondary"
                 }`}
               >
                 <span className="whitespace-nowrap">{s1}</span>

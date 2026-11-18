@@ -57,7 +57,7 @@ export function TwoFactorSection({
         title="二要素認証"
         description="メンバーとゲストに 2 つ目の認証方法を使用してサインインすることを義務づけます。"
       />
-      <div className="mt-4 max-w-2xl rounded-lg border border-neutral-200 p-4">
+      <div className="mt-4 max-w-2xl rounded-lg border border-line p-4">
         <div className="text-xs font-medium text-secondary">二要素認証のポリシー</div>
         <div className="mt-2 space-y-2 text-sm">
           <label className="flex items-start gap-2">
@@ -104,7 +104,7 @@ export function TwoFactorSection({
         </div>
       </div>
 
-      <div className="mt-4 max-w-2xl rounded-lg border border-neutral-200 p-4">
+      <div className="mt-4 max-w-2xl rounded-lg border border-line p-4">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold">メンバーの二要素認証</h4>
           <a href="/profile#two-factor" className="text-xs text-blue-700 hover:underline">

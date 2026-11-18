@@ -18,7 +18,9 @@ import RulePreviewDialog from "./RulePreviewDialog";
 import RuleExecutionHistory from "./RuleExecutionHistory";
 
 const inputClass = "h-9 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]";
-const buttonClass = "inline-flex h-8 items-center justify-center rounded-md border border-neutral-200 bg-surface px-3 text-[12px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-40";
+const buttonBase = "inline-flex h-8 items-center justify-center rounded-md border border-line bg-surface px-3 text-[12px] hover:bg-neutral-50 disabled:opacity-40";
+const buttonClass = `${buttonBase} text-secondary`;
+const dangerButtonClass = `${buttonBase} text-rose-600`;
 type Suggestion = { name: string; description: string; definition: RuleDefinition };
 
 export default function RuleWorkflowEditor({ project, descriptors, initialRule, initialDraft, canEdit }: {
@@ -321,8 +323,8 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
   };
 
   return <div className="flex h-full min-h-[560px] flex-col overflow-hidden bg-surface" data-rule-workflow-editor>
-    <header className="shrink-0 border-b border-neutral-200 bg-surface px-5 pt-4 sm:px-6">
-      <div className="mb-3 text-[12px] text-muted"><Link href={`/projects/${project.id}`} className="hover:text-neutral-800">{project.name}</Link><span className="px-2">/</span>ルール</div>
+    <header className="shrink-0 border-b border-line bg-surface px-5 pt-4 sm:px-6">
+      <div className="mb-3 text-[12px] text-muted"><Link href={`/projects/${project.id}`} className="hover:text-text">{project.name}</Link><span className="px-2">/</span>ルール</div>
       <div className="flex flex-wrap items-center gap-3">
         <Link href={`/projects/${project.id}`} aria-label="プロジェクトに戻る" className="text-xl text-muted" onClick={async (event) => {
           if (!changed && saveState !== "saving") return;
@@ -330,7 +332,7 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
           if (await confirmAction("未保存の変更があります。このページを離れますか？")) router.push(`/projects/${project.id}`);
         }}>←</Link>
         <label className="min-w-[180px] flex-1"><span className="sr-only">ルール名</span><input ref={nameInput} aria-label="ルール名" value={document.name} placeholder="ルール名を入力" maxLength={120} readOnly={!canEdit || editingBusy}
-          onChange={(event) => change({ ...document, name: event.target.value })} className="w-full rounded border border-transparent bg-transparent px-1 py-1 text-[18px] font-semibold outline-none hover:border-neutral-200 focus:border-[#2c60b8]" /></label>
+          onChange={(event) => change({ ...document, name: event.target.value })} className="w-full rounded border border-transparent bg-transparent px-1 py-1 text-[18px] font-semibold outline-none hover:border-line focus:border-[#2c60b8]" /></label>
         <span className={`rounded px-2 py-1 text-[11px] ${published ? "bg-success-soft text-green-800" : "bg-surface-muted text-secondary"}`}>{published ? document.enabled ? "公開済み" : "停止中" : "下書き"}</span>
         <span role="status" aria-live="polite" className="text-[11px] text-muted" data-rule-save-status>{saveState === "saving" ? "保存中…" : saveState === "error" ? "保存できませんでした" : changed ? "未保存の変更" : "✓ 保存済み"}</span>
         {canEdit && <div className="flex items-center gap-2">
@@ -348,7 +350,7 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
         </div>}
       </nav>
     </header>
-    {!canEdit && <p className="border-b border-neutral-200 bg-surface-subtle px-6 py-3 text-[12px] text-secondary">閲覧モードです。ルールの編集・公開は所有者が行えます。</p>}
+    {!canEdit && <p className="border-b border-line bg-surface-subtle px-6 py-3 text-[12px] text-secondary">閲覧モードです。ルールの編集・公開は所有者が行えます。</p>}
     {canEdit && problems.length > 0 && <section data-rule-validation-summary aria-labelledby="rule-validation-heading" className="max-h-44 shrink-0 overflow-y-auto border-b border-amber-200 bg-warning-soft px-6 py-3 text-[12px] text-amber-950">
       <h2 id="rule-validation-heading" className="font-semibold">公開前に入力を確認してください</h2>
       <p className="mt-1 leading-5">未入力の内容は下書きに保存できます。次の項目を修正すると公開できます。</p>
@@ -368,27 +370,27 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
     {tab === "history" && <RuleExecutionHistory projectId={project.id} ruleId={ruleId} descriptors={descriptors} />}
     {tab === "settings" && <div className="min-h-0 flex-1 overflow-auto p-6"><fieldset disabled={!canEdit || editingBusy} className="max-w-xl space-y-5">
       <h2 className="text-[16px] font-semibold">ルールの設定</h2>
-      <label className="block text-[12px] font-medium text-neutral-700">説明<textarea maxLength={1000} className={`${inputClass} mt-2 h-28 py-2`} value={document.description} onChange={(event) => change({ ...document, description: event.target.value })} /></label>
+      <label className="block text-[12px] font-medium text-secondary">説明<textarea maxLength={1000} className={`${inputClass} mt-2 h-28 py-2`} value={document.description} onChange={(event) => change({ ...document, description: event.target.value })} /></label>
       <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={document.enabled} onChange={(event) => change({ ...document, enabled: event.target.checked })} />公開後にルールを有効にする</label>
       <p className="text-[12px] leading-6 text-secondary">公開済みのルールは、下書きの編集中も現在の設定で動作します。変更は「公開する」を押した後の実行に適用されます。</p>
       <p className="text-[12px] text-secondary">所有者: {initialRule?.owner_name ?? "自分"}</p>
-      <div className="border-t border-neutral-200 pt-5"><button type="button" disabled={!draftData && !changed} onClick={() => void discardDraft()} className={`${buttonClass} text-rose-600`}>下書きを破棄</button><p className="mt-2 text-[11px] text-muted">公開済みのルールはそのまま残ります。</p></div>
+      <div className="border-t border-line pt-5"><button type="button" disabled={!draftData && !changed} onClick={() => void discardDraft()} className={dangerButtonClass}>下書きを破棄</button><p className="mt-2 text-[11px] text-muted">公開済みのルールはそのまま残ります。</p></div>
     </fieldset></div>}
     {palette && <Dialog open onClose={() => setPalette(null)} title="実行することを追加" panelClassName="flex max-h-[80vh] w-[min(540px,94vw)] flex-col rounded-xl bg-surface">
-      <div className="border-b border-neutral-200 p-5"><div className="mb-3 flex justify-between"><h2 className="text-[16px] font-semibold">実行することを追加</h2><button aria-label="閉じる" onClick={() => setPalette(null)}>×</button></div><input autoFocus className={inputClass} placeholder="アクションを検索" value={paletteQuery} onChange={(event) => setPaletteQuery(event.target.value)} /></div>
+      <div className="border-b border-line p-5"><div className="mb-3 flex justify-between"><h2 className="text-[16px] font-semibold">実行することを追加</h2><button aria-label="閉じる" onClick={() => setPalette(null)}>×</button></div><input autoFocus className={inputClass} placeholder="アクションを検索" value={paletteQuery} onChange={(event) => setPaletteQuery(event.target.value)} /></div>
       <div className="overflow-auto p-3">{descriptors.actions.filter((entry) => `${entry.label} ${entry.description}`.includes(paletteQuery)).map((entry) => <button type="button" key={entry.id} onClick={() => chooseAction(entry.id)} className="block w-full rounded-md p-3 text-left hover:bg-neutral-50"><span className="block text-[13px] font-medium">{entry.label}</span><span className="mt-1 block text-[12px] text-muted">{entry.description}{entry.requiresTask && !document.triggers.every((trigger) => hasTaskSubject(trigger.event)) ? "（対象タスクを指定）" : ""}</span></button>)}</div>
     </Dialog>}
     {templatesOpen && <Dialog open onClose={() => setTemplatesOpen(false)} title="テンプレートから作成" panelClassName="w-[min(500px,94vw)] rounded-xl bg-surface p-5">
       <h2 className="mb-3 text-[16px] font-semibold">テンプレートから作成</h2><p className="mb-4 text-[12px] text-secondary">現在のフローを置き換えます。元に戻す操作で復元できます。</p>
-      <button type="button" className="mb-2 block w-full rounded-lg border border-neutral-200 p-4 text-left text-[13px] hover:bg-neutral-50" onClick={() => applyTemplate("complete")}>完了時にコメントする</button>
-      <button type="button" className="block w-full rounded-lg border border-neutral-200 p-4 text-left text-[13px] hover:bg-neutral-50" onClick={() => applyTemplate("status")}>新規タスクのStatusを設定</button>
+      <button type="button" className="mb-2 block w-full rounded-lg border border-line p-4 text-left text-[13px] hover:bg-neutral-50" onClick={() => applyTemplate("complete")}>完了時にコメントする</button>
+      <button type="button" className="block w-full rounded-lg border border-line p-4 text-left text-[13px] hover:bg-neutral-50" onClick={() => applyTemplate("status")}>新規タスクのStatusを設定</button>
       <button type="button" className={`${buttonClass} mt-4`} onClick={() => setTemplatesOpen(false)}>閉じる</button>
     </Dialog>}
     {aiOpen && <Dialog open onClose={() => setAiOpen(false)} title="AIアシスト" panelClassName="w-[min(560px,94vw)] rounded-xl bg-surface p-5">
       <h2 className="text-[16px] font-semibold">AIアシスト</h2><p className="my-3 text-[12px] leading-5 text-secondary">作りたいルールを入力してください。提案を確認してから、下書きへ適用できます。</p>
       <textarea className={`${inputClass} h-24 py-2`} aria-label="作りたいルール" value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} placeholder="例: タスクが完了したらコメントを追加する" />
       <div className="mt-3 flex gap-2"><button type="button" className={buttonClass} disabled={aiBusy || !aiPrompt.trim()} onClick={() => void suggest()}>{aiBusy ? "提案を作成中…" : "提案を作成"}</button><button type="button" className={buttonClass} onClick={() => setAiOpen(false)}>閉じる</button></div>
-      {suggestion && <div className="mt-4 rounded-lg border border-neutral-200 p-4"><p className="text-[13px] font-semibold">{suggestion.name}</p><p className="mt-2 text-[12px] text-secondary">{suggestion.description}</p><p className="mt-3 text-[11px] text-muted">適用すると現在のフローを置き換えます。公開はされません。</p><button type="button" className={`${buttonClass} mt-3`} onClick={() => { change({ ...ruleEditorDraft(suggestion), enabled: document.enabled }); setSelected({ kind: "trigger", index: 0 }); setAiOpen(false); setSuggestion(null); }}>提案を下書きに適用</button></div>}
+      {suggestion && <div className="mt-4 rounded-lg border border-line p-4"><p className="text-[13px] font-semibold">{suggestion.name}</p><p className="mt-2 text-[12px] text-secondary">{suggestion.description}</p><p className="mt-3 text-[11px] text-muted">適用すると現在のフローを置き換えます。公開はされません。</p><button type="button" className={`${buttonClass} mt-3`} onClick={() => { change({ ...ruleEditorDraft(suggestion), enabled: document.enabled }); setSelected({ kind: "trigger", index: 0 }); setAiOpen(false); setSuggestion(null); }}>提案を下書きに適用</button></div>}
     </Dialog>}
     {previewOpen && <RulePreviewDialog projectId={project.id} ruleId={ruleId} document={document} descriptors={descriptors} onClose={() => setPreviewOpen(false)} />}
   </div>;

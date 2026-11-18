@@ -18,18 +18,18 @@ export default function CalendarGrid({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-0 flex-1 overflow-auto rounded-b-md border-l border-t border-neutral-200">
+    <div className="min-h-0 flex-1 overflow-auto rounded-b-md border-l border-t border-line">
       <div className="flex min-h-full min-w-[720px] flex-col">
         {!weekMode && (
           <div
-            className="sticky top-0 z-20 grid border-b border-neutral-200 bg-surface-subtle"
+            className="sticky top-0 z-20 grid border-b border-line bg-surface-subtle"
             style={{ gridTemplateColumns: cols }}
           >
             {weekdayOrder.map((weekday, offset) =>
               visibleDays.includes(offset) ? (
                 <div
                   key={weekday}
-                  className={`flex h-6 items-center border-r border-neutral-200 px-2 text-[11px] font-medium text-muted ${
+                  className={`flex h-6 items-center border-r border-line px-2 text-[11px] font-medium text-muted ${
                     weekday === 0 || weekday === 6 ? "justify-center px-0" : ""
                   }`}
                 >

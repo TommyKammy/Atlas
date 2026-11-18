@@ -78,7 +78,7 @@ export default function ListSectionAdd({
           {error && <p id={errorId} role="alert" className="w-full text-sm text-red-700">{error}</p>}
         </div>
       ) : (
-        <button type="button" ref={startRef} onClick={onStart} className="text-left text-sm text-muted hover:text-neutral-800">
+        <button type="button" ref={startRef} onClick={onStart} className="text-left text-sm text-muted hover:text-text">
           ＋ セクションを追加
         </button>
       )}

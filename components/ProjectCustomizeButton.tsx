@@ -148,11 +148,11 @@ export default function ProjectCustomizeButton({
   };
 
   const fieldTypeClass =
-    "mt-1 h-9 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]";
+    "mt-1 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]";
   const primaryButton =
     "flex h-8 items-center justify-center rounded-md bg-accent px-3 text-[13px] font-medium text-white hover:bg-[#24549f] disabled:opacity-50";
   const secondaryButton =
-    "flex h-8 items-center justify-center rounded-md border border-neutral-200 bg-surface px-3 text-[13px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50";
+    "flex h-8 items-center justify-center rounded-md border border-line bg-surface px-3 text-[13px] text-secondary hover:bg-neutral-50 disabled:opacity-50";
 
   return (
     <>
@@ -166,7 +166,7 @@ export default function ProjectCustomizeButton({
         className={`hidden h-7 shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs whitespace-nowrap md:flex md:@max-[700px]:w-7 md:@max-[700px]:justify-center md:@max-[700px]:gap-0 md:@max-[700px]:px-0 ${
           open
             ? "border-accent bg-accent-soft text-accent-text"
-            : "border-[#e1e1e1] bg-surface text-neutral-700 hover:bg-neutral-50"
+            : "border-line bg-surface text-secondary hover:bg-neutral-50"
         }`}
       >
         <PaletteIcon />
@@ -187,9 +187,9 @@ export default function ProjectCustomizeButton({
             aria-modal="true"
             aria-label="プロジェクトをカスタマイズ"
             style={{ top: panelTop, height: `calc(100vh - ${panelTop}px)` }}
-            className="project-drawer-enter project-drawer-enter-customize fixed right-0 z-[70] flex w-[min(480px,100vw)] flex-col border-l border-neutral-200 bg-surface shadow-2xl"
+            className="project-drawer-enter project-drawer-enter-customize fixed right-0 z-[70] flex w-[min(480px,100vw)] flex-col border-l border-line bg-surface shadow-2xl"
           >
-          <div className="flex h-[60px] shrink-0 items-center gap-2 border-b border-neutral-200 px-5">
+          <div className="flex h-[60px] shrink-0 items-center gap-2 border-b border-line px-5">
             {panel !== "home" && (
               <button
                 type="button"
@@ -202,7 +202,7 @@ export default function ProjectCustomizeButton({
                 </svg>
               </button>
             )}
-            <h2 className="min-w-0 flex-1 truncate text-[18px] font-semibold text-neutral-900">{panelTitle[panel]}</h2>
+            <h2 className="min-w-0 flex-1 truncate text-[18px] font-semibold text-text">{panelTitle[panel]}</h2>
             <button
               type="button"
               onClick={() => setOpen(false)}

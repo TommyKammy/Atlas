@@ -10,8 +10,8 @@ import { fileHref, knowledgeHref, messageHref, projectHref, taskHref } from "@/l
 
 import { searchPageHref, type SearchPage, type SearchParams, type SearchPageKey } from "@/lib/search-pagination";
 
-const sectionTitle = "mb-1 mt-4 text-[13px] font-semibold text-neutral-700";
-const rowCls = "flex items-center gap-3 border-b border-neutral-200 py-2 text-sm hover:bg-neutral-50";
+const sectionTitle = "mb-1 mt-4 text-[13px] font-semibold text-secondary";
+const rowCls = "flex items-center gap-3 border-b border-line py-2 text-sm hover:bg-neutral-50";
 
 /** Full search result sections used by /search. */
 export default function SearchResults({
@@ -45,7 +45,7 @@ export default function SearchResults({
             <div key={task.id} data-search-result-id={task.id} className={rowCls}>
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                  task.completed ? "border-green-700 bg-green-700 text-white" : "border-neutral-400"
+                  task.completed ? "border-green-700 bg-green-700 text-white" : "border-line-strong"
                 }`}
               >
                 {task.completed && "✓"}
@@ -137,7 +137,7 @@ export default function SearchResults({
           <div className={sectionTitle}>ファイル（{pagination.files.total}件）</div>
           {files.map((file) => (
             <div key={file.id} data-search-result-id={file.id} className={rowCls}>
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-surface-muted text-[10px] text-neutral-700">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-surface-muted text-[10px] text-secondary">
                 F
               </span>
               <Link href={fileHref(file)} className="min-w-0 flex-1 hover:underline">
@@ -154,7 +154,7 @@ export default function SearchResults({
       )}
 
       {searched && total === 0 && (
-        <div data-search-empty className="rounded-lg border border-dashed border-neutral-200 px-4 py-10 text-center text-[13px] text-muted">
+        <div data-search-empty className="rounded-lg border border-dashed border-line px-4 py-10 text-center text-[13px] text-muted">
           条件に一致する結果はありません。
         </div>
       )}
@@ -170,7 +170,7 @@ function SearchPager({ page, pageKey, params, label }: {
 }) {
   const from = (page.page - 1) * page.pageSize + 1;
   const to = Math.min(page.page * page.pageSize, page.total);
-  const linkClass = "rounded border border-neutral-200 px-3 py-1 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600";
+  const linkClass = "rounded border border-line px-3 py-1 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600";
   return (
     <nav data-search-pagination={pageKey} aria-label={`${label}の検索結果ページ`} className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-secondary">
       <span data-search-range>{from}–{to} / {page.total}件</span>

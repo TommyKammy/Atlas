@@ -42,7 +42,7 @@ export default function CustomizeTemplateModal({
     <CustomizeModal title={draft.id === null ? "テンプレートを追加" : "テンプレートを編集"} onClose={onClose}>
       <form onSubmit={onSubmit} className="p-5">
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             テンプレート名
             <input
               data-customize-template-name
@@ -52,7 +52,7 @@ export default function CustomizeTemplateModal({
               className={fieldTypeClass}
             />
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             タスク名
             <input
               data-customize-template-title
@@ -62,7 +62,7 @@ export default function CustomizeTemplateModal({
               className={fieldTypeClass}
             />
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             担当者
             <select
               value={draft.assignee}
@@ -77,7 +77,7 @@ export default function CustomizeTemplateModal({
               ))}
             </select>
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             期日（今日からの日数）
             <input
               value={draft.offset}
@@ -87,7 +87,7 @@ export default function CustomizeTemplateModal({
               className={fieldTypeClass}
             />
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             セクション
             <select
               value={draft.section}
@@ -102,7 +102,7 @@ export default function CustomizeTemplateModal({
               ))}
             </select>
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700 sm:col-span-2">
+          <label className="block text-[12px] font-medium text-secondary sm:col-span-2">
             サブタスク
             <textarea
               value={draft.subtasks}

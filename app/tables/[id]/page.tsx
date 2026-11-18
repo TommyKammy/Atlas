@@ -78,7 +78,7 @@ export default async function ProjectTablePage({ params }: { params: Promise<{ i
             {table.rows.map((row, rowIndex) => (
               <tr key={rowIndex} className="odd:bg-white even:bg-neutral-50/50">
                 {table.columns.map((column, columnIndex) => (
-                  <td key={column.key} className="whitespace-nowrap border-b border-neutral-100 px-3 py-1.5">
+                  <td key={column.key} className="whitespace-nowrap border-b border-line-subtle px-3 py-1.5">
                     {String(row[columnIndex] ?? "")}
                   </td>
                 ))}

@@ -52,7 +52,7 @@ export default function ProjectTaskCreateButton({ projectId, sections: _sections
       disabled={buttonProps.disabled} className={`${viewToolbarActionClass} rounded-l-none border-l-0 px-1.5`}
       onClick={() => { setOpen(!open); setSection(null); setError(""); }}
       onKeyDown={event => { if (event.key === "ArrowDown" && !open) { event.preventDefault(); setOpen(true); } }}>▾</button>
-    {open && <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-neutral-200 bg-surface p-1 text-[13px] text-neutral-800 shadow-lg">
+    {open && <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-line bg-surface p-1 text-[13px] text-text shadow-lg">
       {section === null ? <div role="menu" aria-label="追加の種類">
         {([['task', '○', 'タスク'], ['approval', '✓', '承認リクエスト'], ['milestone', '◇', 'マイルストーン'], ['section', '☷', 'セクション']] as const).map(([kind, icon, label], index) =>
           <button key={kind} autoFocus={index === 0} type="button" role="menuitem" className="flex w-full items-center gap-3 rounded px-3 py-2 text-left hover:bg-neutral-100 focus:bg-blue-50 focus:outline-none"

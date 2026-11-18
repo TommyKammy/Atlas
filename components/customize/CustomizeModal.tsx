@@ -19,10 +19,10 @@ export default function CustomizeModal({
       onClose={onClose}
       title={title}
       backdropClassName="backdrop:bg-black/25"
-      panelClassName="w-[min(560px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl"
+      panelClassName="w-[min(560px,94vw)] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
     >
-      <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
-        <h3 className="text-[17px] font-semibold text-neutral-900">{title}</h3>
+      <div className="flex items-center justify-between border-b border-line-subtle px-5 py-4">
+        <h3 className="text-[17px] font-semibold text-text">{title}</h3>
         <button
           type="button"
           onClick={onClose}

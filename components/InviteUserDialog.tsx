@@ -61,13 +61,13 @@ export default function InviteUserDialog({
         aria-modal="true"
         aria-labelledby="invite-dialog-title"
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-xl bg-surface p-5 text-neutral-900 shadow-2xl"
+        className="w-full max-w-md rounded-xl bg-surface p-5 text-text shadow-2xl"
       >
         <div className="flex items-center justify-between">
           <h2 id="invite-dialog-title" className="text-lg font-semibold">
             メンバーを招待
           </h2>
-          <button type="button" onClick={onClose} className="text-xl leading-none text-subtle hover:text-neutral-700" aria-label="閉じる">
+          <button type="button" onClick={onClose} className="text-xl leading-none text-subtle hover:text-secondary" aria-label="閉じる">
             ×
           </button>
         </div>
@@ -110,7 +110,7 @@ export default function InviteUserDialog({
               <button
                 type="button"
                 onClick={() => navigator.clipboard?.writeText(result.url).catch(() => undefined)}
-                className="rounded border bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
+                className="rounded border bg-white px-2 py-1 text-secondary hover:bg-neutral-50"
               >
                 コピー
               </button>

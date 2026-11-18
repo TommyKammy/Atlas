@@ -548,7 +548,7 @@ export default function ProjectTabs({
                   }}
                   data-project-tab-rename-input={tab.tab_key}
                   aria-label={`${tab.name}タブの名前`}
-                  className="h-7 w-32 rounded-md border border-[#2c60b8] bg-white px-2 text-[14px] font-medium text-neutral-900 outline-none"
+                  className="h-7 w-32 rounded-md border border-[#2c60b8] bg-white px-2 text-[14px] font-medium text-text outline-none"
                 />
               ) : (
                 <Link

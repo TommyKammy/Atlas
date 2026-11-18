@@ -58,10 +58,10 @@ export default function HomeTaskComposer({
       onClose={onClose}
       title={mode === "my_tasks" ? "タスクを作成" : "タスクを割り当てる"}
       titleId="home-task-composer-title"
-      panelClassName="w-[min(460px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl"
+      panelClassName="w-[min(460px,94vw)] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
     >
       <div className="p-5">
-        <h2 id="home-task-composer-title" className="text-[15px] font-semibold text-neutral-800">
+        <h2 id="home-task-composer-title" className="text-[15px] font-semibold text-text">
           {mode === "my_tasks" ? "タスクを作成" : "タスクを割り当てる"}
         </h2>
         <div className="mt-3 space-y-2">
@@ -78,7 +78,7 @@ export default function HomeTaskComposer({
             data-home-composer-project
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
-            className="w-full rounded border border-neutral-200 px-2 py-1.5 text-sm"
+            className="w-full rounded border border-line px-2 py-1.5 text-sm"
           >
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
@@ -91,7 +91,7 @@ export default function HomeTaskComposer({
               data-home-composer-assignee
               value={assigneeId}
               onChange={(event) => setAssigneeId(event.target.value)}
-              className="w-full rounded border border-neutral-200 px-2 py-1.5 text-sm"
+              className="w-full rounded border border-line px-2 py-1.5 text-sm"
             >
               {users
                 .filter((user) => user.id !== viewerId)
@@ -108,7 +108,7 @@ export default function HomeTaskComposer({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+            className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-neutral-50"
           >
             キャンセル
           </button>

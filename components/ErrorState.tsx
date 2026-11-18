@@ -13,11 +13,11 @@ export default function ErrorState({
 }) {
   return (
     <div data-error-state={scope} className="flex min-h-[320px] items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-surface p-6 text-center shadow-sm">
+      <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 text-center shadow-sm">
         <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-danger-soft text-lg text-danger">
           !
         </div>
-        <h1 className="mt-3 text-[16px] font-semibold text-neutral-900">読み込みに失敗しました</h1>
+        <h1 className="mt-3 text-[16px] font-semibold text-text">読み込みに失敗しました</h1>
         <p className="mt-1 text-[13px] leading-5 text-muted">
           通信状況を確認して、もう一度お試しください。
         </p>
@@ -31,7 +31,7 @@ export default function ErrorState({
           >
             再試行
           </button>
-          <Link href="/" className="h-8 rounded-md border border-neutral-200 px-3 text-[13px] leading-8 text-secondary hover:bg-neutral-50">
+          <Link href="/" className="h-8 rounded-md border border-line px-3 text-[13px] leading-8 text-secondary hover:bg-neutral-50">
             ホームへ
           </Link>
         </div>

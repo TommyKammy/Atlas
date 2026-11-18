@@ -83,7 +83,7 @@ export default function DecisionHistory({
     <section id="decision-history" className="scroll-mt-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="text-[15px] font-semibold text-neutral-900">決定履歴</h2>
+          <h2 className="text-[15px] font-semibold text-text">決定履歴</h2>
           <p className="mt-0.5 text-[11px] text-muted">
             採用時点の両案・理由・実行者・日時を固定して保存しています。現在の台帳を変更しても履歴は変わりません。
           </p>
@@ -106,11 +106,11 @@ export default function DecisionHistory({
                 ? null
                 : proposals.find((proposal) => proposal.id === decision.sourceProposalId) ?? null;
             return (
-              <li key={decision.id} className="rounded-lg border border-neutral-200 bg-surface p-4">
+              <li key={decision.id} className="rounded-lg border border-line bg-surface p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-[14px] font-semibold text-neutral-900">
+                      <h3 className="text-[14px] font-semibold text-text">
                         {decision.chosenScenarioName
                           ? `${decision.chosenScenarioName}を採用`
                           : "採用案（非表示）"}
@@ -148,7 +148,7 @@ export default function DecisionHistory({
                       />
                     )}
                     {!source && (
-                      <div className="rounded-md border border-neutral-200 bg-surface-subtle px-3 py-2 text-[12px] text-neutral-800">
+                      <div className="rounded-md border border-line bg-surface-subtle px-3 py-2 text-[12px] text-text">
                         <span className="font-semibold">採用理由</span>
                         <p className="mt-1 whitespace-pre-wrap">{decision.reason}</p>
                       </div>

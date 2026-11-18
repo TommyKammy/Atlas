@@ -46,12 +46,12 @@ function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
     <details data-dashboard-chart-data onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-1 text-[11px] text-secondary">
       <summary
         aria-label={`${title ?? "チャート"}のデータを表示`}
-        className="w-fit cursor-pointer rounded px-1 py-1 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+        className="w-fit cursor-pointer rounded px-1 py-1 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
       >
         データを表示
       </summary>
       {open && (
-        <div className="max-h-56 overflow-auto border-t border-neutral-100">
+        <div className="max-h-56 overflow-auto border-t border-line-subtle">
           <table className="w-full text-left text-[12px]">
             <caption className="sr-only">{title ?? "チャート"}の対象タスク</caption>
             <thead>
@@ -64,7 +64,7 @@ function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
             </thead>
             <tbody>
               {data.categories.map((category, categoryIndex) => (
-                <tr key={category.key ?? categoryIndex} className="border-t border-neutral-100">
+                <tr key={category.key ?? categoryIndex} className="border-t border-line-subtle">
                   <th scope="row" className="px-2 py-1.5 font-normal">{category.label}</th>
                   {category.values.map((value, seriesIndex) => {
                     const selection = category.drilldowns?.[seriesIndex];
@@ -118,7 +118,7 @@ function niceTicks(maxValue: number): { max: number; values: number[] } {
 
 function EmptyChart() {
   return (
-    <div className="flex h-[250px] items-center justify-center rounded-md border border-dashed border-neutral-200 text-sm text-subtle">
+    <div className="flex h-[250px] items-center justify-center rounded-md border border-dashed border-line text-sm text-subtle">
       データがありません
     </div>
   );
@@ -399,7 +399,7 @@ function DonutChart({ data, title, hrefFor }: ChartProps) {
               style={{ backgroundColor: COLORS[i % COLORS.length] }}
             />
             <span className="truncate">{slice.label}</span>
-            <span className="ml-auto font-medium text-neutral-800">{slice.value}</span>
+            <span className="ml-auto font-medium text-text">{slice.value}</span>
           </>;
           return href ? (
             <a
@@ -531,7 +531,7 @@ export default function ChartRenderer({
   if (data.kind === "disabled-status") {
     return (
       <div data-dashboard-status-disabled className="rounded-md border border-dashed border-line-strong bg-surface-subtle px-4 py-5">
-        <div className="font-semibold text-neutral-800">Statusフィールドは削除されています</div>
+        <div className="font-semibold text-text">Statusフィールドは削除されています</div>
         <p className="mt-1 text-sm text-muted">
           カスタマイズ → フィールドからStatusを再追加すると、保持されている値が再表示されます。
         </p>
@@ -541,7 +541,7 @@ export default function ChartRenderer({
   if (data.kind === "number") {
     const href = hrefFor && data.drilldown ? hrefFor(data.drilldown) : undefined;
     const value = data.value ?? 0;
-    const valueClass = "text-[48px] font-semibold leading-none tracking-tight text-neutral-900";
+    const valueClass = "text-[48px] font-semibold leading-none tracking-tight text-text";
     return (
       <div className="flex min-h-[64px] flex-col items-center justify-center py-1">
         {href ? (

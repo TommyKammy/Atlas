@@ -24,7 +24,7 @@ export default function HomeTaskRow({
     <div
       data-home-task-row={task.id}
       data-home-task-bucket={bucket}
-      className="group flex items-center gap-2 border-b border-neutral-100 px-4 py-2 text-[13px] last:border-b-0 hover:bg-neutral-50"
+      className="group flex items-center gap-2 border-b border-line-subtle px-4 py-2 text-[13px] last:border-b-0 hover:bg-neutral-50"
     >
       <button
         type="button"

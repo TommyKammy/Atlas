@@ -403,7 +403,7 @@ export default function AutomationRulesPanel({
             data-customize-automation-add
             onClick={() => setBuilderRule(null)}
             disabled={!descriptors}
-            className="flex h-8 shrink-0 items-center rounded-md border border-neutral-200 bg-surface px-3 text-[12px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            className="flex h-8 shrink-0 items-center rounded-md border border-line bg-surface px-3 text-[12px] text-secondary hover:bg-neutral-50 disabled:opacity-50"
           >
             ＋ ルール
           </button>
@@ -411,8 +411,8 @@ export default function AutomationRulesPanel({
         )}
       </div>
 
-      <div className="mt-4 rounded-lg border border-neutral-200 bg-surface-subtle p-3">
-        <div className="text-[11px] font-semibold text-neutral-700">クイックテンプレート</div>
+      <div className="mt-4 rounded-lg border border-line bg-surface-subtle p-3">
+        <div className="text-[11px] font-semibold text-secondary">クイックテンプレート</div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {presets.map((preset) => (
             <button
@@ -432,8 +432,8 @@ export default function AutomationRulesPanel({
       {canEdit && projectId && projectId > 0 && <RuleDraftList projectId={projectId} />}
 
       {projectId && projectId > 0 && (
-        <div className="mt-4 rounded-lg border border-neutral-200 bg-surface p-3">
-          <div className="text-[11px] font-semibold text-neutral-700">受信Webhook</div>
+        <div className="mt-4 rounded-lg border border-line bg-surface p-3">
+          <div className="text-[11px] font-semibold text-secondary">受信Webhook</div>
           <p className="mt-0.5 text-[10px] text-subtle">
             外部システムからPOSTすると「外部Webhookを受信したとき」トリガーが発火します。
           </p>
@@ -446,9 +446,9 @@ export default function AutomationRulesPanel({
                 return (
                   <div
                     key={endpoint.id}
-                    className="flex flex-wrap items-center gap-2 rounded border border-neutral-100 bg-surface-subtle px-2 py-1.5"
+                    className="flex flex-wrap items-center gap-2 rounded border border-line-subtle bg-surface-subtle px-2 py-1.5"
                   >
-                    <span className="text-[11px] font-medium text-neutral-700">{endpoint.name}</span>
+                    <span className="text-[11px] font-medium text-secondary">{endpoint.name}</span>
                     {!endpoint.enabled && <span className="text-[10px] text-muted">無効</span>}
                     {path && (
                       <>
@@ -502,7 +502,7 @@ export default function AutomationRulesPanel({
                 type="button"
                 onClick={() => void createWebhook()}
                 disabled={webhookBusy || webhookName.trim() === "" || webhookSecret.trim() === ""}
-                className="h-8 rounded-md border border-neutral-200 px-3 text-[11px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                className="h-8 rounded-md border border-line px-3 text-[11px] text-secondary hover:bg-neutral-50 disabled:opacity-50"
               >
                 ＋ 作成
               </button>
@@ -513,7 +513,7 @@ export default function AutomationRulesPanel({
 
       <div className="mt-4 space-y-2">
         {rules.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-neutral-200 px-4 py-10 text-center text-[13px] text-muted">
+          <div className="rounded-lg border border-dashed border-line px-4 py-10 text-center text-[13px] text-muted">
             ルールはまだありません。
           </div>
         ) : (
@@ -521,12 +521,12 @@ export default function AutomationRulesPanel({
             <div
               key={rule.id}
               data-automation-rule={rule.id}
-              className="rounded-lg border border-neutral-200 bg-surface px-4 py-3"
+              className="rounded-lg border border-line bg-surface px-4 py-3"
             >
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[14px] font-medium text-neutral-900">{rule.name}</span>
+                    <span className="text-[14px] font-medium text-text">{rule.name}</span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] ${
                         rule.enabled ? "bg-success-soft text-green-800" : "bg-surface-muted text-muted"
@@ -564,14 +564,14 @@ export default function AutomationRulesPanel({
                     <button
                       type="button"
                       onClick={() => setBuilderRule(rule)}
-                      className="h-7 rounded-md border border-neutral-200 px-2 text-[11px] text-neutral-700 hover:bg-neutral-50"
+                      className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-neutral-50"
                     >
                       編集
                     </button>
                     <button
                       type="button"
                       onClick={() => void openHistory(rule)}
-                      className="h-7 rounded-md border border-neutral-200 px-2 text-[11px] text-neutral-700 hover:bg-neutral-50"
+                      className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-neutral-50"
                     >
                       履歴
                     </button>
@@ -585,7 +585,7 @@ export default function AutomationRulesPanel({
                           setManualExecution(null);
                           setManualPollingStopped(false);
                         }}
-                        className="h-7 rounded-md border border-neutral-200 px-2 text-[11px] text-neutral-700 hover:bg-neutral-50"
+                        className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-neutral-50"
                       >
                         実行
                       </button>
@@ -594,7 +594,7 @@ export default function AutomationRulesPanel({
                       type="button"
                       onClick={() => void toggle(rule)}
                       disabled={busyId === rule.id}
-                      className="h-7 rounded-md border border-neutral-200 px-2 text-[11px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                      className="h-7 rounded-md border border-line px-2 text-[11px] text-secondary hover:bg-neutral-50 disabled:opacity-50"
                     >
                       {rule.enabled ? "無効化" : "有効化"}
                     </button>
@@ -637,10 +637,10 @@ export default function AutomationRulesPanel({
           open
           onClose={closeManual}
           title={`${manualRule.name} を手動実行`}
-          panelClassName="w-[min(460px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl"
+          panelClassName="w-[min(460px,94vw)] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
         >
           <div className="p-5">
-            <h3 className="text-[15px] font-semibold text-neutral-900">手動実行</h3>
+            <h3 className="text-[15px] font-semibold text-text">手動実行</h3>
             <p className="mt-1 text-[11px] text-muted">
               ルールのトリガーに「手動で実行」が含まれている必要があります。
             </p>
@@ -657,7 +657,7 @@ export default function AutomationRulesPanel({
             </label>
             {manualError && <p className="mt-2 text-[11px] text-rose-600">{manualError}</p>}
             {manualExecution && (
-              <p role="status" className="mt-2 text-[12px] text-neutral-700">
+              <p role="status" className="mt-2 text-[12px] text-secondary">
                 {manualExecution.status === "success" ? "ルールの実行が成功しました。"
                   : manualExecution.status === "failed" ? `ルールの実行に失敗しました。${manualExecution.error ?? "実行履歴を確認してください。"}`
                     : manualExecution.status === "skipped" ? "対象や条件により、ルールの実行をスキップしました。"
@@ -672,7 +672,7 @@ export default function AutomationRulesPanel({
               <button
                 type="button"
                 onClick={closeManual}
-                className="h-8 rounded-md border border-neutral-200 px-3 text-[12px] text-neutral-700 hover:bg-neutral-50"
+                className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50"
               >
                 閉じる
               </button>
@@ -694,11 +694,11 @@ export default function AutomationRulesPanel({
           open
           onClose={closeHistory}
           title={`${historyRule.name} の実行履歴`}
-          panelClassName="flex max-h-[80vh] w-[min(680px,96vw)] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl"
+          panelClassName="flex max-h-[80vh] w-[min(680px,96vw)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
         >
-          <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+          <div className="flex items-center justify-between border-b border-line-subtle px-5 py-4">
             <div>
-              <h3 className="text-[16px] font-semibold text-neutral-900">実行履歴</h3>
+              <h3 className="text-[16px] font-semibold text-text">実行履歴</h3>
               <p className="text-[11px] text-muted">{historyRule.name}</p>
             </div>
             <button
@@ -720,7 +720,7 @@ export default function AutomationRulesPanel({
             ) : (
               <div className="space-y-2">
                 {runs.map((run) => (
-                  <div key={run.id} className="rounded-lg border border-neutral-200 p-3 text-[11px]">
+                  <div key={run.id} className="rounded-lg border border-line p-3 text-[11px]">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] ${

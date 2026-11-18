@@ -66,7 +66,7 @@ export default function PlanningHeader({
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-[22px] leading-tight font-semibold text-neutral-900">{portfolioName}</h1>
+              <h1 className="truncate text-[22px] leading-tight font-semibold text-text">{portfolioName}</h1>
               <Tag tone={restricted ? "warn" : canEdit ? "blue" : "neutral"}>
                 {restricted ? "閲覧制限" : canEdit ? "編集可能" : "閲覧のみ"}
               </Tag>
@@ -81,7 +81,7 @@ export default function PlanningHeader({
         <div className="flex flex-wrap items-center gap-2">
           {periods.length > 0 && (
             <label className="flex items-center gap-2 text-[11px] font-medium text-secondary">
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-surface px-2 py-1.5">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1.5">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4 text-muted" aria-hidden>
                   <path d="M3 6h18v15H3zM7 3v6M17 3v6M3 11h18" />
                 </svg>
@@ -92,7 +92,7 @@ export default function PlanningHeader({
                     const period = periods.find((entry) => entry.id === Number(event.target.value));
                     if (period) onPeriod(period);
                   }}
-                  className="bg-transparent text-[12px] font-semibold text-neutral-800 outline-none"
+                  className="bg-transparent text-[12px] font-semibold text-text outline-none"
                   aria-label="対象四半期"
                 >
                   {periods.map((period) => (
@@ -122,7 +122,7 @@ export default function PlanningHeader({
         </div>
       </div>
 
-      <nav aria-label="投資計画" className="flex gap-4 overflow-x-auto border-b border-neutral-200 text-[13px] whitespace-nowrap">
+      <nav aria-label="投資計画" className="flex gap-4 overflow-x-auto border-b border-line text-[13px] whitespace-nowrap">
         {VIEWS.map((item) => {
           const current = view === item.value;
           return (

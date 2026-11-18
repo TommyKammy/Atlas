@@ -135,11 +135,11 @@ export default function ViewersDialog({
             明示的な閲覧者はまだいません。
           </p>
         ) : (
-          <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200">
+          <ul className="divide-y divide-line rounded-lg border border-line">
             {viewers.map((viewer) => (
               <li key={viewer.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                 <div className="min-w-0">
-                  <div className="truncate text-[13px] font-medium text-neutral-900">{viewer.name}</div>
+                  <div className="truncate text-[13px] font-medium text-text">{viewer.name}</div>
                   <div className="truncate text-[11px] text-muted">
                     {viewer.email ?? "メール未設定"} ・ 追加 {formatMonthDay(viewer.grantedAt)}
                   </div>

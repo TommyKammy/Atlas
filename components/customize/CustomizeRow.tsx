@@ -25,7 +25,7 @@ export default function CustomizeRow({
     >
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-secondary">{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[14px] font-medium text-neutral-900">{title}</span>
+        <span className="block text-[14px] font-medium text-text">{title}</span>
         <span className="mt-0.5 block truncate text-[12px] text-muted">{description}</span>
       </span>
       {count !== undefined && <span className="shrink-0 text-[12px] text-muted">{count}</span>}

@@ -369,7 +369,7 @@ grep -rhoE "(bg|text|border|divide|ring|outline)-\[#[0-9a-fA-F]{3,8}\]" app comp
 
 ### 6.1 旧ダーク上書きと競合するときはトークン化しない
 
-`globals.css` の旧ダーク上書き（例: `html[data-theme="dark"] .text-neutral-400 { color: #a9a9a9; }`）とフォーム要素のルール（`html[data-theme="dark"] input, select, textarea { background-color: #2b2b2b; color: #ededed; }`）は、どちらもレイヤー外（unlayered）にある。unlayered の宣言は `@layer utilities` 内のトークンより常に優先されるため、次の4種類の競合では**移行したトークンのクラスだけを旧クラスに戻す**。旧クラス側は変更しない。6.1.1〜6.1.3 では基底のトークンを戻し、6.1.4 では状態付きトークンを戻す。
+`globals.css` の旧ダーク上書き（例: `html[data-theme="dark"] .text-neutral-400 { color: #a9a9a9; }`）とフォーム要素のルール（`html[data-theme="dark"] input, select, textarea { background-color: #2b2b2b; color: #ededed; }`）は、どちらもレイヤー外（unlayered）にある。unlayered の宣言は `@layer utilities` 内のトークンより常に優先されるため、次の5種類の競合では**移行したトークンのクラスだけを旧クラスに戻す**か、**要素に残す色クラスを1つにする**。旧クラス側は変更しない。6.1.1〜6.1.3 では基底のトークンを戻し、6.1.4 では状態付きトークンを戻す。6.1.5 はレイヤー内の出力順が変わる種類で、旧クラスへ戻すのではなく、変更前に表示されていた色だけを残す。
 
 #### 6.1.1 状態付きユーティリティとの競合（variant）
 
@@ -415,6 +415,24 @@ JSX の組み込み要素 `<input>` / `<select>` / `<textarea>` に、背景色�
 
 対処: 基底の旧クラスも同じ変更でトークンへ移す（例: `bg-surface hover:bg-hover`）。それができない場合は、状態付きトークンを旧クラスへ戻す（例: `hover:bg-neutral-100`）。6.1.1 では状態付きクラスを変えず基底トークンを戻すが、この種類では**状態付きトークンが戻す対象**になる。
 
+#### 6.1.5 同じプロパティの色クラス同士の競合（same-property-overlap）
+
+同じ要素に、**状態なし**の色クラスが同じプロパティ（背景色・文字色・枠線色）で2つ以上あり、そのうち少なくとも1つがセマンティックトークンである場合。条件分岐は同時に描画され得る組み合わせごとに判定する。旧クラス同士（例: `text-neutral-500 text-neutral-700`）は第2段階の範囲外なので報告しないが、`--stats` で件数を表示する。
+
+理由: Tailwind はユーティリティを `className` の記述順ではなく、生成 CSS 内の固定の順序で出力する。移行前は2つとも旧パレットクラスで、この順序は安定していた。片方をトークンに置き換えると生成 CSS 内の位置が変わり、ライトでも勝者が入れ替わることがある。ダークでは、旧クラス側の unlayered ダーク上書きが勝っていた場合はその色が消える。
+
+例: 共有定数 `buttonClass` に `text-neutral-700` があり、削除ボタンが `${buttonClass} text-rose-600` を使っていた。HEAD のライトでは生成 CSS の順序で `text-rose-600` が勝って赤、ダークでは `text-neutral-700` の unlayered 上書き `#dedede` が勝って灰色だった。`buttonClass` を `text-secondary` にすると、ライトでも `text-secondary` が勝って灰色になる。対処は、色を含まない共通部分と勝たせたい色を分ける（例: `buttonBase` + `text-rose-600`）。この例ではライトの勝者（赤）に合わせるため、ダークは灰色から赤に変わる。
+
+対処の手順:
+
+1. HEAD（変更前）のライトの勝者を、ビルド済み CSS（`.next/static/chunks/*.css`）のルール順から求める。ダークの勝者は `globals.css` の unlayered ダーク上書きから求める。
+2. 要素に残す色クラスを1つにし、ライトの勝者の色を保つ。ライトとダークで勝者が違う場合は**ライトの勝者（デザインの意図）**に合わせ、ダークで見た目が変わることを記録する。
+3. 構造・ロジック・文言・`data-*` は変えない。色クラスの整理だけを行う。
+
+方向付きの罫線（`border-t-line`、`border-x-line` など）は、`border-line`（`border-color`）とは別のロングハンドを設定する意図的な上書きなので、別プロパティとして扱う。`border-line border-t-line` は報告しない。同じ側同士（`border-t-line border-t-rose-600`）は報告する。物理側（`border-l-*`）と論理側（`border-s-*`）の混在はモデル化していない。`divide-*` / `ring-*` / `outline-*` / `fill-*` / `stroke-*` は対象外。
+
+import したクラス定数に消費側で色クラスを後置する組み合わせは、検査が import を解決しないため見えない。6.1.2 の `knowledgeAction` と同様に、共有定数の利用箇所は手動で確認する。
+
 #### 例外（6.1.1 の状態付きクラス）
 
 - **状態付きクラス自体がセマンティックトークンの場合は対象外（6.1.1 の判定）**。例: `hover:text-text`、`hover:bg-surface-muted`、`hover:text-accent-text`、`focus:border-accent`。トークンはライト・ダークとも `--atlas-*` 変数から解決され、どちらもレイヤー内にあるため、旧クラスの unlayered ダーク上書きが関与しない。対象外にするトークン名は3章の `surface` 系 / `hover` / `hover-strong` / `line` 系 / `line-subtle` / `text` / `secondary` / `muted` / `subtle` / `on-accent` / `accent` 系 / `accent-hover` / `accent-line` / `danger`・`warning`・`success` 系 / `*-line` / `focus-ring` / `scrim` など（互換エイリアスの `background` / `foreground` を含む）。6.1.4 はこの組み合わせを別の規則で検査する。
@@ -427,7 +445,7 @@ JSX の組み込み要素 `<input>` / `<select>` / `<textarea>` に、背景色�
 npm run check:token-variants
 ```
 
-`scripts/check-token-variants.mjs` が `app/` と `components/` の `.ts` / `.tsx` を TypeScript の構文木で走査し、`className` 属性・`cn()` / `clsx()` 呼び出し・モジュール内のクラス文字列定数を合成して判定する。条件分岐は同時に描画され得る組み合わせごとに評価する。違反があれば `ファイル:行  [種類] 競合クラス  (with トークン / <要素>)` を出力して終了コード 1。種類は `variant` / `token-variant-over-legacy` / `legacy-overlap` / `form-control`。CI の `verify` ジョブでも `check:colors` の直後に実行する。既知の見落とし（実行時に組み立てるクラス、他モジュールから import した定数、`divide-line` / `divide-line-subtle`、`<Input>` などのラッパー越しのクラス、`:where()` / `:not()` を使った要素ルールなど）はスクリプト冒頭のコメントに記載している。
+`scripts/check-token-variants.mjs` が `app/` と `components/` の `.ts` / `.tsx` を TypeScript の構文木で走査し、`className` 属性・`cn()` / `clsx()` 呼び出し・モジュール内のクラス文字列定数を合成して判定する。条件分岐は同時に描画され得る組み合わせごとに評価する。違反があれば `ファイル:行  [種類] 競合クラス  (with トークン / <要素>)` を出力して終了コード 1。種類は `variant` / `token-variant-over-legacy` / `legacy-overlap` / `same-property-overlap` / `form-control`。`--stats` を付けると、報告対象外の旧クラス同士の `same-property-overlap` の件数も表示する。CI の `verify` ジョブでも `check:colors` の直後に実行する。既知の見落とし（実行時に組み立てるクラス、他モジュールから import した定数、`divide-line` / `divide-line-subtle`、`<Input>` などのラッパー越しのクラス、`:where()` / `:not()` を使った要素ルールなど）はスクリプト冒頭のコメントに記載している。
 
 第3段階（パレット切り替え・旧ダーク上書き削除）では、この制約を解く。旧上書きを削除したうえで状態付きクラスもトークン化し、ライト・ダーク両方のホバー・フォーカス・無効状態を意図的に確認して整える。この検査は第1〜2段階の「見た目を変えない」ためのガードであり、第3段階では前提（レイヤー外のダーク上書き）がなくなるため、役割を終えた時点で削除または目的に合わせた検査へ置き換える。
 

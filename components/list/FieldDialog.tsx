@@ -99,7 +99,7 @@ export default function FieldDialog({
 
   const label = "mt-3 block text-[11px] font-medium text-muted";
   const fieldClass =
-    "mt-1 h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-neutral-800 outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10";
+    "mt-1 h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-text outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10";
 
   return createPortal(
     <div
@@ -115,9 +115,9 @@ export default function FieldDialog({
         onClick={(event) => event.stopPropagation()}
         className="flex max-h-[90vh] w-full max-w-[560px] flex-col overflow-hidden rounded-xl bg-surface shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3">
           <div>
-            <h2 className="text-[17px] font-semibold text-neutral-900">
+            <h2 className="text-[17px] font-semibold text-text">
               {mode === "edit" ? "フィールドを編集" : "フィールドを追加"}
             </h2>
             {mode === "edit" && field && (
@@ -128,7 +128,7 @@ export default function FieldDialog({
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="rounded p-1 text-xl leading-none text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+            className="rounded p-1 text-xl leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
           >
             ×
           </button>
@@ -150,7 +150,7 @@ export default function FieldDialog({
           <label className={label}>
             フィールドタイプ
             {mode === "edit" ? (
-              <div className="mt-1 flex h-9 items-center rounded-md border border-neutral-200 bg-surface-subtle px-2.5 text-[13px] text-secondary">
+              <div className="mt-1 flex h-9 items-center rounded-md border border-line bg-surface-subtle px-2.5 text-[13px] text-secondary">
                 {TYPE_LABELS[type]}
               </div>
             ) : (
@@ -228,7 +228,7 @@ export default function FieldDialog({
           {error && <p className="mt-3 text-[12px] text-danger">{error}</p>}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-neutral-200 px-5 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
           <button
             type="button"
             onClick={onClose}

@@ -163,7 +163,7 @@ export default function PortfolioWorkspace({
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <div className="rounded-lg border border-neutral-200 bg-surface p-3">
+        <div className="rounded-lg border border-line bg-surface p-3">
           <div className="space-y-2">
             <input
               value={name}
@@ -187,7 +187,7 @@ export default function PortfolioWorkspace({
             </button>
             {error && <p className="text-[11px] text-rose-600">{error}</p>}
           </div>
-          <div className="mt-3 space-y-1 border-t border-neutral-100 pt-3">
+          <div className="mt-3 space-y-1 border-t border-line-subtle pt-3">
             {portfolios.length === 0 ? (
               <p className="py-3 text-center text-[11px] text-subtle">
                 ポートフォリオはまだありません。
@@ -203,7 +203,7 @@ export default function PortfolioWorkspace({
                   }`}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12px] font-medium text-neutral-800">
+                    <span className="block truncate text-[12px] font-medium text-text">
                       {portfolio.name}
                     </span>
                     <span className="block text-[10px] text-subtle">
@@ -223,11 +223,11 @@ export default function PortfolioWorkspace({
             </div>
           ) : (
             <>
-              <div className="rounded-lg border border-neutral-200 bg-surface p-4">
+              <div className="rounded-lg border border-line bg-surface p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-[16px] font-semibold text-neutral-900">
+                      <h3 className="text-[16px] font-semibold text-text">
                         {detail.portfolio.name}
                       </h3>
                       {detail.portfolio.can_view_plan && (
@@ -263,7 +263,7 @@ export default function PortfolioWorkspace({
                   {detail.projects.map((project) => (
                     <span
                       key={project.id}
-                      className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-surface-subtle px-2 py-0.5 text-[11px] text-neutral-700"
+                      className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-subtle px-2 py-0.5 text-[11px] text-secondary"
                     >
                       {project.name}
                       {detail.portfolio.can_edit && (
@@ -291,7 +291,7 @@ export default function PortfolioWorkspace({
                     <select
                       value={projectId}
                       onChange={(event) => setProjectId(event.target.value)}
-                      className="h-8 rounded-md border border-neutral-200 bg-white px-2 text-[12px]"
+                      className="h-8 rounded-md border border-line bg-white px-2 text-[12px]"
                     >
                       <option value="">プロジェクトを選択…</option>
                       {addableProjects.map((project) => (
@@ -304,7 +304,7 @@ export default function PortfolioWorkspace({
                       type="button"
                       onClick={() => void addProject()}
                       disabled={busy || projectId === ""}
-                      className="h-8 rounded-md border border-neutral-200 px-3 text-[12px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                      className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50 disabled:opacity-50"
                     >
                       プロジェクトを追加
                     </button>
@@ -312,7 +312,7 @@ export default function PortfolioWorkspace({
                 )}
               </div>
 
-              <div className="mt-4 rounded-lg border border-neutral-200 bg-surface">
+              <div className="mt-4 rounded-lg border border-line bg-surface">
                 <AutomationRulesPanel
                   key={detail.portfolio.id}
                   projectId={0}

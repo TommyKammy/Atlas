@@ -105,7 +105,7 @@ export default function AdminConsole({
 
   if (visible.length === 0) {
     return (
-      <div className="rounded-lg border border-neutral-200 p-6 text-sm text-muted">
+      <div className="rounded-lg border border-line p-6 text-sm text-muted">
         管理コンソールを表示する権限がありません。
       </div>
     );
@@ -114,7 +114,7 @@ export default function AdminConsole({
   return (
     <div data-admin-console className="mt-4 flex flex-col gap-5 md:flex-row">
       <aside className="shrink-0 md:w-56">
-        <div className="rounded-lg border border-neutral-200 bg-surface p-2">
+        <div className="rounded-lg border border-line bg-surface p-2">
           <div className="px-2 pb-1 pt-1 text-[11px] font-medium tracking-wide text-subtle">
             {initialWorkspace.name}
           </div>
@@ -140,7 +140,7 @@ export default function AdminConsole({
           </nav>
         </div>
         {permissions.includes("audit.view") && (
-          <div className="mt-2 hidden rounded-lg border border-neutral-200 p-2 md:block">
+          <div className="mt-2 hidden rounded-lg border border-line p-2 md:block">
             <a
               href="/audit"
               className="block rounded px-2 py-1.5 text-xs text-secondary hover:bg-neutral-100"

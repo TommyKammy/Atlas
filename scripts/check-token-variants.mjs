@@ -42,6 +42,19 @@
 //   property, report the pair. Legacy/legacy and token/token pairs are not
 //   reported.
 //
+//   [same-property-overlap] Two or more state-less color classes of the same
+//   property in one class set (background / text / border side). Two base
+//   colors of the same property compete by Tailwind's output order, not by the
+//   order in the className string. Before the migration both were legacy
+//   classes, so their relative order was stable. Replacing one of them with a
+//   token moves it in the generated CSS and can flip the winner in light mode
+//   as well (S2-2 follow-up: `buttonClass` had `text-neutral-700` and the
+//   delete button appended `text-rose-600`; after `text-secondary` won, the
+//   label turned gray). Report every pair when at least one side is a semantic
+//   token. Legacy/legacy pairs are out of scope for this stage; they are
+//   counted separately by `--stats`. A pair that `legacy-overlap` already
+//   reports is not reported again.
+//
 //   [form-control] Form controls have an unlayered element rule (T17):
 //     html[data-theme="dark"] input, select, textarea {
 //       background-color: #2b2b2b; color: #ededed;
@@ -97,6 +110,22 @@
 //     base legacy override would block the state token in dark mode, which is
 //     conservative: a state whose legacy class was never overridden already
 //     lost in dark before the migration.
+//   - [same-property-overlap] only compares state-less classes. State,
+//     breakpoint and pseudo-element variants are excluded: a `hover:` class is
+//     handled by [variant]/[token-variant-over-legacy], and a responsive
+//     utility is emitted after the base utility in a media query, so its
+//     relative order does not change with the token. Border side utilities
+//     (`border-t-line`, `border-x-line`, ...) use a different longhand than
+//     `border-line` and are intentionally combined with it as a per-side
+//     override; they are treated as separate properties. Two different side
+//     utilities (for example `border-t-line` and `border-t-rose-600`) still
+//     share a key and are reported. Mixing physical and logical sides
+//     (`border-l-*` with `border-s-*`) is not modelled. `divide-*`, `ring-*`,
+//     `outline-*`, `fill-*` and `stroke-*` are out of scope, as before.
+//   - [same-property-overlap] skips a pair that [legacy-overlap] already
+//     reports (token + legacy with an unlayered dark override for the same
+//     property). A third class in the same group is still reported against the
+//     other classes.
 //
 // How class sets are assembled
 // ----------------------------
@@ -120,18 +149,22 @@
 //
 // Output: `file:line  [kind] <conflict class>  (with <token class> / <element>)`,
 // one line per problem, then a count. `kind` is `variant`,
-// `token-variant-over-legacy`, `legacy-overlap` or `form-control`. Exit code 1
-// when anything is found, 0 when clean. The line points at the string segment
-// that contains the class to inspect; for a class inherited from a constant,
-// that is the constant's definition line. For `token-variant-over-legacy`,
-// `legacy-overlap` and `form-control`, the reported line is the token class to
-// revert.
+// `token-variant-over-legacy`, `legacy-overlap`, `same-property-overlap` or
+// `form-control`. Exit code 1 when anything is found, 0 when clean. The line
+// points at the string segment that contains the class to inspect; for a class
+// inherited from a constant, that is the constant's definition line. For
+// `token-variant-over-legacy`, `legacy-overlap` and `form-control`, the
+// reported line is the token class to revert. For `same-property-overlap`, the
+// reported class is the non-token side when there is one, otherwise the later
+// of the two token classes; the fix keeps one color class per property.
 //
 // Known limits (accepted; a full type-aware analysis is out of scope)
 //   - Classes assembled at runtime from values that are not static strings are
 //     invisible. Examples: `className={`text-${tone}`}`, a class map keyed by
 //     a variable (`classByState[state]`), a constant imported from another
-//     module, or classes returned by an arbitrary helper function.
+//     module, or classes returned by an arbitrary helper function. This also
+//     means [same-property-overlap] cannot see a base color appended to an
+//     imported class constant; audit such consumers manually.
 //   - Identifiers are resolved by name within the file. Two same-named
 //     constants in different scopes are merged; the result can be a false
 //     positive. Shadowing with a non-string value is ignored.
@@ -307,6 +340,20 @@ export function colorProperty(utility) {
     if (!BORDER_NON_COLOR.test(rest) && COLOR_VALUE.test(value)) return "border";
   }
   return null;
+}
+
+/**
+ * The property two base color utilities compete for. `border-t-*` sets
+ * border-top-color, a different longhand than `border-*` (border-color), and is
+ * intentionally used as a per-side override, so each border side is its own
+ * property. `border-x` / `border-y` are kept separate as well; they set two
+ * sides at once. Returns `bg`, `text`, `border`, `border-t`, ... or null.
+ */
+export function colorConflictProperty(utility) {
+  const property = colorProperty(utility);
+  if (property !== "border") return property;
+  const side = /^([trblxyse])-/.exec(utility.slice("border-".length));
+  return side ? `border-${side[1]}` : "border";
 }
 
 /**
@@ -770,7 +817,27 @@ function tokensWithPositions(sourceFile, chunks) {
   return tokens;
 }
 
-function inspectClassSet(tokens, { overriddenVariants, darkOverrides, formControlRules, tokenDarkValues, element }) {
+/**
+ * True when [legacy-overlap] already reports this pair. The pair has one token
+ * from TOKEN_PROPERTIES and one base legacy class with an unlayered dark
+ * override for the same property. [same-property-overlap] skips it so one
+ * class set does not produce two diagnostics for the same pair.
+ */
+function isLegacyOverlapPair(a, b, darkOverrides) {
+  return isLegacyOverlapSide(a, b, darkOverrides) || isLegacyOverlapSide(b, a, darkOverrides);
+}
+
+function isLegacyOverlapSide(token, other, darkOverrides) {
+  const property = TOKEN_PROPERTIES.get(token);
+  if (!property) return false;
+  if (TOKEN_PROPERTIES.has(other) || isSemanticTokenColor(other)) return false;
+  const { variants, base } = splitVariants(other);
+  if (variants.length) return false;
+  if (colorProperty(base) !== property) return false;
+  return Boolean(darkOverrides.get(other)?.has(property));
+}
+
+function inspectClassSet(tokens, { overriddenVariants, darkOverrides, formControlRules, tokenDarkValues, element, onLegacySamePropertyOverlap }) {
   const findings = [];
 
   // [token-variant-over-legacy] A state token next to a base legacy class whose
@@ -796,6 +863,41 @@ function inspectClassSet(tokens, { overriddenVariants, darkOverrides, formContro
       if (colorProperty(otherParts.base) !== property) continue;
       if (!darkOverrides.get(other)?.has(property)) continue;
       findings.push({ kind: "token-variant-over-legacy", line, stateClass: token, token: other });
+    }
+  }
+
+  // [same-property-overlap] Two or more state-less color classes of the same
+  // property. Two base colors compete by Tailwind's output order, not by the
+  // order in the className string. Report each extra class once against the
+  // first semantic token in the group. Legacy/legacy groups are counted for
+  // the migration report but not reported (out of scope for this stage).
+  const baseByProperty = new Map();
+  for (const [token, line] of tokens) {
+    const { variants, base } = splitVariants(token);
+    if (variants.length) continue;
+    const property = colorConflictProperty(base);
+    if (!property) continue;
+    const group = baseByProperty.get(property) ?? [];
+    group.push({ token, line, semantic: isSemanticTokenColor(base) });
+    baseByProperty.set(property, group);
+  }
+  for (const [property, group] of baseByProperty) {
+    if (group.length < 2) continue;
+    const sorted = [...group].sort((a, b) => a.line - b.line || comparePaths(a.token, b.token));
+    const semantic = sorted.filter((entry) => entry.semantic);
+    if (!semantic.length) {
+      onLegacySamePropertyOverlap?.({
+        property,
+        classes: sorted.map((entry) => entry.token),
+        line: sorted[0].line,
+      });
+      continue;
+    }
+    const primary = semantic[0];
+    for (const entry of sorted) {
+      if (entry === primary) continue;
+      if (isLegacyOverlapPair(primary.token, entry.token, darkOverrides)) continue;
+      findings.push({ kind: "same-property-overlap", line: entry.line, stateClass: entry.token, token: primary.token });
     }
   }
 
@@ -879,6 +981,7 @@ export function findTokenVariantConflicts(
     darkOverrides = new Map(),
     formControlRules = new Map(),
     tokenDarkValues = new Map(),
+    onLegacySamePropertyOverlap = null,
   } = {},
 ) {
   const scriptKind = filename.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
@@ -943,6 +1046,7 @@ export function findTokenVariantConflicts(
         formControlRules,
         tokenDarkValues,
         element,
+        onLegacySamePropertyOverlap,
       })) {
         const key = [
           finding.kind,
@@ -980,7 +1084,10 @@ export function listTargetFiles(root = ROOT) {
 /**
  * Scan a project tree.
  * Returns { findings: [{ path, kind, line, stateClass, token, element? }],
- * scannedFileCount }. `path` is POSIX-style and relative to the root.
+ * scannedFileCount, stats: { legacySamePropertyOverlaps,
+ * legacySamePropertyPairs } }. `path` is POSIX-style and relative to the root.
+ * Legacy/legacy same-property groups are counted in `stats` but not returned
+ * as findings (out of scope for the current migration stage).
  */
 export function scanTree(root = ROOT) {
   const cssPath = join(root, "app/globals.css");
@@ -993,6 +1100,9 @@ export function scanTree(root = ROOT) {
   const tokenDarkValues = css ? parseTokenDarkValues(css) : new Map();
   const targets = listTargetFiles(root);
   const findings = [];
+  const legacySeen = new Set();
+  let legacySamePropertyOverlaps = 0;
+  let legacySamePropertyPairs = 0;
   for (const file of targets) {
     const relativePath = relative(root, file).split(sep).join("/");
     const conflicts = findTokenVariantConflicts(readFileSync(file, "utf8"), {
@@ -1001,6 +1111,13 @@ export function scanTree(root = ROOT) {
       darkOverrides,
       formControlRules,
       tokenDarkValues,
+      onLegacySamePropertyOverlap: ({ property, classes, line }) => {
+        const key = [relativePath, line, property, [...classes].sort().join(" ")].join("\u0000");
+        if (legacySeen.has(key)) return;
+        legacySeen.add(key);
+        legacySamePropertyOverlaps += 1;
+        legacySamePropertyPairs += (classes.length * (classes.length - 1)) / 2;
+      },
     });
     for (const conflict of conflicts) findings.push({ path: relativePath, ...conflict });
   }
@@ -1012,34 +1129,47 @@ export function scanTree(root = ROOT) {
       comparePaths(a.kind, b.kind) ||
       comparePaths(a.token, b.token),
   );
-  return { findings, scannedFileCount: targets.length };
+  return {
+    findings,
+    scannedFileCount: targets.length,
+    stats: { legacySamePropertyOverlaps, legacySamePropertyPairs },
+  };
 }
 
 function main() {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log(
       [
-        "Usage: node scripts/check-token-variants.mjs",
+        "Usage: node scripts/check-token-variants.mjs [--stats]",
         "",
         "Reports migrated token classes that conflict with the unlayered legacy",
         "dark rules: a state variant of the same property, a base legacy class",
-        "of the same property, a state token over a base legacy class, or a",
-        "form-control background/text token. Revert the token class; see",
-        "docs/design-tokens.md section 6.1.",
+        "of the same property, a state token over a base legacy class, two base",
+        "color classes of the same property, or a form-control background/text",
+        "token. Revert the token class; see docs/design-tokens.md section 6.1.",
+        "",
+        "--stats also prints the number of legacy/legacy same-property groups",
+        "that are out of scope and therefore not reported.",
       ].join("\n"),
     );
     return;
   }
-  const unknown = process.argv.slice(2).filter((argument) => argument !== "--help" && argument !== "-h");
+  const args = process.argv.slice(2);
+  const showStats = args.includes("--stats");
+  const unknown = args.filter((argument) => argument !== "--help" && argument !== "-h" && argument !== "--stats");
   if (unknown.length) {
     console.error(`check-token-variants: unknown argument: ${unknown[0]}`);
     process.exitCode = 2;
     return;
   }
 
-  const { findings, scannedFileCount } = scanTree(ROOT);
+  const { findings, scannedFileCount, stats } = scanTree(ROOT);
   if (findings.length === 0) {
     console.log(`check-token-variants: OK (scanned ${scannedFileCount} file(s))`);
+    if (showStats) {
+      console.log(`same-property legacy/legacy groups (not reported): ${stats.legacySamePropertyOverlaps}`);
+      console.log(`same-property legacy/legacy pairs (not reported): ${stats.legacySamePropertyPairs}`);
+    }
     return;
   }
   console.error("check-token-variants: token conflicts found");
@@ -1052,6 +1182,10 @@ function main() {
   console.error(
     `${findings.length} conflict(s) in ${new Set(findings.map((finding) => finding.path)).size} file(s).`,
   );
+  if (showStats) {
+    console.log(`same-property legacy/legacy groups (not reported): ${stats.legacySamePropertyOverlaps}`);
+    console.log(`same-property legacy/legacy pairs (not reported): ${stats.legacySamePropertyPairs}`);
+  }
   const kinds = new Set(findings.map((finding) => finding.kind));
   if (kinds.has("variant")) {
     console.error("variant: revert the base token (with ...) to its legacy class; keep the state class unchanged.");
@@ -1064,6 +1198,9 @@ function main() {
   }
   if (kinds.has("token-variant-over-legacy")) {
     console.error("token-variant-over-legacy: migrate the base legacy class in the same change, or revert the state token.");
+  }
+  if (kinds.has("same-property-overlap")) {
+    console.error("same-property-overlap: keep one base color class per property; preserve the color that won before the migration.");
   }
   console.error("See docs/design-tokens.md section 4 and 6.1.");
   process.exitCode = 1;

@@ -24,7 +24,7 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex items-center gap-2 border-b border-line-subtle px-4 py-1.5">
         <span className="text-[11px] text-subtle">
           {unreadCount > 0 ? `未読 ${unreadCount}件` : "すべて既読"}
         </span>
@@ -49,7 +49,7 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
               href={`/projects/${mention.project_id}?view=list&task=${mention.task_id}`}
               data-home-mention-row={mention.comment_id}
               onClick={() => markRead(mention.comment_id)}
-              className="flex min-w-0 items-start gap-2 border-b border-neutral-100 px-4 py-2.5 last:border-b-0 hover:bg-neutral-50"
+              className="flex min-w-0 items-start gap-2 border-b border-line-subtle px-4 py-2.5 last:border-b-0 hover:bg-neutral-50"
             >
               <span className="relative mt-0.5 shrink-0">
                 <UserAvatar
@@ -64,7 +64,7 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
-                  <span className="truncate text-[12px] font-medium text-neutral-800">
+                  <span className="truncate text-[12px] font-medium text-text">
                     {mention.author_name ?? "不明なユーザー"}
                   </span>
                   <span className="shrink-0 text-[10px] text-subtle">
@@ -83,8 +83,8 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
         )}
       </div>
 
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/inbox" className="text-[12px] text-muted hover:text-neutral-800">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right">
+        <Link href="/inbox" className="text-[12px] text-muted hover:text-text">
           メンションをすべて表示
         </Link>
       </div>

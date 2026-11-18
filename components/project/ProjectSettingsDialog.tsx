@@ -154,7 +154,7 @@ export default function ProjectSettingsDialog({
       panelClassName="flex max-h-[90vh] w-[min(880px,94vw)] flex-col overflow-hidden rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-settings-dialog className="flex min-h-0 flex-1 flex-col">
-        <div className="flex items-start justify-between border-b border-neutral-200 px-6 py-4">
+        <div className="flex items-start justify-between border-b border-line px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">プロジェクト設定</h2>
             <p className="mt-0.5 text-xs text-muted">{projectName}</p>
@@ -163,13 +163,13 @@ export default function ProjectSettingsDialog({
             type="button"
             onClick={onClose}
             aria-label="閉じる"
-            className="text-xl leading-none text-subtle hover:text-neutral-700"
+            className="text-xl leading-none text-subtle hover:text-secondary"
           >
             ×
           </button>
         </div>
         <div className="flex min-h-0 flex-1">
-          <nav className="w-52 shrink-0 border-r border-neutral-200 bg-neutral-50/60 p-2" aria-label="設定タブ">
+          <nav className="w-52 shrink-0 border-r border-line bg-neutral-50/60 p-2" aria-label="設定タブ">
             {TABS.map((entry) => (
               <button
                 key={entry.key}
@@ -179,7 +179,7 @@ export default function ProjectSettingsDialog({
                 onClick={() => setTab(entry.key)}
                 className={`flex h-9 w-full items-center rounded-md px-3 text-left text-[13px] ${
                   tab === entry.key
-                    ? "bg-surface font-semibold text-neutral-900 shadow-sm ring-1 ring-neutral-200"
+                    ? "bg-surface font-semibold text-text shadow-sm ring-1 ring-neutral-200"
                     : "text-secondary hover:bg-white/70"
                 }`}
               >
@@ -252,7 +252,7 @@ export default function ProjectSettingsDialog({
                         className={`flex cursor-pointer items-start gap-2 rounded-md border p-3 ${
                           settings.dependency_buffer === mode
                             ? "border-[#4075cf] bg-[#f4f8ff]"
-                            : "border-neutral-200 hover:bg-neutral-50"
+                            : "border-line hover:bg-neutral-50"
                         }`}
                       >
                         <input
@@ -268,7 +268,7 @@ export default function ProjectSettingsDialog({
                           className="mt-1"
                         />
                         <span>
-                          <span className="block font-medium text-neutral-800">{DEPENDENCY_BUFFER_LABELS[mode]}</span>
+                          <span className="block font-medium text-text">{DEPENDENCY_BUFFER_LABELS[mode]}</span>
                           <span className="block text-xs text-muted">
                             {mode === "buffer"
                               ? "依存関係にあるタスク同士の間隔を維持します。"
@@ -308,7 +308,7 @@ export default function ProjectSettingsDialog({
                               className={`h-9 w-10 rounded-md border text-sm ${
                                 active
                                   ? "border-[#4075cf] bg-[#eaf2ff] font-semibold text-accent-text"
-                                  : "border-neutral-200 bg-surface text-muted hover:bg-neutral-50"
+                                  : "border-line bg-surface text-muted hover:bg-neutral-50"
                               }`}
                             >
                               {label}
@@ -353,7 +353,7 @@ export default function ProjectSettingsDialog({
                 {tab === "notifications" && (
                   <div className="space-y-3" data-project-settings-panel="notifications">
                     <p className="text-xs text-muted">プロジェクトの更新をどこで受け取るかを選択します。</p>
-                    <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-3">
+                    <label className="flex items-start gap-2 rounded-md border border-line p-3">
                       <input
                         type="checkbox"
                         checked={settings.notifications.email}
@@ -371,8 +371,8 @@ export default function ProjectSettingsDialog({
                       </span>
                     </label>
                     <div data-notification-email-status={!delivery ? "unknown" : !delivery.smtp_configured ? "unconfigured" : !delivery.worker_running ? "worker_stopped" : "ready"}
-                      className="rounded-md border border-neutral-200 bg-surface-subtle p-3 text-xs text-secondary">
-                      <p className="font-medium text-neutral-700">メールの配信状況</p>
+                      className="rounded-md border border-line bg-surface-subtle p-3 text-xs text-secondary">
+                      <p className="font-medium text-secondary">メールの配信状況</p>
                       <p className="mt-1">{!delivery ? "配信状況を取得できていません。" : !delivery.smtp_configured
                         ? "SMTPまたはアプリの公開URLが未設定のため、メールは未接続です。タスクの変更は保存されます。"
                         : !delivery.worker_running ? "配信ワーカーが動作していません。メール通知は保留中です。"
@@ -386,7 +386,7 @@ export default function ProjectSettingsDialog({
                       </div>
                       {delivery && (delivery.counts.failed ?? 0) + (delivery.counts.retry ?? 0) + delivery.source_failed > 0 && <p className="mt-2">接続切断などで受付結果を確認できない場合、自動または手動の再試行でメールが重複することがあります。</p>}
                     </div>
-                    <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-3">
+                    <label className="flex items-start gap-2 rounded-md border border-line p-3">
                       <input
                         type="checkbox"
                         checked={settings.notifications.in_app}
@@ -404,7 +404,7 @@ export default function ProjectSettingsDialog({
                       </span>
                     </label>
                     <div className="rounded-md border border-dashed border-line-strong p-3 text-xs text-muted">
-                      <div className="font-medium text-neutral-700">Slack / Microsoft Teams</div>
+                      <div className="font-medium text-secondary">Slack / Microsoft Teams</div>
                       <p className="mt-1">外部チャンネル連携は未接続です。接続設定は今後追加されます。</p>
                     </div>
                     <p className="text-[11px] text-subtle">
@@ -417,7 +417,7 @@ export default function ProjectSettingsDialog({
             {error && <p className="mt-4 text-xs text-danger">{error}</p>}
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-neutral-200 px-6 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-line px-6 py-3">
           <button type="button" className={PROJECT_DIALOG_SECONDARY} onClick={onClose} disabled={saving}>
             キャンセル
           </button>

@@ -85,7 +85,7 @@ function MultiSelectEditor({
   const [selected, setSelected] = useState<string[]>(initial);
   return (
     <div
-      className="absolute top-full left-0 z-50 mt-1 w-56 rounded-lg border border-neutral-200 bg-surface p-2 shadow-xl"
+      className="absolute top-full left-0 z-50 mt-1 w-56 rounded-lg border border-line bg-surface p-2 shadow-xl"
       onClick={(event) => event.stopPropagation()}
     >
       <div className="max-h-48 space-y-0.5 overflow-y-auto">
@@ -107,7 +107,7 @@ function MultiSelectEditor({
           </label>
         ))}
       </div>
-      <div className="mt-2 flex justify-end gap-1.5 border-t border-neutral-100 pt-2">
+      <div className="mt-2 flex justify-end gap-1.5 border-t border-line-subtle pt-2">
         <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100">
           キャンセル
         </button>
@@ -133,7 +133,7 @@ function PeopleEditor({
   const [selected, setSelected] = useState<number[]>(initial);
   return (
     <div
-      className="absolute top-full left-0 z-50 mt-1 w-60 rounded-lg border border-neutral-200 bg-surface p-2 shadow-xl"
+      className="absolute top-full left-0 z-50 mt-1 w-60 rounded-lg border border-line bg-surface p-2 shadow-xl"
       onClick={(event) => event.stopPropagation()}
     >
       <div className="max-h-48 space-y-0.5 overflow-y-auto">
@@ -155,7 +155,7 @@ function PeopleEditor({
           </label>
         ))}
       </div>
-      <div className="mt-2 flex justify-end gap-1.5 border-t border-neutral-100 pt-2">
+      <div className="mt-2 flex justify-end gap-1.5 border-t border-line-subtle pt-2">
         <button type="button" onClick={onCancel} className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100">
           キャンセル
         </button>
@@ -358,7 +358,7 @@ export default function TaskListRow({
             onClick={(e) => e.stopPropagation()}
             dir="auto"
             aria-label="タスク名"
-            className="h-5 min-w-[2ch] max-w-[calc(100%-4rem)] flex-none rounded-[2px] border-0 bg-transparent px-0 py-0 text-sm leading-5 text-neutral-900 outline-none [field-sizing:content]"
+            className="h-5 min-w-[2ch] max-w-[calc(100%-4rem)] flex-none rounded-[2px] border-0 bg-transparent px-0 py-0 text-sm leading-5 text-text outline-none [field-sizing:content]"
           />
         ) : (
           <span
@@ -761,7 +761,7 @@ export default function TaskListRow({
       ) : (
         <button
           onClick={() => setSubAdding(t.id)}
-          className="flex h-9 w-full items-center rounded pr-2 pl-[108px] text-left text-[13px] whitespace-nowrap text-muted hover:bg-neutral-50 hover:text-neutral-700"
+          className="flex h-9 w-full items-center rounded pr-2 pl-[108px] text-left text-[13px] whitespace-nowrap text-muted hover:bg-neutral-50 hover:text-secondary"
         >
           サブタスクを追加
         </button>

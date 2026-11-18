@@ -41,7 +41,7 @@ export default async function AuditPage() {
             <span className="text-muted">{r.created_at}</span>
             <span className="truncate">{r.actor_name ?? "–"}</span>
             <span className="break-all font-mono text-xs">{r.action}</span>
-            <span className="break-words text-neutral-700">
+            <span className="break-words text-secondary">
               {[r.project_name, r.summary].filter(Boolean).join(" / ") || `${r.entity}#${r.entity_id ?? "–"}`}
             </span>
           </div>

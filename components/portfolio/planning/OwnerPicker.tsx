@@ -93,7 +93,7 @@ export default function OwnerPicker({
           >
             <p
               data-owner-selected-name
-              className="min-w-0 text-[13px] font-semibold break-words text-neutral-900"
+              className="min-w-0 text-[13px] font-semibold break-words text-text"
             >
               {value.name}
             </p>
@@ -112,7 +112,7 @@ export default function OwnerPicker({
           >
             <p
               data-owner-legacy-name
-              className="min-w-0 text-[13px] font-semibold break-words text-neutral-900"
+              className="min-w-0 text-[13px] font-semibold break-words text-text"
             >
               {value.name}
             </p>
@@ -188,7 +188,7 @@ export default function OwnerPicker({
                   setOpen(false);
                 }
               }}
-              className="h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
+              className="h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-text outline-none focus:border-[#2c60b8]"
             />
             {open && (
               <div className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-md border border-line-strong bg-surface shadow-lg">
@@ -225,7 +225,7 @@ export default function OwnerPicker({
                         >
                           <span className="min-w-0 flex-1">
                             <span className="flex min-w-0 flex-wrap items-center gap-1">
-                              <span className="truncate text-[13px] font-medium text-neutral-900">
+                              <span className="truncate text-[13px] font-medium text-text">
                                 {candidate.name}
                               </span>
                               {isSelected && (
@@ -252,7 +252,7 @@ export default function OwnerPicker({
           data-owner-self
           onClick={chooseSelf}
           disabled={!selfCandidate}
-          className="inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-secondary hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           自分を設定
         </button>

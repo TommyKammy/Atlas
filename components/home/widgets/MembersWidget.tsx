@@ -12,7 +12,7 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
 
   return (
     <>
-      <div className="flex items-center gap-1 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex items-center gap-1 border-b border-line-subtle px-4 py-1.5">
         <button
           type="button"
           onClick={() => setTab("week")}
@@ -59,7 +59,7 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
                 >
                   <UserAvatar name={member.name} url={member.avatar_url} className="h-7 w-7" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-medium text-neutral-800">
+                    <span className="block truncate text-[13px] font-medium text-text">
                       {member.name}
                     </span>
                     <span className="block truncate text-[11px] text-subtle">
@@ -73,8 +73,8 @@ export default function MembersWidget({ members }: { members: HomeMember[] }) {
           </div>
         )}
       </div>
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/portfolio" className="text-[12px] text-muted hover:text-neutral-800">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right">
+        <Link href="/portfolio" className="text-[12px] text-muted hover:text-text">
           メンバーをすべて表示
         </Link>
       </div>

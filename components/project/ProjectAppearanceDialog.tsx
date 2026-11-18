@@ -33,7 +33,7 @@ export default function ProjectAppearanceDialog({
     >
       <div data-project-appearance-dialog className="p-5">
         <h2 className="text-lg font-semibold">カラーとアイコンを設定</h2>
-        <div className="mt-4 text-[13px] font-medium text-neutral-700">カラー</div>
+        <div className="mt-4 text-[13px] font-medium text-secondary">カラー</div>
         <div className="mt-2 grid grid-cols-8 gap-2">
           {PROJECT_COLORS.map((entry) => (
             <button
@@ -50,7 +50,7 @@ export default function ProjectAppearanceDialog({
             </button>
           ))}
         </div>
-        <div className="mt-4 text-[13px] font-medium text-neutral-700">アイコン</div>
+        <div className="mt-4 text-[13px] font-medium text-secondary">アイコン</div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {PROJECT_ICONS.map((entry) => (
             <button

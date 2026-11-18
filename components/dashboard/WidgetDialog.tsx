@@ -265,7 +265,7 @@ export default function WidgetDialog({
     "mt-1 w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-sm outline-none focus:border-[#4075cf]";
   const smallField =
     "mt-1 h-8 w-full rounded-md border border-neutral-300 bg-white px-2 text-[13px] outline-none focus:border-[#4075cf]";
-  const sectionTitle = "text-[12px] font-semibold text-neutral-800";
+  const sectionTitle = "text-[12px] font-semibold text-text";
   const label = "mt-3 block text-[11px] text-muted";
 
   return (
@@ -281,7 +281,7 @@ export default function WidgetDialog({
         aria-modal="true"
         aria-label={mode === "edit" ? "ウィジェットを編集" : "ウィジェットを追加"}
       >
-        <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3">
           <h2 className="text-[17px] font-semibold">
             {mode === "edit" ? "ウィジェットを編集" : kind === "text" ? "テキストを追加" : "チャートを追加"}
           </h2>
@@ -289,14 +289,14 @@ export default function WidgetDialog({
             type="button"
             onClick={onClose}
             aria-label="閉じる"
-            className="rounded p-1 text-xl leading-none text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+            className="rounded p-1 text-xl leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
           >
             ×
           </button>
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
-          <div className="flex min-h-[320px] flex-col border-b border-neutral-200 bg-surface p-5 lg:border-b-0 lg:border-r">
+          <div className="flex min-h-[320px] flex-col border-b border-line bg-surface p-5 lg:border-b-0 lg:border-r">
             <input
               value={title}
               onChange={(event) => {
@@ -305,11 +305,11 @@ export default function WidgetDialog({
               }}
               placeholder={kind === "text" ? "テキストのタイトル" : "チャートのタイトル"}
               data-dashboard-widget-title
-              className="w-full border-0 border-b border-transparent bg-transparent px-1 py-1 text-[22px] font-medium text-neutral-800 outline-none placeholder:text-neutral-300 focus:border-[#4075cf]"
+              className="w-full border-0 border-b border-transparent bg-transparent px-1 py-1 text-[22px] font-medium text-text outline-none placeholder:text-subtle focus:border-[#4075cf]"
             />
             <div className="mt-4 min-h-[260px] flex-1">
               {kind === "text" ? (
-                <div className="min-h-[260px] rounded-lg border border-neutral-200 bg-surface-subtle p-4 text-sm leading-6 text-neutral-700 whitespace-pre-wrap">
+                <div className="min-h-[260px] rounded-lg border border-line bg-surface-subtle p-4 text-sm leading-6 text-secondary whitespace-pre-wrap">
                   {body || "テキストを入力するとここにプレビューが表示されます。"}
                 </div>
               ) : (
@@ -323,7 +323,7 @@ export default function WidgetDialog({
 
           <div className="min-h-0 overflow-y-auto p-5">
             <div className={sectionTitle}>データソース</div>
-            <div className="mt-2 rounded-md border border-neutral-200 bg-surface-subtle px-3 py-2 text-[13px] text-neutral-700">
+            <div className="mt-2 rounded-md border border-line bg-surface-subtle px-3 py-2 text-[13px] text-secondary">
               <div className="font-medium">{projectName}</div>
               <div className="mt-0.5 text-[11px] text-subtle">このプロジェクトのタスク</div>
             </div>
@@ -345,7 +345,7 @@ export default function WidgetDialog({
                       className={`flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[10px] ${
                         chartType === type
                           ? "border-[#4075cf] bg-accent-soft text-[#2f5fa8]"
-                          : "border-neutral-200 text-muted hover:bg-neutral-50"
+                          : "border-line text-muted hover:bg-neutral-50"
                       }`}
                     >
                       <ChartTypeIcon type={type} />
@@ -536,7 +536,7 @@ export default function WidgetDialog({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-neutral-200 px-5 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
           <button
             type="button"
             onClick={onClose}

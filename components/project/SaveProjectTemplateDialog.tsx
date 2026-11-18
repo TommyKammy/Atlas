@@ -59,7 +59,7 @@ export default function SaveProjectTemplateDialog({
             <h2 className="text-lg font-semibold">テンプレートとして保存</h2>
             <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-secondary">
             ×
           </button>
         </div>
@@ -74,14 +74,14 @@ export default function SaveProjectTemplateDialog({
           />
         </label>
         <div className="mt-4 space-y-1.5">
-          <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-2.5">
+          <label className="flex items-start gap-2 rounded-md border border-line p-2.5">
             <input type="checkbox" checked={includeTasks} onChange={(event) => setIncludeTasks(event.target.checked)} className="mt-0.5" />
             <span>
               <span className="block font-medium">タスクとサブタスク</span>
               <span className="block text-xs text-muted">セクション、タスク名、説明、担当者、期日、Status を保存します。</span>
             </span>
           </label>
-          <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-2.5">
+          <label className="flex items-start gap-2 rounded-md border border-line p-2.5">
             <input
               type="checkbox"
               checked={includeCompleted}
@@ -96,7 +96,7 @@ export default function SaveProjectTemplateDialog({
               </span>
             </span>
           </label>
-          <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-2.5">
+          <label className="flex items-start gap-2 rounded-md border border-line p-2.5">
             <input type="checkbox" checked={includeFields} onChange={(event) => setIncludeFields(event.target.checked)} className="mt-0.5" />
             <span>
               <span className="block font-medium">カスタムフィールドと値</span>

@@ -8,7 +8,7 @@ import { VIEW_ICON_CHOICES } from "@/lib/view-icons";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
 const row =
-  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50";
+  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-secondary hover:bg-neutral-50";
 
 /** Shared Asana-style right drawer for board/timeline/calendar view options. */
 export default function ViewOptionsDrawer({
@@ -122,14 +122,14 @@ export default function ViewOptionsDrawer({
         style={{ top: panelTop, height: `calc(100vh - ${panelTop}px)` }}
         className="project-drawer-enter project-drawer-enter-options fixed right-0 z-[80] flex w-[min(480px,100vw)] flex-col overflow-y-auto bg-surface shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
       >
-        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-neutral-100 bg-surface px-4">
+        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-line-subtle bg-surface px-4">
           <span className="text-[16px] leading-none">{iconDraft ?? "📋"}</span>
-          <span className="flex-1 text-[15px] font-semibold text-neutral-900">{title}</span>
+          <span className="flex-1 text-[15px] font-semibold text-text">{title}</span>
           <button
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-neutral-100 hover:text-secondary"
           >
             ×
           </button>
@@ -145,12 +145,12 @@ export default function ViewOptionsDrawer({
                 aria-expanded={iconOpen}
                 disabled={renameDisabled || iconBusy}
                 onClick={() => setIconOpen((value) => !value)}
-                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 text-lg hover:bg-neutral-50 disabled:bg-neutral-50"
+                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-line text-lg hover:bg-neutral-50 disabled:bg-neutral-50"
               >
                 {iconDraft ?? "📋"}
               </button>
               {iconOpen && (
-                <div className="absolute top-full left-0 z-20 mt-1 w-[250px] rounded-lg border border-neutral-200 bg-surface p-2 shadow-lg">
+                <div className="absolute top-full left-0 z-20 mt-1 w-[250px] rounded-lg border border-line bg-surface p-2 shadow-lg">
                   <div className="grid grid-cols-8 gap-1">
                     {VIEW_ICON_CHOICES.map((icon) => (
                       <button
@@ -225,7 +225,7 @@ export default function ViewOptionsDrawer({
 
           {children}
 
-          <div className="mt-4 border-t border-neutral-100 px-2 pt-3">
+          <div className="mt-4 border-t border-line-subtle px-2 pt-3">
             <a href="/help" className="text-[12px] text-[#6d5bd0] hover:underline">
               フィードバックを送る
             </a>

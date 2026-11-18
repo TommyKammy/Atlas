@@ -316,7 +316,7 @@ export default function ProfileForm({
         )}
 
         {totpSetup && (
-          <div className="mt-3 rounded-lg border border-neutral-200 p-3" data-two-factor-setup>
+          <div className="mt-3 rounded-lg border border-line p-3" data-two-factor-setup>
             <div className="flex flex-col gap-3 sm:flex-row">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

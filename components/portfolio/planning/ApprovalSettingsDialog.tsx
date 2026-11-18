@@ -137,8 +137,8 @@ export default function ApprovalSettingsDialog({
           </Notice>
         )}
 
-        <div className="rounded-md border border-neutral-200 bg-surface-subtle px-3 py-2.5">
-          <label className="flex min-h-7 items-start gap-2 text-[13px] font-medium text-neutral-800">
+        <div className="rounded-md border border-line bg-surface-subtle px-3 py-2.5">
+          <label className="flex min-h-7 items-start gap-2 text-[13px] font-medium text-text">
             <input
               id={enabledId}
               type="checkbox"

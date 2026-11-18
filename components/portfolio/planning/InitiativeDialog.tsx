@@ -310,7 +310,7 @@ export default function InitiativeDialog({
         </p>
 
         <section>
-          <h3 className="text-[13px] font-semibold text-neutral-900">職種別・月別の需要</h3>
+          <h3 className="text-[13px] font-semibold text-text">職種別・月別の需要</h3>
           <p className="mt-1 text-[11px] text-muted">
             人日は0.1刻み。空欄は未見積もりで、0は需要なしとして明示的に保存します。費用の空欄も未設定として扱います。
           </p>
@@ -322,18 +322,18 @@ export default function InitiativeDialog({
             <PlanningTable
               label="職種別・月別の需要入力"
               caption="職種別・月別の需要入力"
-              className="mt-2 rounded-lg border border-neutral-200"
+              className="mt-2 rounded-lg border border-line"
             >
               <thead className="bg-surface-subtle">
                 <tr>
-                  <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">
+                  <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">
                     職種 / 人日
                   </th>
                   {PLANNING_MONTHS.map((monthIndex) => (
                     <th
                       key={monthIndex}
                       scope="col"
-                      className="border-b border-neutral-200 px-2 py-2 text-left text-[11px] font-semibold text-secondary"
+                      className="border-b border-line px-2 py-2 text-left text-[11px] font-semibold text-secondary"
                     >
                       {monthLabelFromStart(period.startMonth, monthIndex)}
                     </th>
@@ -342,8 +342,8 @@ export default function InitiativeDialog({
               </thead>
               <tbody>
                 {roles.map((role) => (
-                  <tr key={role.id} className="border-b border-neutral-100 last:border-b-0">
-                    <th scope="row" className="bg-surface px-3 py-2 text-left text-[12px] font-medium text-neutral-800">
+                  <tr key={role.id} className="border-b border-line-subtle last:border-b-0">
+                    <th scope="row" className="bg-surface px-3 py-2 text-left text-[12px] font-medium text-text">
                       {role.name}
                     </th>
                     {PLANNING_MONTHS.map((monthIndex) => (

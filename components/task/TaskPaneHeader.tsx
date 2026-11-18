@@ -71,7 +71,7 @@ export default function TaskPaneHeader({
   const collaboratorTitle = collaborators.map((person) => person.name).join("・");
 
   return (
-    <div className="flex h-12 shrink-0 items-center gap-1.5 border-b border-neutral-200 px-2.5">
+    <div className="flex h-12 shrink-0 items-center gap-1.5 border-b border-line px-2.5">
       <button
         type="button"
         onClick={task.approval ? onOpenApproval : onToggle}
@@ -81,7 +81,7 @@ export default function TaskPaneHeader({
         className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium ${
           task.completed
             ? "border-green-700 bg-green-700 text-white hover:bg-green-800"
-            : "border-line-strong bg-surface text-neutral-700 hover:bg-neutral-50"
+            : "border-line-strong bg-surface text-secondary hover:bg-neutral-50"
         }`}
       >
         {task.is_milestone ? (
@@ -89,7 +89,7 @@ export default function TaskPaneHeader({
         ) : (
           <span
             className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] ${
-              task.completed ? "border-white" : "border-neutral-400"
+              task.completed ? "border-white" : "border-line-strong"
             }`}
           >
             {task.completed ? "✓" : ""}
@@ -124,7 +124,7 @@ export default function TaskPaneHeader({
         onClick={onShare}
         title="共有"
         aria-label="共有"
-        className="flex h-7 items-center gap-1 rounded-md border border-line-strong bg-surface px-2 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50"
+        className="flex h-7 items-center gap-1 rounded-md border border-line-strong bg-surface px-2 text-[11px] font-medium text-secondary hover:bg-neutral-50"
       >
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.3">
           <circle cx="6" cy="8" r="2.2" />
@@ -191,14 +191,14 @@ export default function TaskPaneHeader({
             <circle cx="13" cy="8" r="1.1" />
           </svg>
         </summary>
-        <div className="absolute right-0 top-full z-[140] mt-1 w-52 rounded-lg border border-neutral-200 bg-surface p-1 text-[12px] shadow-xl">
+        <div className="absolute right-0 top-full z-[140] mt-1 w-52 rounded-lg border border-line bg-surface p-1 text-[12px] shadow-xl">
           <button
             type="button"
             onClick={(event) => {
               closeMenu(event);
               onCopyLink();
             }}
-            className="flex w-full rounded px-2.5 py-1.5 text-left text-neutral-700 hover:bg-neutral-100"
+            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-neutral-100"
           >
             タスクのリンクをコピー
           </button>
@@ -208,11 +208,11 @@ export default function TaskPaneHeader({
               closeMenu(event);
               onToggleFullscreen();
             }}
-            className="flex w-full rounded px-2.5 py-1.5 text-left text-neutral-700 hover:bg-neutral-100"
+            className="flex w-full rounded px-2.5 py-1.5 text-left text-secondary hover:bg-neutral-100"
           >
             {maximized ? "全画面を終了" : "フルスクリーン表示"}
           </button>
-          <div className="my-1 border-t border-neutral-100" />
+          <div className="my-1 border-t border-line-subtle" />
           <button
             type="button"
             disabled={!canEdit}

@@ -12,8 +12,8 @@ import {
 export function NumberFieldEditor({ dialog }: { dialog: FieldDialogState }) {
   const { numberFormat, setNumberFormat, decimals, setDecimals, currency, setCurrency, customSuffix, setCustomSuffix, preview } = dialog;
   return (
-            <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
-              <div className="text-[12px] font-semibold text-neutral-700">数値の表示</div>
+            <div className="mt-4 rounded-lg border border-line bg-neutral-50/60 p-3">
+              <div className="text-[12px] font-semibold text-secondary">数値の表示</div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <label className="text-[11px] text-muted">
                   フォーマット
@@ -72,7 +72,7 @@ export function NumberFieldEditor({ dialog }: { dialog: FieldDialogState }) {
               </div>
               <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
                 <span>例</span>
-                <span className="font-medium text-neutral-700">{preview}</span>
+                <span className="font-medium text-secondary">{preview}</span>
               </div>
               <div className="mt-1 text-[10px] text-subtle">
                 セクション合計は列メニューの「列の関数」から変更できます。
@@ -84,8 +84,8 @@ export function NumberFieldEditor({ dialog }: { dialog: FieldDialogState }) {
 export function TimerFieldEditor({ dialog }: { dialog: FieldDialogState }) {
   const { timerFormat, setTimerFormat } = dialog;
   return (
-            <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
-              <div className="text-[12px] font-semibold text-neutral-700">タイマー</div>
+            <div className="mt-4 rounded-lg border border-line bg-neutral-50/60 p-3">
+              <div className="text-[12px] font-semibold text-secondary">タイマー</div>
               <label className="mt-2 block text-[11px] text-muted">
                 フォーマット
                 <select
@@ -108,8 +108,8 @@ export function TimerFieldEditor({ dialog }: { dialog: FieldDialogState }) {
 
 export function TimeTrackingEditor() {
   return (
-            <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
-              <div className="text-[12px] font-semibold text-neutral-700">タイムトラッキング</div>
+            <div className="mt-4 rounded-lg border border-line bg-neutral-50/60 p-3">
+              <div className="text-[12px] font-semibold text-secondary">タイムトラッキング</div>
               <div className="mt-1 text-[10px] text-subtle">
                 このタスクのすべてのタイマーの合計時間を表示します。値は自動計算されます。
               </div>
@@ -120,14 +120,14 @@ export function TimeTrackingEditor() {
 export function ReferenceFieldEditor({ dialog }: { dialog: FieldDialogState }) {
   const { projects, sourceProjectIds, setSourceProjectIds } = dialog;
   return (
-            <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
-              <div className="text-[12px] font-semibold text-neutral-700">参照元のプロジェクト</div>
+            <div className="mt-4 rounded-lg border border-line bg-neutral-50/60 p-3">
+              <div className="text-[12px] font-semibold text-secondary">参照元のプロジェクト</div>
               <div className="mt-1 text-[10px] text-subtle">
                 このフィールドからリンクできるタスクのプロジェクトを選択します。
               </div>
               <div className="mt-2 max-h-40 space-y-0.5 overflow-y-auto">
                 {projects.map((project) => (
-                  <label key={project.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-[12px] text-neutral-700 hover:bg-white">
+                  <label key={project.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-[12px] text-secondary hover:bg-white">
                     <input
                       type="checkbox"
                       checked={sourceProjectIds.includes(project.id)}
@@ -151,8 +151,8 @@ export function ReferenceFieldEditor({ dialog }: { dialog: FieldDialogState }) {
 export function LookupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
   const { referenceFieldId, setReferenceFieldId, lookupFieldId, setLookupFieldId, referenceFields, lookupTargetFields, setRemoteFields } = dialog;
   return (
-            <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
-              <div className="text-[12px] font-semibold text-neutral-700">ルックアップ</div>
+            <div className="mt-4 rounded-lg border border-line bg-neutral-50/60 p-3">
+              <div className="text-[12px] font-semibold text-secondary">ルックアップ</div>
               <label className="mt-2 block text-[11px] text-muted">
                 参照フィールド
                 <select
@@ -199,8 +199,8 @@ export function LookupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
 export function RollupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
   const { rollupSource, setRollupSource, rollupReferenceFieldId, setRollupReferenceFieldId, referenceFields, rollupFieldId, setRollupFieldId, numericFields, remoteFields, setRemoteFields, rollupFunction, setRollupFunction } = dialog;
   return (
-            <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
-              <div className="text-[12px] font-semibold text-neutral-700">集計</div>
+            <div className="mt-4 rounded-lg border border-line bg-neutral-50/60 p-3">
+              <div className="text-[12px] font-semibold text-secondary">集計</div>
               <label className="mt-2 block text-[11px] text-muted">
                 集計元
                 <select
@@ -274,8 +274,8 @@ export function RollupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
 export function FormulaFieldEditor({ dialog }: { dialog: FieldDialogState }) {
   const { expression, setExpression, numericFields, numberFormat, setNumberFormat, decimals, setDecimals, currency, setCurrency } = dialog;
   return (
-            <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
-              <div className="text-[12px] font-semibold text-neutral-700">数式</div>
+            <div className="mt-4 rounded-lg border border-line bg-neutral-50/60 p-3">
+              <div className="text-[12px] font-semibold text-secondary">数式</div>
               <label className="mt-2 block text-[11px] text-muted">
                 計算式
                 <input
@@ -295,7 +295,7 @@ export function FormulaFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                         key={item.id}
                         type="button"
                         onClick={() => setExpression((current) => `${current}${current && !/[+\-*/^(]$/.test(current.trim()) ? " + " : ""}{${item.id}}`)}
-                        className="rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-[11px] text-secondary hover:bg-blue-50"
+                        className="rounded border border-line bg-white px-1.5 py-0.5 text-[11px] text-secondary hover:bg-blue-50"
                       >
                         {item.name}
                       </button>
@@ -358,8 +358,8 @@ export function FormulaFieldEditor({ dialog }: { dialog: FieldDialogState }) {
 export function AutoIdFieldEditor({ dialog }: { dialog: FieldDialogState }) {
   const { prefix, setPrefix } = dialog;
   return (
-            <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50/60 p-3">
-              <div className="text-[12px] font-semibold text-neutral-700">IDの自動採番</div>
+            <div className="mt-4 rounded-lg border border-line bg-neutral-50/60 p-3">
+              <div className="text-[12px] font-semibold text-secondary">IDの自動採番</div>
               <label className="mt-2 block text-[11px] text-muted">
                 プレフィックス
                 <input
@@ -372,7 +372,7 @@ export function AutoIdFieldEditor({ dialog }: { dialog: FieldDialogState }) {
               </label>
               <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
                 <span>例</span>
-                <span className="font-medium text-neutral-700">{`${prefix.trim() || "ID-"}1`}</span>
+                <span className="font-medium text-secondary">{`${prefix.trim() || "ID-"}1`}</span>
               </div>
               <div className="mt-1 text-[10px] text-subtle">
                 タスクごとに連番で自動採番されます。値は編集できません。
@@ -409,7 +409,7 @@ export function SelectOptionsEditor({ dialog }: { dialog: FieldDialogState }) {
               <button
                 type="button"
                 onClick={() => setOptions((current) => [...current, ""])}
-                className="mt-1 rounded px-1.5 py-1 text-[11px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
+                className="mt-1 rounded px-1.5 py-1 text-[11px] text-muted hover:bg-neutral-100 hover:text-secondary"
               >
                 ＋ 選択肢を追加
               </button>
@@ -420,8 +420,8 @@ export function SelectOptionsEditor({ dialog }: { dialog: FieldDialogState }) {
 export function FieldAccessEditor({ dialog }: { dialog: FieldDialogState }) {
   const { accessLevel, setAccessLevel, editorIds, setEditorIds, users } = dialog;
   return (
-          <div className="mt-4 rounded-lg border border-neutral-200 bg-surface p-3">
-            <div className="text-[12px] font-semibold text-neutral-700">フィールドアクセスと権限</div>
+          <div className="mt-4 rounded-lg border border-line bg-surface p-3">
+            <div className="text-[12px] font-semibold text-secondary">フィールドアクセスと権限</div>
             <label className="mt-2 block text-[11px] text-muted">
               このフィールドの値を編集できるユーザー
               <select
@@ -436,9 +436,9 @@ export function FieldAccessEditor({ dialog }: { dialog: FieldDialogState }) {
               </select>
             </label>
             {accessLevel === "custom" && (
-              <div className="mt-2 max-h-36 space-y-0.5 overflow-y-auto rounded border border-neutral-100 p-1.5">
+              <div className="mt-2 max-h-36 space-y-0.5 overflow-y-auto rounded border border-line-subtle p-1.5">
                 {users.map((user) => (
-                  <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-[12px] text-neutral-700 hover:bg-neutral-50">
+                  <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-[12px] text-secondary hover:bg-neutral-50">
                     <input
                       type="checkbox"
                       checked={editorIds.includes(user.id)}

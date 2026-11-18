@@ -18,7 +18,7 @@ const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
 const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
 const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
-const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-surface shadow-lg";
+const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-line bg-surface shadow-lg";
 
 export default function CalendarToolbar({
   projectId,
@@ -210,7 +210,7 @@ export default function CalendarToolbar({
         >
           ‹
         </Link>
-        <Link href={todayHref} className="flex h-7 items-center rounded-md px-2 text-[13px] text-neutral-700 hover:bg-neutral-100">
+        <Link href={todayHref} className="flex h-7 items-center rounded-md px-2 text-[13px] text-secondary hover:bg-neutral-100">
           今日
         </Link>
         <Link
@@ -220,19 +220,19 @@ export default function CalendarToolbar({
         >
           ›
         </Link>
-        <span className="ml-1 text-[15px] font-medium text-neutral-900">{title}</span>
+        <span className="ml-1 text-[15px] font-medium text-text">{title}</span>
 
         <span className="ml-auto" />
         <details className="relative">
           <summary
             data-calendar-undated
             className={`flex h-7 cursor-pointer list-none items-center rounded-md px-2 text-[13px] hover:bg-neutral-100 [&::-webkit-details-marker]:hidden ${
-              undated.length ? "text-neutral-700" : "text-subtle"
+              undated.length ? "text-secondary" : "text-subtle"
             }`}
           >
             日付なしのタスク ({undated.length} 件)
           </summary>
-          <div className="absolute right-0 z-30 mt-1 max-h-64 w-72 overflow-auto rounded-lg border border-neutral-200 bg-surface p-1 shadow-lg">
+          <div className="absolute right-0 z-30 mt-1 max-h-64 w-72 overflow-auto rounded-lg border border-line bg-surface p-1 shadow-lg">
             {undated.length === 0 ? (
               <div className="px-2 py-2 text-xs text-subtle">日付なしのタスクはありません</div>
             ) : (
@@ -279,12 +279,12 @@ export default function CalendarToolbar({
           {zoomOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setZoomOpen(false)} />
-              <div className="absolute top-full right-0 z-40 mt-1 w-40 rounded-lg border border-neutral-200 bg-surface p-1 shadow-lg">
+              <div className="absolute top-full right-0 z-40 mt-1 w-40 rounded-lg border border-line bg-surface p-1 shadow-lg">
                 <Link href={weekHref} onClick={() => setZoomOpen(false)} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
-                  <span className="w-3 text-neutral-700">{weekMode ? "✓" : ""}</span>週
+                  <span className="w-3 text-secondary">{weekMode ? "✓" : ""}</span>週
                 </Link>
                 <Link href={monthHref} onClick={() => setZoomOpen(false)} className="flex h-9 items-center gap-2 rounded px-2 text-[13px] hover:bg-neutral-100">
-                  <span className="w-3 text-neutral-700">{!weekMode ? "✓" : ""}</span>月
+                  <span className="w-3 text-secondary">{!weekMode ? "✓" : ""}</span>月
                 </Link>
               </div>
             </>
@@ -409,7 +409,7 @@ export default function CalendarToolbar({
         }}
         onOpenSort={() => undefined}
       >
-        <div className="mt-3 border-t border-neutral-100 pt-3">
+        <div className="mt-3 border-t border-line-subtle pt-3">
           <div className="px-2 text-[11px] font-medium text-muted">レイアウトオプション</div>
           <label className="mt-2 block px-2 text-[12px] text-secondary">
             タスクのカラー
@@ -425,11 +425,11 @@ export default function CalendarToolbar({
               ))}
             </select>
           </label>
-          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50">
             <input type="checkbox" checked={showWeekends} onChange={(event) => setWeekends(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
             週末を表示
           </label>
-          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50">
             <input type="checkbox" checked={showMulti} onChange={(event) => setMulti(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
             複数日にわたるタスクを表示
           </label>
@@ -445,14 +445,14 @@ export default function CalendarToolbar({
             </select>
           </label>
         </div>
-        <div className="mt-2 border-t border-neutral-100 pt-3">
+        <div className="mt-2 border-t border-line-subtle pt-3">
           <div className="px-2 text-[11px] font-medium text-muted">ズーム</div>
           <div className="mt-1 flex gap-1 px-2">
             <Link
               href={weekHref}
               onClick={() => setOptionsOpen(false)}
               className={`flex h-8 flex-1 items-center justify-center rounded-md border text-[13px] ${
-                weekMode ? "border-accent bg-accent-soft text-accent-text" : "border-neutral-200 text-secondary hover:bg-neutral-50"
+                weekMode ? "border-accent bg-accent-soft text-accent-text" : "border-line text-secondary hover:bg-neutral-50"
               }`}
             >
               週
@@ -461,7 +461,7 @@ export default function CalendarToolbar({
               href={monthHref}
               onClick={() => setOptionsOpen(false)}
               className={`flex h-8 flex-1 items-center justify-center rounded-md border text-[13px] ${
-                !weekMode ? "border-accent bg-accent-soft text-accent-text" : "border-neutral-200 text-secondary hover:bg-neutral-50"
+                !weekMode ? "border-accent bg-accent-soft text-accent-text" : "border-line text-secondary hover:bg-neutral-50"
               }`}
             >
               月

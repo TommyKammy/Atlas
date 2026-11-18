@@ -23,7 +23,7 @@ export default function ProjectsWidget({
 
   return (
     <>
-      <div className="flex items-center gap-1 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex items-center gap-1 border-b border-line-subtle px-4 py-1.5">
         <button
           type="button"
           onClick={() => setTab("recent")}
@@ -52,7 +52,7 @@ export default function ProjectsWidget({
         </button>
       </div>
       {tab === "search" && (
-        <div className="border-b border-neutral-100 px-4 py-2">
+        <div className="border-b border-line-subtle px-4 py-2">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -95,7 +95,7 @@ export default function ProjectsWidget({
                     className="h-7 w-7 text-[11px]"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-medium text-neutral-800">
+                    <span className="block truncate text-[13px] font-medium text-text">
                       {project.name}
                     </span>
                     <span className="block truncate text-[11px] text-subtle">
@@ -120,8 +120,8 @@ export default function ProjectsWidget({
           </>
         )}
       </div>
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/portfolio" className="text-[12px] text-muted hover:text-neutral-800">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right">
+        <Link href="/portfolio" className="text-[12px] text-muted hover:text-text">
           プロジェクトをすべて表示
         </Link>
       </div>

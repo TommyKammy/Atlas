@@ -165,7 +165,7 @@ export default function ListFilterMenu({
       className={`${quickFilterCls} ${
         active
           ? "border-accent bg-accent-soft text-accent-text"
-          : "border-neutral-200 bg-surface text-secondary hover:bg-neutral-50"
+          : "border-line bg-surface text-secondary hover:bg-neutral-50"
       }`}
     >
       {label}
@@ -271,7 +271,7 @@ export default function ListFilterMenu({
           type="button"
           aria-label={`${labelFor(key)}フィルターを削除`}
           onClick={() => removeField(key)}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-secondary"
         >
           ×
         </button>
@@ -282,7 +282,7 @@ export default function ListFilterMenu({
   return (
     <div data-list-filter-menu className="max-h-[70vh] overflow-y-auto p-3">
       <div className="flex items-center justify-between">
-        <span className="text-[13px] font-semibold text-neutral-800">
+        <span className="text-[13px] font-semibold text-text">
           フィルター{activeCount > 0 ? `: ${activeCount}` : ""}
         </span>
         <button
@@ -323,12 +323,12 @@ export default function ListFilterMenu({
       </div>
 
       {fields.length > 0 && (
-        <div className="mt-4 space-y-2 border-t border-neutral-100 pt-3">
+        <div className="mt-4 space-y-2 border-t border-line-subtle pt-3">
           {fields.map(row)}
         </div>
       )}
 
-      <div className="relative mt-3 border-t border-neutral-100 pt-2">
+      <div className="relative mt-3 border-t border-line-subtle pt-2">
         <button
           type="button"
           data-list-filter-add
@@ -340,7 +340,7 @@ export default function ListFilterMenu({
           フィルターを追加
         </button>
         {addOpen && (
-          <div data-list-filter-add-menu className="mt-1 rounded-md border border-neutral-200 bg-surface py-1">
+          <div data-list-filter-add-menu className="mt-1 rounded-md border border-line bg-surface py-1">
             {available.length === 0 && (
               <div className="px-3 py-1 text-[12px] text-subtle">追加できるフィルターはありません</div>
             )}
@@ -350,7 +350,7 @@ export default function ListFilterMenu({
                 type="button"
                 data-list-filter-add-option={key}
                 onClick={() => addField(key)}
-                className="flex h-8 w-full items-center px-3 text-left text-[13px] text-neutral-700 hover:bg-neutral-100"
+                className="flex h-8 w-full items-center px-3 text-left text-[13px] text-secondary hover:bg-neutral-100"
               >
                 {labelFor(key)}
               </button>

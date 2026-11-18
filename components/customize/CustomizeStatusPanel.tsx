@@ -38,7 +38,7 @@ export default function CustomizeStatusPanel({
           ステータスの変更はプロジェクト管理者のみ可能です。
         </p>
       )}
-      <label className="mt-4 block text-[12px] font-medium text-neutral-700">
+      <label className="mt-4 block text-[12px] font-medium text-secondary">
         フィールド名
         <input
           data-customize-status-name
@@ -48,7 +48,7 @@ export default function CustomizeStatusPanel({
           className="mt-1 h-8 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8] disabled:bg-neutral-50"
         />
       </label>
-      <div className="mt-4 text-[12px] font-medium text-neutral-700">選択肢</div>
+      <div className="mt-4 text-[12px] font-medium text-secondary">選択肢</div>
       <div className="mt-2 space-y-2">
         {drafts.map((draft) => (
           <div key={draft.key} className="flex items-center gap-2">

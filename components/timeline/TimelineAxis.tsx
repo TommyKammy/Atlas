@@ -28,7 +28,7 @@ function TimelineAxis({
 }) {
   return (
     <>
-      <div className="relative h-[49px] cursor-default border-b border-[#e1e1e1] bg-surface">
+      <div className="relative h-[49px] cursor-default border-b border-line bg-surface">
         <div className="relative h-[24px] text-xs text-secondary">
           {axisTop.map((interval) => {
             const widthPx = interval.daysWide * dayWidth;

@@ -98,7 +98,7 @@ export default function AssigneePicker({
                 onCancel();
               }
             }}
-            className="fixed z-[140] overflow-hidden rounded-lg border border-[#e1e1e1] bg-surface shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+            className="fixed z-[140] overflow-hidden rounded-lg border border-line bg-surface shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
             style={{
               left: position.left,
               width: position.width,
@@ -131,7 +131,7 @@ export default function AssigneePicker({
                     />
                     <span className="min-w-0 flex-1">
                       <span className="flex min-w-0 items-center gap-1">
-                        <span className="truncate text-[13px] font-medium text-neutral-800">{user.name}</span>
+                        <span className="truncate text-[13px] font-medium text-text">{user.name}</span>
                         {user.is_guest && (
                           <span className="shrink-0 rounded bg-surface-muted px-1 text-[10px] text-muted">ゲスト</span>
                         )}
@@ -145,7 +145,7 @@ export default function AssigneePicker({
                 ))
               )}
             </div>
-            <div className="border-t border-neutral-200 p-1">
+            <div className="border-t border-line p-1">
               <button
                 type="button"
                 data-assignee-unassign

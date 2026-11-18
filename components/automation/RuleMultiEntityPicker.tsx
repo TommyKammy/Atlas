@@ -52,7 +52,7 @@ export default function RuleMultiEntityPicker({ projectId, kind, fieldId, value,
       {variables && <RuleVariableMenu variables={variables} target="id_collection"
         onSelect={(variable) => onChange(insertRuleVariable(selected, variable, "id_collection") as unknown[])} />}
       {!allowScalar && !Array.isArray(value) && value != null && value !== "" && <p className="text-[11px] text-muted">保存済みの値を保持しています。項目を選ぶと置き換わります。</p>}
-      <button type="button" onClick={() => onChange([])} className="text-[11px] text-muted hover:text-neutral-800">選択をクリア</button>
+      <button type="button" onClick={() => onChange([])} className="text-[11px] text-muted hover:text-text">選択をクリア</button>
     </div>
   );
 }

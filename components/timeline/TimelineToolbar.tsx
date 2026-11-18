@@ -21,7 +21,7 @@ const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
 const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
 const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
-const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-surface shadow-lg";
+const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-line bg-surface shadow-lg";
 
 export default function TimelineToolbar({
   projectId,
@@ -186,7 +186,7 @@ export default function TimelineToolbar({
         >
           ‹
         </a>
-        <a href={`/projects/${projectId}?view=timeline`} className="flex h-7 items-center rounded-md px-2 text-[13px] text-neutral-700 hover:bg-neutral-100">
+        <a href={`/projects/${projectId}?view=timeline`} className="flex h-7 items-center rounded-md px-2 text-[13px] text-secondary hover:bg-neutral-100">
           今日
         </a>
         <a
@@ -208,7 +208,7 @@ export default function TimelineToolbar({
           data-timeline-undated
           onClick={() => setUndatedOpen((value) => !value)}
           className={`flex h-7 items-center rounded-md px-2 text-[13px] hover:bg-neutral-100 ${
-            undatedOpen ? "bg-accent-soft text-accent-text" : "text-neutral-700"
+            undatedOpen ? "bg-accent-soft text-accent-text" : "text-secondary"
           }`}
         >
           日付なしのタスク ({undatedCount} 件)
@@ -232,7 +232,7 @@ export default function TimelineToolbar({
               <div
                 data-timeline-zoom-menu
                 role="listbox"
-                className="absolute top-full right-0 z-40 mt-1 w-36 rounded-lg border border-neutral-200 bg-surface p-1 shadow-lg"
+                className="absolute top-full right-0 z-40 mt-1 w-36 rounded-lg border border-line bg-surface p-1 shadow-lg"
               >
                 {zoomPresets.map((preset, index) => (
                   <button
@@ -246,7 +246,7 @@ export default function TimelineToolbar({
                       setZoomMenu(false);
                     }}
                     className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[13px] hover:bg-neutral-100 ${
-                      index === zoom ? "bg-accent-soft text-accent-text" : "text-neutral-700"
+                      index === zoom ? "bg-accent-soft text-accent-text" : "text-secondary"
                     }`}
                   >
                     {preset.label}
@@ -437,13 +437,13 @@ export default function TimelineToolbar({
           setSortOpen(true);
         }}
       >
-        <div className="mt-3 border-t border-neutral-100 pt-3">
+        <div className="mt-3 border-t border-line-subtle pt-3">
           <div className="px-2 text-[11px] font-medium text-muted">レイアウトオプション</div>
-          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50">
             <input type="checkbox" checked={showWeekends} onChange={(event) => setShowWeekends(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
             週末を網掛け
           </label>
-          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50">
             <input type="checkbox" checked={showCritical} onChange={(event) => setShowCritical(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
             クリティカルパスを表示
           </label>
@@ -452,7 +452,7 @@ export default function TimelineToolbar({
             data-timeline-auto-rows
             disabled={!canEdit}
             onClick={() => void resetTimelineRows()}
-            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50 disabled:text-neutral-300"
+            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-secondary hover:bg-neutral-50 disabled:text-subtle"
           >
             行を自動整列（固定を解除）
           </button>
@@ -475,19 +475,19 @@ export default function TimelineToolbar({
             data-timeline-auto-rows-section
             disabled={!canEdit || resetSectionId === ""}
             onClick={() => void resetSectionRows()}
-            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50 disabled:text-neutral-300"
+            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-secondary hover:bg-neutral-50 disabled:text-subtle"
           >
             選択セクションを自動整列
           </button>
         </div>
-        <div className="mt-2 border-t border-neutral-100 pt-3">
+        <div className="mt-2 border-t border-line-subtle pt-3">
           <div className="px-2 text-[11px] font-medium text-muted">依存関係設定</div>
-          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-neutral-50">
             <input type="checkbox" checked={showDependencies} onChange={(event) => setShowDependencies(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
             依存関係を表示
           </label>
         </div>
-        <div className="mt-2 border-t border-neutral-100 pt-3">
+        <div className="mt-2 border-t border-line-subtle pt-3">
           <div className="px-2 text-[11px] font-medium text-muted">ズーム</div>
           <select
             value={zoom}

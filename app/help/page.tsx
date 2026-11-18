@@ -13,22 +13,22 @@ const SHORTCUTS: [string, string][] = [
 
 export default function HelpPage() {
   return (
-    <div data-help-page className="max-w-3xl p-6 pb-16 text-sm text-neutral-700">
-      <h1 className="text-xl font-bold text-neutral-900">ヘルプと始め方</h1>
+    <div data-help-page className="max-w-3xl p-6 pb-16 text-sm text-secondary">
+      <h1 className="text-xl font-bold text-text">ヘルプと始め方</h1>
       <p className="mt-2 text-muted">
         Atlas の基本操作、連携、ショートカットをまとめています。
       </p>
 
-      <section id="about" data-help-section="about" className="mt-6 rounded-lg border border-neutral-200 p-4">
-        <h2 className="text-base font-semibold text-neutral-900">Atlas について</h2>
+      <section id="about" data-help-section="about" className="mt-6 rounded-lg border border-line p-4">
+        <h2 className="text-base font-semibold text-text">Atlas について</h2>
         <p className="mt-1">
           Atlas はプロジェクト、タスク、タイムライン、ポートフォリオを一か所で管理するワークマネジメントツールです。
           リスト・ボード・タイムライン・カレンダー・ダッシュボードを同じデータで切り替えられます。
         </p>
       </section>
 
-      <section id="features" data-help-section="features" className="mt-4 rounded-lg border border-neutral-200 p-4">
-        <h2 className="text-base font-semibold text-neutral-900">機能に関するヘルプ</h2>
+      <section id="features" data-help-section="features" className="mt-4 rounded-lg border border-line p-4">
+        <h2 className="text-base font-semibold text-text">機能に関するヘルプ</h2>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>タスクの作成・編集・サブタスク・依存関係・添付ファイル</li>
           <li>プロジェクトの Status、カスタムフィールド、テンプレート、ルール</li>
@@ -43,8 +43,8 @@ export default function HelpPage() {
         </p>
       </section>
 
-      <section id="integrations" data-help-section="integrations" className="mt-4 rounded-lg border border-neutral-200 p-4">
-        <h2 className="text-base font-semibold text-neutral-900">アプリと連携</h2>
+      <section id="integrations" data-help-section="integrations" className="mt-4 rounded-lg border border-line p-4">
+        <h2 className="text-base font-semibold text-text">アプリと連携</h2>
         <p className="mt-1">
           プロジェクトの「カスタマイズ → アプリ」から Slack、Google Drive、GitHub、Webhook を追加できます。
           プロジェクト専用メールアドレスやフォームからもタスクを取り込めます。
@@ -54,15 +54,15 @@ export default function HelpPage() {
         </Link>
       </section>
 
-      <section id="videos" data-help-section="videos" className="mt-4 rounded-lg border border-neutral-200 p-4">
-        <h2 className="text-base font-semibold text-neutral-900">動画チュートリアル</h2>
+      <section id="videos" data-help-section="videos" className="mt-4 rounded-lg border border-line p-4">
+        <h2 className="text-base font-semibold text-text">動画チュートリアル</h2>
         <p className="mt-1">
           画面共有用のチュートリアル動画は現在準備中です。操作手順はこのヘルプとキーボードショートカット一覧を参照してください。
         </p>
       </section>
 
-      <section id="shortcuts" data-help-section="shortcuts" className="mt-4 rounded-lg border border-neutral-200 p-4">
-        <h2 className="text-base font-semibold text-neutral-900">キーボードショートカット</h2>
+      <section id="shortcuts" data-help-section="shortcuts" className="mt-4 rounded-lg border border-line p-4">
+        <h2 className="text-base font-semibold text-text">キーボードショートカット</h2>
         <div className="mt-2 space-y-2">
           {SHORTCUTS.map(([key, description]) => (
             <div key={key} className="flex gap-3">
@@ -73,16 +73,16 @@ export default function HelpPage() {
         </div>
       </section>
 
-      <section id="privacy" data-help-section="privacy" className="mt-4 rounded-lg border border-neutral-200 p-4">
-        <h2 className="text-base font-semibold text-neutral-900">プライバシーステートメント</h2>
+      <section id="privacy" data-help-section="privacy" className="mt-4 rounded-lg border border-line p-4">
+        <h2 className="text-base font-semibold text-text">プライバシーステートメント</h2>
         <p className="mt-1">
           Atlas はデモ環境です。入力されたプロジェクト・タスク・コメントはこの環境内でのみ利用され、
           外部サービスへ送信されません。検証データは管理者が削除できます。
         </p>
       </section>
 
-      <section id="workspaces" data-help-section="workspaces" className="mt-4 rounded-lg border border-neutral-200 p-4">
-        <h2 className="text-base font-semibold text-neutral-900">ワークスペースとライセンス</h2>
+      <section id="workspaces" data-help-section="workspaces" className="mt-4 rounded-lg border border-line p-4">
+        <h2 className="text-base font-semibold text-text">ワークスペースとライセンス</h2>
         <p className="mt-1">
           この Atlas 環境は単一ワークスペース構成です。ワークスペースの追加やライセンス管理は管理者コンソールから行います。
         </p>

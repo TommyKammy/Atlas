@@ -58,7 +58,7 @@ export default function ReferencePicker({
 
   return (
     <div
-      className="absolute top-full left-0 z-[160] mt-1 w-72 rounded-lg border border-neutral-200 bg-surface p-2 shadow-xl"
+      className="absolute top-full left-0 z-[160] mt-1 w-72 rounded-lg border border-line bg-surface p-2 shadow-xl"
       onClick={(event) => event.stopPropagation()}
       data-reference-picker
     >
@@ -92,13 +92,13 @@ export default function ReferencePicker({
               }
             />
             <span className="min-w-0">
-              <span className="block truncate text-neutral-700">{option.name}</span>
+              <span className="block truncate text-secondary">{option.name}</span>
               <span className="block truncate text-[10px] text-subtle">{option.project_name}</span>
             </span>
           </label>
         ))}
       </div>
-      <div className="mt-2 flex items-center justify-between border-t border-neutral-100 pt-2">
+      <div className="mt-2 flex items-center justify-between border-t border-line-subtle pt-2">
         <span className="text-[10px] text-subtle">{selected.length}件を選択</span>
         <span className="flex gap-1.5">
           <button

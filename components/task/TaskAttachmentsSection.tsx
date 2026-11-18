@@ -37,8 +37,8 @@ export default function TaskAttachmentsSection({
             htmlFor={`${uploadId}-header`}
             className={`flex h-6 w-6 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] justify-center rounded text-[16px] ${
               uploading
-                ? "cursor-wait text-neutral-300"
-                : "text-muted hover:bg-neutral-100 hover:text-neutral-800"
+                ? "cursor-wait text-subtle"
+                : "text-muted hover:bg-neutral-100 hover:text-text"
             }`}
             title={uploading ? "アップロード中…" : "添付を追加"}
           >
@@ -82,7 +82,7 @@ export default function TaskAttachmentsSection({
             <div
               key={attachment.id}
               data-attachment-id={attachment.id}
-              className="group/att rounded-md border border-neutral-200 px-2.5 py-2"
+              className="group/att rounded-md border border-line px-2.5 py-2"
             >
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-surface-muted text-muted">
@@ -118,7 +118,7 @@ export default function TaskAttachmentsSection({
               </div>
             </div>
           ))}
-          {canEdit && <label htmlFor={`${uploadId}-footer`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[12px] text-muted hover:bg-neutral-50 hover:text-neutral-700">
+          {canEdit && <label htmlFor={`${uploadId}-footer`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[12px] text-muted hover:bg-neutral-50 hover:text-secondary">
             <span className="text-sm leading-none">＋</span>
             {uploading ? "アップロード中…" : "ファイルを追加"}
             <input

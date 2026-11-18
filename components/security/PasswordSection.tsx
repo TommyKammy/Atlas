@@ -46,7 +46,7 @@ export function PasswordSection({
         title="パスワード強度"
         description="全員のパスワード要件を設定します。変更は新しく作成されるパスワードのみに適用されます。"
       />
-      <div className="mt-4 max-w-xl rounded-lg border border-neutral-200 p-4">
+      <div className="mt-4 max-w-xl rounded-lg border border-line p-4">
         <label className="text-xs text-secondary">
           最小文字数
           <input

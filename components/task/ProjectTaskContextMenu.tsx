@@ -157,7 +157,7 @@ function MenuItem({
       className={`flex h-8 w-full items-center gap-2.5 px-3 text-left text-[13px] ${
         danger
           ? "text-rose-600 hover:bg-rose-50 disabled:text-rose-300"
-          : "text-neutral-700 hover:bg-neutral-100 disabled:text-neutral-300"
+          : "text-secondary hover:bg-neutral-100 disabled:text-subtle"
       }`}
     >
       <span className="w-4 shrink-0 text-subtle">
@@ -450,7 +450,7 @@ export default function ProjectTaskContextMenu({
             ref={menuRef}
             role="menu"
             data-task-context-menu
-            className="fixed z-[170] w-[292px] rounded-lg border border-neutral-200 bg-surface py-1 text-[13px] shadow-2xl"
+            className="fixed z-[170] w-[292px] rounded-lg border border-line bg-surface py-1 text-[13px] shadow-2xl"
             style={{ left, top }}
           >
             {canEdit && (
@@ -495,7 +495,7 @@ export default function ProjectTaskContextMenu({
                     >
                       <div
                         role="menu"
-                        className="w-[190px] rounded-lg border border-neutral-200 bg-surface py-1 shadow-xl"
+                        className="w-[190px] rounded-lg border border-line bg-surface py-1 shadow-xl"
                       >
                         <MenuItem
                           icon="complete"
@@ -544,7 +544,7 @@ export default function ProjectTaskContextMenu({
                       onClick={resetTimelineRow}
                     />
                   )}
-                <div className="my-1 border-t border-neutral-100" />
+                <div className="my-1 border-t border-line-subtle" />
               </>
             )}
             <MenuItem icon="details" label="タスクの詳細を開く" onClick={openDetails} />
@@ -552,7 +552,7 @@ export default function ProjectTaskContextMenu({
             <MenuItem icon="link" label="タスクのリンクをコピー" onClick={() => void copyLink()} />
             {canEdit && (
               <>
-                <div className="my-1 border-t border-neutral-100" />
+                <div className="my-1 border-t border-line-subtle" />
                 <MenuItem icon="delete" label="タスクを削除" danger onClick={() => void remove()} />
               </>
             )}
@@ -565,10 +565,10 @@ export default function ProjectTaskContextMenu({
           open
           onClose={() => setSubtaskFor(null)}
           title="サブタスクを追加"
-          panelClassName="w-[min(460px,94vw)] rounded-xl border border-neutral-200 bg-surface shadow-2xl"
+          panelClassName="w-[min(460px,94vw)] rounded-xl border border-line bg-surface shadow-2xl"
         >
           <div className="p-5">
-            <h3 className="text-[15px] font-semibold text-neutral-900">サブタスクを追加</h3>
+            <h3 className="text-[15px] font-semibold text-text">サブタスクを追加</h3>
             <p className="mt-1 text-[11px] text-muted">{subtaskFor.name}</p>
             <input
               autoFocus
@@ -586,7 +586,7 @@ export default function ProjectTaskContextMenu({
               <button
                 type="button"
                 onClick={() => setSubtaskFor(null)}
-                className="h-8 rounded-md border border-neutral-200 px-3 text-[12px] text-neutral-700 hover:bg-neutral-50"
+                className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50"
               >
                 キャンセル
               </button>
@@ -608,15 +608,15 @@ export default function ProjectTaskContextMenu({
           open
           onClose={() => setConvertFor(null)}
           title="サブタスクに変換"
-          panelClassName="w-[min(460px,94vw)] rounded-xl border border-neutral-200 bg-surface shadow-2xl"
+          panelClassName="w-[min(460px,94vw)] rounded-xl border border-line bg-surface shadow-2xl"
         >
           <div className="p-5">
-            <h3 className="text-[15px] font-semibold text-neutral-900">サブタスクに変換</h3>
+            <h3 className="text-[15px] font-semibold text-text">サブタスクに変換</h3>
             <p className="mt-1 text-[11px] text-muted">{convertFor.name}</p>
             <select
               value={parentId}
               onChange={(event) => setParentId(event.target.value)}
-              className="mt-3 h-9 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px]"
+              className="mt-3 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px]"
             >
               <option value="">親タスクを選択…</option>
               {candidates.map((candidate) => (
@@ -630,7 +630,7 @@ export default function ProjectTaskContextMenu({
               <button
                 type="button"
                 onClick={() => setConvertFor(null)}
-                className="h-8 rounded-md border border-neutral-200 px-3 text-[12px] text-neutral-700 hover:bg-neutral-50"
+                className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50"
               >
                 キャンセル
               </button>

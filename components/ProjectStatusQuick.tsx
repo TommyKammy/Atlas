@@ -70,7 +70,7 @@ export default function ProjectStatusQuick({
   return (
     <div data-overview-status className="mt-3">
       {status && (
-        <div data-overview-status-current={status} className="mb-2 flex items-center gap-2 text-sm text-neutral-700">
+        <div data-overview-status-current={status} className="mb-2 flex items-center gap-2 text-sm text-secondary">
           <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
           現在: {status}
         </div>

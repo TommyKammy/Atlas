@@ -27,7 +27,7 @@ export default function PlanningError({
           </button>
           <Link
             href="/portfolio"
-            className="inline-flex min-h-9 items-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50"
+            className="inline-flex min-h-9 items-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-secondary hover:bg-neutral-50"
           >
             ポートフォリオに戻る
           </Link>

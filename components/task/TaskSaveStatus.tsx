@@ -20,7 +20,7 @@ export default function TaskSaveStatus({ states, reloading, onReload }: {
           {state.retry && <button type="button" data-task-save-control onClick={() => void state.retry?.()} className="mt-1 rounded border border-rose-300 bg-white px-2 py-1 hover:bg-rose-50">{state.label}を再試行</button>}
         </div>
       ))}
-      <button type="button" data-task-save-control data-task-conflict-discard onClick={onReload} disabled={saving} className="mt-2 rounded border border-line-strong bg-surface px-2 py-1 text-neutral-800 hover:bg-neutral-50 disabled:opacity-50">入力を破棄して最新表示</button>
+      <button type="button" data-task-save-control data-task-conflict-discard onClick={onReload} disabled={saving} className="mt-2 rounded border border-line-strong bg-surface px-2 py-1 text-text hover:bg-neutral-50 disabled:opacity-50">入力を破棄して最新表示</button>
       {saving && <p className="mt-2">ほかの変更を保存しています…</p>}
     </section>
   );

@@ -120,10 +120,10 @@ export default function TaskCommentComposer({
 
   const keepFocus = (event: MouseEvent) => event.preventDefault();
   const iconButton =
-    "flex h-6 w-6 items-center justify-center rounded text-[13px] text-muted hover:bg-neutral-100 hover:text-neutral-800";
+    "flex h-6 w-6 items-center justify-center rounded text-[13px] text-muted hover:bg-neutral-100 hover:text-text";
 
   return (
-    <div className="shrink-0 border-t border-neutral-200 bg-surface px-3 py-2.5" data-task-composer>
+    <div className="shrink-0 border-t border-line bg-surface px-3 py-2.5" data-task-composer>
       <div
         className={`rounded-lg border bg-surface transition-shadow ${
           focused ? "border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]" : "border-line-strong"

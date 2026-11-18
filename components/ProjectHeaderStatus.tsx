@@ -20,7 +20,7 @@ const DOT: Record<string, string> = {
   red: "bg-red-600",
   blue: "bg-blue-600",
   muted: "bg-neutral-400",
-  none: "border border-neutral-400 bg-transparent",
+  none: "border border-line-strong bg-transparent",
 };
 
 export function statusLabel(status: string | null | undefined): string {
@@ -108,7 +108,7 @@ export default function ProjectHeaderStatus({
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div
             data-project-status-menu
-            className="absolute top-8 left-0 z-40 w-52 rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg"
+            className="absolute top-8 left-0 z-40 w-52 rounded-lg border border-line bg-white p-1.5 shadow-lg"
           >
             {OPTIONS.map((option) => (
               <button
@@ -116,7 +116,7 @@ export default function ProjectHeaderStatus({
                 type="button"
                 data-project-status-option={option.label}
                 onClick={() => void select(option.label, option.color)}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-neutral-100"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-secondary hover:bg-neutral-100"
               >
                 <span className={`h-3 w-3 rounded-full ${DOT[option.color]}`} />
                 {option.label}

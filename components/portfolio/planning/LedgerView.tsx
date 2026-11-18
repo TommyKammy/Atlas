@@ -44,7 +44,7 @@ export default function LedgerView({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[16px] font-semibold text-neutral-900">案件台帳</h2>
+          <h2 className="text-[16px] font-semibold text-text">案件台帳</h2>
           <p className="mt-0.5 text-[12px] text-muted">
             進行中の案件と、新たに投資を検討する候補を管理します。金額は対象期間分です。
           </p>
@@ -100,7 +100,7 @@ export default function LedgerView({
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <h3 className="text-[14px] font-semibold text-neutral-900">
+        <h3 className="text-[14px] font-semibold text-text">
           案件一覧{" "}
           <span className="font-normal text-muted">
             · {state.restricted ? "表示可能 " : ""}
@@ -154,27 +154,27 @@ export default function LedgerView({
           label="案件一覧"
           caption={`${period.label}の案件一覧`}
           stacked
-          className="rounded-lg border border-neutral-200"
+          className="rounded-lg border border-line"
         >
           <thead className="bg-surface-subtle">
             <tr>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">案件名</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">扱い</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">期待効果</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">起案責任者</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-right text-[11px] font-semibold text-secondary">概算費用</th>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-secondary">元プロジェクト</th>
+              <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">案件名</th>
+              <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">扱い</th>
+              <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">期待効果</th>
+              <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">起案責任者</th>
+              <th scope="col" className="border-b border-line px-3 py-2 text-right text-[11px] font-semibold text-secondary">概算費用</th>
+              <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">元プロジェクト</th>
             </tr>
           </thead>
           <tbody>
             {state.initiatives.map((initiative) => (
-              <tr key={initiative.id} className="border-b border-neutral-100 last:border-b-0">
+              <tr key={initiative.id} className="border-b border-line-subtle last:border-b-0">
                 <th scope="row" data-label="案件名" className="bg-surface px-3 py-2.5 text-left align-top">
                   <button
                     type="button"
                     onClick={() => onEdit(initiative)}
                     disabled={!canEdit}
-                    className="text-left text-[12px] font-semibold text-[#24529c] hover:underline disabled:cursor-not-allowed disabled:text-neutral-800 disabled:no-underline"
+                    className="text-left text-[12px] font-semibold text-[#24529c] hover:underline disabled:cursor-not-allowed disabled:text-text disabled:no-underline"
                   >
                     {initiative.name}
                   </button>
@@ -185,10 +185,10 @@ export default function LedgerView({
                 <td data-label="扱い" className="px-3 py-2.5 align-top">
                   {initiative.kind === "fixed" ? <Tag>全案に固定</Tag> : <Tag tone="blue">比較候補</Tag>}
                 </td>
-                <td data-label="期待効果" className="px-3 py-2.5 align-top text-[12px] text-neutral-700">
+                <td data-label="期待効果" className="px-3 py-2.5 align-top text-[12px] text-secondary">
                   {initiative.expectedEffect}
                 </td>
-                <td data-label="起案責任者" className="px-3 py-2.5 align-top text-[12px] text-neutral-700">
+                <td data-label="起案責任者" className="px-3 py-2.5 align-top text-[12px] text-secondary">
                   {initiative.ownerName}
                 </td>
                 <td data-label="概算費用" className="px-3 py-2.5 text-right align-top text-[12px] tabular-nums">
@@ -217,7 +217,7 @@ export default function LedgerView({
       )}
 
       {!state.restricted && (
-        <div className="flex flex-wrap justify-end gap-3 border-t border-neutral-200 pt-3">
+        <div className="flex flex-wrap justify-end gap-3 border-t border-line pt-3">
           <button type="button" className={buttonQuiet} onClick={() => onNavigate("capacity")}>
             職種別の余力を確認 →
           </button>

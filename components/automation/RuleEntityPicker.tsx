@@ -76,7 +76,7 @@ export function RuleEntityPicker({ projectId, kind, value, onChange, label, fiel
   return (
     <div className="relative min-w-0" data-rule-entity-picker={kind}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
-      <label htmlFor={id} className="mb-1 block text-[12px] font-medium text-neutral-700">{label}{required ? " *" : ""}</label>
+      <label htmlFor={id} className="mb-1 block text-[12px] font-medium text-secondary">{label}{required ? " *" : ""}</label>
       <div className="flex gap-1">
         <input id={id} ref={input} role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={`${id}-list`}
           aria-invalid={invalid || undefined} aria-describedby={describedBy}
@@ -96,15 +96,15 @@ export function RuleEntityPicker({ projectId, kind, value, onChange, label, fiel
           }}
           className="h-9 min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] outline-none focus:border-[#4573d2] focus:ring-2 focus:ring-[#4573d2]/15 disabled:bg-neutral-50" />
         {value !== null && !disabled && <button type="button" aria-label={`${label}をクリア`}
-          onClick={() => { onChange(null); setQuery(""); }} className="rounded px-2 text-subtle hover:bg-neutral-100 hover:text-neutral-700">×</button>}
+          onClick={() => { onChange(null); setQuery(""); }} className="rounded px-2 text-subtle hover:bg-neutral-100 hover:text-secondary">×</button>}
       </div>
       {open && !disabled && (
-        <div className="absolute top-full z-30 mt-1 max-h-64 w-full overflow-auto rounded-md border border-neutral-200 bg-surface p-1 shadow-lg">
+        <div className="absolute top-full z-30 mt-1 max-h-64 w-full overflow-auto rounded-md border border-line bg-surface p-1 shadow-lg">
           <ul id={`${id}-list`} role="listbox" aria-label={`${label}の候補`}>
             {options.map((option, index) => <li key={option.value} id={`${id}-${index}`} role="option" aria-selected={option.value === value}
               className={`rounded ${index === activeIndex ? "bg-blue-50" : ""}`}>
               <button type="button" tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActive(index)}
-                onClick={() => choose(option)} className="w-full px-2.5 py-2 text-left text-[13px] text-neutral-800">
+                onClick={() => choose(option)} className="w-full px-2.5 py-2 text-left text-[13px] text-text">
                 <span className="block break-words">{option.label}</span>
                 {option.description && <span className="mt-0.5 block text-[11px] text-muted">{option.description}</span>}
               </button>
@@ -113,7 +113,7 @@ export function RuleEntityPicker({ projectId, kind, value, onChange, label, fiel
           {result?.key !== resultKey && <p role="status" className="px-2 py-3 text-[12px] text-muted">検索中…</p>}
           {result?.key === resultKey && result.error && <p role="alert" className="px-2 py-3 text-[12px] text-rose-600">{result.error}</p>}
           {result?.key === resultKey && !result.error && options.length === 0 && <p role="status" className="px-2 py-3 text-[12px] text-muted">該当する項目がありません</p>}
-          {result?.key === resultKey && result.hasMore && <p className="border-t border-neutral-100 px-2 py-2 text-[11px] text-muted">名前を入力すると、候補を絞り込めます。</p>}
+          {result?.key === resultKey && result.hasMore && <p className="border-t border-line-subtle px-2 py-2 text-[11px] text-muted">名前を入力すると、候補を絞り込めます。</p>}
         </div>
       )}
     </div>

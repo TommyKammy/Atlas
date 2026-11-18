@@ -347,7 +347,7 @@ export default function AdminPanel({
             <input readOnly value={inviteResult.url} className="min-w-0 flex-1 rounded border bg-white px-2 py-1 font-mono" />
             <button
               onClick={() => navigator.clipboard?.writeText(inviteResult.url).catch(() => undefined)}
-              className="rounded border bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
+              className="rounded border bg-white px-2 py-1 text-secondary hover:bg-neutral-50"
             >
               コピー
             </button>

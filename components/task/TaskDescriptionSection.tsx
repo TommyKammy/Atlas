@@ -92,12 +92,12 @@ export default function TaskDescriptionSection({
   return (
     <section className="mt-5" data-task-description>
       <div className="mb-1 flex min-h-8 items-center gap-2">
-        <h3 className="text-[12px] font-semibold text-neutral-700">説明</h3>
+        <h3 className="text-[12px] font-semibold text-secondary">説明</h3>
         {canEdit && !editing && hasText && (
           <button
             type="button"
             onClick={start}
-            className="rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
+            className="rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-neutral-100 hover:text-secondary"
           >
             編集
           </button>

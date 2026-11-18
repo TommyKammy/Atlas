@@ -182,7 +182,7 @@ export default function TaskPane({
       return (
         <div
           key={`cf-${task.id}-${field.id}`}
-          className="min-h-7 py-1 text-[13px] text-neutral-700"
+          className="min-h-7 py-1 text-[13px] text-secondary"
           data-custom-readonly={field.field_type}
         >
           {customFieldDisplay(field, value, task, users, customValues, customFields)}
@@ -206,7 +206,7 @@ export default function TaskPane({
           <button
             type="button"
             onClick={() => setReferenceOpen(field.id)}
-            className="min-h-7 w-full rounded border border-transparent px-1 py-1 text-left text-[13px] text-neutral-700 hover:border-neutral-200 hover:bg-white"
+            className="min-h-7 w-full rounded border border-transparent px-1 py-1 text-left text-[13px] text-secondary hover:border-line hover:bg-white"
           >
             {customFieldDisplay(field, value, task, users, customValues, customFields)}
           </button>
@@ -261,7 +261,7 @@ export default function TaskPane({
           onBlur={(event) =>
             setCustomValue(field.id, event.target.value === "" ? null : Number(event.target.value))
           }
-          className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+          className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
         />
       );
     }
@@ -272,7 +272,7 @@ export default function TaskPane({
           defaultValue={value?.value_date ?? ""}
           key={`cf-${task.id}-${field.id}`}
           onBlur={(event) => setCustomValue(field.id, event.target.value || null)}
-          className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+          className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
         />
       );
     }
@@ -310,7 +310,7 @@ export default function TaskPane({
           defaultValue={customValueToInput(field, value)}
           key={`cf-${task.id}-${field.id}`}
           onChange={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
-          className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+          className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
         >
           <option value="">–</option>
           {field.options.map((option) => (
@@ -326,7 +326,7 @@ export default function TaskPane({
         defaultValue={customValueToInput(field, value)}
         key={`cf-${task.id}-${field.id}`}
         onBlur={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
-        className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+        className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
       />
     );
   };
@@ -433,7 +433,7 @@ export default function TaskPane({
             onSave={(value, stamp) => { if (value.trim()) return patch({ name: value.trim() }, stamp); }}
             normalize={(value) => value.trim()}
             enterBlurs
-            className="w-full border-b border-transparent bg-transparent pb-1 text-[24px] font-semibold leading-8 tracking-[-0.01em] text-neutral-900 outline-none placeholder:text-neutral-300 focus:border-[#4075cf]"
+            className="w-full border-b border-transparent bg-transparent pb-1 text-[24px] font-semibold leading-8 tracking-[-0.01em] text-text outline-none placeholder:text-subtle focus:border-[#4075cf]"
             placeholder="タスク名を入力"
           />
 
@@ -466,7 +466,7 @@ export default function TaskPane({
                   type="button"
                   onClick={() => setAssigneeEditing(true)}
                   aria-label="担当者を設定"
-                  className="flex h-7 min-w-0 max-w-full items-center gap-2 rounded px-1 text-[13px] text-neutral-800 hover:bg-neutral-100"
+                  className="flex h-7 min-w-0 max-w-full items-center gap-2 rounded px-1 text-[13px] text-text hover:bg-neutral-100"
                 >
                   {assignee ? (
                     <TaskAvatar name={assignee.name} url={assignee.avatar_url} className="h-5 w-5" textClassName="text-[9px]" />
@@ -505,7 +505,7 @@ export default function TaskPane({
             />
 
             <FieldRow label="プロジェクト">
-              <div className="min-w-0 text-neutral-800">
+              <div className="min-w-0 text-text">
                 {memberships.map((membership) => {
                   const isPrimary = membership.id === task.project_id;
                   return (
@@ -539,7 +539,7 @@ export default function TaskPane({
                   <button
                     type="button"
                     onClick={openAddProject}
-                    className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
+                    className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-secondary"
                   >
                     <span className="text-sm leading-none">＋</span>
                     プロジェクトを追加
@@ -612,7 +612,7 @@ export default function TaskPane({
                   onSave={(value, stamp) => patch({ progress: Math.max(0, Math.min(100, Number(value))) }, stamp)}
                   normalize={(value) => String(Math.max(0, Math.min(100, Number(value))))}
                   label="進捗"
-                  className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+                  className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
                 />
                 <span className="text-[10px] text-subtle">%</span>
                 <span className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-strong">
@@ -627,7 +627,7 @@ export default function TaskPane({
                   <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
                     <TaskStatusChip status={task.status} />
                   </summary>
-                  <div className="absolute left-0 top-full z-[130] mt-1 w-44 rounded-lg border border-neutral-200 bg-surface p-1 text-[12px] shadow-xl">
+                  <div className="absolute left-0 top-full z-[130] mt-1 w-44 rounded-lg border border-line bg-surface p-1 text-[12px] shadow-xl">
                     {statusChoices.map((choice) => (
                       <button
                         key={choice}
@@ -637,7 +637,7 @@ export default function TaskPane({
                           event.currentTarget.closest("details")?.removeAttribute("open");
                         }}
                         className={`flex w-full items-center rounded px-2 py-1 text-left hover:bg-neutral-100 ${
-                          choice === task.status ? "font-semibold text-neutral-900" : "text-neutral-700"
+                          choice === task.status ? "font-semibold text-text" : "text-secondary"
                         }`}
                       >
                         {choice}
@@ -652,7 +652,7 @@ export default function TaskPane({
               <select
                 value={task.recurrence ?? "none"}
                 onChange={(event) => patch({ recurrence: event.target.value })}
-                className="h-7 max-w-[180px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+                className="h-7 max-w-[180px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-white focus:border-[#4075cf] focus:bg-white"
                 aria-label="繰り返し"
               >
                 <option value="none">なし</option>

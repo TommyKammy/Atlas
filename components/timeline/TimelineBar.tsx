@@ -90,7 +90,7 @@ function TimelineBar({
   const defaultBarFace = "bg-surface text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]";
   const barFaceClass = task.is_milestone ? defaultBarFace
     : task.completed ? "bg-[#aaaaaa] text-[#050505]"
-    : critical ? "bg-red-200 text-neutral-900"
+    : critical ? "bg-red-200 text-text"
     : defaultBarFace;
   const barInfo = `${task.name}（${task.start_on ?? "?"} 〜 ${task.due_on ?? "?"}・進捗${task.progress}%${task.assignee_name ? `・担当${task.assignee_name}` : ""}${rowLocked ? "・行固定" : ""}）${!task.completed && critical ? "【クリティカルパス】" : ""} — 左右で日付移動、上下でセクション・行移動、左右端で期間変更、Alt+上下で行移動、Alt+Shift+上下でセクション移動`;
 
@@ -135,7 +135,7 @@ function TimelineBar({
     </span>
   );
   const dependencyHandleClass = (visible: boolean) =>
-    `absolute z-40 flex h-3.5 w-3.5 cursor-crosshair touch-none items-center justify-center rounded-full border border-neutral-400 bg-white shadow-sm hover:border-[#2c60b8] hover:bg-[#2c60b8] ${
+    `absolute z-40 flex h-3.5 w-3.5 cursor-crosshair touch-none items-center justify-center rounded-full border border-line-strong bg-white shadow-sm hover:border-[#2c60b8] hover:bg-[#2c60b8] ${
       visible ? "opacity-100" : "pointer-events-none opacity-0"
     }`;
 
@@ -233,7 +233,7 @@ function TimelineBar({
           </span>
         )}
         {!skinny && showSubtasks && !milestone && (
-          <span className="pointer-events-none flex shrink-0 items-center gap-0.5 text-[11px] text-neutral-700" title="サブタスク">
+          <span className="pointer-events-none flex shrink-0 items-center gap-0.5 text-[11px] text-secondary" title="サブタスク">
             <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.2">
               <path d="M4 3v4.5a2 2 0 0 0 2 2h6" />
               <path d="M9.5 7.5 12 9.5 9.5 11.5" />
@@ -351,7 +351,7 @@ function TimelineBar({
                 style={labelOnLeft ? { right: -5 } : { left: -5 }}
               />
               <span dir="auto" className="relative block break-words">{task.name}</span>
-              <span className="relative mt-0.5 block text-[11px] leading-4 text-neutral-300">
+              <span className="relative mt-0.5 block text-[11px] leading-4 text-subtle">
                 {task.start_on ?? "?"} 〜 {task.due_on ?? "?"}
                 {task.assignee_name ? ` ・ ${task.assignee_name}` : ""}
               </span>

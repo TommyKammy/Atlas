@@ -34,7 +34,7 @@ export default function CustomizeFieldModal({
   return (
     <CustomizeModal title={draft.id === null ? "フィールドを追加" : "フィールドを編集"} onClose={onClose}>
       <form onSubmit={onSubmit} className="p-5">
-        <label className="block text-[12px] font-medium text-neutral-700">
+        <label className="block text-[12px] font-medium text-secondary">
           フィールド名
           <input
             data-customize-field-name
@@ -44,7 +44,7 @@ export default function CustomizeFieldModal({
             className={fieldTypeClass}
           />
         </label>
-        <label className="mt-4 block text-[12px] font-medium text-neutral-700">
+        <label className="mt-4 block text-[12px] font-medium text-secondary">
           フィールドタイプ
           <select
             data-customize-field-type
@@ -80,7 +80,7 @@ export default function CustomizeFieldModal({
           </select>
         </label>
         {(draft.field_type === "select" || draft.field_type === "multi_select") && (
-          <label className="mt-4 block text-[12px] font-medium text-neutral-700">
+          <label className="mt-4 block text-[12px] font-medium text-secondary">
             オプション
             <textarea
               data-customize-field-options

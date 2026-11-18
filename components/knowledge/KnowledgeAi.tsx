@@ -77,18 +77,18 @@ export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, 
         {error && !open && <p role="alert" className="px-3 py-2 text-sm text-red-700">{error}</p>}
         {loaded && !loading && !selected && !error && <p className="px-3 py-2 text-sm text-secondary">このノートではAIアシストを利用できません。管理者にお問い合わせください。</p>}
         {(["summary", "improve"] as const).map(kind => <button key={kind} role="menuitem" className={knowledgeMenuItem} disabled={!loaded || loading || !selected || busy || saving || partner.locked} onClick={() => void generate(kind)}><KnowledgeIcon name={kind === "summary" ? "summary" : "edit"} />{labels[kind]}を生成</button>)}
-        <p className="mt-1 border-t border-neutral-100 px-3 pt-3 pb-1 text-xs text-muted">プロジェクトパートナー</p>
+        <p className="mt-1 border-t border-line-subtle px-3 pt-3 pb-1 text-xs text-muted">プロジェクトパートナー</p>
         <button role="menuitem" className={knowledgeMenuItem} disabled={!loaded || loading || !selected || busy || saving || partner.locked} onClick={() => { setOpen(false); void partner.generate("action_extract", note); }}><KnowledgeIcon name="summary" />アクションを抽出</button>
         {partner.result && !partner.open && <button role="menuitem" className={knowledgeMenuItem} onClick={() => { setOpen(false); partner.show(); }}>アクション候補を表示</button>}
-        {(busy || Object.values(proposals).some(Boolean)) && <button role="menuitem" className={`${knowledgeMenuItem} border-t border-neutral-100`} disabled={partner.locked} onClick={() => { partner.close(); setOpen(true); }}>結果パネルを表示</button>}
+        {(busy || Object.values(proposals).some(Boolean)) && <button role="menuitem" className={`${knowledgeMenuItem} border-t border-line-subtle`} disabled={partner.locked} onClick={() => { partner.close(); setOpen(true); }}>結果パネルを表示</button>}
     </KnowledgeActionMenu>
   </span> : null;
-  const panel = enabled && open ? <section aria-label="ノートのAIアシスト" data-ai-panel className="min-w-0 border-t border-neutral-200 pt-5 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5" onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); closePanel(); } }}>
+  const panel = enabled && open ? <section aria-label="ノートのAIアシスト" data-ai-panel className="min-w-0 border-t border-line pt-5 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5" onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); closePanel(); } }}>
     <div className="mb-4 flex items-center justify-between gap-2">
       <h2 ref={panelHeading} tabIndex={-1} className="flex items-center gap-2 text-base font-semibold outline-none"><KnowledgeIcon name="ai" />AIアシスト</h2>
       <button className={`${knowledgeAction} size-8 border-transparent px-0`} aria-label="AIアシストを閉じる" disabled={saving} onClick={closePanel}><KnowledgeIcon name="close" /></button>
     </div>
-    <div role="tablist" aria-label="AIアシストの操作" className="mb-5 flex border-b border-neutral-200">
+    <div role="tablist" aria-label="AIアシストの操作" className="mb-5 flex border-b border-line">
       {(["summary", "improve"] as const).map(kind => <button key={kind} id={`${id}-${kind}`} role="tab" aria-selected={operation === kind} aria-controls={`${id}-result`} tabIndex={operation === kind ? 0 : -1} disabled={busy || saving}
         className={`-mb-px border-b-2 px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 ${operation === kind ? "border-accent font-medium text-[#24529c]" : "border-transparent text-neutral-600 hover:text-neutral-900"}`}
         onClick={() => switchOperation(kind)} onKeyDown={event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const next = event.key === "Home" ? "summary" : event.key === "End" ? "improve" : kind === "summary" ? "improve" : "summary"; switchOperation(next); document.getElementById(`${id}-${next}`)?.focus(); } }}>{labels[kind]}</button>)}
@@ -105,12 +105,12 @@ export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, 
           <button className={knowledgeAction} onClick={() => void navigator.clipboard.writeText(result.text).then(() => setNotice("コピーしました"), () => setError("コピーできませんでした。生成結果を選択してコピーしてください"))}><KnowledgeIcon name="copy" />コピー</button>
           <button className={knowledgePrimaryAction} disabled={busy || saving || !proposal.title.trim()} onClick={() => void save()}>{saving ? "保存中…" : "別ノートとして保存"}</button>
         </div>
-        <label className="block text-xs text-secondary">別ノートのタイトル<input aria-label="別ノートのタイトル" maxLength={300} disabled={saving} className="mt-1.5 block w-full rounded-md border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:outline-blue-600" value={proposal.title} onChange={event => setProposals(previous => ({ ...previous, [operation]: { ...proposal, title: event.target.value } }))} /></label>
+        <label className="block text-xs text-secondary">別ノートのタイトル<input aria-label="別ノートのタイトル" maxLength={300} disabled={saving} className="mt-1.5 block w-full rounded-md border border-line px-3 py-2 text-sm text-text focus:outline-blue-600" value={proposal.title} onChange={event => setProposals(previous => ({ ...previous, [operation]: { ...proposal, title: event.target.value } }))} /></label>
         <div className="flex flex-wrap items-center gap-4 text-xs">
           <button className="rounded py-1 text-[#24529c] hover:underline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50" disabled={busy || saving || loading} onClick={() => void generate(operation)}>再生成</button>
           <button className="rounded py-1 text-neutral-600 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50" disabled={busy || saving} onClick={() => { setProposals(previous => ({ ...previous, [operation]: undefined })); setNotice(""); }}>結果を破棄</button>
         </div>
-        <details className="border-t border-neutral-100 pt-3 text-xs text-secondary"><summary className="cursor-pointer">生成時の原文を確認</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans leading-6">{result.source_text}</pre><p className="mt-2">別ノートへの保存期限：生成から1時間</p></details>
+        <details className="border-t border-line-subtle pt-3 text-xs text-secondary"><summary className="cursor-pointer">生成時の原文を確認</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans leading-6">{result.source_text}</pre><p className="mt-2">別ノートへの保存期限：生成から1時間</p></details>
       </div>}
     </div>
   </section> : null;

@@ -14,7 +14,7 @@ export default function KnowledgeTools({ editor, links }: { editor: Editor; link
   const state = useEditorState({ editor, selector: ({ editor: e }) => ({
     table: e.isActive("table"), up: moveKnowledgeBlock(e, -1, false), down: moveKnowledgeBlock(e, 1, false),
   }) });
-  return <div className="border-b border-neutral-200 py-1">
+  return <div className="border-b border-line py-1">
     <div role="toolbar" aria-label="ノートのブロック操作" className="flex flex-wrap items-center gap-1">
       <ToolbarButton label="ブロックを上へ (Alt+↑)" disabled={!state?.up} onClick={() => moveKnowledgeBlock(editor, -1)}>↑</ToolbarButton>
       <ToolbarButton label="ブロックを下へ (Alt+↓)" disabled={!state?.down} onClick={() => moveKnowledgeBlock(editor, 1)}>↓</ToolbarButton>

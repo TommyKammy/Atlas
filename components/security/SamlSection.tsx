@@ -59,7 +59,7 @@ export function SamlSection({
         description="Azure、Okta、OneLogin または SAML のカスタムソリューションでセットアップします。"
       />
 
-      <div className="mt-4 max-w-3xl rounded-lg border border-neutral-200 p-4">
+      <div className="mt-4 max-w-3xl rounded-lg border border-line p-4">
         <div className="text-xs font-medium text-secondary">SAML のモード</div>
         <div className="mt-2 space-y-2 text-sm">
           {(
@@ -147,7 +147,7 @@ export function SamlSection({
         </div>
       </div>
 
-      <div className="mt-4 max-w-3xl rounded-lg border border-neutral-200 p-4">
+      <div className="mt-4 max-w-3xl rounded-lg border border-line p-4">
         <h4 className="text-sm font-semibold">IdP に登録するサービスプロバイダー情報</h4>
         <div className="mt-2 space-y-2 text-xs">
           <div>

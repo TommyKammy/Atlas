@@ -74,7 +74,7 @@ export default function InviteAcceptForm({ token }: { token: string }) {
   const field = "w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-500";
   return (
     <div className="flex min-h-[70vh] items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-xl border border-neutral-200 p-6 shadow-sm">
+      <div className="w-full max-w-md rounded-xl border border-line p-6 shadow-sm">
         {!invite && !error && <p className="text-sm text-muted">招待を確認しています…</p>}
         {error && !invite && (
           <div>

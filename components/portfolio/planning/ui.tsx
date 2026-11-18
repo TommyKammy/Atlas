@@ -4,13 +4,13 @@ import type { PlanningScenarioResult } from "@/lib/planning/calculations";
 export const buttonPrimary =
   "inline-flex min-h-9 items-center justify-center rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:cursor-not-allowed disabled:opacity-50";
 export const buttonSecondary =
-  "inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-secondary hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50";
 export const buttonQuiet =
   "inline-flex items-center rounded px-1 py-0.5 text-[13px] font-medium text-[#24529c] hover:underline disabled:cursor-not-allowed disabled:opacity-50";
 export const inputClass =
-  "h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]";
+  "h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-text outline-none focus:border-[#2c60b8]";
 export const labelClass = "block text-[12px] font-medium text-secondary";
-export const sectionTitle = "text-[15px] font-semibold text-neutral-900";
+export const sectionTitle = "text-[15px] font-semibold text-text";
 
 export function Tag({
   children,
@@ -55,11 +55,11 @@ export function Stat({
   tone?: "neutral" | "warn" | "bad";
 }) {
   return (
-    <div className="min-w-0 rounded-lg border border-neutral-200 bg-surface p-3">
+    <div className="min-w-0 rounded-lg border border-line bg-surface p-3">
       <div className="text-[11px] text-muted">{label}</div>
       <div
         className={`mt-0.5 text-[22px] leading-tight font-semibold tabular-nums ${
-          tone === "bad" ? "text-orange-700" : tone === "warn" ? "text-warning" : "text-neutral-900"
+          tone === "bad" ? "text-orange-700" : tone === "warn" ? "text-warning" : "text-text"
         }`}
       >
         {value}
@@ -101,7 +101,7 @@ export function EmptyPanel({
 }) {
   return (
     <div className="rounded-lg border border-dashed border-line-strong bg-surface px-5 py-10 text-center">
-      <h2 className="text-[15px] font-semibold text-neutral-900">{title}</h2>
+      <h2 className="text-[15px] font-semibold text-text">{title}</h2>
       {children && <div className="mx-auto mt-2 max-w-xl text-[12px] text-muted">{children}</div>}
       {actions && <div className="mt-4 flex flex-wrap justify-center gap-2">{actions}</div>}
     </div>

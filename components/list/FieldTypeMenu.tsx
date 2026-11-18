@@ -168,9 +168,9 @@ export default function FieldTypeMenu({
       aria-label="フィールドタイプ"
       data-field-type-menu
       style={{ position: "fixed", left, top, width, maxHeight }}
-      className="z-[180] flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-surface shadow-[0_12px_32px_rgba(0,0,0,0.18)]"
+      className="z-[180] flex flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-[0_12px_32px_rgba(0,0,0,0.18)]"
     >
-      <div className="border-b border-neutral-100 px-3 py-2">
+      <div className="border-b border-line-subtle px-3 py-2">
         <div className="text-[11px] font-semibold text-muted">フィールドタイプ</div>
         <input
           ref={inputRef}
@@ -193,11 +193,11 @@ export default function FieldTypeMenu({
             onClick={() => onPick(item.type)}
             className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left hover:bg-blue-50"
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-neutral-200 bg-surface text-[12px] font-semibold text-secondary">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-line bg-surface text-[12px] font-semibold text-secondary">
               {item.icon}
             </span>
             <span className="min-w-0">
-              <span className="block text-[12px] font-semibold text-neutral-800">{item.label}</span>
+              <span className="block text-[12px] font-semibold text-text">{item.label}</span>
               <span className="block truncate text-[10px] text-muted">{item.description}</span>
             </span>
           </button>
@@ -212,7 +212,7 @@ export default function FieldTypeMenu({
             type="button"
             data-field-type-more
             onClick={() => setShowMore((current) => !current)}
-            className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[12px] text-muted hover:bg-neutral-50 hover:text-neutral-700"
+            className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[12px] text-muted hover:bg-neutral-50 hover:text-secondary"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-dashed border-line-strong text-[13px]">
               {showMore ? "−" : "＋"}
@@ -225,16 +225,16 @@ export default function FieldTypeMenu({
             type="button"
             data-field-library-toggle
             onClick={() => void loadLibrary()}
-            className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-neutral-100 px-2 py-2 text-left text-[12px] text-muted hover:bg-neutral-50 hover:text-neutral-700"
+            className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-line-subtle px-2 py-2 text-left text-[12px] text-muted hover:bg-neutral-50 hover:text-secondary"
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-neutral-200 text-[12px]">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-line text-[12px]">
               ▤
             </span>
             {libraryLoading ? "読み込み中…" : library ? "ライブラリを閉じる" : "ライブラリから選択"}
           </button>
         )}
         {library && (
-          <div className="mt-1 space-y-0.5 rounded-md border border-neutral-100 bg-surface-subtle p-1">
+          <div className="mt-1 space-y-0.5 rounded-md border border-line-subtle bg-surface-subtle p-1">
             {library.length === 0 && (
               <div className="px-2 py-2 text-[11px] text-subtle">ライブラリは空です</div>
             )}
@@ -245,7 +245,7 @@ export default function FieldTypeMenu({
                   onClick={() => onPickTemplate(entry)}
                   className="flex min-w-0 flex-1 items-center gap-2 text-left text-[11px]"
                 >
-                  <span className="min-w-0 flex-1 truncate text-neutral-700">{entry.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-secondary">{entry.name}</span>
                   <span className="shrink-0 text-[9px] text-subtle">{entry.field_type}</span>
                 </button>
                 <button
@@ -266,16 +266,16 @@ export default function FieldTypeMenu({
             type="button"
             data-field-deleted-toggle
             onClick={() => void loadDeleted()}
-            className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-neutral-100 px-2 py-2 text-left text-[12px] text-muted hover:bg-neutral-50 hover:text-neutral-700"
+            className="mt-0.5 flex w-full items-center gap-2 rounded-md border-t border-line-subtle px-2 py-2 text-left text-[12px] text-muted hover:bg-neutral-50 hover:text-secondary"
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-neutral-200 text-[12px]">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-line text-[12px]">
               ♻
             </span>
             削除済みフィールド
           </button>
         )}
         {deleted && (
-          <div className="mt-1 space-y-0.5 rounded-md border border-neutral-100 bg-surface-subtle p-1">
+          <div className="mt-1 space-y-0.5 rounded-md border border-line-subtle bg-surface-subtle p-1">
             {deleted.length === 0 && (
               <div className="px-2 py-2 text-[11px] text-subtle">削除済みフィールドはありません</div>
             )}
@@ -295,7 +295,7 @@ export default function FieldTypeMenu({
           </div>
         )}
       </div>
-      <div className="border-t border-neutral-100 px-3 py-2 text-[10px] text-subtle">
+      <div className="border-t border-line-subtle px-3 py-2 text-[10px] text-subtle">
         AIスタジオ以外のフィールドタイプに対応
       </div>
     </div>,

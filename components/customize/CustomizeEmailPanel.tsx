@@ -27,10 +27,10 @@ export default function CustomizeEmailPanel({
       <p className="text-[13px] text-secondary">
         プロジェクト専用のメールアドレスです。受信ゲートウェイに届いたメールは、件名をタスク名、本文を説明として取り込みます。
       </p>
-      <div className="mt-4 rounded-lg border border-[#e1e1e1] bg-surface-subtle p-3">
+      <div className="mt-4 rounded-lg border border-line bg-surface-subtle p-3">
         <div className="text-[11px] font-medium text-muted">プロジェクトのメールアドレス</div>
         <div className="mt-1 flex items-center gap-2">
-          <code data-customize-email-address className="min-w-0 flex-1 break-all rounded bg-surface px-2 py-1.5 text-[12px] text-neutral-800">
+          <code data-customize-email-address className="min-w-0 flex-1 break-all rounded bg-surface px-2 py-1.5 text-[12px] text-text">
             {address || "生成中…"}
           </code>
           <button
@@ -44,7 +44,7 @@ export default function CustomizeEmailPanel({
           </button>
         </div>
       </div>
-      <label className="mt-4 flex items-center gap-2 text-[13px] text-neutral-700">
+      <label className="mt-4 flex items-center gap-2 text-[13px] text-secondary">
         <input
           type="checkbox"
           data-customize-email-enabled

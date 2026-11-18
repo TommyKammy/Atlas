@@ -55,7 +55,7 @@ export default function TaskSubtasksSection({
               onClick={onStartAdd}
               title="サブタスクを追加"
               aria-label="サブタスクを追加"
-              className="flex h-6 w-6 items-center justify-center rounded text-[16px] text-muted hover:bg-neutral-100 hover:text-neutral-800"
+              className="flex h-6 w-6 items-center justify-center rounded text-[16px] text-muted hover:bg-neutral-100 hover:text-text"
             >
               ＋
             </button>
@@ -66,7 +66,7 @@ export default function TaskSubtasksSection({
                 className={`ml-auto rounded px-1.5 py-0.5 text-[11px] ${
                   hideDone
                     ? "bg-blue-50 text-blue-700"
-                    : "text-muted hover:bg-neutral-100 hover:text-neutral-700"
+                    : "text-muted hover:bg-neutral-100 hover:text-secondary"
                 }`}
                 title="サブタスクの絞り込み"
               >
@@ -83,7 +83,7 @@ export default function TaskSubtasksSection({
           <div
             key={subtask.id}
             data-subtask-row={subtask.id}
-            className="group/sub flex min-h-8 items-center gap-2 border-b border-neutral-100 py-1 text-[13px]"
+            className="group/sub flex min-h-8 items-center gap-2 border-b border-line-subtle py-1 text-[13px]"
           >
             {subtask.approval ? <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}&approval=1`}

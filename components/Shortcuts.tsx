@@ -87,7 +87,7 @@ export default function Shortcuts({ projectId }: { projectId: number }) {
           {HELP.map(([k, desc]) => (
             <div key={k} className="flex gap-3">
               <kbd className="shrink-0 rounded border bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{k}</kbd>
-              <span className="text-neutral-700">{desc}</span>
+              <span className="text-secondary">{desc}</span>
             </div>
           ))}
         </div>

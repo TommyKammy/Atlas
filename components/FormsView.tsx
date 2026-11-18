@@ -212,12 +212,12 @@ export default function FormsView({
             <article
               key={form.id}
               data-form-card={form.id}
-              className="rounded-lg border border-[#e1e1e1] bg-surface p-4"
+              className="rounded-lg border border-line bg-surface p-4"
             >
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-[15px] font-semibold text-neutral-900">{form.name}</h3>
+                    <h3 className="text-[15px] font-semibold text-text">{form.name}</h3>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[11px] ${
                         form.published
@@ -241,7 +241,7 @@ export default function FormsView({
                     data-form-publish={form.id}
                     disabled={!canConfigure}
                     onClick={() => void togglePublish(form)}
-                    className="h-7 rounded-md border border-[#e1e1e1] px-2 text-[12px] text-neutral-700 hover:bg-neutral-50"
+                    className="h-7 rounded-md border border-line px-2 text-[12px] text-secondary hover:bg-neutral-50"
                   >
                     {form.published ? "非公開" : "公開"}
                   </button>
@@ -260,7 +260,7 @@ export default function FormsView({
                     disabled={!canConfigure}
                     aria-label={`${form.name}を編集`}
                     onClick={() => startEdit(form)}
-                    className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+                    className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-secondary"
                   >
                     <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                       <path d="m10.5 2.5 3 3L6 13H3v-3z" />
@@ -293,17 +293,17 @@ export default function FormsView({
             onSubmit={save}
             onInput={clearError}
             data-form-builder
-            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-surface p-5 shadow-xl"
+            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-line bg-surface p-5 shadow-xl"
           >
             <div className="flex items-center justify-between">
-              <h2 id={`${formId}-builder-title`} className="text-[15px] font-semibold text-neutral-900">
+              <h2 id={`${formId}-builder-title`} className="text-[15px] font-semibold text-text">
                 {builder.id === null ? "フォームを作成" : "フォームを編集"}
               </h2>
               <button
                 type="button"
                 aria-label="閉じる"
                 onClick={() => setBuilder(null)}
-                className="text-lg leading-none text-subtle hover:text-neutral-700"
+                className="text-lg leading-none text-subtle hover:text-secondary"
               >
                 ×
               </button>
@@ -335,7 +335,7 @@ export default function FormsView({
 
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-[13px] font-semibold text-neutral-800">入力項目</h3>
+                <h3 className="text-[13px] font-semibold text-text">入力項目</h3>
                 <button
                   type="button"
                   data-form-add-field
@@ -360,7 +360,7 @@ export default function FormsView({
                 </button>
               </div>
               {builder.fields.map((field, index) => (
-                <div key={`${field.key}-${index}`} data-form-field={index} className="rounded-md border border-neutral-200 p-2.5">
+                <div key={`${field.key}-${index}`} data-form-field={index} className="rounded-md border border-line p-2.5">
                   <div className="flex items-center gap-2">
                     <input
                       name={`field-${index}-label`}
@@ -384,7 +384,7 @@ export default function FormsView({
                         })
                       }
                       data-form-field-type={index}
-                      className="h-7 rounded border border-neutral-200 bg-white px-1 text-[12px] disabled:bg-neutral-100"
+                      className="h-7 rounded border border-line bg-white px-1 text-[12px] disabled:bg-neutral-100"
                     >
                       {FORM_FIELD_TYPES.map((type) => (
                         <option key={type.value} value={type.value}>
@@ -467,11 +467,11 @@ export default function FormsView({
             onSubmit={submit}
             onInput={clearError}
             data-form-answer-form
-            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-surface p-5 shadow-xl"
+            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-line bg-surface p-5 shadow-xl"
           >
             <div className="flex items-center justify-between">
               <div>
-                <h2 id={`${formId}-answer-heading`} className="text-[15px] font-semibold text-neutral-900">{answering.name}</h2>
+                <h2 id={`${formId}-answer-heading`} className="text-[15px] font-semibold text-text">{answering.name}</h2>
                 {answering.description && (
                   <p className="mt-0.5 text-[12px] text-muted">{answering.description}</p>
                 )}
@@ -480,7 +480,7 @@ export default function FormsView({
                 type="button"
                 aria-label="閉じる"
                 onClick={() => setAnswering(null)}
-                className="text-lg leading-none text-subtle hover:text-neutral-700"
+                className="text-lg leading-none text-subtle hover:text-secondary"
               >
                 ×
               </button>

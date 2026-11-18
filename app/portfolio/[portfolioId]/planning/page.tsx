@@ -42,8 +42,8 @@ export default async function PlanningPage(props: {
           <span className="mx-1.5" aria-hidden>›</span>
           <span>投資計画</span>
         </nav>
-        <div className="mt-5 rounded-lg border border-neutral-200 bg-surface p-6">
-          <h1 className="text-[20px] font-semibold text-neutral-900">投資計画を表示できません</h1>
+        <div className="mt-5 rounded-lg border border-line bg-surface p-6">
+          <h1 className="text-[20px] font-semibold text-text">投資計画を表示できません</h1>
           <p className="mt-2 text-[13px] leading-6 text-secondary">
             この投資計画を表示する権限がありません。共有ポートフォリオの所有者またはワークスペース管理者に、閲覧者として追加を依頼してください。
           </p>

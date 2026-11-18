@@ -115,7 +115,7 @@ export default async function SearchPage(props: {
               key={item}
               href={`/search?q=${encodeURIComponent(item)}`}
               data-search-history-item={item}
-              className="rounded-full border border-neutral-200 px-2.5 py-1 hover:bg-neutral-50"
+              className="rounded-full border border-line px-2.5 py-1 hover:bg-neutral-50"
             >
               {item}
             </Link>
@@ -173,8 +173,8 @@ export default async function SearchPage(props: {
           </label>
         </div>
 
-        <details className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50/60 px-3 py-2" open>
-          <summary className="cursor-pointer text-[12px] font-medium text-neutral-700">日付条件</summary>
+        <details className="mt-3 rounded-lg border border-line bg-surface-subtle px-3 py-2" open>
+          <summary className="cursor-pointer text-[12px] font-medium text-secondary">日付条件</summary>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1 text-[12px] text-secondary">
               期日（自）
@@ -204,8 +204,8 @@ export default async function SearchPage(props: {
         </details>
 
         {customFields.length > 0 && (
-          <details className="mt-2 rounded-lg border border-neutral-200 px-3 py-2" open>
-            <summary className="cursor-pointer text-[12px] font-medium text-neutral-700">カスタムフィールド</summary>
+          <details className="mt-2 rounded-lg border border-line px-3 py-2" open>
+            <summary className="cursor-pointer text-[12px] font-medium text-secondary">カスタムフィールド</summary>
             <div className="mt-2 grid gap-2 sm:grid-cols-3">
               {customFields.map((customField) => (
                 <label key={customField.id} className="flex min-w-0 flex-col gap-1 text-[12px] text-secondary">
@@ -239,7 +239,7 @@ export default async function SearchPage(props: {
           <button type="submit" className="rounded bg-blue-600 px-4 py-1.5 text-white hover:bg-blue-700">
             検索
           </button>
-          <Link href="/search" className="text-[12px] text-muted hover:text-neutral-800">
+          <Link href="/search" className="text-[12px] text-muted hover:text-text">
             条件をクリア
           </Link>
         </div>

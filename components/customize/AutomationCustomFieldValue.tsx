@@ -44,10 +44,10 @@ export default function AutomationCustomFieldValue({ field, users, value, onChan
     return (
       <fieldset className="min-w-0" data-automation-custom-value={field.field_type}>
         <legend className="text-[11px] font-medium text-secondary">値</legend>
-        <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-neutral-200 bg-surface p-2">
+        <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-line bg-surface p-2">
           {options.length === 0 && <p className="text-[12px] text-subtle">選択肢がありません</p>}
           {options.map((option) => (
-            <label key={option.value} className="flex items-center gap-2 text-[12px] text-neutral-700">
+            <label key={option.value} className="flex items-center gap-2 text-[12px] text-secondary">
               <input type="checkbox" checked={selected.some((entry) => entry === option.value)}
                 onChange={(event) => onChange(event.target.checked
                   ? [...selected, option.value] : selected.filter((entry) => entry !== option.value))} />

@@ -36,10 +36,10 @@ export default function AddWidgetPanel({
       <div className="fixed inset-0 z-[100] bg-black/15" onClick={onClose} />
       <aside
         data-home-add-widget
-        className="fixed bottom-0 right-0 top-12 z-[101] flex w-[min(380px,94vw)] flex-col border-l border-neutral-200 bg-surface shadow-2xl"
+        className="fixed bottom-0 right-0 top-12 z-[101] flex w-[min(380px,94vw)] flex-col border-l border-line bg-surface shadow-2xl"
       >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 px-4">
-          <h2 className="text-[16px] font-semibold text-neutral-800">ウィジェットを追加</h2>
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
+          <h2 className="text-[16px] font-semibold text-text">ウィジェットを追加</h2>
           <button
             type="button"
             aria-label="閉じる"
@@ -57,7 +57,7 @@ export default function AddWidgetPanel({
               <div
                 key={type}
                 data-home-add-widget-type={type}
-                className="rounded-lg border border-neutral-200 p-3"
+                className="rounded-lg border border-line p-3"
               >
                 <div className="flex items-start gap-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-muted text-[16px] text-secondary">
@@ -65,7 +65,7 @@ export default function AddWidgetPanel({
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-[13px] font-semibold text-neutral-800">{meta.label}</h3>
+                      <h3 className="text-[13px] font-semibold text-text">{meta.label}</h3>
                       <button
                         type="button"
                         disabled={added}

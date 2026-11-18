@@ -28,7 +28,7 @@ export default function CustomizeTemplatesPanel({
     <div className="p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-[14px] font-semibold text-neutral-900">タスクテンプレート</h3>
+          <h3 className="text-[14px] font-semibold text-text">タスクテンプレート</h3>
           <p className="mt-0.5 text-[12px] text-muted">繰り返し使うタスクをワンクリックで作成</p>
         </div>
         {canEdit && (
@@ -44,15 +44,15 @@ export default function CustomizeTemplatesPanel({
       </div>
       <div className="mt-4 space-y-2">
         {templates.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-neutral-200 px-4 py-6 text-center text-[13px] text-muted">
+          <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-[13px] text-muted">
             テンプレートがありません。よく使うタスクを登録しておくと便利です。
           </p>
         ) : (
           templates.map((template) => (
-            <div key={template.id} className="rounded-lg border border-[#e1e1e1] px-4 py-3">
+            <div key={template.id} className="rounded-lg border border-line px-4 py-3">
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-neutral-900">{template.name}</div>
+                  <div className="text-[14px] font-medium text-text">{template.name}</div>
                   <div className="mt-0.5 truncate text-[12px] text-secondary">
                     タスク: {template.title_template}
                   </div>
@@ -72,7 +72,7 @@ export default function CustomizeTemplatesPanel({
                       data-customize-template-edit={template.id}
                       aria-label={`${template.name}を編集`}
                       onClick={() => onEdit(template)}
-                      className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-neutral-700"
+                      className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-secondary"
                     >
                       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                         <path d="m10.5 2.5 3 3L6 13H3v-3z" />

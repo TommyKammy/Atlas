@@ -39,7 +39,7 @@ export default function RuleValueField({ label, value, onChange, type = "text", 
   }
   return (
     <div className="min-w-0">
-      <label htmlFor={id} className="mb-1 block text-[12px] font-medium text-neutral-700">{label}</label>
+      <label htmlFor={id} className="mb-1 block text-[12px] font-medium text-secondary">{label}</label>
       {selectOptions && !template ? (
         <select id={id} aria-invalid={invalid || undefined} aria-describedby={describedBy} className={ruleInputClass} value={value === true ? "true" : value === false ? "false" : scalar}
           onChange={(event) => onChange(type === "boolean" && event.target.value !== "" ? event.target.value === "true" : selectOptions.find((option) => String(option.value) === event.target.value)?.value ?? event.target.value)}>

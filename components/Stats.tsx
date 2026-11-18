@@ -83,7 +83,7 @@ export function UpcomingList({
               {t.name}
             </Link>
             <span className="shrink-0 text-xs text-muted">{t.assignee_name ?? "–"}</span>
-            <span className="w-24 shrink-0 text-neutral-700">{t.due_on}</span>
+            <span className="w-24 shrink-0 text-secondary">{t.due_on}</span>
           </div>
         ))}
       </div>
@@ -206,7 +206,7 @@ export function AssigneeBars({ stats }: { stats: ProjectStats }) {
       <div className="mt-2 space-y-2">
         {stats.byAssignee.map((a) => (
           <div key={a.id} className="flex items-center gap-2 text-sm">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-400 text-xs font-bold text-neutral-900">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-400 text-xs font-bold text-text">
               {a.name.slice(0, 1)}
             </span>
             <span className="w-32 shrink-0 truncate">{a.name}</span>

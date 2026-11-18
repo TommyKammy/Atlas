@@ -141,7 +141,7 @@ export default function ProjectTabAddMenu({
           width: pos.width,
           maxHeight: `calc(100vh - ${pos.y + 8}px)`,
         }}
-        className="fixed z-[90] overflow-y-auto rounded-lg border border-neutral-200 bg-surface p-3 text-sm shadow-[0_8px_28px_rgba(0,0,0,0.18)]"
+        className="fixed z-[90] overflow-y-auto rounded-lg border border-line bg-surface p-3 text-sm shadow-[0_8px_28px_rgba(0,0,0,0.18)]"
       >
         {groups.map(([group, label]) => {
           const options = PROJECT_TAB_VIEW_OPTIONS.filter((option) => option.group === group);
@@ -161,7 +161,7 @@ export default function ProjectTabAddMenu({
                   >
                     <ViewIcon view={option.value} />
                     <span className="min-w-0">
-                      <span className="block text-[14px] font-medium text-neutral-800">
+                      <span className="block text-[14px] font-medium text-text">
                         {option.label}
                         {busyView === option.value && <span className="ml-2 text-[11px] text-muted">追加中…</span>}
                       </span>
@@ -176,7 +176,7 @@ export default function ProjectTabAddMenu({
           );
         })}
         {error && <p className="mt-2 px-2 text-[12px] text-danger">{error}</p>}
-        <div className="mt-2 border-t border-neutral-100 px-2 pt-2">
+        <div className="mt-2 border-t border-line-subtle px-2 pt-2">
           <a href="/help" className="text-[12px] text-[#6d5bd0] hover:underline">
             フィードバックを送る
           </a>

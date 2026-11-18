@@ -68,7 +68,7 @@ export default function DuplicateProjectDialog({
             <h2 className="text-lg font-semibold">プロジェクトを複製</h2>
             <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-secondary">
             ×
           </button>
         </div>
@@ -87,7 +87,7 @@ export default function DuplicateProjectDialog({
           {OPTIONS.map((option) => (
             <label
               key={option.key}
-              className="flex cursor-pointer items-start gap-2 rounded-md border border-neutral-200 p-2.5 hover:bg-neutral-50"
+              className="flex cursor-pointer items-start gap-2 rounded-md border border-line p-2.5 hover:bg-neutral-50"
             >
               <input
                 type="checkbox"

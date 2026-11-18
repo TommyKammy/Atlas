@@ -32,7 +32,7 @@ export default function LlmSettings() {
   return <div className="space-y-5" data-llm-settings>
     <div><h2 className="text-lg font-semibold">AI接続</h2><p className="mt-1 text-sm text-secondary">プロジェクトで使用する接続・モデルを管理者が指定します。利用者はモデルを変更できません。</p></div>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    {notice && <p role="status" className="whitespace-pre-wrap text-sm text-neutral-700">{notice}</p>}
+    {notice && <p role="status" className="whitespace-pre-wrap text-sm text-secondary">{notice}</p>}
     {data && <>
       {!data.key_ready && <p role="alert" className="text-sm text-warning">サーバーに LLM_ENCRYPTION_KEY が必要です。設定手順は docs/llm.md を確認してください。</p>}
       <div className="flex flex-wrap gap-2">{data.connections.map(c => <button key={c.id} disabled={busy} className={button} aria-pressed={form.id === c.id} onClick={() => pick(c)}>{c.name} · {c.enabled ? "有効" : "無効"}</button>)}<button disabled={busy} className={button} onClick={() => pick({ ...empty })}>接続を追加</button></div>
@@ -52,7 +52,7 @@ export default function LlmSettings() {
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">{([
           ["max_input_chars", "入力上限（文字）", 100, 100000], ["max_output_tokens", "出力上限（トークン）", 128, 8192], ["timeout_seconds", "待機時間（秒）", 5, 180], ["daily_limit", "利用者ごとの24時間上限", 1, 1000],
         ] as const).map(([k, label, min, max]) => <label key={k} className="text-sm">{label}<input type="number" className={field} min={min} max={max} value={form[k]} onChange={e => update({ [k]: Number(e.target.value) })} /></label>)}</div>
-        <fieldset className="rounded border border-neutral-200 p-3"><legend className="px-1 text-sm">この接続・モデルを使用するプロジェクト</legend><div className="max-h-48 space-y-2 overflow-auto">{data.projects.map(p => <label key={p.id} className="flex gap-2 text-sm"><input type="checkbox" checked={form.project_ids.includes(p.id)} onChange={e => update({ project_ids: e.target.checked ? [...form.project_ids, p.id] : form.project_ids.filter(id => id !== p.id) })} />{p.name}</label>)}</div></fieldset>
+        <fieldset className="rounded border border-line p-3"><legend className="px-1 text-sm">この接続・モデルを使用するプロジェクト</legend><div className="max-h-48 space-y-2 overflow-auto">{data.projects.map(p => <label key={p.id} className="flex gap-2 text-sm"><input type="checkbox" checked={form.project_ids.includes(p.id)} onChange={e => update({ project_ids: e.target.checked ? [...form.project_ids, p.id] : form.project_ids.filter(id => id !== p.id) })} />{p.name}</label>)}</div></fieldset>
         <p className="text-xs leading-relaxed text-secondary">有効な接続を保存すると、選択したプロジェクトはこの接続・モデルを使用します。別の接続が指定されている場合は切り替わります。</p>
         <label className="flex gap-2 text-sm"><input type="checkbox" checked={form.external_allowed} onChange={e => update({ external_allowed: e.target.checked })} />外部サービスへのノート送信を許可する（ローカル接続には不要）</label>
         <label className="flex gap-2 text-sm"><input type="checkbox" checked={form.enabled} onChange={e => update({ enabled: e.target.checked })} />この接続を有効にする</label>

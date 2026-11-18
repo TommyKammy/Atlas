@@ -109,7 +109,7 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
         </button>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">
+      <div className="mt-4 overflow-x-auto rounded-lg border border-line">
         <div className="min-w-[720px]">
           <div className="grid grid-cols-[minmax(220px,1.4fr)_120px_130px_120px_120px] gap-3 border-b bg-surface-subtle px-4 py-2 text-xs font-semibold text-muted">
             <span>名前</span>
@@ -165,8 +165,8 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
         </div>
       </div>
 
-      <div className="mt-3 rounded-lg border border-neutral-200 bg-surface-subtle p-3 text-xs text-secondary">
-        <strong className="font-semibold text-neutral-700">標準の役割</strong> は変更できません。カスタム役割では
+      <div className="mt-3 rounded-lg border border-line bg-surface-subtle p-3 text-xs text-secondary">
+        <strong className="font-semibold text-secondary">標準の役割</strong> は変更できません。カスタム役割では
         管理コンソールの権限とワークスペースの操作権限を個別に付与できます。
       </div>
 

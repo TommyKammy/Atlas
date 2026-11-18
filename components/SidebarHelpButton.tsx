@@ -65,10 +65,10 @@ export default function SidebarHelpButton() {
           <div
             role="menu"
             data-sidebar-help-menu
-            className="fixed z-[130] w-64 rounded-lg border border-neutral-200 bg-surface p-1 text-sm text-neutral-800 shadow-xl"
+            className="fixed z-[130] w-64 rounded-lg border border-line bg-surface p-1 text-sm text-text shadow-xl"
             style={{ left: pos.left, bottom: pos.bottom }}
           >
-            <div className="border-b border-neutral-100 px-3 py-2 text-[12px] font-semibold text-muted">
+            <div className="border-b border-line-subtle px-3 py-2 text-[12px] font-semibold text-muted">
               ヘルプと始め方
             </div>
             <Link href="/help" data-help-features onClick={() => setOpen(false)} className="mt-1 block rounded px-3 py-2 hover:bg-neutral-100">
@@ -117,7 +117,7 @@ export default function SidebarHelpButton() {
                 {SHORTCUTS.map(([k, desc]) => (
                   <div key={k} className="flex gap-3">
                     <kbd className="shrink-0 rounded border bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{k}</kbd>
-                    <span className="text-neutral-700">{desc}</span>
+                    <span className="text-secondary">{desc}</span>
                   </div>
                 ))}
               </div>

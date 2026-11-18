@@ -26,24 +26,24 @@ export default function PlanningDialog({
       titleId={titleId}
       panelClassName={`${
         wide ? "w-[min(820px,94vw)]" : "w-[min(580px,94vw)]"
-      } flex max-h-[min(88dvh,900px)] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl`}
+      } flex max-h-[min(88dvh,900px)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-2xl`}
     >
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-200 px-4 py-3">
-        <h2 id={titleId} className="text-[15px] font-semibold text-neutral-900">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <h2 id={titleId} className="text-[15px] font-semibold text-text">
           {title}
         </h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="閉じる"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[20px] leading-none text-muted hover:bg-neutral-100 hover:text-neutral-800"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[20px] leading-none text-muted hover:bg-neutral-100 hover:text-text"
         >
           ×
         </button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{children}</div>
       {footer && (
-        <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-neutral-200 bg-surface-subtle px-4 py-3">
+        <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-line bg-surface-subtle px-4 py-3">
           {footer}
         </footer>
       )}

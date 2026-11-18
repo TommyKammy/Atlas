@@ -45,7 +45,7 @@ export default function MyTasksWidget({
 
   return (
     <>
-      <div className="flex items-center gap-1 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex items-center gap-1 border-b border-line-subtle px-4 py-1.5">
         {tabs
           .filter((item) => !item.hidden)
           .map((item) => (
@@ -69,7 +69,7 @@ export default function MyTasksWidget({
           type="button"
           data-home-compose
           onClick={onCompose}
-          className="rounded px-1.5 py-0.5 text-[12px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
+          className="rounded px-1.5 py-0.5 text-[12px] text-muted hover:bg-neutral-100 hover:text-secondary"
         >
           ＋ タスクを作成
         </button>
@@ -104,8 +104,8 @@ export default function MyTasksWidget({
           ))
         )}
       </div>
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/my-tasks" className="text-[12px] text-muted hover:text-neutral-800">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right">
+        <Link href="/my-tasks" className="text-[12px] text-muted hover:text-text">
           マイタスクをすべて表示
         </Link>
       </div>

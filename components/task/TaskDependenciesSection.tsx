@@ -100,7 +100,7 @@ export default function TaskDependenciesSection({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-secondary"
           >
             <span className="text-sm leading-none">＋</span>
             依存関係を追加

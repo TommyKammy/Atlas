@@ -26,7 +26,7 @@ export default function CalendarDayHeader({
   return (
     <div
       data-day-header={iso}
-      className={`group/day overflow-hidden border-r border-b border-neutral-200 bg-surface ${
+      className={`group/day overflow-hidden border-r border-b border-line bg-surface ${
         weekView ? "flex h-[70px] flex-col px-2 py-2" : "flex h-7 items-center px-1.5"
       } ${compact ? "items-center" : ""}`}
     >
@@ -38,7 +38,7 @@ export default function CalendarDayHeader({
               className={`inline-flex items-center justify-center font-normal ${
                 isToday
                   ? "h-7 min-w-7 rounded-lg bg-[#4075cf] px-1 text-[14px] text-white"
-                  : `text-[14px] ${sameMonth ? "text-neutral-900" : "text-subtle"}`
+                  : `text-[14px] ${sameMonth ? "text-text" : "text-subtle"}`
               }`}
             >
               {dt.getUTCDate()}
@@ -48,7 +48,7 @@ export default function CalendarDayHeader({
             <button
               type="button"
               onClick={() => onAdd(iso)}
-              className="mt-0.5 flex h-5 w-fit items-center rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-neutral-800"
+              className="mt-0.5 flex h-5 w-fit items-center rounded px-1 text-[12px] text-muted hover:bg-neutral-100 hover:text-text"
             >
               ＋ タスクを追加
             </button>

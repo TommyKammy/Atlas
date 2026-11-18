@@ -17,7 +17,7 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
 
   return (
     <>
-      <div className="flex items-center gap-1 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex items-center gap-1 border-b border-line-subtle px-4 py-1.5">
         <button
           type="button"
           onClick={() => setTab("published")}
@@ -76,7 +76,7 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
               />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
-                  <span className="truncate text-[13px] font-medium text-neutral-800">
+                  <span className="truncate text-[13px] font-medium text-text">
                     {form.name}
                   </span>
                   <span
@@ -98,8 +98,8 @@ export default function FormsWidget({ forms }: { forms: HomeForm[] }) {
         )}
       </div>
 
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/portfolio" className="text-[12px] text-muted hover:text-neutral-800">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right">
+        <Link href="/portfolio" className="text-[12px] text-muted hover:text-text">
           プロジェクトをすべて表示
         </Link>
       </div>

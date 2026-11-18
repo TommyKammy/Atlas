@@ -80,7 +80,7 @@ export default function ListSectionHeader({
       <button
         onClick={onToggle}
         title={collapsed ? "展開する" : "折りたたむ"}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted hover:bg-neutral-100 hover:text-neutral-800"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted hover:bg-neutral-100 hover:text-text"
       >
         <svg
           viewBox="0 0 12 12"
@@ -111,7 +111,7 @@ export default function ListSectionHeader({
               onBlur={() => onSaveName(sectionId)}
               aria-label="セクション名"
               autoFocus
-              className="h-9 w-[200px] rounded border border-[#4573d2] bg-white px-2 text-[14px] font-semibold text-neutral-900 ring-2 ring-[#4573d2]/15 outline-none"
+              className="h-9 w-[200px] rounded border border-[#4573d2] bg-white px-2 text-[14px] font-semibold text-text ring-2 ring-[#4573d2]/15 outline-none"
             />
           ) : (
             <button
@@ -119,7 +119,7 @@ export default function ListSectionHeader({
               data-section-name={sectionId}
               onClick={() => onBeginEdit(sectionId, name)}
               title="クリックしてセクション名を変更"
-              className="max-w-[360px] cursor-pointer truncate text-left text-[14px] leading-6 font-semibold text-neutral-900"
+              className="max-w-[360px] cursor-pointer truncate text-left text-[14px] leading-6 font-semibold text-text"
             >
               {name}
             </button>
@@ -132,7 +132,7 @@ export default function ListSectionHeader({
                 onClick={() => onAddTask(sectionId)}
                 title="このセクションにタスクを追加"
                 aria-label="このセクションにタスクを追加"
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted transition-opacity hover:bg-neutral-200/70 hover:text-neutral-800 ${controlVisibility}`}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted transition-opacity hover:bg-neutral-200/70 hover:text-text ${controlVisibility}`}
               >
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M8 3v10M3 8h10" strokeLinecap="round" />
@@ -146,7 +146,7 @@ export default function ListSectionHeader({
                 aria-label="セクションのその他のアクション"
                 aria-haspopup="menu"
                 aria-expanded={sectionMenuId === sectionId}
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted transition-opacity hover:bg-neutral-200/70 hover:text-neutral-800 ${controlVisibility}`}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted transition-opacity hover:bg-neutral-200/70 hover:text-text ${controlVisibility}`}
               >
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
                   <circle cx="3" cy="8" r="1.3" />
@@ -158,7 +158,7 @@ export default function ListSectionHeader({
           )}
         </div>
       ) : (
-        <span className="text-[14px] leading-6 font-semibold text-neutral-900">{name}</span>
+        <span className="text-[14px] leading-6 font-semibold text-text">{name}</span>
       )}
       {groupBy !== "section" || group2 !== null ? (
         <span data-list-section-count={count} className="text-[13px] font-normal text-muted">

@@ -111,11 +111,11 @@ export default function FeedbackHost() {
         onClose={() => finish(false)}
         title={confirmRequest?.title ?? "確認"}
         backdropClassName="backdrop:bg-black/30"
-        panelClassName="w-[min(440px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl"
+        panelClassName="w-[min(440px,94vw)] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
       >
         <div className="p-5">
-          <div className="text-[14px] font-semibold text-neutral-900">{confirmRequest?.title ?? "確認"}</div>
-          <p data-confirm-message className="mt-2 whitespace-pre-wrap text-[13px] text-neutral-700">
+          <div className="text-[14px] font-semibold text-text">{confirmRequest?.title ?? "確認"}</div>
+          <p data-confirm-message className="mt-2 whitespace-pre-wrap text-[13px] text-secondary">
             {confirmRequest?.message}
           </p>
           <div className="mt-5 flex justify-end gap-2">
@@ -124,7 +124,7 @@ export default function FeedbackHost() {
               autoFocus
               data-confirm-cancel
               onClick={() => finish(false)}
-              className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+              className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-neutral-50"
             >
               {confirmRequest?.cancelLabel ?? "キャンセル"}
             </button>

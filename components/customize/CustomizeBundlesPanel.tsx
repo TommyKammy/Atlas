@@ -36,7 +36,7 @@ export default function CustomizeBundlesPanel({
       </div>
       <div className="mt-4 space-y-2">
         {bundles.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-neutral-200 px-4 py-8 text-center text-[13px] text-muted">
+          <div className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">
             利用できるバンドルはありません。
           </div>
         ) : (
@@ -44,12 +44,12 @@ export default function CustomizeBundlesPanel({
             <div
               key={bundle.id}
               data-customize-bundle={bundle.id}
-              className="rounded-lg border border-[#e1e1e1] bg-surface px-4 py-3"
+              className="rounded-lg border border-line bg-surface px-4 py-3"
             >
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[14px] font-medium text-neutral-900">{bundle.name}</span>
+                    <span className="text-[14px] font-medium text-text">{bundle.name}</span>
                     {bundle.applied && (
                       <span className="rounded-full bg-success-soft px-2 py-0.5 text-[11px] text-green-800">
                         適用済み

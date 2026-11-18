@@ -40,16 +40,16 @@ export default function RuleDraftList({ projectId }: { projectId: number }) {
   const current = state.projectId === projectId && state.generation === generation ? state : null;
   const loading = !current || current.status === "loading";
 
-  return <section aria-label="自分のルールの下書き" aria-busy={loading} data-rule-draft-list className="mt-4 space-y-3 rounded-lg border border-neutral-200 p-3">
-    <h3 className="text-[13px] font-semibold text-neutral-800">自分の下書き</h3>
+  return <section aria-label="自分のルールの下書き" aria-busy={loading} data-rule-draft-list className="mt-4 space-y-3 rounded-lg border border-line p-3">
+    <h3 className="text-[13px] font-semibold text-text">自分の下書き</h3>
     {loading ? <p role="status" className="text-[12px] text-secondary">下書きを読み込んでいます…</p>
       : current.status === "error" ? <div className="flex flex-wrap items-center gap-3">
         <p role="alert" className="text-[12px] text-rose-700">下書きを取得できませんでした。</p>
-        <button type="button" onClick={() => setGeneration((value) => value + 1)} className="rounded-md border border-line-strong px-3 py-1.5 text-[12px] text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">再読み込み</button>
+        <button type="button" onClick={() => setGeneration((value) => value + 1)} className="rounded-md border border-line-strong px-3 py-1.5 text-[12px] text-secondary hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">再読み込み</button>
       </div>
       : current.status === "ready" && (current.drafts.length === 0
         ? <p className="text-[12px] leading-5 text-secondary">保存済みの下書きはありません。編集画面で保存すると、ここから再開できます。</p>
-        : <ul className="divide-y divide-neutral-200 border-y border-neutral-200">
+        : <ul className="divide-y divide-line border-y border-line">
           {current.drafts.map((draft) => {
             const name = draft.name.trim() || "名前のないルール";
             const href = draft.rule_id === null
@@ -57,7 +57,7 @@ export default function RuleDraftList({ projectId }: { projectId: number }) {
               : `/projects/${projectId}/rules/${draft.rule_id}`;
             return <li key={draft.id} data-rule-draft-id={draft.id} className="flex min-w-0 items-center justify-between gap-3 py-3">
               <div className="min-w-0">
-                <p className="break-words text-[13px] font-medium text-neutral-800">{name}</p>
+                <p className="break-words text-[13px] font-medium text-text">{name}</p>
                 <p className="mt-1 text-[11px] text-secondary"><span>{draft.rule_id === null ? "未公開" : "未公開の変更"}</span><span className="mx-1.5" aria-hidden="true">·</span><time dateTime={draft.updated_at}>{updatedAtLabel(draft.updated_at)}</time> 更新</p>
               </div>
               <Link href={href} prefetch={false} aria-label={`${name}の編集を再開`} className="shrink-0 rounded-md px-2 py-1.5 text-[12px] font-medium text-blue-700 hover:bg-blue-50 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">再開</Link>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { ProjectKnowledge } from "@/lib/data";
 import type { TrashedKnowledge } from "@/lib/services/authorized-data";
 
-const button = "rounded-md border border-neutral-200 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50";
+const button = "rounded-md border border-line px-3 py-2 text-sm text-secondary hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50";
 
 export default function KnowledgeTrash({ projectId, onRestored, onBusyChange }: {
   projectId: number; onRestored: (note: ProjectKnowledge) => Promise<void>; onBusyChange: (busy: boolean) => void;
@@ -52,7 +52,7 @@ export default function KnowledgeTrash({ projectId, onRestored, onBusyChange }: 
     </div>}
     {!loaded && !error && <p role="status" className="py-8 text-sm text-secondary">ゴミ箱を読み込み中…</p>}
     {loaded && notes.length === 0 && <p className="py-12 text-sm text-secondary">ゴミ箱は空です。削除したノートはここから復元できます。</p>}
-    <ul className="mt-5 divide-y divide-neutral-200">
+    <ul className="mt-5 divide-y divide-line">
       {notes.map(note => <li key={note.id} className="flex items-center justify-between gap-4 py-4">
         <div className="min-w-0">
           <p className="break-words text-sm font-medium">{note.title}</p>

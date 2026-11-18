@@ -32,7 +32,7 @@ export default function CustomizeAppsPanel({
       </div>
       <div className="mt-4 space-y-2">
         {apps.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-neutral-200 px-4 py-8 text-center text-[13px] text-muted">
+          <div className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">
             連携中のアプリはありません。
           </div>
         ) : (
@@ -42,12 +42,12 @@ export default function CustomizeAppsPanel({
               <div
                 key={app.id}
                 data-customize-app={app.app_key}
-                className="rounded-lg border border-[#e1e1e1] bg-surface px-4 py-3"
+                className="rounded-lg border border-line bg-surface px-4 py-3"
               >
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[14px] font-medium text-neutral-900">
+                      <span className="text-[14px] font-medium text-text">
                         {definition?.name ?? app.app_key}
                       </span>
                       <span
@@ -73,7 +73,7 @@ export default function CustomizeAppsPanel({
                         type="button"
                         data-customize-app-toggle={app.id}
                         onClick={() => onToggle(app)}
-                        className="h-7 rounded-md border border-[#e1e1e1] px-2 text-[12px] text-neutral-700 hover:bg-neutral-50"
+                        className="h-7 rounded-md border border-line px-2 text-[12px] text-secondary hover:bg-neutral-50"
                       >
                         {app.enabled ? "無効化" : "有効化"}
                       </button>

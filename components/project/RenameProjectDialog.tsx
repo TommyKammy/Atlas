@@ -7,7 +7,7 @@ import Dialog from "../ui/Dialog";
 export const PROJECT_DIALOG_PRIMARY =
   "flex h-8 items-center rounded-md bg-[#4075cf] px-3 text-sm font-medium text-white hover:bg-[#3567b8] disabled:opacity-60";
 export const PROJECT_DIALOG_SECONDARY =
-  "flex h-8 items-center rounded-md border bg-surface px-3 text-sm text-neutral-700 hover:bg-neutral-50";
+  "flex h-8 items-center rounded-md border bg-surface px-3 text-sm text-secondary hover:bg-neutral-50";
 
 /** Rename project dialog. */
 export default function RenameProjectDialog({

@@ -64,12 +64,12 @@ export default function CarryoverDialog({
             既存の案件はすべてこの四半期に追加されています。
           </EmptyPanel>
         ) : (
-          <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200">
+          <ul className="divide-y divide-line rounded-lg border border-line">
             {carryovers.map((initiative) => (
               <li key={initiative.id} className="flex flex-wrap items-start justify-between gap-3 px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[13px] font-semibold text-neutral-900">{initiative.name}</span>
+                    <span className="text-[13px] font-semibold text-text">{initiative.name}</span>
                     {initiative.kind === "fixed" ? <Tag>全案に固定</Tag> : <Tag tone="blue">比較候補</Tag>}
                   </div>
                   <p className="mt-0.5 text-[11px] text-secondary">{initiative.expectedEffect}</p>

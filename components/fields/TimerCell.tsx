@@ -66,7 +66,7 @@ export default function TimerCell({
       >
         {isRunning ? "■" : "▶"}
       </button>
-      <span className="truncate text-[12px] tabular-nums text-neutral-700">
+      <span className="truncate text-[12px] tabular-nums text-secondary">
         {formatDuration(timerSeconds(value, now), field.config ?? {})}
       </span>
     </span>

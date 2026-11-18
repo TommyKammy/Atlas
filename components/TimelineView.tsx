@@ -941,14 +941,14 @@ function TimelineViewContent({
         {undatedOpen && (
           <aside
             data-timeline-drawer
-            className="sticky top-0 min-h-[calc(100vh-220px)] max-h-[calc(100vh-220px)] w-[340px] shrink-0 overflow-y-auto border-l border-neutral-200 bg-surface"
+            className="sticky top-0 min-h-[calc(100vh-220px)] max-h-[calc(100vh-220px)] w-[340px] shrink-0 overflow-y-auto border-l border-line bg-surface"
           >
-            <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
               <h2 className="text-[15px] font-semibold">日付なしのタスク</h2>
               <button
                 type="button"
                 onClick={() => setUndatedOpen(false)}
-                className="text-xl leading-none text-subtle hover:text-neutral-700"
+                className="text-xl leading-none text-subtle hover:text-secondary"
                 aria-label="閉じる"
               >
                 ×
@@ -970,7 +970,7 @@ function TimelineViewContent({
                   </button>
                 ))
               )}
-              <div className="mt-4 border-t border-neutral-100 pt-3 text-xs font-medium text-muted">
+              <div className="mt-4 border-t border-line-subtle pt-3 text-xs font-medium text-muted">
                 このプロジェクト内のタスク
               </div>
               {visibleTasks.map((t) => (

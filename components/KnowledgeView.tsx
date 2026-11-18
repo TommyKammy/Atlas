@@ -21,7 +21,7 @@ const templates = [
 ];
 type History = { revision: number; title: string; saved_at: string };
 const date = (value: string) => new Date(value).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-const button = "rounded-md border border-neutral-200 px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50";
+const button = "rounded-md border border-line px-3 py-2 text-xs text-secondary hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50";
 
 export default function KnowledgeView({ projectId, initial, canEdit = false, initialNoteId, viewerId }: {
   projectId: number; initial: ProjectKnowledge[]; canEdit?: boolean; initialNoteId?: number; viewerId: number;
@@ -138,7 +138,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
   };
   const links = notes.map(note => ({ title: note.title, href: `/projects/${projectId}?view=knowledge&note=${note.id}` }));
 
-  return <div data-knowledge className="px-4 pb-12 text-neutral-900">
+  return <div data-knowledge className="px-4 pb-12 text-text">
     <ProjectViewToolbar className="mb-5 justify-between">
       {canEdit && <>
         <ViewAddButton data-knowledge-new disabled={busy} onClick={() => create()}>ノートを追加</ViewAddButton>
@@ -149,7 +149,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
       </>}
     </ProjectViewToolbar>
     {error && <p role="alert" className="mb-4 rounded-md bg-danger-soft p-3 text-sm text-red-700">{error}</p>}
-    {notice && <p role="status" className="mb-4 text-sm text-neutral-700">{notice}</p>}
+    {notice && <p role="status" className="mb-4 text-sm text-secondary">{notice}</p>}
     {trashOpen ? <KnowledgeTrash projectId={projectId} onBusyChange={setBusy} onRestored={async note => {
       setNotice(`「${note.title}」を復元しました`);
       try { await refreshNotes(note); }
@@ -157,7 +157,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
       setTrashOpen(false);
     }} /> : <>
     <div className="grid min-w-0 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-      <aside aria-label="ノート一覧" className={`${editing ? "hidden lg:block" : ""} min-w-0 border-b border-neutral-200 pb-4 lg:border-r lg:border-b-0 lg:pr-5`}>
+      <aside aria-label="ノート一覧" className={`${editing ? "hidden lg:block" : ""} min-w-0 border-b border-line pb-4 lg:border-r lg:border-b-0 lg:pr-5`}>
         <label className="sr-only" htmlFor="knowledge-search">ノートを検索</label>
         <input id="knowledge-search" type="search" value={search} maxLength={300} onChange={event => { searchRef.current = event.target.value; setSearch(event.target.value); setResults(null); setSearchMore(false); setError(""); }} placeholder="タイトル・本文を検索" className="mb-3 w-full rounded-md border border-line-strong px-3 py-2 text-sm placeholder:text-neutral-600 focus:outline-blue-600" />
         <p className="mb-2 text-xs text-secondary">{search && results === null ? "検索中…" : `${filtered.length} 件${(search ? searchMore : hasMore) ? "以上" : ""}のノート`}</p>
@@ -167,10 +167,10 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
         <p role="status" aria-live="polite" data-note-order-status className="mt-1 text-xs text-secondary">{orderStatus}</p>
         {(search ? searchMore : hasMore) && <button disabled={busy} className={`${button} mt-3 w-full`} onClick={loadMore}>さらに読み込む</button>}
         {filtered.length === 0 && <p className="py-4 text-sm text-secondary">{search ? "一致するノートがありません" : "ノートはまだありません"}</p>}
-        {canEdit && <div className="mt-5 border-t border-neutral-200 pt-4">
+        {canEdit && <div className="mt-5 border-t border-line pt-4">
           <p className="mb-2 text-xs font-medium text-secondary">テンプレートから作成</p>
           <div className="flex flex-wrap gap-2 lg:flex-col">
-            {templates.map(template => <button key={template.name} disabled={busy} onClick={() => create(template.body)} className="rounded px-2 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100">＋ {template.name}</button>)}
+            {templates.map(template => <button key={template.name} disabled={busy} onClick={() => create(template.body)} className="rounded px-2 py-2 text-left text-sm text-secondary hover:bg-neutral-100">＋ {template.name}</button>)}
           </div>
         </div>}
       </aside>
@@ -180,7 +180,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
           const url = new URL(window.location.href); url.searchParams.set("note", String(note.id));
           window.history.replaceState(null, "", url);
         }}>{(aiTrigger, aiPanel) => <>
-          <div data-knowledge-toolbar className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-4">
+          <div data-knowledge-toolbar className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
             <span className="text-xs text-secondary">{selected.author_name ?? "メンバー"} · {date(selected.updated_at)} 更新</span>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2">
@@ -202,11 +202,11 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
           </div>
           <div className={`grid min-w-0 items-start gap-6 ${aiPanel ? "xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]" : ""}`}>
           <div className="min-w-0 max-w-4xl" data-knowledge-document-column>
-          {history && <div className="mb-6 rounded-md border border-neutral-200 p-4" data-knowledge-history>
+          {history && <div className="mb-6 rounded-md border border-line p-4" data-knowledge-history>
             <h3 className="text-sm font-semibold">保存履歴</h3>
             <p className="mt-1 text-xs text-secondary">直近50件と初版。復元前の内容も履歴に残ります。</p>
             {history.length === 0 && <p className="mt-3 text-sm text-secondary">以前の保存内容はありません。</p>}
-            <ul className="mt-3 max-h-60 overflow-auto divide-y divide-neutral-100">
+            <ul className="mt-3 max-h-60 overflow-auto divide-y divide-line-subtle">
               {history.map(item => <li key={item.revision} className="flex items-center justify-between gap-2 py-2 text-xs"><span className="min-w-0 break-words">{date(item.saved_at)} · {item.title} {item.revision === 0 ? "（初版）" : ""}</span>
                 {canEdit && <button className={button} disabled={busy} onClick={() => void action(async () => {
                   if (!await confirmAction("この履歴の内容に復元しますか？現在の内容は履歴に残ります。")) return;

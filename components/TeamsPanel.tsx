@@ -148,7 +148,7 @@ export default function TeamsPanel({
         </button>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">
+      <div className="mt-4 overflow-x-auto rounded-lg border border-line">
         <div className="min-w-[720px]">
           <div className="grid grid-cols-[minmax(200px,1.4fr)_140px_120px_150px_120px] gap-3 border-b bg-surface-subtle px-4 py-2 text-xs font-semibold text-muted">
             <span>チーム</span>

@@ -59,7 +59,7 @@ export default function StatusUpdatesWidget({
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex items-center gap-2 border-b border-line-subtle px-4 py-1.5">
         <span className="text-[11px] text-subtle">プロジェクトの最新状況</span>
         <span className="flex-1" />
         <button
@@ -95,7 +95,7 @@ export default function StatusUpdatesWidget({
             <div
               key={update.id}
               data-home-status-update={update.id}
-              className="border-b border-neutral-100 px-4 py-2.5 last:border-b-0"
+              className="border-b border-line-subtle px-4 py-2.5 last:border-b-0"
             >
               <div className="flex items-center gap-2">
                 <ProjectIcon
@@ -107,7 +107,7 @@ export default function StatusUpdatesWidget({
                 />
                 <Link
                   href={`/projects/${update.project_id}?view=overview`}
-                  className="min-w-0 truncate text-[12px] font-medium text-neutral-800 hover:underline"
+                  className="min-w-0 truncate text-[12px] font-medium text-text hover:underline"
                 >
                   {update.project_name}
                 </Link>
@@ -121,7 +121,7 @@ export default function StatusUpdatesWidget({
                   {formatDateTime(update.created_at)}
                 </span>
               </div>
-              <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[12px] leading-5 text-neutral-700">
+              <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[12px] leading-5 text-secondary">
                 {update.body}
               </p>
               <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-subtle">
@@ -145,7 +145,7 @@ export default function StatusUpdatesWidget({
         titleId="home-status-update-title"
       >
         <div className="p-5">
-          <h2 id="home-status-update-title" className="text-[15px] font-semibold text-neutral-800">
+          <h2 id="home-status-update-title" className="text-[15px] font-semibold text-text">
             プロジェクトのステータスを更新
           </h2>
           <div className="mt-3 space-y-2">
@@ -155,7 +155,7 @@ export default function StatusUpdatesWidget({
                 data-home-status-project
                 value={projectId}
                 onChange={(event) => setProjectId(event.target.value)}
-                className="mt-1 w-full rounded border border-neutral-200 px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded border border-line px-2 py-1.5 text-sm"
               >
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
@@ -170,7 +170,7 @@ export default function StatusUpdatesWidget({
                 data-home-status-value
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
-                className="mt-1 w-full rounded border border-neutral-200 px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded border border-line px-2 py-1.5 text-sm"
               >
                 {PROJECT_STATUS_OPTIONS.map((option) => (
                   <option key={option.label} value={option.label}>
@@ -196,7 +196,7 @@ export default function StatusUpdatesWidget({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+              className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-neutral-50"
             >
               キャンセル
             </button>

@@ -40,12 +40,12 @@ export function RuleActionFields({ action, descriptors, projectId, onChange, tri
         options={field.field_type === "select" ? field.options.map((option) => ({ value: option, label: option })) : undefined} />;
     }
     return <div className="space-y-1">{editor}<button type="button" onClick={() => update(null)}
-      className="text-[11px] text-muted hover:text-neutral-800">値をクリア</button>
+      className="text-[11px] text-muted hover:text-text">値をクリア</button>
       {value === null && <p className="text-[11px] text-muted">実行すると値をクリアします。</p>}</div>;
   }
   return (
     <div className="space-y-4" data-rule-action-fields>
-      <label className="block text-[12px] font-medium text-neutral-700">アクション
+      <label className="block text-[12px] font-medium text-secondary">アクション
         <select className={`${ruleInputClass} mt-1`} value={action.capability}
           onChange={(event) => onChange(changeRuleActionCapability(action, event.target.value))}>
           {!descriptor && <option value={action.capability}>{action.capability ? "保存済みのアクション" : "アクションを選択"}</option>}
@@ -72,7 +72,7 @@ export function RuleActionFields({ action, descriptors, projectId, onChange, tri
             placeholder={action.webhookActionId && value === undefined ? "保存済みの署名キーを使用" : param.placeholder} />
           {action.webhookActionId && <p className="text-[11px] text-muted">入力しなければ、同じURLの署名キーを保持します。</p>}
           <div className="flex gap-3 text-[11px]">
-            <button type="button" onClick={() => change(param.name, "")} className="text-muted hover:text-neutral-800">署名キーを削除</button>
+            <button type="button" onClick={() => change(param.name, "")} className="text-muted hover:text-text">署名キーを削除</button>
             {value !== undefined && action.webhookActionId && <button type="button" onClick={() => change(param.name, undefined)}
               className="text-[#365fa6]">保存済みのキーを使う</button>}
           </div>

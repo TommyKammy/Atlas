@@ -204,11 +204,11 @@ export default function AutomationRuleBuilder({
       open
       onClose={onClose}
       title={rule ? "ルールを編集" : "ルールを作成"}
-      panelClassName="flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl"
+      panelClassName="flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
     >
-      <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+      <div className="flex items-center justify-between border-b border-line-subtle px-5 py-4">
         <div>
-          <h3 className="text-[17px] font-semibold text-neutral-900">
+          <h3 className="text-[17px] font-semibold text-text">
             {rule ? "ルールを編集" : "ルールを作成"}
           </h3>
           <p className="mt-0.5 text-[11px] text-muted">
@@ -246,7 +246,7 @@ export default function AutomationRuleBuilder({
           </div>
           {suggestion && (
             <div className="mt-3 rounded-md border border-[#dbe7fb] bg-surface p-3 text-[12px]" role="status">
-              <p className="font-medium text-neutral-800">AIの提案: {suggestion.name}</p>
+              <p className="font-medium text-text">AIの提案: {suggestion.name}</p>
               <p className="mt-1 text-muted">{suggestion.description}</p>
               <p className="mt-1 text-[11px] text-muted">適用すると、現在のトリガー・条件・アクション・分岐を提案全体で置き換えます。</p>
               <button type="button" disabled={busy} onClick={() => {
@@ -281,7 +281,7 @@ export default function AutomationRuleBuilder({
 
         <section className="mt-5">
           <div className="flex items-center justify-between">
-            <h4 className="text-[12px] font-semibold text-neutral-800">
+            <h4 className="text-[12px] font-semibold text-text">
               トリガー <span className="text-subtle">({triggers.length})</span>
             </h4>
             <button
@@ -301,7 +301,7 @@ export default function AutomationRuleBuilder({
               return (
                 <div
                   key={`trigger-${index}`}
-                  className="flex flex-wrap items-end gap-2 rounded-lg border border-neutral-200 bg-surface p-2.5"
+                  className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-surface p-2.5"
                 >
                   <label className="min-w-[220px] flex-1 text-[11px] text-secondary">
                     きっかけ
@@ -363,7 +363,7 @@ export default function AutomationRuleBuilder({
 
         <section className="mt-5">
           <div className="flex items-center justify-between">
-            <h4 className="text-[12px] font-semibold text-neutral-800">
+            <h4 className="text-[12px] font-semibold text-text">
               条件（すべて満たす） <span className="text-subtle">({conditions.length})</span>
             </h4>
             <button
@@ -375,7 +375,7 @@ export default function AutomationRuleBuilder({
             </button>
           </div>
           {conditions.length === 0 ? (
-            <p className="mt-2 rounded-md border border-dashed border-neutral-200 px-3 py-2 text-[11px] text-subtle">
+            <p className="mt-2 rounded-md border border-dashed border-line px-3 py-2 text-[11px] text-subtle">
               条件なしで、トリガー発生時に毎回実行します。
             </p>
           ) : (
@@ -388,7 +388,7 @@ export default function AutomationRuleBuilder({
                 return (
                   <div
                     key={`condition-${index}`}
-                    className="grid grid-cols-1 gap-2 rounded-lg border border-neutral-200 bg-surface p-2.5 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
+                    className="grid grid-cols-1 gap-2 rounded-lg border border-line bg-surface p-2.5 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
                   >
                     <label className="text-[11px] text-secondary">
                       フィールド
@@ -506,7 +506,7 @@ export default function AutomationRuleBuilder({
           )}
         </section>
 
-        <label className="mt-5 flex items-center gap-2 text-[12px] font-medium text-neutral-700">
+        <label className="mt-5 flex items-center gap-2 text-[12px] font-medium text-secondary">
           <input
             type="checkbox"
             checked={useBranches}
@@ -521,7 +521,7 @@ export default function AutomationRuleBuilder({
             {branches.map((branch, branchIndex) => (
               <div
                 key={`branch-${branchIndex}`}
-                className="rounded-lg border border-neutral-200 bg-surface p-3"
+                className="rounded-lg border border-line bg-surface p-3"
               >
                 <div className="flex flex-wrap items-end gap-2">
                   <label className="min-w-[180px] flex-1 text-[11px] text-secondary">
@@ -603,7 +603,7 @@ export default function AutomationRuleBuilder({
                         return (
                           <div
                             key={`branch-${branchIndex}-condition-${conditionIndex}`}
-                            className="grid grid-cols-1 gap-1.5 rounded border border-neutral-100 bg-surface-subtle p-2 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
+                            className="grid grid-cols-1 gap-1.5 rounded border border-line-subtle bg-surface-subtle p-2 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
                           >
                             <select
                               value={condition.field}
@@ -790,7 +790,7 @@ export default function AutomationRuleBuilder({
         {!useBranches && (
         <section className="mt-5">
           <div className="flex items-center justify-between">
-            <h4 className="text-[12px] font-semibold text-neutral-800">
+            <h4 className="text-[12px] font-semibold text-text">
               アクション <span className="text-subtle">({actions.length})</span>
             </h4>
             <button
@@ -830,11 +830,11 @@ export default function AutomationRuleBuilder({
         </div>
       </div>
 
-      <div className="flex shrink-0 justify-end gap-2 border-t border-neutral-100 px-5 py-3">
+      <div className="flex shrink-0 justify-end gap-2 border-t border-line-subtle px-5 py-3">
         <button
           type="button"
           onClick={onClose}
-          className="h-8 rounded-md border border-neutral-200 px-3 text-[12px] text-neutral-700 hover:bg-neutral-50"
+          className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-neutral-50"
         >
           キャンセル
         </button>

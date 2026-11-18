@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
+  colorConflictProperty,
   colorProperty,
   findTokenVariantConflicts,
   isSemanticTokenColor,
@@ -217,6 +218,13 @@ test("classifies only color utilities of the expected property", () => {
   assert.equal(colorProperty("border-2"), null);
   assert.equal(colorProperty("bg-gradient-to-r"), null);
   assert.equal(colorProperty("bg-[length:20px]"), null);
+  assert.equal(colorConflictProperty("text-red-600"), "text");
+  assert.equal(colorConflictProperty("bg-surface"), "bg");
+  assert.equal(colorConflictProperty("border-line"), "border");
+  assert.equal(colorConflictProperty("border-t-line"), "border-t");
+  assert.equal(colorConflictProperty("border-x-neutral-200"), "border-x");
+  assert.equal(colorConflictProperty("border-[#e1e1e1]"), "border");
+  assert.equal(colorConflictProperty("text-[13px]"), null);
 });
 
 test("splits stacked variants and keeps arbitrary variant colons intact", () => {
@@ -253,16 +261,70 @@ test("detects a base token next to a legacy class with a dark override (legacy-o
   ]);
 });
 
-test("does not report legacy/legacy, token/token, or mutually exclusive branches", () => {
+test("detects two base color classes of the same property when one is a token (same-property-overlap)", () => {
+  assert.deepEqual(findings('<button className="text-secondary text-rose-600" />'), [
+    { kind: "same-property-overlap", conflict: "text-rose-600", token: "text-secondary" },
+  ]);
+  assert.deepEqual(findings('<button className="text-rose-600 text-secondary" />'), [
+    { kind: "same-property-overlap", conflict: "text-rose-600", token: "text-secondary" },
+  ]);
+  // token/token is also order-dependent once one of them moves to the token layer.
+  assert.deepEqual(findings('<div className="text-secondary text-text" />'), [
+    { kind: "same-property-overlap", conflict: "text-text", token: "text-secondary" },
+  ]);
+  assert.deepEqual(findings('<div className="border-line border-rose-300" />'), [
+    { kind: "same-property-overlap", conflict: "border-rose-300", token: "border-line" },
+  ]);
+  assert.deepEqual(findings('<div className="bg-surface bg-accent-soft" />'), [
+    { kind: "same-property-overlap", conflict: "bg-surface", token: "bg-accent-soft" },
+  ]);
+  // A base class inherited from a same-file constant is part of the class set.
+  const source = [
+    'const buttonClass = "border-line text-secondary";',
+    "export function Actions() {",
+    '  return <button className={`${buttonClass} text-rose-600`}>削除</button>;',
+    "}",
+  ].join("\n");
+  assert.deepEqual(findings(source), [
+    { kind: "same-property-overlap", conflict: "text-rose-600", token: "text-secondary" },
+  ]);
+});
+
+test("detects a token added conditionally to a base color class", () => {
+  assert.deepEqual(findings('<div className={`text-secondary ${cond && "text-text"}`} />'), [
+    { kind: "same-property-overlap", conflict: "text-text", token: "text-secondary" },
+  ]);
+});
+
+test("does not report same-property overlaps across mutually exclusive branches", () => {
+  assert.deepEqual(findings('<div className={on ? "text-muted" : "text-danger"} />'), []);
+  assert.deepEqual(findings('<div className={on ? "text-muted" : cond ? "text-danger" : ""} />'), []);
+  assert.deepEqual(findings('<div className="text-muted" />'), []);
+});
+
+test("does not report legacy/legacy, direction-specific, or non-color overlaps", () => {
   assert.deepEqual(findings('<a className="text-neutral-500 text-neutral-700" />'), []);
-  assert.deepEqual(findings('<div className="text-muted text-secondary" />'), []);
+  assert.deepEqual(findings('<div className="text-muted text-neutral-700" />'), [
+    { kind: "legacy-overlap", conflict: "text-neutral-700", token: "text-muted" },
+  ]);
+  // `border-t-line` sets border-top-color, a different longhand; it is an
+  // intentional per-side override of `border-line`, so it is not an overlap.
+  assert.deepEqual(findings('<div className="border-line border-t-line" />'), []);
+  assert.deepEqual(findings('<div className="border-t-line border-t-rose-600" />'), [
+    { kind: "same-property-overlap", conflict: "border-t-rose-600", token: "border-t-line" },
+  ]);
+  // text-[13px] is a size, not a color.
+  assert.deepEqual(findings('<div className="text-[13px] text-secondary" />'), []);
   assert.deepEqual(findings('<div className={open ? "text-muted" : "text-neutral-700"} />'), []);
 });
 
 test("matches the dark override property, not just the class name", () => {
-  // bg-violet-400 has a dark override only for color (avatar initials), so it
-  // does not compete with a background token.
-  assert.deepEqual(findings('<div className="bg-surface bg-violet-400" />'), []);
+  // bg-violet-400 has a dark override only for color (avatar initials), so
+  // legacy-overlap does not report it. It is still a second background color,
+  // so same-property-overlap reports it against the background token.
+  assert.deepEqual(findings('<div className="bg-surface bg-violet-400" />'), [
+    { kind: "same-property-overlap", conflict: "bg-violet-400", token: "bg-surface" },
+  ]);
   assert.deepEqual(findings('<div className="text-muted text-blue-700" />'), [
     { kind: "legacy-overlap", conflict: "text-blue-700", token: "text-muted" },
   ]);

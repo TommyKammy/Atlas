@@ -25,7 +25,7 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
 
   return (
     <>
-      <div className="flex items-center gap-1 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex items-center gap-1 border-b border-line-subtle px-4 py-1.5">
         <button
           type="button"
           onClick={() => setTab("saved")}
@@ -54,19 +54,19 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 border-b border-neutral-100 px-4 py-2 text-center">
+      <div className="grid grid-cols-3 gap-2 border-b border-line-subtle px-4 py-2 text-center">
         <div>
-          <div className="text-[16px] font-semibold text-neutral-800">{scoped.length}</div>
+          <div className="text-[16px] font-semibold text-text">{scoped.length}</div>
           <div className="text-[10px] text-subtle">プロジェクト</div>
         </div>
         <div>
-          <div className="text-[16px] font-semibold text-neutral-800">{pct}%</div>
+          <div className="text-[16px] font-semibold text-text">{pct}%</div>
           <div className="text-[10px] text-subtle">完了率</div>
         </div>
         <div>
           <div
             className={`text-[16px] font-semibold ${
-              totals.overdue > 0 ? "text-danger" : "text-neutral-800"
+              totals.overdue > 0 ? "text-danger" : "text-text"
             }`}
           >
             {totals.overdue}
@@ -106,7 +106,7 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
                     className="h-6 w-6 text-[10px]"
                   />
                   <span className="min-w-0">
-                    <span className="block truncate text-[13px] font-medium text-neutral-800">
+                    <span className="block truncate text-[13px] font-medium text-text">
                       {project.name}
                     </span>
                     <span className="block truncate text-[10px] text-subtle">
@@ -136,8 +136,8 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
         )}
       </div>
 
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/portfolio" className="text-[12px] text-muted hover:text-neutral-800">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right">
+        <Link href="/portfolio" className="text-[12px] text-muted hover:text-text">
           ポートフォリオをすべて表示
         </Link>
       </div>
