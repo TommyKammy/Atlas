@@ -111,7 +111,7 @@ export default function FeedbackHost() {
         onClose={() => finish(false)}
         title={confirmRequest?.title ?? "確認"}
         backdropClassName="backdrop:bg-black/30"
-        panelClassName="w-[min(440px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
+        panelClassName="w-[min(440px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-surface shadow-2xl"
       >
         <div className="p-5">
           <div className="text-[14px] font-semibold text-neutral-900">{confirmRequest?.title ?? "確認"}</div>
@@ -132,7 +132,7 @@ export default function FeedbackHost() {
               type="button"
               data-confirm-ok
               onClick={() => finish(true)}
-              className="rounded-md bg-[#2c60b8] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#24529c]"
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-[#24529c]"
             >
               {confirmRequest?.confirmLabel ?? "OK"}
             </button>

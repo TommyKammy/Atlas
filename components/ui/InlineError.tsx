@@ -15,7 +15,7 @@ export default function InlineError({
     <div
       role="alert"
       data-inline-error
-      className={`flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700 ${className}`}
+      className={`flex items-start gap-2 rounded-md border border-red-200 bg-danger-soft px-3 py-2 text-[12px] text-red-700 ${className}`}
     >
       <span className="min-w-0 flex-1">{message}</span>
       {onDismiss && (

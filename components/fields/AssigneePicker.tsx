@@ -98,19 +98,19 @@ export default function AssigneePicker({
                 onCancel();
               }
             }}
-            className="fixed z-[140] overflow-hidden rounded-lg border border-[#e1e1e1] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+            className="fixed z-[140] overflow-hidden rounded-lg border border-[#e1e1e1] bg-surface shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
             style={{
               left: position.left,
               width: position.width,
               ...(position.top !== undefined ? { top: position.top } : { bottom: position.bottom }),
             }}
           >
-            <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-neutral-500">
+            <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-muted">
               おすすめのユーザー
             </div>
             <div role="listbox" aria-label="おすすめのユーザー" className="max-h-[260px] overflow-y-auto pb-1">
               {filtered.length === 0 ? (
-                <div className="px-3 py-3 text-[12px] text-neutral-400">該当するユーザーがいません</div>
+                <div className="px-3 py-3 text-[12px] text-subtle">該当するユーザーがいません</div>
               ) : (
                 filtered.map((user) => (
                   <button
@@ -133,12 +133,12 @@ export default function AssigneePicker({
                       <span className="flex min-w-0 items-center gap-1">
                         <span className="truncate text-[13px] font-medium text-neutral-800">{user.name}</span>
                         {user.is_guest && (
-                          <span className="shrink-0 rounded bg-neutral-100 px-1 text-[10px] text-neutral-500">ゲスト</span>
+                          <span className="shrink-0 rounded bg-surface-muted px-1 text-[10px] text-muted">ゲスト</span>
                         )}
-                        {user.id === currentId && <span className="shrink-0 text-[11px] text-[#2c60b8]">✓</span>}
+                        {user.id === currentId && <span className="shrink-0 text-[11px] text-accent-text">✓</span>}
                       </span>
                       {user.email && (
-                        <span className="block truncate text-[11px] text-neutral-500">{user.email}</span>
+                        <span className="block truncate text-[11px] text-muted">{user.email}</span>
                       )}
                     </span>
                   </button>
@@ -151,11 +151,11 @@ export default function AssigneePicker({
                 data-assignee-unassign
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => onPick(null)}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-neutral-600 hover:bg-neutral-100"
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-secondary hover:bg-neutral-100"
               >
                 <EmptyCellIcon kind="assignee" />
                 <span className="flex-1">未割り当て</span>
-                {currentId === null && <span className="text-[11px] text-[#2c60b8]">✓</span>}
+                {currentId === null && <span className="text-[11px] text-accent-text">✓</span>}
               </button>
             </div>
           </div>

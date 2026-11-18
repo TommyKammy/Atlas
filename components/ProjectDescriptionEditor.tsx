@@ -55,7 +55,7 @@ export default function ProjectDescriptionEditor({
               setValue(initial);
               setEditing(true);
             }}
-            className="text-[12px] text-neutral-500 hover:underline"
+            className="text-[12px] text-muted hover:underline"
           >
             編集
           </button>
@@ -75,7 +75,7 @@ export default function ProjectDescriptionEditor({
             <button
               type="button"
               onClick={() => setEditing(false)}
-              className="rounded px-3 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
+              className="rounded px-3 py-1 text-sm text-secondary hover:bg-neutral-100"
             >
               キャンセル
             </button>
@@ -114,7 +114,7 @@ export default function ProjectDescriptionEditor({
             setValue("");
             setEditing(true);
           }}
-          className="mt-2 w-full rounded-md border border-dashed border-neutral-200 px-3 py-4 text-left text-sm text-neutral-500 hover:bg-neutral-50 disabled:cursor-default"
+          className="mt-2 w-full rounded-md border border-dashed border-neutral-200 px-3 py-4 text-left text-sm text-muted hover:bg-neutral-50 disabled:cursor-default"
         >
           プロジェクトの説明を追加
         </button>

@@ -81,12 +81,12 @@ export default function Shortcuts({ projectId }: { projectId: number }) {
   if (!help) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setHelp(false)}>
-      <div className="w-[28rem] max-w-[90vw] rounded-lg bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-[28rem] max-w-[90vw] rounded-lg bg-surface p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-bold">キーボードショートカット</h2>
         <div className="mt-3 space-y-2 text-sm">
           {HELP.map(([k, desc]) => (
             <div key={k} className="flex gap-3">
-              <kbd className="shrink-0 rounded border bg-neutral-100 px-1.5 py-0.5 font-mono text-xs">{k}</kbd>
+              <kbd className="shrink-0 rounded border bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{k}</kbd>
               <span className="text-neutral-700">{desc}</span>
             </div>
           ))}

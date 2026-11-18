@@ -160,12 +160,12 @@ function MenuItem({
           : "text-neutral-700 hover:bg-neutral-100 disabled:text-neutral-300"
       }`}
     >
-      <span className="w-4 shrink-0 text-neutral-400">
+      <span className="w-4 shrink-0 text-subtle">
         <MenuIcon name={icon} />
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {checked && <span className="text-[12px] text-[#2c60b8]">✓</span>}
-      {hasSubmenu && <span className="text-[12px] text-neutral-400">›</span>}
+      {checked && <span className="text-[12px] text-accent-text">✓</span>}
+      {hasSubmenu && <span className="text-[12px] text-subtle">›</span>}
     </button>
   );
 }
@@ -450,7 +450,7 @@ export default function ProjectTaskContextMenu({
             ref={menuRef}
             role="menu"
             data-task-context-menu
-            className="fixed z-[170] w-[292px] rounded-lg border border-neutral-200 bg-white py-1 text-[13px] shadow-2xl"
+            className="fixed z-[170] w-[292px] rounded-lg border border-neutral-200 bg-surface py-1 text-[13px] shadow-2xl"
             style={{ left, top }}
           >
             {canEdit && (
@@ -495,7 +495,7 @@ export default function ProjectTaskContextMenu({
                     >
                       <div
                         role="menu"
-                        className="w-[190px] rounded-lg border border-neutral-200 bg-white py-1 shadow-xl"
+                        className="w-[190px] rounded-lg border border-neutral-200 bg-surface py-1 shadow-xl"
                       >
                         <MenuItem
                           icon="complete"
@@ -565,11 +565,11 @@ export default function ProjectTaskContextMenu({
           open
           onClose={() => setSubtaskFor(null)}
           title="サブタスクを追加"
-          panelClassName="w-[min(460px,94vw)] rounded-xl border border-neutral-200 bg-white shadow-2xl"
+          panelClassName="w-[min(460px,94vw)] rounded-xl border border-neutral-200 bg-surface shadow-2xl"
         >
           <div className="p-5">
             <h3 className="text-[15px] font-semibold text-neutral-900">サブタスクを追加</h3>
-            <p className="mt-1 text-[11px] text-neutral-500">{subtaskFor.name}</p>
+            <p className="mt-1 text-[11px] text-muted">{subtaskFor.name}</p>
             <input
               autoFocus
               value={subtaskName}
@@ -594,7 +594,7 @@ export default function ProjectTaskContextMenu({
                 type="button"
                 onClick={() => void createSubtask()}
                 disabled={busy || subtaskName.trim() === ""}
-                className="h-8 rounded-md bg-[#2c60b8] px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
               >
                 {busy ? "追加中…" : "追加"}
               </button>
@@ -608,11 +608,11 @@ export default function ProjectTaskContextMenu({
           open
           onClose={() => setConvertFor(null)}
           title="サブタスクに変換"
-          panelClassName="w-[min(460px,94vw)] rounded-xl border border-neutral-200 bg-white shadow-2xl"
+          panelClassName="w-[min(460px,94vw)] rounded-xl border border-neutral-200 bg-surface shadow-2xl"
         >
           <div className="p-5">
             <h3 className="text-[15px] font-semibold text-neutral-900">サブタスクに変換</h3>
-            <p className="mt-1 text-[11px] text-neutral-500">{convertFor.name}</p>
+            <p className="mt-1 text-[11px] text-muted">{convertFor.name}</p>
             <select
               value={parentId}
               onChange={(event) => setParentId(event.target.value)}
@@ -638,7 +638,7 @@ export default function ProjectTaskContextMenu({
                 type="button"
                 onClick={() => void convertToSubtask()}
                 disabled={busy || parentId === ""}
-                className="h-8 rounded-md bg-[#2c60b8] px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
               >
                 {busy ? "変換中…" : "変換"}
               </button>

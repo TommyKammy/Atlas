@@ -178,7 +178,7 @@ export default function DueDatePicker({
 
   return (
     <span ref={rootRef} data-due-picker className="relative z-[140] min-w-0">
-      <span className="flex h-8 w-full min-w-0 items-center truncate rounded border border-blue-500 bg-white px-2 text-[12px] text-neutral-700">
+      <span className="flex h-8 w-full min-w-0 items-center truncate rounded border border-blue-500 bg-surface px-2 text-[12px] text-neutral-700">
         {rangeText || "期日"}
       </span>
       {position && (
@@ -194,7 +194,7 @@ export default function DueDatePicker({
                 close();
               }
             }}
-            className="fixed z-[140] w-[308px] rounded-lg border border-[#e1e1e1] bg-white p-3 shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+            className="fixed z-[140] w-[308px] rounded-lg border border-[#e1e1e1] bg-surface p-3 shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
             style={{
               left: position.left,
               ...(position.top !== undefined ? { top: position.top } : { bottom: position.bottom }),
@@ -272,7 +272,7 @@ export default function DueDatePicker({
                 type="button"
                 aria-label="前月"
                 onClick={() => setViewMonth((current) => shiftMonthISO(current, -1))}
-                className="flex h-7 w-7 items-center justify-center rounded text-neutral-500 hover:bg-neutral-100"
+                className="flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-neutral-100"
               >
                 ‹
               </button>
@@ -281,12 +281,12 @@ export default function DueDatePicker({
                 type="button"
                 aria-label="翌月"
                 onClick={() => setViewMonth((current) => shiftMonthISO(current, 1))}
-                className="flex h-7 w-7 items-center justify-center rounded text-neutral-500 hover:bg-neutral-100"
+                className="flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-neutral-100"
               >
                 ›
               </button>
             </div>
-            <div className="mt-2 grid grid-cols-7 gap-2 text-center text-[10px] text-neutral-500">
+            <div className="mt-2 grid grid-cols-7 gap-2 text-center text-[10px] text-muted">
               {WEEKDAY_LABELS.map((label) => (
                 <span key={label} className="flex h-4 items-center justify-center">
                   {label}
@@ -308,12 +308,12 @@ export default function DueDatePicker({
                     onClick={() => pickDay(iso)}
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-[12px] ${
                       selected
-                        ? "bg-[#2c60b8] font-medium text-white"
+                        ? "bg-accent font-medium text-white"
                         : inRange
-                          ? "bg-[#e8f0fe] text-[#2c60b8]"
+                          ? "bg-[#e8f0fe] text-accent-text"
                           : inMonth
                             ? "text-neutral-700 hover:bg-neutral-100"
-                            : "text-neutral-400 hover:bg-neutral-100"
+                            : "text-subtle hover:bg-neutral-100"
                     } ${!selected && isToday ? "ring-1 ring-[#2c60b8]" : ""}`}
                   >
                     {Number(iso.slice(8, 10))}
@@ -322,12 +322,12 @@ export default function DueDatePicker({
               })}
             </div>
             <div className="mt-2 flex items-center justify-between border-t border-neutral-200 pt-2">
-              <span className="text-[11px] text-neutral-400">期間を選択</span>
+              <span className="text-[11px] text-subtle">期間を選択</span>
               <button
                 type="button"
                 data-due-clear
                 onClick={clearRange}
-                className="rounded px-2 py-1 text-[12px] text-neutral-600 hover:bg-neutral-100"
+                className="rounded px-2 py-1 text-[12px] text-secondary hover:bg-neutral-100"
               >
                 クリア
               </button>

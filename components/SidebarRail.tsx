@@ -127,7 +127,7 @@ export default function SidebarRail({
               data-sidebar-flyout={item.href}
               className={`${FLYOUT_PANEL} ${collapsed && openHref === item.href ? "" : "hidden"}`}
             >
-              <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+              <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-subtle">
                 {item.label}
               </div>
               {visibleNavItems(RAIL_FLYOUTS[item.href] ?? [], showPortfolio).map((link) => (

@@ -133,20 +133,20 @@ export default function RichTextEditor({
 
   if (!editor) {
     return (
-      <div className={`rounded-lg border border-neutral-300 bg-white ${className}`}>
-        <div className={`${minHeightClass} animate-pulse bg-neutral-50`} />
+      <div className={`rounded-lg border border-line-strong bg-surface ${className}`}>
+        <div className={`${minHeightClass} animate-pulse bg-surface-subtle`} />
       </div>
     );
   }
 
   return (
     <div
-      className={`atlas-rich-editor rounded-lg bg-white transition-shadow ${
+      className={`atlas-rich-editor rounded-lg bg-surface transition-shadow ${
         borderless
           ? "border-0"
           : focused
             ? "border border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]"
-            : "border border-neutral-300"
+            : "border border-line-strong"
       } ${className}`}
       aria-busy={!ready}
       style={!ready ? { pointerEvents: "none" } : undefined}

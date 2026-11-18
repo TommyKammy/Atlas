@@ -44,8 +44,8 @@ export default function AttachmentPreview({
   }
   if (TEXT_PREVIEW_TYPES.has(mime)) {
     return (
-      <div className="max-w-full overflow-hidden rounded border bg-neutral-50 p-2">
-        <div className="truncate text-xs font-semibold text-neutral-600">{name}</div>
+      <div className="max-w-full overflow-hidden rounded border bg-surface-subtle p-2">
+        <div className="truncate text-xs font-semibold text-secondary">{name}</div>
         <pre className="mt-1 max-h-24 overflow-auto text-xs whitespace-pre-wrap text-neutral-700">
           {preview?.id === id ? preview.text : "読込中…"}
         </pre>

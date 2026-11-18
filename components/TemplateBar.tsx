@@ -82,7 +82,7 @@ export default function TemplateBar({
   const field = "rounded border px-2 py-1 text-sm outline-none focus:border-blue-500";
   return (
     <div className="flex flex-wrap items-center gap-2 border-b py-1.5 text-sm">
-      <span className="text-neutral-500">テンプレート</span>
+      <span className="text-muted">テンプレート</span>
       <select
         value={picked}
         onChange={(e) => setPicked(e.target.value)}
@@ -133,12 +133,12 @@ export default function TemplateBar({
           <button onClick={create} aria-label="テンプレートを保存" className="rounded bg-blue-600 px-2 py-0.5 text-white">
             保存
           </button>
-          <button onClick={() => setForming(false)} aria-label="テンプレート作成をキャンセル" className="text-neutral-500">
+          <button onClick={() => setForming(false)} aria-label="テンプレート作成をキャンセル" className="text-muted">
             ×
           </button>
         </span>
       ) : (
-        <button onClick={() => setForming(true)} aria-label="テンプレートを新規作成" className="text-neutral-600 hover:text-black">
+        <button onClick={() => setForming(true)} aria-label="テンプレートを新規作成" className="text-secondary hover:text-black">
           ＋ 新規
         </button>
       )}

@@ -39,7 +39,7 @@ export default async function AppShell({
   const canCreateProject =
     currentUserId !== null && (await hasPermission(currentUserId, "projects.create"));
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-white text-neutral-900">
+    <div className="flex h-screen flex-col overflow-hidden bg-surface text-neutral-900">
       <div className="flex min-h-0 flex-1">
         <ResizableSidebar collapsed={collapsed} initialWidth={sidebarWidth}>
           {collapsed ? (
@@ -54,7 +54,7 @@ export default async function AppShell({
             </div>
           ) : (
             <div id="atlas-sidebar-content" className="flex min-w-0 flex-1 flex-col">
-              <Suspense fallback={<div className="p-4 text-sm text-neutral-500">読み込み中…</div>}>
+              <Suspense fallback={<div className="p-4 text-sm text-muted">読み込み中…</div>}>
                 <SidebarNav
                   theme={theme}
                   showPortfolio={showPortfolio}
@@ -66,7 +66,7 @@ export default async function AppShell({
           )}
         </ResizableSidebar>
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-1 border-b bg-white px-2 py-1.5 text-sm md:hidden">
+          <div className="flex items-center gap-1 border-b bg-surface px-2 py-1.5 text-sm md:hidden">
             <nav aria-label="モバイルナビゲーション" className="flex min-w-0 flex-1 gap-1 overflow-x-auto whitespace-nowrap">
               {visibleNavItems(MOBILE_NAV, showPortfolio).map((entry) => (
                 <Link key={entry.href} href={entry.href} className="rounded px-2 py-1 hover:bg-neutral-100">

@@ -177,7 +177,7 @@ export default async function SidebarNav({
           {ws && cuid && canCreateProject && <SidebarAddProject />}
         </div>
         {ws && me && <SidebarProjectList key={`${ws.id}:${me.id}`} workspaceId={ws.id} projects={projects} favoriteIds={[...favoriteIds]} />}
-        {projects.length === 0 && <div className="px-3 py-1.5 text-neutral-500">（なし）</div>}
+        {projects.length === 0 && <div className="px-3 py-1.5 text-muted">（なし）</div>}
       </nav>
       <div data-sidebar-footer className="border-t border-[#333333] p-2">
         {me?.is_admin && (

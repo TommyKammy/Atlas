@@ -18,7 +18,7 @@ export default function MutationFeedback({
     <div
       data-mutation-feedback
       role={error ? "alert" : "status"}
-      className={`text-[11px] ${error ? "text-red-600" : "text-neutral-500"} ${className}`}
+      className={`text-[11px] ${error ? "text-danger" : "text-muted"} ${className}`}
     >
       {error ? message : pendingLabel}
     </div>

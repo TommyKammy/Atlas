@@ -58,7 +58,7 @@ export default function ReferencePicker({
 
   return (
     <div
-      className="absolute top-full left-0 z-[160] mt-1 w-72 rounded-lg border border-neutral-200 bg-white p-2 shadow-xl"
+      className="absolute top-full left-0 z-[160] mt-1 w-72 rounded-lg border border-neutral-200 bg-surface p-2 shadow-xl"
       onClick={(event) => event.stopPropagation()}
       data-reference-picker
     >
@@ -70,9 +70,9 @@ export default function ReferencePicker({
         className="h-8 w-full rounded border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#4075cf]"
       />
       <div className="mt-1.5 max-h-56 space-y-0.5 overflow-y-auto">
-        {loading && <div className="px-1 py-3 text-[11px] text-neutral-400">読み込み中…</div>}
+        {loading && <div className="px-1 py-3 text-[11px] text-subtle">読み込み中…</div>}
         {!loading && filtered.length === 0 && (
-          <div className="px-1 py-3 text-[11px] text-neutral-400">該当するタスクがありません</div>
+          <div className="px-1 py-3 text-[11px] text-subtle">該当するタスクがありません</div>
         )}
         {filtered.map((option) => (
           <label
@@ -93,18 +93,18 @@ export default function ReferencePicker({
             />
             <span className="min-w-0">
               <span className="block truncate text-neutral-700">{option.name}</span>
-              <span className="block truncate text-[10px] text-neutral-400">{option.project_name}</span>
+              <span className="block truncate text-[10px] text-subtle">{option.project_name}</span>
             </span>
           </label>
         ))}
       </div>
       <div className="mt-2 flex items-center justify-between border-t border-neutral-100 pt-2">
-        <span className="text-[10px] text-neutral-400">{selected.length}件を選択</span>
+        <span className="text-[10px] text-subtle">{selected.length}件を選択</span>
         <span className="flex gap-1.5">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded px-2 py-1 text-[11px] text-neutral-500 hover:bg-neutral-100"
+            className="rounded px-2 py-1 text-[11px] text-muted hover:bg-neutral-100"
           >
             キャンセル
           </button>

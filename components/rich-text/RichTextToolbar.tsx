@@ -238,7 +238,7 @@ export default function RichTextToolbar({
         <ToolbarIcon name="highlight" />
       </ToolbarButton>
 
-      <span className="mx-0.5 h-5 w-px bg-neutral-200" />
+      <span className="mx-0.5 h-5 w-px bg-surface-strong" />
 
       <ToolbarButton
         label="箇条書き"
@@ -269,7 +269,7 @@ export default function RichTextToolbar({
         <ToolbarIcon name="quote" />
       </ToolbarButton>
 
-      <span className="mx-0.5 h-5 w-px bg-neutral-200" />
+      <span className="mx-0.5 h-5 w-px bg-surface-strong" />
 
       <ToolbarButton label="リンク" active={state.link} onClick={setLink}>
         <ToolbarIcon name="link" />

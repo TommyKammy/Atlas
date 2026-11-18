@@ -125,7 +125,7 @@ export default function ProjectMembersManager({
     <section className="mt-5">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold">メンバー</h2>
-        <span className="text-xs text-neutral-500">{members.length}人</span>
+        <span className="text-xs text-muted">{members.length}人</span>
       </div>
 
       {canManage && (
@@ -170,7 +170,7 @@ export default function ProjectMembersManager({
 
       <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-neutral-100">
         {members.length === 0 && (
-          <div className="px-3 py-3 text-sm text-neutral-500">メンバーがいません。</div>
+          <div className="px-3 py-3 text-sm text-muted">メンバーがいません。</div>
         )}
         {members.map((m) => (
           <div key={m.id} className="flex items-center gap-2 border-b border-neutral-100 px-2 py-1.5 last:border-b-0">
@@ -179,16 +179,16 @@ export default function ProjectMembersManager({
               <div className="flex items-center gap-1">
                 <span className="truncate text-sm font-medium">{m.name}</span>
                 {m.is_guest && (
-                  <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-800">ゲスト</span>
+                  <span className="rounded bg-amber-100 px-1 text-[10px] text-warning">ゲスト</span>
                 )}
                 {m.deactivated_at && (
-                  <span className="rounded bg-neutral-200 px-1 text-[10px] text-neutral-600">無効</span>
+                  <span className="rounded bg-surface-strong px-1 text-[10px] text-secondary">無効</span>
                 )}
                 {m.id === currentUserId && (
-                  <span className="rounded bg-neutral-100 px-1 text-[10px] text-neutral-500">あなた</span>
+                  <span className="rounded bg-surface-muted px-1 text-[10px] text-muted">あなた</span>
                 )}
               </div>
-              <div className="truncate text-[11px] text-neutral-500">
+              <div className="truncate text-[11px] text-muted">
                 {m.title ? `${m.title} ・ ` : ""}
                 {m.email ?? ""}
               </div>
@@ -219,12 +219,12 @@ export default function ProjectMembersManager({
                 </button>
               </>
             ) : (
-              <span className="text-xs text-neutral-500">{PROJECT_ROLE_LABELS[m.role]}</span>
+              <span className="text-xs text-muted">{PROJECT_ROLE_LABELS[m.role]}</span>
             )}
           </div>
         ))}
       </div>
-      {msg && <p className="mt-2 text-xs text-red-600">{msg}</p>}
+      {msg && <p className="mt-2 text-xs text-danger">{msg}</p>}
     </section>
   );
 }
