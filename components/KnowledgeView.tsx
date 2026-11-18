@@ -148,7 +148,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
         })}>{trashOpen ? "ノート一覧に戻る" : "ゴミ箱"}</button>
       </>}
     </ProjectViewToolbar>
-    {error && <p role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="mb-4 rounded-md bg-danger-soft p-3 text-sm text-red-700">{error}</p>}
     {notice && <p role="status" className="mb-4 text-sm text-neutral-700">{notice}</p>}
     {trashOpen ? <KnowledgeTrash projectId={projectId} onBusyChange={setBusy} onRestored={async note => {
       setNotice(`「${note.title}」を復元しました`);
@@ -159,16 +159,16 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
     <div className="grid min-w-0 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
       <aside aria-label="ノート一覧" className={`${editing ? "hidden lg:block" : ""} min-w-0 border-b border-neutral-200 pb-4 lg:border-r lg:border-b-0 lg:pr-5`}>
         <label className="sr-only" htmlFor="knowledge-search">ノートを検索</label>
-        <input id="knowledge-search" type="search" value={search} maxLength={300} onChange={event => { searchRef.current = event.target.value; setSearch(event.target.value); setResults(null); setSearchMore(false); setError(""); }} placeholder="タイトル・本文を検索" className="mb-3 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm placeholder:text-neutral-600 focus:outline-blue-600" />
-        <p className="mb-2 text-xs text-neutral-600">{search && results === null ? "検索中…" : `${filtered.length} 件${(search ? searchMore : hasMore) ? "以上" : ""}のノート`}</p>
+        <input id="knowledge-search" type="search" value={search} maxLength={300} onChange={event => { searchRef.current = event.target.value; setSearch(event.target.value); setResults(null); setSearchMore(false); setError(""); }} placeholder="タイトル・本文を検索" className="mb-3 w-full rounded-md border border-line-strong px-3 py-2 text-sm placeholder:text-neutral-600 focus:outline-blue-600" />
+        <p className="mb-2 text-xs text-secondary">{search && results === null ? "検索中…" : `${filtered.length} 件${(search ? searchMore : hasMore) ? "以上" : ""}のノート`}</p>
         <KnowledgeNoteList notes={filtered} selectedId={selectedId} disabled={busy} canReorder={canEdit && !search}
           onSelect={select} onMove={(id, target, placement) => void reorder(id, target, placement)} />
-        {canEdit && <p className="mt-2 text-xs text-neutral-500">{search ? "並べ替えるには検索を解除してください" : "ノート名をドラッグして並べ替え"}</p>}
-        <p role="status" aria-live="polite" data-note-order-status className="mt-1 text-xs text-neutral-600">{orderStatus}</p>
+        {canEdit && <p className="mt-2 text-xs text-muted">{search ? "並べ替えるには検索を解除してください" : "ノート名をドラッグして並べ替え"}</p>}
+        <p role="status" aria-live="polite" data-note-order-status className="mt-1 text-xs text-secondary">{orderStatus}</p>
         {(search ? searchMore : hasMore) && <button disabled={busy} className={`${button} mt-3 w-full`} onClick={loadMore}>さらに読み込む</button>}
-        {filtered.length === 0 && <p className="py-4 text-sm text-neutral-600">{search ? "一致するノートがありません" : "ノートはまだありません"}</p>}
+        {filtered.length === 0 && <p className="py-4 text-sm text-secondary">{search ? "一致するノートがありません" : "ノートはまだありません"}</p>}
         {canEdit && <div className="mt-5 border-t border-neutral-200 pt-4">
-          <p className="mb-2 text-xs font-medium text-neutral-600">テンプレートから作成</p>
+          <p className="mb-2 text-xs font-medium text-secondary">テンプレートから作成</p>
           <div className="flex flex-wrap gap-2 lg:flex-col">
             {templates.map(template => <button key={template.name} disabled={busy} onClick={() => create(template.body)} className="rounded px-2 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100">＋ {template.name}</button>)}
           </div>
@@ -181,7 +181,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
           window.history.replaceState(null, "", url);
         }}>{(aiTrigger, aiPanel) => <>
           <div data-knowledge-toolbar className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-4">
-            <span className="text-xs text-neutral-600">{selected.author_name ?? "メンバー"} · {date(selected.updated_at)} 更新</span>
+            <span className="text-xs text-secondary">{selected.author_name ?? "メンバー"} · {date(selected.updated_at)} 更新</span>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2">
                 <button className={knowledgeAction} onClick={() => downloadNote(selected.title, selected.body)}><KnowledgeIcon name="download" />書き出す</button>
@@ -204,8 +204,8 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
           <div className="min-w-0 max-w-4xl" data-knowledge-document-column>
           {history && <div className="mb-6 rounded-md border border-neutral-200 p-4" data-knowledge-history>
             <h3 className="text-sm font-semibold">保存履歴</h3>
-            <p className="mt-1 text-xs text-neutral-600">直近50件と初版。復元前の内容も履歴に残ります。</p>
-            {history.length === 0 && <p className="mt-3 text-sm text-neutral-600">以前の保存内容はありません。</p>}
+            <p className="mt-1 text-xs text-secondary">直近50件と初版。復元前の内容も履歴に残ります。</p>
+            {history.length === 0 && <p className="mt-3 text-sm text-secondary">以前の保存内容はありません。</p>}
             <ul className="mt-3 max-h-60 overflow-auto divide-y divide-neutral-100">
               {history.map(item => <li key={item.revision} className="flex items-center justify-between gap-2 py-2 text-xs"><span className="min-w-0 break-words">{date(item.saved_at)} · {item.title} {item.revision === 0 ? "（初版）" : ""}</span>
                 {canEdit && <button className={button} disabled={busy} onClick={() => void action(async () => {
@@ -222,8 +222,8 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
           {aiPanel}
           </div>
         </>}</KnowledgeAi> : <div className="py-16 text-center">
-          <h3 className="text-lg font-semibold">チームの知識をここに</h3><p className="mt-2 text-sm text-neutral-600">ノートを選択して読むか、議事録や手順書を作成できます。</p>
-          {canEdit && <button onClick={() => create()} className="mt-5 rounded-md bg-[#2c60b8] px-4 py-2 text-sm text-white">ノートを作成</button>}
+          <h3 className="text-lg font-semibold">チームの知識をここに</h3><p className="mt-2 text-sm text-secondary">ノートを選択して読むか、議事録や手順書を作成できます。</p>
+          {canEdit && <button onClick={() => create()} className="mt-5 rounded-md bg-accent px-4 py-2 text-sm text-white">ノートを作成</button>}
         </div>}
       </section>
     </div>

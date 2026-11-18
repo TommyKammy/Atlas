@@ -73,11 +73,11 @@ export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, 
   const trigger = enabled ? <span ref={triggerContainer} className="inline-flex">
     <KnowledgeActionMenu label="AIアシスト" onOpen={() => void load()} className={`${knowledgeActionBase} border-blue-200 bg-blue-50 text-[#24529c] hover:bg-blue-100`}
       icon={<><KnowledgeIcon name="ai" /><span>AIアシスト</span><KnowledgeIcon name="chevron" /></>}>
-        {loading && <p role="status" className="px-3 py-2 text-sm text-neutral-600">準備中…</p>}
+        {loading && <p role="status" className="px-3 py-2 text-sm text-secondary">準備中…</p>}
         {error && !open && <p role="alert" className="px-3 py-2 text-sm text-red-700">{error}</p>}
-        {loaded && !loading && !selected && !error && <p className="px-3 py-2 text-sm text-neutral-600">このノートではAIアシストを利用できません。管理者にお問い合わせください。</p>}
+        {loaded && !loading && !selected && !error && <p className="px-3 py-2 text-sm text-secondary">このノートではAIアシストを利用できません。管理者にお問い合わせください。</p>}
         {(["summary", "improve"] as const).map(kind => <button key={kind} role="menuitem" className={knowledgeMenuItem} disabled={!loaded || loading || !selected || busy || saving || partner.locked} onClick={() => void generate(kind)}><KnowledgeIcon name={kind === "summary" ? "summary" : "edit"} />{labels[kind]}を生成</button>)}
-        <p className="mt-1 border-t border-neutral-100 px-3 pt-3 pb-1 text-xs text-neutral-500">プロジェクトパートナー</p>
+        <p className="mt-1 border-t border-neutral-100 px-3 pt-3 pb-1 text-xs text-muted">プロジェクトパートナー</p>
         <button role="menuitem" className={knowledgeMenuItem} disabled={!loaded || loading || !selected || busy || saving || partner.locked} onClick={() => { setOpen(false); void partner.generate("action_extract", note); }}><KnowledgeIcon name="summary" />アクションを抽出</button>
         {partner.result && !partner.open && <button role="menuitem" className={knowledgeMenuItem} onClick={() => { setOpen(false); partner.show(); }}>アクション候補を表示</button>}
         {(busy || Object.values(proposals).some(Boolean)) && <button role="menuitem" className={`${knowledgeMenuItem} border-t border-neutral-100`} disabled={partner.locked} onClick={() => { partner.close(); setOpen(true); }}>結果パネルを表示</button>}
@@ -90,27 +90,27 @@ export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, 
     </div>
     <div role="tablist" aria-label="AIアシストの操作" className="mb-5 flex border-b border-neutral-200">
       {(["summary", "improve"] as const).map(kind => <button key={kind} id={`${id}-${kind}`} role="tab" aria-selected={operation === kind} aria-controls={`${id}-result`} tabIndex={operation === kind ? 0 : -1} disabled={busy || saving}
-        className={`-mb-px border-b-2 px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 ${operation === kind ? "border-[#2c60b8] font-medium text-[#24529c]" : "border-transparent text-neutral-600 hover:text-neutral-900"}`}
+        className={`-mb-px border-b-2 px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 ${operation === kind ? "border-accent font-medium text-[#24529c]" : "border-transparent text-neutral-600 hover:text-neutral-900"}`}
         onClick={() => switchOperation(kind)} onKeyDown={event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const next = event.key === "Home" ? "summary" : event.key === "End" ? "improve" : kind === "summary" ? "improve" : "summary"; switchOperation(next); document.getElementById(`${id}-${next}`)?.focus(); } }}>{labels[kind]}</button>)}
     </div>
     <div id={`${id}-result`} role="tabpanel" aria-labelledby={`${id}-${operation}`} className="space-y-4">
-      {busy && <div role="status" className="space-y-3 py-2"><p className="text-sm text-neutral-600">{labels[operation]}を生成中…</p><div aria-hidden="true" className="space-y-2 motion-safe:animate-pulse"><div className="h-3 rounded bg-neutral-100" /><div className="h-3 w-4/5 rounded bg-neutral-100" /><div className="h-3 w-3/5 rounded bg-neutral-100" /></div><button className={knowledgeAction} onClick={cancel}>中止</button></div>}
+      {busy && <div role="status" className="space-y-3 py-2"><p className="text-sm text-secondary">{labels[operation]}を生成中…</p><div aria-hidden="true" className="space-y-2 motion-safe:animate-pulse"><div className="h-3 rounded bg-surface-muted" /><div className="h-3 w-4/5 rounded bg-surface-muted" /><div className="h-3 w-3/5 rounded bg-surface-muted" /></div><button className={knowledgeAction} onClick={cancel}>中止</button></div>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-      {notice && <p role="status" className="text-sm text-neutral-600">{notice}</p>}
+      {notice && <p role="status" className="text-sm text-secondary">{notice}</p>}
       {!result && !busy && <button className={knowledgeAction} disabled={!selected || loading || saving} onClick={() => void generate(operation)}>{labels[operation]}を生成</button>}
       {result && proposal && <div className="space-y-4" data-ai-result>
-        {result.stale && <p role="alert" className="text-sm text-amber-800">生成中に元ノートが更新されました。この結果は更新前の内容に基づいています。</p>}
+        {result.stale && <p role="alert" className="text-sm text-warning">生成中に元ノートが更新されました。この結果は更新前の内容に基づいています。</p>}
         <div data-ai-output className="atlas-rich-text max-h-[55vh] overflow-auto break-words text-sm leading-7 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_p]:my-2 [&_ul]:my-2" dangerouslySetInnerHTML={{ __html: renderMarkdown(result.text) }} />
         <div className="flex flex-wrap gap-2">
           <button className={knowledgeAction} onClick={() => void navigator.clipboard.writeText(result.text).then(() => setNotice("コピーしました"), () => setError("コピーできませんでした。生成結果を選択してコピーしてください"))}><KnowledgeIcon name="copy" />コピー</button>
           <button className={knowledgePrimaryAction} disabled={busy || saving || !proposal.title.trim()} onClick={() => void save()}>{saving ? "保存中…" : "別ノートとして保存"}</button>
         </div>
-        <label className="block text-xs text-neutral-600">別ノートのタイトル<input aria-label="別ノートのタイトル" maxLength={300} disabled={saving} className="mt-1.5 block w-full rounded-md border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:outline-blue-600" value={proposal.title} onChange={event => setProposals(previous => ({ ...previous, [operation]: { ...proposal, title: event.target.value } }))} /></label>
+        <label className="block text-xs text-secondary">別ノートのタイトル<input aria-label="別ノートのタイトル" maxLength={300} disabled={saving} className="mt-1.5 block w-full rounded-md border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:outline-blue-600" value={proposal.title} onChange={event => setProposals(previous => ({ ...previous, [operation]: { ...proposal, title: event.target.value } }))} /></label>
         <div className="flex flex-wrap items-center gap-4 text-xs">
           <button className="rounded py-1 text-[#24529c] hover:underline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50" disabled={busy || saving || loading} onClick={() => void generate(operation)}>再生成</button>
           <button className="rounded py-1 text-neutral-600 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50" disabled={busy || saving} onClick={() => { setProposals(previous => ({ ...previous, [operation]: undefined })); setNotice(""); }}>結果を破棄</button>
         </div>
-        <details className="border-t border-neutral-100 pt-3 text-xs text-neutral-600"><summary className="cursor-pointer">生成時の原文を確認</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans leading-6">{result.source_text}</pre><p className="mt-2">別ノートへの保存期限：生成から1時間</p></details>
+        <details className="border-t border-neutral-100 pt-3 text-xs text-secondary"><summary className="cursor-pointer">生成時の原文を確認</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans leading-6">{result.source_text}</pre><p className="mt-2">別ノートへの保存期限：生成から1時間</p></details>
       </div>}
     </div>
   </section> : null;

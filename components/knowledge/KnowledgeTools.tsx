@@ -35,17 +35,17 @@ export default function KnowledgeTools({ editor, links }: { editor: Editor; link
         <ToolbarButton label="表を削除" onClick={() => editor.chain().focus().deleteTable().run()}>表を削除</ToolbarButton>
       </>}
     </div>
-    {imageForm && <form className="my-2 flex flex-wrap items-end gap-2 rounded-md bg-neutral-50 p-3" onSubmit={event => {
+    {imageForm && <form className="my-2 flex flex-wrap items-end gap-2 rounded-md bg-surface-subtle p-3" onSubmit={event => {
       event.preventDefault();
       if (!isKnowledgeImageUrl(url)) { setError("HTTPSの画像URLを入力してください"); return; }
       editor.chain().focus().setImage({ src: url, alt }).run();
       setImageForm(false); setUrl(""); setAlt(""); setError("");
     }}>
-      <label className="min-w-0 flex-1 text-xs">画像URL<input autoFocus aria-label="画像URL" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…" className="mt-1 w-full rounded border border-neutral-300 bg-white p-2 placeholder:text-neutral-600" /></label>
-      <label className="min-w-0 flex-1 text-xs">画像の説明<input aria-label="画像の説明" value={alt} onChange={e => setAlt(e.target.value)} className="mt-1 w-full rounded border border-neutral-300 bg-white p-2" /></label>
-      <button className="rounded bg-[#2c60b8] px-3 py-2 text-xs text-white">画像を挿入</button>
+      <label className="min-w-0 flex-1 text-xs">画像URL<input autoFocus aria-label="画像URL" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…" className="mt-1 w-full rounded border border-line-strong bg-white p-2 placeholder:text-neutral-600" /></label>
+      <label className="min-w-0 flex-1 text-xs">画像の説明<input aria-label="画像の説明" value={alt} onChange={e => setAlt(e.target.value)} className="mt-1 w-full rounded border border-line-strong bg-white p-2" /></label>
+      <button className="rounded bg-accent px-3 py-2 text-xs text-white">画像を挿入</button>
       <button type="button" className="p-2 text-xs" onClick={() => setImageForm(false)}>キャンセル</button>
-      <p className="w-full text-xs text-neutral-600">閲覧時に外部サイトから画像を読み込みます。</p>
+      <p className="w-full text-xs text-secondary">閲覧時に外部サイトから画像を読み込みます。</p>
       {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
     </form>}
   </div>;

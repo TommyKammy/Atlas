@@ -27,11 +27,11 @@ export default function KnowledgeNoteList({ notes, selectedId, disabled, canReor
             aria-describedby={canReorder ? instructions : undefined} aria-current={selectedId === note.id ? "page" : undefined} aria-disabled={disabled}
             onClick={() => { if (!disabled) onSelect(note.id); }} className="min-w-0 flex-1 rounded-md px-2 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-blue-600">
             <span data-reorder-label={canReorder ? true : undefined} className="block truncate text-sm font-medium" style={canReorder ? { touchAction: "none" } : undefined}>{note.title}</span>
-            <span className="mt-1 block text-xs text-neutral-600">{date(note.updated_at)}</span>
+            <span className="mt-1 block text-xs text-secondary">{date(note.updated_at)}</span>
           </button>
         </div>;
       })}
     </div>
-    {drag?.active && createPortal(<div aria-hidden="true" className="pointer-events-none fixed z-50 max-w-60 truncate rounded-md border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800 shadow-lg" style={{ left: drag.x + 12, top: drag.y + 12 }}>{drag.title}</div>, document.body)}
+    {drag?.active && createPortal(<div aria-hidden="true" className="pointer-events-none fixed z-50 max-w-60 truncate rounded-md border border-blue-200 bg-surface px-3 py-2 text-sm text-blue-800 shadow-lg" style={{ left: drag.x + 12, top: drag.y + 12 }}>{drag.title}</div>, document.body)}
   </>;
 }

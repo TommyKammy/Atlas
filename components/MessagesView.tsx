@@ -62,11 +62,11 @@ export default function MessagesView({
             className="mt-2 w-full text-sm outline-none"
           />
           <div className="flex items-center gap-2">
-            <span className="text-xs text-neutral-500">プロジェクト全体に送信されます</span>
+            <span className="text-xs text-muted">プロジェクト全体に送信されます</span>
             <span className="flex-1" />
             <button
               onClick={() => setOpen(false)}
-              className="rounded px-3 py-1 text-sm text-neutral-500 hover:bg-neutral-100"
+              className="rounded px-3 py-1 text-sm text-muted hover:bg-neutral-100"
             >
               キャンセル
             </button>
@@ -93,8 +93,8 @@ export default function MessagesView({
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-300 text-[10px] font-bold text-white">
                   {(m.author_name ?? "?").slice(0, 1)}
                 </span>
-                <span className="text-xs font-semibold text-neutral-600">{m.author_name ?? "–"}</span>
-                <span className="text-xs text-neutral-500">{m.created_at}</span>
+                <span className="text-xs font-semibold text-secondary">{m.author_name ?? "–"}</span>
+                <span className="text-xs text-muted">{m.created_at}</span>
               </div>
               {m.title && <div className="mt-1.5 font-semibold">{m.title}</div>}
               <div

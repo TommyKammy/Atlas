@@ -120,16 +120,16 @@ export default function ViewOptionsDrawer({
         aria-label={`${title}のオプション`}
         data-view-options-drawer={title}
         style={{ top: panelTop, height: `calc(100vh - ${panelTop}px)` }}
-        className="project-drawer-enter project-drawer-enter-options fixed right-0 z-[80] flex w-[min(480px,100vw)] flex-col overflow-y-auto bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
+        className="project-drawer-enter project-drawer-enter-options fixed right-0 z-[80] flex w-[min(480px,100vw)] flex-col overflow-y-auto bg-surface shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
       >
-        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-neutral-100 bg-white px-4">
+        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-neutral-100 bg-surface px-4">
           <span className="text-[16px] leading-none">{iconDraft ?? "📋"}</span>
           <span className="flex-1 text-[15px] font-semibold text-neutral-900">{title}</span>
           <button
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-neutral-100 hover:text-neutral-700"
           >
             ×
           </button>
@@ -138,7 +138,7 @@ export default function ViewOptionsDrawer({
         <div className="p-3">
           <div className="flex items-end gap-2 px-2">
             <div className="relative shrink-0">
-              <label className="block text-[11px] font-medium text-neutral-500">アイコン</label>
+              <label className="block text-[11px] font-medium text-muted">アイコン</label>
               <button
                 type="button"
                 aria-label={`${title}のアイコン`}
@@ -150,7 +150,7 @@ export default function ViewOptionsDrawer({
                 {iconDraft ?? "📋"}
               </button>
               {iconOpen && (
-                <div className="absolute top-full left-0 z-20 mt-1 w-[250px] rounded-lg border border-neutral-200 bg-white p-2 shadow-lg">
+                <div className="absolute top-full left-0 z-20 mt-1 w-[250px] rounded-lg border border-neutral-200 bg-surface p-2 shadow-lg">
                   <div className="grid grid-cols-8 gap-1">
                     {VIEW_ICON_CHOICES.map((icon) => (
                       <button
@@ -158,7 +158,7 @@ export default function ViewOptionsDrawer({
                         type="button"
                         onClick={() => void chooseIcon(icon)}
                         className={`flex h-7 w-7 items-center justify-center rounded text-base hover:bg-neutral-100 ${
-                          iconDraft === icon ? "bg-[#eff4fd]" : ""
+                          iconDraft === icon ? "bg-accent-soft" : ""
                         }`}
                       >
                         {icon}
@@ -168,7 +168,7 @@ export default function ViewOptionsDrawer({
                   <button
                     type="button"
                     onClick={() => void chooseIcon(null)}
-                    className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-neutral-600 hover:bg-neutral-50"
+                    className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-secondary hover:bg-neutral-50"
                   >
                     アイコンをクリア
                   </button>
@@ -176,7 +176,7 @@ export default function ViewOptionsDrawer({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <label className="block text-[11px] font-medium text-neutral-500">ビューの名前</label>
+              <label className="block text-[11px] font-medium text-muted">ビューの名前</label>
               <input
                 value={nameDraft}
                 onChange={(event) => setNameDraft(event.target.value)}
@@ -197,28 +197,28 @@ export default function ViewOptionsDrawer({
 
           <div className="mt-2">
             <button type="button" data-view-options-filter onClick={onOpenFilter} className={row}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M3 5h18l-7 8v6l-4 2v-8L3 5Z" />
               </svg>
               <span className="flex-1">フィルター</span>
-              <span className="text-[11px] text-neutral-400">{filterSummary}</span>
+              <span className="text-[11px] text-subtle">{filterSummary}</span>
             </button>
             {showSort && (
               <button type="button" data-view-options-sort onClick={onOpenSort} className={row}>
-                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M4 6h10M4 12h7M4 18h4M17 4v16M17 20l-3-3M17 20l3-3" />
                 </svg>
                 <span className="flex-1">ソート</span>
-                <span className="text-[11px] text-neutral-400">{sortSummary}</span>
+                <span className="text-[11px] text-subtle">{sortSummary}</span>
               </button>
             )}
             {groupSummary !== undefined && onOpenGroup && (
               <button type="button" data-view-options-group onClick={onOpenGroup} className={row}>
-                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M4 5h16M4 12h16M4 19h16M7 3v4M7 10v4M7 17v4" />
                 </svg>
                 <span className="flex-1">グループ</span>
-                <span className="text-[11px] text-neutral-400">{groupSummary}</span>
+                <span className="text-[11px] text-subtle">{groupSummary}</span>
               </button>
             )}
           </div>

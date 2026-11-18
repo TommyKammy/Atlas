@@ -136,15 +136,15 @@ export default function KnowledgeComposer({ note, projectId, viewerId, template,
   const change = (next: Draft) => { latest.current = next; setDraft(next); persist(); if (!blocked.current) setStatus("dirty"); };
   return <div data-knowledge-composer className="min-w-0">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 pb-3">
-      <p role="status" data-knowledge-save-status className={`text-xs ${status === "error" ? "text-red-700" : "text-neutral-600"}`}>
+      <p role="status" data-knowledge-save-status className={`text-xs ${status === "error" ? "text-red-700" : "text-secondary"}`}>
         {status === "saving" ? "保存中…" : status === "dirty" ? "未保存の変更" : status === "error" ? "保存できていません" : hasRecord ? "すべての変更を保存しました" : "新しいノート"}
       </p>
       <div className="flex items-center gap-2">
         <button type="button" onClick={async () => { if (await save()) { try { sessionStorage.removeItem(storageKey); } catch {} onClose(); } }} className="rounded px-3 py-2 text-xs hover:bg-neutral-100">編集を終了</button>
-        <button type="button" data-knowledge-save disabled={status === "saving"} onClick={() => void save(!record.current)} className="rounded bg-[#2c60b8] px-3 py-2 text-xs font-medium text-white disabled:opacity-50">{status === "saving" ? "保存中…" : "今すぐ保存"}</button>
+        <button type="button" data-knowledge-save disabled={status === "saving"} onClick={() => void save(!record.current)} className="rounded bg-accent px-3 py-2 text-xs font-medium text-white disabled:opacity-50">{status === "saving" ? "保存中…" : "今すぐ保存"}</button>
       </div>
     </div>
-    {error && <div role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+    {error && <div role="alert" className="mb-4 rounded-md border border-red-200 bg-danger-soft p-3 text-sm text-red-800">
       <p>{error}</p><p className="mt-1">未保存の変更はこの画面に残っています。</p>
       <div className="mt-2 flex flex-wrap gap-3">
         <button onClick={() => void save(true)} className="underline">再試行</button>
@@ -153,13 +153,13 @@ export default function KnowledgeComposer({ note, projectId, viewerId, template,
       </div>
     </div>}
     {seed.recovered && <p className="mb-3 text-xs text-blue-800">このタブに残っていた未保存の下書きを復元しました。</p>}
-    {note && !note.body_doc && <p className="mb-4 text-xs text-neutral-600">本文を編集するとブロック形式で保存します。元のMarkdownは履歴から復元できます。</p>}
+    {note && !note.body_doc && <p className="mb-4 text-xs text-secondary">本文を編集するとブロック形式で保存します。元のMarkdownは履歴から復元できます。</p>}
     <input data-knowledge-title aria-label="ノートのタイトル" maxLength={300} value={draft.title} onChange={e => change({ ...latest.current, title: e.target.value })} placeholder="無題のノート" className="mb-4 w-full min-w-0 border-0 bg-transparent text-2xl font-semibold tracking-tight text-neutral-900 outline-none placeholder:text-neutral-600" />
     {editor && <KnowledgeTools editor={editor} links={links} />}
     <RichTextEditor initialDoc={initial.doc} extraExtensions={knowledgeExtensions} borderless minHeightClass="min-h-[320px]"
       ariaLabel="ノートの本文" dataAttributes={{ "data-knowledge-body": "" }} placeholder="書き始めるか、/ でブロックを選択"
       onReady={setEditor} onChange={doc => change({ ...latest.current, doc })} onSubmit={() => save(true).then(() => undefined)} className="knowledge-document" />
-    <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-neutral-100 pt-3 text-xs text-neutral-600">
+    <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-neutral-100 pt-3 text-xs text-secondary">
       <span>/ で挿入 · Alt+↑↓ でブロック移動 · ⌘/Ctrl+Enter で保存</span>
       <button onClick={() => downloadNote(draft.title, knowledgeMarkdown(draft.doc))} className="underline">Markdownを書き出す</button>
     </div>

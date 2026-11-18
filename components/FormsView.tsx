@@ -185,7 +185,7 @@ export default function FormsView({
       <ProjectViewToolbar>
         <ViewAddButton data-form-new disabled={!canConfigure} onClick={startCreate}>フォームを作成</ViewAddButton>
       </ProjectViewToolbar>
-      <p className="mt-4 text-[13px] text-neutral-500">
+      <p className="mt-4 text-[13px] text-muted">
         入力フォームから回答を受け取り、プロジェクトにタスクを自動で作成します。
       </p>
 
@@ -195,7 +195,7 @@ export default function FormsView({
         </p>
       )}
       {error && !builder && !answering && (
-        <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
+        <p role="alert" className="mt-3 rounded-md border border-red-200 bg-danger-soft px-3 py-2 text-[13px] text-red-700">
           {error}
         </p>
       )}
@@ -212,7 +212,7 @@ export default function FormsView({
             <article
               key={form.id}
               data-form-card={form.id}
-              className="rounded-lg border border-[#e1e1e1] bg-white p-4"
+              className="rounded-lg border border-[#e1e1e1] bg-surface p-4"
             >
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
@@ -221,17 +221,17 @@ export default function FormsView({
                     <span
                       className={`rounded-full px-2 py-0.5 text-[11px] ${
                         form.published
-                          ? "bg-green-100 text-green-800"
-                          : "bg-neutral-100 text-neutral-500"
+                          ? "bg-success-soft text-green-800"
+                          : "bg-surface-muted text-muted"
                       }`}
                     >
                       {form.published ? "公開中" : "下書き"}
                     </span>
                   </div>
                   {form.description && (
-                    <p className="mt-1 text-[13px] text-neutral-600">{form.description}</p>
+                    <p className="mt-1 text-[13px] text-secondary">{form.description}</p>
                   )}
-                  <div className="mt-1 text-[11px] text-neutral-500">
+                  <div className="mt-1 text-[11px] text-muted">
                     {form.fields.length} 項目 ・ 回答 {form.response_count} 件
                   </div>
                 </div>
@@ -250,7 +250,7 @@ export default function FormsView({
                     data-form-answer={form.id}
                     disabled={!form.published}
                     onClick={() => openAnswer(form)}
-                    className="h-7 rounded-md bg-[#eff4fd] px-2 text-[12px] font-medium text-[#2c60b8] hover:bg-[#e1ecfc] disabled:opacity-40"
+                    className="h-7 rounded-md bg-[#eff4fd] px-2 text-[12px] font-medium text-accent-text hover:bg-[#e1ecfc] disabled:opacity-40"
                   >
                     回答
                   </button>
@@ -260,7 +260,7 @@ export default function FormsView({
                     disabled={!canConfigure}
                     aria-label={`${form.name}を編集`}
                     onClick={() => startEdit(form)}
-                    className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                    className="flex h-7 w-7 items-center justify-center rounded text-subtle hover:bg-neutral-100 hover:text-neutral-700"
                   >
                     <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                       <path d="m10.5 2.5 3 3L6 13H3v-3z" />
@@ -286,14 +286,14 @@ export default function FormsView({
       </div>
 
       {builder && (
-        <Dialog open onClose={() => setBuilder(null)} titleId={`${formId}-builder-title`} panelClassName="w-[min(560px,94vw)] rounded-lg bg-white">
+        <Dialog open onClose={() => setBuilder(null)} titleId={`${formId}-builder-title`} panelClassName="w-[min(560px,94vw)] rounded-lg bg-surface">
           <form
             ref={builderRef}
             tabIndex={-1}
             onSubmit={save}
             onInput={clearError}
             data-form-builder
-            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
+            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-surface p-5 shadow-xl"
           >
             <div className="flex items-center justify-between">
               <h2 id={`${formId}-builder-title`} className="text-[15px] font-semibold text-neutral-900">
@@ -303,12 +303,12 @@ export default function FormsView({
                 type="button"
                 aria-label="閉じる"
                 onClick={() => setBuilder(null)}
-                className="text-lg leading-none text-neutral-400 hover:text-neutral-700"
+                className="text-lg leading-none text-subtle hover:text-neutral-700"
               >
                 ×
               </button>
             </div>
-            <label className="mt-4 block text-[12px] font-medium text-neutral-600">
+            <label className="mt-4 block text-[12px] font-medium text-secondary">
               フォーム名
               <input
                 name="form-name"
@@ -322,7 +322,7 @@ export default function FormsView({
                 className="mt-1 h-8 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
               />
             </label>
-            <label className="mt-3 block text-[12px] font-medium text-neutral-600">
+            <label className="mt-3 block text-[12px] font-medium text-secondary">
               説明
               <textarea
                 value={builder.description}
@@ -354,7 +354,7 @@ export default function FormsView({
                       ],
                     })
                   }
-                  className="text-[12px] text-[#2c60b8] hover:underline"
+                  className="text-[12px] text-accent-text hover:underline"
                 >
                   ＋ 項目を追加
                 </button>
@@ -393,7 +393,7 @@ export default function FormsView({
                       ))}
                     </select>
                     {index > 0 && (
-                      <label className="flex items-center gap-1 text-[11px] text-neutral-600">
+                      <label className="flex items-center gap-1 text-[11px] text-secondary">
                         <input
                           type="checkbox"
                           checked={field.required}
@@ -437,12 +437,12 @@ export default function FormsView({
                 </div>
               ))}
             </div>
-            {error && <p id={`${formId}-builder-error`} role="alert" tabIndex={-1} data-form-error className="mt-3 text-[12px] text-red-600">{error}</p>}
+            {error && <p id={`${formId}-builder-error`} role="alert" tabIndex={-1} data-form-error className="mt-3 text-[12px] text-danger">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setBuilder(null)}
-                className="rounded px-3 py-1.5 text-[13px] text-neutral-500 hover:bg-neutral-100"
+                className="rounded px-3 py-1.5 text-[13px] text-muted hover:bg-neutral-100"
               >
                 キャンセル
               </button>
@@ -450,7 +450,7 @@ export default function FormsView({
                 type="submit"
                 data-form-save
                 disabled={busy}
-                className="rounded bg-[#2c60b8] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
               >
                 保存
               </button>
@@ -460,34 +460,34 @@ export default function FormsView({
       )}
 
       {answering && (
-        <Dialog open onClose={() => setAnswering(null)} titleId={`${formId}-answer-heading`} panelClassName="w-[min(520px,94vw)] rounded-lg bg-white">
+        <Dialog open onClose={() => setAnswering(null)} titleId={`${formId}-answer-heading`} panelClassName="w-[min(520px,94vw)] rounded-lg bg-surface">
           <form
             ref={answerRef}
             tabIndex={-1}
             onSubmit={submit}
             onInput={clearError}
             data-form-answer-form
-            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
+            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-surface p-5 shadow-xl"
           >
             <div className="flex items-center justify-between">
               <div>
                 <h2 id={`${formId}-answer-heading`} className="text-[15px] font-semibold text-neutral-900">{answering.name}</h2>
                 {answering.description && (
-                  <p className="mt-0.5 text-[12px] text-neutral-500">{answering.description}</p>
+                  <p className="mt-0.5 text-[12px] text-muted">{answering.description}</p>
                 )}
               </div>
               <button
                 type="button"
                 aria-label="閉じる"
                 onClick={() => setAnswering(null)}
-                className="text-lg leading-none text-neutral-400 hover:text-neutral-700"
+                className="text-lg leading-none text-subtle hover:text-neutral-700"
               >
                 ×
               </button>
             </div>
             <div className="mt-4 space-y-3">
               {answering.fields.map((field) => (
-                <label key={field.key} htmlFor={`${formId}-answer-field-${field.key}`} className="block text-[12px] font-medium text-neutral-600">
+                <label key={field.key} htmlFor={`${formId}-answer-field-${field.key}`} className="block text-[12px] font-medium text-secondary">
                   {field.label}
                   {field.required && <span className="ml-1 text-red-500">*</span>}
                   {field.type === "textarea" ? (
@@ -539,12 +539,12 @@ export default function FormsView({
                 </label>
               ))}
             </div>
-            {error && <p id={`${formId}-answer-error`} role="alert" tabIndex={-1} data-form-error className="mt-3 text-[12px] text-red-600">{error}</p>}
+            {error && <p id={`${formId}-answer-error`} role="alert" tabIndex={-1} data-form-error className="mt-3 text-[12px] text-danger">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setAnswering(null)}
-                className="rounded px-3 py-1.5 text-[13px] text-neutral-500 hover:bg-neutral-100"
+                className="rounded px-3 py-1.5 text-[13px] text-muted hover:bg-neutral-100"
               >
                 キャンセル
               </button>
@@ -552,7 +552,7 @@ export default function FormsView({
                 type="submit"
                 data-form-submit
                 disabled={busy}
-                className="rounded bg-[#2c60b8] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className="rounded bg-accent px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
               >
                 送信
               </button>

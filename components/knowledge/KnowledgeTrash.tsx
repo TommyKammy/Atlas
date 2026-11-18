@@ -46,17 +46,17 @@ export default function KnowledgeTrash({ projectId, onRestored, onBusyChange }: 
   };
   return <section aria-label="ノートのゴミ箱" aria-busy={busy} className="max-w-4xl" data-knowledge-trash>
     <h3 className="text-lg font-semibold">ノートのゴミ箱</h3>
-    <p className="mt-2 text-sm text-neutral-600">本文と保存履歴を保持しています。復元したノートは一覧の末尾に戻ります。</p>
-    {error && <div role="alert" className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}
+    <p className="mt-2 text-sm text-secondary">本文と保存履歴を保持しています。復元したノートは一覧の末尾に戻ります。</p>
+    {error && <div role="alert" className="mt-4 rounded-md bg-danger-soft p-3 text-sm text-red-700">{error}
       <button className={`${button} ml-3`} disabled={busy} onClick={() => { setError(""); setRetry(value => value + 1); }}>再読み込み</button>
     </div>}
-    {!loaded && !error && <p role="status" className="py-8 text-sm text-neutral-600">ゴミ箱を読み込み中…</p>}
-    {loaded && notes.length === 0 && <p className="py-12 text-sm text-neutral-600">ゴミ箱は空です。削除したノートはここから復元できます。</p>}
+    {!loaded && !error && <p role="status" className="py-8 text-sm text-secondary">ゴミ箱を読み込み中…</p>}
+    {loaded && notes.length === 0 && <p className="py-12 text-sm text-secondary">ゴミ箱は空です。削除したノートはここから復元できます。</p>}
     <ul className="mt-5 divide-y divide-neutral-200">
       {notes.map(note => <li key={note.id} className="flex items-center justify-between gap-4 py-4">
         <div className="min-w-0">
           <p className="break-words text-sm font-medium">{note.title}</p>
-          <p className="mt-1 text-xs text-neutral-600">{new Date(note.deleted_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })} · {note.deleted_by_name ?? "メンバー"} が削除</p>
+          <p className="mt-1 text-xs text-secondary">{new Date(note.deleted_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })} · {note.deleted_by_name ?? "メンバー"} が削除</p>
         </div>
         <button className={`${button} shrink-0`} disabled={busy} aria-label={`「${note.title}」を復元`} onClick={() => void restore(note)}>復元</button>
       </li>)}

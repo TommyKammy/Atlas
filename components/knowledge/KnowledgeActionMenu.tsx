@@ -8,7 +8,7 @@ const serverReady = () => false;
 
 export const knowledgeActionBase = "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50";
 export const knowledgeAction = `${knowledgeActionBase} border-neutral-200 text-neutral-700 hover:bg-neutral-50`;
-export const knowledgePrimaryAction = `${knowledgeActionBase} border-[#2c60b8] bg-[#2c60b8] text-white hover:bg-[#24529c]`;
+export const knowledgePrimaryAction = `${knowledgeActionBase} border-accent bg-accent text-white hover:bg-[#24529c]`;
 export const knowledgeMenuItem = "flex min-h-10 w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none disabled:opacity-50";
 
 export function KnowledgeIcon({ name }: { name: "ai" | "download" | "edit" | "more" | "close" | "copy" | "history" | "trash" | "summary" | "chevron" }) {
@@ -57,7 +57,7 @@ export default function KnowledgeActionMenu({ label, children, className = knowl
   return <>
     <button ref={trigger} type="button" className={className} aria-label={label} aria-haspopup="menu" aria-controls={id} aria-expanded={open} disabled={disabled || !ready} onClick={show}
       onKeyDown={event => { if (event.key === "ArrowDown") { event.preventDefault(); if (!open) show(); menu.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus(); } }}>{icon}</button>
-    <div ref={menu} id={id} popover="auto" role="menu" tabIndex={-1} aria-label={label} className="fixed m-0 w-[248px] max-w-[calc(100vw-24px)] rounded-lg border border-neutral-200 bg-white p-1.5 text-neutral-900 shadow-sm outline-none" style={{ ...position, maxHeight: "60vh", overflowY: "auto" }}
+    <div ref={menu} id={id} popover="auto" role="menu" tabIndex={-1} aria-label={label} className="fixed m-0 w-[248px] max-w-[calc(100vw-24px)] rounded-lg border border-neutral-200 bg-surface p-1.5 text-neutral-900 shadow-sm outline-none" style={{ ...position, maxHeight: "60vh", overflowY: "auto" }}
       onClickCapture={event => { if ((event.target as HTMLElement).closest('button[role="menuitem"]:not(:disabled)')) close(); }}
       onToggle={event => setOpen(event.newState === "open")}
       onKeyDown={event => {
