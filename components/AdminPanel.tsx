@@ -194,7 +194,7 @@ export default function AdminPanel({
     <div className="mt-4">
       <div className="overflow-x-auto">
         <div className="min-w-[760px]">
-          <div className="grid grid-cols-[minmax(180px,1fr)_200px_140px_64px_240px] gap-2 border-b px-2 py-2 text-xs font-semibold text-neutral-500">
+          <div className="grid grid-cols-[minmax(180px,1fr)_200px_140px_64px_240px] gap-2 border-b px-2 py-2 text-xs font-semibold text-muted">
             <span>名前</span>
             <span>メール</span>
             <span>権限</span>
@@ -205,7 +205,7 @@ export default function AdminPanel({
             <div
               key={u.id}
               className={`grid grid-cols-[minmax(180px,1fr)_200px_140px_64px_240px] items-center gap-2 border-b px-2 py-1.5 text-sm ${
-                u.deactivated_at ? "bg-neutral-50 opacity-60" : ""
+                u.deactivated_at ? "bg-surface-subtle opacity-60" : ""
               }`}
             >
               <span className="flex min-w-0 items-center gap-2">
@@ -214,7 +214,7 @@ export default function AdminPanel({
                   <span className="flex items-center gap-1">
                     <span className="truncate font-medium">{u.name}</span>
                     {u.deactivated_at && (
-                      <span className="rounded bg-neutral-200 px-1 text-[10px] text-neutral-600">無効</span>
+                      <span className="rounded bg-surface-strong px-1 text-[10px] text-secondary">無効</span>
                     )}
                     {u.totp_enabled && (
                       <span className="rounded bg-emerald-100 px-1 text-[10px] text-emerald-700" title="二要素認証が有効です">
@@ -222,10 +222,10 @@ export default function AdminPanel({
                       </span>
                     )}
                   </span>
-                  {u.title && <span className="block truncate text-[11px] text-neutral-500">{u.title}</span>}
+                  {u.title && <span className="block truncate text-[11px] text-muted">{u.title}</span>}
                 </span>
               </span>
-              <span className="truncate text-xs text-neutral-500">{u.email ?? "–"}</span>
+              <span className="truncate text-xs text-muted">{u.email ?? "–"}</span>
               <span>
                 <select
                   value={roleOf(u)}
@@ -241,7 +241,7 @@ export default function AdminPanel({
                   ))}
                 </select>
               </span>
-              <span className="text-neutral-600">{u.open_tasks ?? "–"}</span>
+              <span className="text-secondary">{u.open_tasks ?? "–"}</span>
               <span className="flex gap-1 text-xs">
                 <button disabled={!u.can_manage} onClick={() => openEdit(u)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
                   編集
@@ -252,14 +252,14 @@ export default function AdminPanel({
                 <button
                   onClick={() => toggleActive(u)}
                   disabled={!u.can_manage || u.id === currentUserId}
-                  className="rounded border px-1.5 py-0.5 text-neutral-600 hover:bg-neutral-100 disabled:opacity-40"
+                  className="rounded border px-1.5 py-0.5 text-secondary hover:bg-neutral-100 disabled:opacity-40"
                 >
                   {u.deactivated_at ? "有効化" : "無効化"}
                 </button>
                 <button
                   onClick={() => remove(u.id, u.name)}
                   disabled={!u.can_manage || u.id === currentUserId}
-                  className="rounded border border-red-300 px-1.5 py-0.5 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                  className="rounded border border-red-300 px-1.5 py-0.5 text-danger hover:bg-red-50 disabled:opacity-40"
                 >
                   削除
                 </button>
@@ -312,8 +312,8 @@ export default function AdminPanel({
           作成
         </button>
       </div>
-      <p className="mt-1 text-[11px] text-neutral-400">パスワード要件: {passwordPolicyText}</p>
-      {msg && <p className="mt-2 text-sm text-neutral-600">{msg}</p>}
+      <p className="mt-1 text-[11px] text-subtle">パスワード要件: {passwordPolicyText}</p>
+      {msg && <p className="mt-2 text-sm text-secondary">{msg}</p>}
 
       <h2 className="mt-6 font-semibold">メール招待</h2>
       <div className="mt-2 flex max-w-3xl flex-wrap items-end gap-2">
@@ -352,11 +352,11 @@ export default function AdminPanel({
               コピー
             </button>
           </div>
-          {inviteResult.reason && <div className="mt-1 text-neutral-500">{inviteResult.reason}</div>}
+          {inviteResult.reason && <div className="mt-1 text-muted">{inviteResult.reason}</div>}
         </div>
       )}
       <div className="mt-3 max-w-3xl">
-        {invitations.length === 0 && <p className="text-sm text-neutral-500">保留中の招待はありません。</p>}
+        {invitations.length === 0 && <p className="text-sm text-muted">保留中の招待はありません。</p>}
         {invitations.map((inv) => (
           <div key={inv.id} className="flex items-center gap-2 border-b py-1.5 text-xs">
             <span className="min-w-0 flex-1 truncate">
@@ -377,26 +377,26 @@ export default function AdminPanel({
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setEditing(null)}>
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-xl bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-semibold">ユーザー編集</h2>
             <div className="mt-3 grid gap-2">
-              <label className="text-xs text-neutral-500">
+              <label className="text-xs text-muted">
                 名前
                 <input value={editName} onChange={(e) => setEditName(e.target.value)} className={`${field} mt-1 w-full`} />
               </label>
-              <label className="text-xs text-neutral-500">
+              <label className="text-xs text-muted">
                 メール
                 <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className={`${field} mt-1 w-full`} />
               </label>
-              <label className="text-xs text-neutral-500">
+              <label className="text-xs text-muted">
                 役職
                 <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={`${field} mt-1 w-full`} />
               </label>
-              <label className="text-xs text-neutral-500">
+              <label className="text-xs text-muted">
                 写真URL
                 <input value={editAvatar} onChange={(e) => setEditAvatar(e.target.value)} className={`${field} mt-1 w-full`} />
               </label>
-              <label className="text-xs text-neutral-500">
+              <label className="text-xs text-muted">
                 権限
                 <select
                   value={editRole}
@@ -413,7 +413,7 @@ export default function AdminPanel({
               </label>
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setEditing(null)} className="rounded px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100">
+              <button onClick={() => setEditing(null)} className="rounded px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100">
                 キャンセル
               </button>
               <button onClick={saveEdit} className="rounded bg-[#4075cf] px-4 py-1.5 text-sm text-white hover:bg-[#3567b8]">

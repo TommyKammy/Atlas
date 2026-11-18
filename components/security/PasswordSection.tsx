@@ -47,7 +47,7 @@ export function PasswordSection({
         description="全員のパスワード要件を設定します。変更は新しく作成されるパスワードのみに適用されます。"
       />
       <div className="mt-4 max-w-xl rounded-lg border border-neutral-200 p-4">
-        <label className="text-xs text-neutral-600">
+        <label className="text-xs text-secondary">
           最小文字数
           <input
             type="number"
@@ -58,7 +58,7 @@ export function PasswordSection({
             className="mt-1 w-24 rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
             data-password-min-length
           />
-          <span className="mt-1 block text-[11px] text-neutral-400">
+          <span className="mt-1 block text-[11px] text-subtle">
             メンバーとゲストのパスワードは、{minLength || 8} 文字以上である必要があります。
           </span>
         </label>
@@ -89,7 +89,7 @@ export function PasswordSection({
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
-          {msg && <span className="text-sm text-neutral-600">{msg}</span>}
+          {msg && <span className="text-sm text-secondary">{msg}</span>}
         </div>
       </div>
       <div className="mt-3 max-w-xl rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">

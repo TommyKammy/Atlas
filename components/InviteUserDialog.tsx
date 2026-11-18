@@ -61,17 +61,17 @@ export default function InviteUserDialog({
         aria-modal="true"
         aria-labelledby="invite-dialog-title"
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-xl bg-white p-5 text-neutral-900 shadow-2xl"
+        className="w-full max-w-md rounded-xl bg-surface p-5 text-neutral-900 shadow-2xl"
       >
         <div className="flex items-center justify-between">
           <h2 id="invite-dialog-title" className="text-lg font-semibold">
             メンバーを招待
           </h2>
-          <button type="button" onClick={onClose} className="text-xl leading-none text-neutral-400 hover:text-neutral-700" aria-label="閉じる">
+          <button type="button" onClick={onClose} className="text-xl leading-none text-subtle hover:text-neutral-700" aria-label="閉じる">
             ×
           </button>
         </div>
-        <p className="mt-1 text-sm text-neutral-500">メールアドレスと権限を指定して招待します。</p>
+        <p className="mt-1 text-sm text-muted">メールアドレスと権限を指定して招待します。</p>
         <div className="mt-4 space-y-2">
           <input
             value={email}
@@ -99,7 +99,7 @@ export default function InviteUserDialog({
             {busy ? "送信中…" : "招待を送る"}
           </button>
         </div>
-        {msg && <p className="mt-2 text-xs text-neutral-600">{msg}</p>}
+        {msg && <p className="mt-2 text-xs text-secondary">{msg}</p>}
         {result && (
           <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2 text-xs">
             <div className="font-medium text-blue-900">
@@ -115,11 +115,11 @@ export default function InviteUserDialog({
                 コピー
               </button>
             </div>
-            {result.reason && <div className="mt-1 text-neutral-500">{result.reason}</div>}
+            {result.reason && <div className="mt-1 text-muted">{result.reason}</div>}
           </div>
         )}
         <div className="mt-4 text-right">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100">
+          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100">
             閉じる
           </button>
         </div>

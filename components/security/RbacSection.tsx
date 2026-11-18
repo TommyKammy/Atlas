@@ -111,7 +111,7 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
 
       <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">
         <div className="min-w-[720px]">
-          <div className="grid grid-cols-[minmax(220px,1.4fr)_120px_130px_120px_120px] gap-3 border-b bg-neutral-50 px-4 py-2 text-xs font-semibold text-neutral-500">
+          <div className="grid grid-cols-[minmax(220px,1.4fr)_120px_130px_120px_120px] gap-3 border-b bg-surface-subtle px-4 py-2 text-xs font-semibold text-muted">
             <span>名前</span>
             <span>メンバー</span>
             <span>タイプ</span>
@@ -128,19 +128,19 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
                 <span className="flex items-center gap-1.5">
                   <span className="font-medium">{role.name}</span>
                   {role.is_super && (
-                    <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-800">特権</span>
+                    <span className="rounded bg-amber-100 px-1 text-[10px] text-warning">特権</span>
                   )}
                   {role.is_system && !role.is_super && (
-                    <span className="rounded bg-neutral-100 px-1 text-[10px] text-neutral-500">標準</span>
+                    <span className="rounded bg-surface-muted px-1 text-[10px] text-muted">標準</span>
                   )}
                 </span>
-                <span className="block truncate text-[11px] text-neutral-500">{role.description}</span>
+                <span className="block truncate text-[11px] text-muted">{role.description}</span>
               </span>
-              <span className="text-xs text-neutral-600">{role.member_count} 人</span>
-              <span className="text-xs text-neutral-600">
+              <span className="text-xs text-secondary">{role.member_count} 人</span>
+              <span className="text-xs text-secondary">
                 {role.is_system ? "標準" : "カスタム"} / {BASE_LABEL[role.base_level]}
               </span>
-              <span className="text-xs text-neutral-600">{role.permissions.length} 件</span>
+              <span className="text-xs text-secondary">{role.permissions.length} 件</span>
               <span className="flex gap-1 text-xs">
                 {!role.is_system && (
                   <>
@@ -152,30 +152,30 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
                     </button>
                     <button
                       onClick={() => remove(role)}
-                      className="rounded border border-red-300 px-1.5 py-0.5 text-red-600 hover:bg-red-50"
+                      className="rounded border border-red-300 px-1.5 py-0.5 text-danger hover:bg-red-50"
                     >
                       削除
                     </button>
                   </>
                 )}
-                {role.is_system && <span className="text-[11px] text-neutral-400">変更不可</span>}
+                {role.is_system && <span className="text-[11px] text-subtle">変更不可</span>}
               </span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+      <div className="mt-3 rounded-lg border border-neutral-200 bg-surface-subtle p-3 text-xs text-secondary">
         <strong className="font-semibold text-neutral-700">標準の役割</strong> は変更できません。カスタム役割では
         管理コンソールの権限とワークスペースの操作権限を個別に付与できます。
       </div>
 
-      {msg && <p className="mt-3 text-sm text-red-600">{msg}</p>}
+      {msg && <p className="mt-3 text-sm text-danger">{msg}</p>}
 
       {open && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 p-4" onClick={() => setOpen(false)}>
           <div
-            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 shadow-2xl"
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-surface p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label="役割を作成"
@@ -183,16 +183,16 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
           >
             <div className="flex items-start justify-between">
               <h3 className="text-lg font-semibold">{editing ? "役割を編集" : "カスタム役割を作成"}</h3>
-              <button onClick={() => setOpen(false)} aria-label="閉じる" className="rounded p-1 text-neutral-500 hover:bg-neutral-100">
+              <button onClick={() => setOpen(false)} aria-label="閉じる" className="rounded p-1 text-muted hover:bg-neutral-100">
                 ×
               </button>
             </div>
             <div className="mt-4 grid gap-3">
-              <label className="text-xs text-neutral-600">
+              <label className="text-xs text-secondary">
                 役割名
                 <input value={name} onChange={(e) => setName(e.target.value)} className={field} data-role-name-input />
               </label>
-              <label className="text-xs text-neutral-600">
+              <label className="text-xs text-secondary">
                 説明
                 <textarea
                   value={description}
@@ -201,7 +201,7 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
                   className={`${field} resize-y`}
                 />
               </label>
-              <label className="text-xs text-neutral-600">
+              <label className="text-xs text-secondary">
                 基本の役割
                 <select
                   value={baseLevel}
@@ -216,10 +216,10 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
                   <option value="guest">ゲスト</option>
                   <option value="admin">管理者</option>
                 </select>
-                <span className="mt-1 block text-[11px] text-neutral-400">{BASE_LEVEL_HINT[baseLevel]}</span>
+                <span className="mt-1 block text-[11px] text-subtle">{BASE_LEVEL_HINT[baseLevel]}</span>
               </label>
               <div>
-                <div className="text-xs text-neutral-600">権限</div>
+                <div className="text-xs text-secondary">権限</div>
                 <div className="mt-1 grid gap-1 rounded border p-2 sm:grid-cols-2">
                   {PERMISSION_CATALOG.map((permission) => {
                     const disabled = !allowedPermissions.includes(permission.key);
@@ -240,20 +240,20 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
                         />
                         <span>
                           <span className="font-medium">{permission.label}</span>
-                          <span className="block text-[10px] text-neutral-400">{permission.group}</span>
+                          <span className="block text-[10px] text-subtle">{permission.group}</span>
                         </span>
                       </label>
                     );
                   })}
                 </div>
-                <p className="mt-1 text-[11px] text-neutral-400">
+                <p className="mt-1 text-[11px] text-subtle">
                   管理コンソールの権限は「管理者」を基本の役割にした場合のみ付与できます。
                 </p>
               </div>
             </div>
-            {msg && <p className="mt-3 text-sm text-red-600">{msg}</p>}
+            {msg && <p className="mt-3 text-sm text-danger">{msg}</p>}
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100">
+              <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100">
                 キャンセル
               </button>
               <button

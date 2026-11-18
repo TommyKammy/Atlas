@@ -22,7 +22,7 @@ export default async function AdminPage() {
     return (
       <div className="p-8">
         <h1 className="text-xl font-bold">管理</h1>
-        <p className="mt-2 text-sm text-neutral-500">管理者権限が必要です。</p>
+        <p className="mt-2 text-sm text-muted">管理者権限が必要です。</p>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export default async function AdminPage() {
     return (
       <div className="p-8">
         <h1 className="text-xl font-bold">管理</h1>
-        <p className="mt-2 text-sm text-neutral-500">ワークスペースが見つかりません。</p>
+        <p className="mt-2 text-sm text-muted">ワークスペースが見つかりません。</p>
       </div>
     );
   }
@@ -48,7 +48,7 @@ export default async function AdminPage() {
   return (
     <div className="max-w-6xl p-6">
       <h1 className="text-lg font-bold">管理</h1>
-      <p className="mt-0.5 text-xs text-neutral-500">
+      <p className="mt-0.5 text-xs text-muted">
         {workspace.name} のメンバー、チーム、セキュリティを管理します。
       </p>
       <AdminConsole

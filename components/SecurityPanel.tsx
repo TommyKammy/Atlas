@@ -43,13 +43,13 @@ export default function SecurityPanel({
   };
 
   if (sections.length === 0) {
-    return <p className="text-sm text-neutral-500">セキュリティ設定を表示する権限がありません。</p>;
+    return <p className="text-sm text-muted">セキュリティ設定を表示する権限がありません。</p>;
   }
 
   return (
     <section data-admin-panel="security">
       <h2 className="text-base font-semibold">セキュリティ</h2>
-      <p className="mt-0.5 text-xs text-neutral-500">
+      <p className="mt-0.5 text-xs text-muted">
         認証、役割、パスワードのポリシーを管理します。設定はワークスペース全体に適用されます。
       </p>
 
@@ -62,7 +62,7 @@ export default function SecurityPanel({
             className={`-mb-px rounded-t px-3 py-2 text-sm ${
               section === key
                 ? "border-b-2 border-[#4075cf] font-medium text-[#2f5fa8]"
-                : "text-neutral-500 hover:bg-neutral-50"
+                : "text-muted hover:bg-neutral-50"
             }`}
           >
             {SECTION_LABEL[key]}

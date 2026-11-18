@@ -39,14 +39,14 @@ export default function OrganizationPanel({ initial }: { initial: AdminWorkspace
   return (
     <section data-admin-panel="workspace">
       <h2 className="text-base font-semibold">組織設定</h2>
-      <p className="mt-0.5 text-xs text-neutral-500">
+      <p className="mt-0.5 text-xs text-muted">
         組織の名前を変更して Atlas をカスタマイズします。サイドバーや招待メールに表示されます。
       </p>
 
       <div className="mt-4 rounded-lg border border-neutral-200 p-4">
         <h3 className="text-sm font-semibold">会社のプロフィール</h3>
         <div className="mt-3">
-          <label className="text-xs font-medium text-neutral-600">組織名</label>
+          <label className="text-xs font-medium text-secondary">組織名</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -54,7 +54,7 @@ export default function OrganizationPanel({ initial }: { initial: AdminWorkspace
             data-admin-org-name-input
             maxLength={120}
           />
-          <p className="mt-1 text-[11px] text-neutral-400">
+          <p className="mt-1 text-[11px] text-subtle">
             組織の名前を変更して Atlas をカスタマイズします。
           </p>
         </div>
@@ -67,34 +67,34 @@ export default function OrganizationPanel({ initial }: { initial: AdminWorkspace
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
-          {msg && <span className="text-sm text-neutral-600">{msg}</span>}
+          {msg && <span className="text-sm text-secondary">{msg}</span>}
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg border border-neutral-200 p-4">
-          <div className="text-[11px] font-medium text-neutral-500">組織 ID</div>
+          <div className="text-[11px] font-medium text-muted">組織 ID</div>
           <div className="mt-1 font-mono text-sm">{workspace.id}</div>
-          <div className="mt-1 text-[11px] text-neutral-400">ワークスペースの識別子</div>
+          <div className="mt-1 text-[11px] text-subtle">ワークスペースの識別子</div>
         </div>
         <div className="rounded-lg border border-neutral-200 p-4">
-          <div className="text-[11px] font-medium text-neutral-500">メンバー</div>
+          <div className="text-[11px] font-medium text-muted">メンバー</div>
           <div className="mt-1 text-xl font-semibold">{workspace.user_count}</div>
-          <div className="mt-1 text-[11px] text-neutral-400">有効なユーザー</div>
+          <div className="mt-1 text-[11px] text-subtle">有効なユーザー</div>
         </div>
         <div className="rounded-lg border border-neutral-200 p-4">
-          <div className="text-[11px] font-medium text-neutral-500">チーム</div>
+          <div className="text-[11px] font-medium text-muted">チーム</div>
           <div className="mt-1 text-xl font-semibold">{workspace.team_count}</div>
-          <div className="mt-1 text-[11px] text-neutral-400">作成済みのチーム</div>
+          <div className="mt-1 text-[11px] text-subtle">作成済みのチーム</div>
         </div>
       </div>
 
       <div className="mt-4 rounded-lg border border-neutral-200 p-4">
         <h3 className="text-sm font-semibold">プロジェクト</h3>
-        <p className="mt-1 text-sm text-neutral-600">
+        <p className="mt-1 text-sm text-secondary">
           このワークスペースには <strong>{workspace.project_count}</strong> 件のプロジェクトがあります。
         </p>
-        <p className="mt-1 text-[11px] text-neutral-400">
+        <p className="mt-1 text-[11px] text-subtle">
           組織名の変更は監査ログにも記録されます。
         </p>
       </div>

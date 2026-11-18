@@ -60,7 +60,7 @@ export function SamlSection({
       />
 
       <div className="mt-4 max-w-3xl rounded-lg border border-neutral-200 p-4">
-        <div className="text-xs font-medium text-neutral-600">SAML のモード</div>
+        <div className="text-xs font-medium text-secondary">SAML のモード</div>
         <div className="mt-2 space-y-2 text-sm">
           {(
             [
@@ -82,12 +82,12 @@ export function SamlSection({
             </label>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-neutral-400">
+        <p className="mt-2 text-[11px] text-subtle">
           必須にすると、対象ユーザーのパスワード認証による既存セッションも失効し、SAML SSO での再サインインが必要になります。SAML 認証済みのセッションは維持します。管理者は緊急時のためにパスワードでサインインできます。
         </p>
 
         <div className="mt-4 grid gap-3">
-          <label className="text-xs text-neutral-600">
+          <label className="text-xs text-secondary">
             サインインページの URL
             <input
               value={signinUrl}
@@ -96,11 +96,11 @@ export function SamlSection({
               className={field}
               data-saml-signin-url
             />
-            <span className="mt-1 block text-[11px] text-neutral-400">
+            <span className="mt-1 block text-[11px] text-subtle">
               このフィールドは IdP から提供されます。「ログイン URL」というラベルが付いている場合があります。
             </span>
           </label>
-          <label className="text-xs text-neutral-600">
+          <label className="text-xs text-secondary">
             X.509 証明書
             <textarea
               value={certificate}
@@ -112,7 +112,7 @@ export function SamlSection({
             />
           </label>
           <div className="flex flex-wrap items-end gap-4">
-            <label className="text-xs text-neutral-600">
+            <label className="text-xs text-secondary">
               セッションタイムアウト
               <div className="mt-1 flex items-center gap-1">
                 <input
@@ -124,7 +124,7 @@ export function SamlSection({
                   className="w-20 rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
                   data-saml-session-days
                 />
-                <span className="text-sm text-neutral-500">日</span>
+                <span className="text-sm text-muted">日</span>
               </div>
             </label>
             <label className="flex items-center gap-2 pb-2 text-sm">
@@ -143,7 +143,7 @@ export function SamlSection({
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
-          {msg && <span className="text-sm text-neutral-600">{msg}</span>}
+          {msg && <span className="text-sm text-secondary">{msg}</span>}
         </div>
       </div>
 
@@ -151,7 +151,7 @@ export function SamlSection({
         <h4 className="text-sm font-semibold">IdP に登録するサービスプロバイダー情報</h4>
         <div className="mt-2 space-y-2 text-xs">
           <div>
-            <div className="text-neutral-500">ACS URL</div>
+            <div className="text-muted">ACS URL</div>
             <div className="mt-0.5 flex gap-2">
               <input readOnly value={acsUrl} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
               <button onClick={() => copy(acsUrl)} className="rounded border px-2 py-1 hover:bg-neutral-100">
@@ -160,7 +160,7 @@ export function SamlSection({
             </div>
           </div>
           <div>
-            <div className="text-neutral-500">SP メタデータ URL</div>
+            <div className="text-muted">SP メタデータ URL</div>
             <div className="mt-0.5 flex gap-2">
               <input readOnly value={metadataUrl} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
               <button onClick={() => copy(metadataUrl)} className="rounded border px-2 py-1 hover:bg-neutral-100">
@@ -169,7 +169,7 @@ export function SamlSection({
             </div>
           </div>
           <div>
-            <div className="text-neutral-500">Issuer / Entity ID</div>
+            <div className="text-muted">Issuer / Entity ID</div>
             <div className="mt-0.5 flex gap-2">
               <input readOnly value={issuer} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
               <button onClick={() => copy(issuer)} className="rounded border px-2 py-1 hover:bg-neutral-100">

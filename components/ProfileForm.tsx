@@ -206,7 +206,7 @@ export default function ProfileForm({
         <div className="mt-3 flex items-center gap-3">
           <UserAvatar name={name} url={avatarUrl} className="h-14 w-14" textClassName="text-lg" />
           <div className="min-w-0 flex-1">
-            <label className="text-xs text-neutral-500">写真URL（任意）</label>
+            <label className="text-xs text-muted">写真URL（任意）</label>
             <input
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
@@ -216,11 +216,11 @@ export default function ProfileForm({
           </div>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <label className="text-xs text-neutral-500">
+          <label className="text-xs text-muted">
             表示名
             <input value={name} onChange={(e) => setName(e.target.value)} className={field} />
           </label>
-          <label className="text-xs text-neutral-500">
+          <label className="text-xs text-muted">
             役職・肩書き
             <input
               value={title}
@@ -229,7 +229,7 @@ export default function ProfileForm({
               className={field}
             />
           </label>
-          <label className="text-xs text-neutral-500 sm:col-span-2">
+          <label className="text-xs text-muted sm:col-span-2">
             メールアドレス
             <input
               type="email"
@@ -273,7 +273,7 @@ export default function ProfileForm({
             autoComplete="new-password"
             className={field}
           />
-          <p className="text-[11px] text-neutral-400">パスワード要件: {passwordPolicyText}</p>
+          <p className="text-[11px] text-subtle">パスワード要件: {passwordPolicyText}</p>
           <button
             onClick={savePassword}
             className="self-start rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
@@ -288,7 +288,7 @@ export default function ProfileForm({
           <h2 className="font-semibold">二要素認証</h2>
           <span
             className={`rounded px-2 py-0.5 text-[11px] ${
-              totpEnabled ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"
+              totpEnabled ? "bg-emerald-100 text-emerald-700" : "bg-surface-muted text-muted"
             }`}
             data-two-factor-status
           >
@@ -300,7 +300,7 @@ export default function ProfileForm({
             このワークスペースでは二要素認証が必須です。設定を完了してください。
           </p>
         )}
-        <p className="mt-1 text-[12px] text-neutral-500">
+        <p className="mt-1 text-[12px] text-muted">
           認証アプリ（Google Authenticator、1Password など）で6桁のコードを生成し、サインイン時に使用します。
         </p>
 
@@ -325,13 +325,13 @@ export default function ProfileForm({
                 className="h-[220px] w-[220px] shrink-0 self-center rounded border"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-neutral-600">
+                <p className="text-xs text-secondary">
                   認証アプリでQRコードをスキャンするか、下のセットアップキーを入力してください。
                 </p>
-                <div className="mt-2 rounded bg-neutral-50 px-2 py-1.5 font-mono text-[11px] break-all" data-two-factor-secret>
+                <div className="mt-2 rounded bg-surface-subtle px-2 py-1.5 font-mono text-[11px] break-all" data-two-factor-secret>
                   {totpSetup.secret}
                 </div>
-                <label className="mt-3 block text-xs text-neutral-600">
+                <label className="mt-3 block text-xs text-secondary">
                   6桁の確認コード
                   <input
                     value={totpCode}
@@ -358,7 +358,7 @@ export default function ProfileForm({
 
         {mfaPending && totpEnabled && recoveryCodes.length === 0 && (
           <form className="mt-3 space-y-2" onSubmit={(event) => { event.preventDefault(); void verifyMfa(); }}>
-            <label className="block text-xs text-neutral-600">
+            <label className="block text-xs text-secondary">
               {useRecoveryCode ? "リカバリーコード" : "6桁の認証コード"}
               <input
                 value={totpCode}
@@ -383,7 +383,7 @@ export default function ProfileForm({
 
         {totpEnabled && !mfaPending && (
           <div className="mt-3">
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-muted">
               二要素認証は有効です。無効化するには現在のパスワードを入力してください。
             </p>
             <div className="mt-2 flex max-w-sm gap-2">
@@ -399,7 +399,7 @@ export default function ProfileForm({
                 onClick={disableTotp}
                 disabled={twoFaBusy || disablePassword === ""}
                 data-two-factor-disable
-                className="shrink-0 rounded border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                className="shrink-0 rounded border border-red-300 px-3 py-1.5 text-sm text-danger hover:bg-red-50 disabled:opacity-50"
               >
                 無効化
               </button>
@@ -432,11 +432,11 @@ export default function ProfileForm({
           </div>
         )}
 
-        {twoFaMsg && <p role="status" data-auth-feedback className="mt-2 text-sm text-neutral-600">{twoFaMsg}</p>}
+        {twoFaMsg && <p role="status" data-auth-feedback className="mt-2 text-sm text-secondary">{twoFaMsg}</p>}
       </section>
 
-      {msg && <p className="text-sm text-neutral-600">{msg}</p>}
-      {!mfaPending && <p className="text-xs text-neutral-400">ユーザーID: {userId}</p>}
+      {msg && <p className="text-sm text-secondary">{msg}</p>}
+      {!mfaPending && <p className="text-xs text-subtle">ユーザーID: {userId}</p>}
     </div>
   );
 }

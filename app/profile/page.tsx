@@ -14,7 +14,7 @@ export default async function ProfilePage() {
   if (!me && !access.mfaPending) {
     return (
       <div className="p-8">
-        <p className="text-sm text-neutral-500">ユーザーがありません。</p>
+        <p className="text-sm text-muted">ユーザーがありません。</p>
       </div>
     );
   }

@@ -135,7 +135,7 @@ export default function TeamsPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">チーム</h2>
-          <p className="mt-0.5 text-xs text-neutral-500">
+          <p className="mt-0.5 text-xs text-muted">
             チームを作成して、メンバーと仕事を整理します。チーム管理者はメンバーを追加・削除できます。
           </p>
         </div>
@@ -150,7 +150,7 @@ export default function TeamsPanel({
 
       <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">
         <div className="min-w-[720px]">
-          <div className="grid grid-cols-[minmax(200px,1.4fr)_140px_120px_150px_120px] gap-3 border-b bg-neutral-50 px-4 py-2 text-xs font-semibold text-neutral-500">
+          <div className="grid grid-cols-[minmax(200px,1.4fr)_140px_120px_150px_120px] gap-3 border-b bg-surface-subtle px-4 py-2 text-xs font-semibold text-muted">
             <span>チーム</span>
             <span>メンバー</span>
             <span>プライバシー</span>
@@ -158,7 +158,7 @@ export default function TeamsPanel({
             <span>操作</span>
           </div>
           {teams.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-neutral-500">
+            <p className="px-4 py-8 text-center text-sm text-muted">
               チームはまだありません。「チームを作成」から追加できます。
             </p>
           )}
@@ -173,11 +173,11 @@ export default function TeamsPanel({
                 <span className="flex items-center gap-1.5">
                   <span className="truncate font-medium">{team.name}</span>
                   {team.status === "approved" && (
-                    <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-800">認定済み</span>
+                    <span className="rounded bg-amber-100 px-1 text-[10px] text-warning">認定済み</span>
                   )}
                 </span>
                 {team.description && (
-                  <span className="block truncate text-[11px] text-neutral-500">{team.description}</span>
+                  <span className="block truncate text-[11px] text-muted">{team.description}</span>
                 )}
               </span>
               <span className="flex items-center gap-1">
@@ -192,19 +192,19 @@ export default function TeamsPanel({
                     />
                   ))}
                 </span>
-                <span className="ml-1 text-xs text-neutral-500">{team.members.length}</span>
+                <span className="ml-1 text-xs text-muted">{team.members.length}</span>
               </span>
-              <span className="text-xs text-neutral-600" title={PRIVACY_HINT[team.privacy]}>
+              <span className="text-xs text-secondary" title={PRIVACY_HINT[team.privacy]}>
                 {PRIVACY_LABEL[team.privacy]}
               </span>
-              <span className="truncate text-xs text-neutral-500">{team.created_by_name ?? "–"}</span>
+              <span className="truncate text-xs text-muted">{team.created_by_name ?? "–"}</span>
               <span className="flex gap-1 text-xs">
                 <button onClick={() => openEdit(team)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
                   編集
                 </button>
                 <button
                   onClick={() => remove(team)}
-                  className="rounded border border-red-300 px-1.5 py-0.5 text-red-600 hover:bg-red-50"
+                  className="rounded border border-red-300 px-1.5 py-0.5 text-danger hover:bg-red-50"
                 >
                   削除
                 </button>
@@ -214,12 +214,12 @@ export default function TeamsPanel({
         </div>
       </div>
 
-      {msg && <p className="mt-3 text-sm text-red-600">{msg}</p>}
+      {msg && <p className="mt-3 text-sm text-danger">{msg}</p>}
 
       {open && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 p-4" onClick={() => setOpen(false)}>
           <div
-            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 shadow-2xl"
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-surface p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label="チームを作成"
@@ -228,15 +228,15 @@ export default function TeamsPanel({
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-lg font-semibold">{editingId ? "チームを編集" : "チームを新規作成"}</h2>
-                <p className="mt-0.5 text-xs text-neutral-500">チームの情報とメンバーを設定します。</p>
+                <p className="mt-0.5 text-xs text-muted">チームの情報とメンバーを設定します。</p>
               </div>
-              <button onClick={() => setOpen(false)} aria-label="閉じる" className="rounded p-1 text-neutral-500 hover:bg-neutral-100">
+              <button onClick={() => setOpen(false)} aria-label="閉じる" className="rounded p-1 text-muted hover:bg-neutral-100">
                 ×
               </button>
             </div>
 
             <div className="mt-4 grid gap-3">
-              <label className="text-xs text-neutral-600">
+              <label className="text-xs text-secondary">
                 チーム名
                 <input
                   value={name}
@@ -246,7 +246,7 @@ export default function TeamsPanel({
                   data-team-name-input
                 />
               </label>
-              <label className="text-xs text-neutral-600">
+              <label className="text-xs text-secondary">
                 説明
                 <textarea
                   value={description}
@@ -259,8 +259,8 @@ export default function TeamsPanel({
 
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-neutral-600">メンバー</span>
-                  <span className="text-[11px] text-neutral-400">選択中 {selectedCount} 人</span>
+                  <span className="text-xs text-secondary">メンバー</span>
+                  <span className="text-[11px] text-subtle">選択中 {selectedCount} 人</span>
                 </div>
                 <input
                   value={filter}
@@ -282,7 +282,7 @@ export default function TeamsPanel({
                         />
                         <UserAvatar name={u.name} url={u.avatar_url} className="h-6 w-6" textClassName="text-[9px]" />
                         <span className="min-w-0 flex-1 truncate">{u.name}</span>
-                        <span className="truncate text-[11px] text-neutral-400">{u.email ?? ""}</span>
+                        <span className="truncate text-[11px] text-subtle">{u.email ?? ""}</span>
                         {selected && (
                           <select
                             value={selected}
@@ -306,7 +306,7 @@ export default function TeamsPanel({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <span className="text-xs text-neutral-600">チームのステータス</span>
+                  <span className="text-xs text-secondary">チームのステータス</span>
                   <div className="mt-1 flex gap-3 text-sm">
                     <label className="flex items-center gap-1.5">
                       <input type="radio" checked={status === "active"} onChange={() => setStatus("active")} />
@@ -319,7 +319,7 @@ export default function TeamsPanel({
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-neutral-600">チームプライバシー</span>
+                  <span className="text-xs text-secondary">チームプライバシー</span>
                   <div className="mt-1 space-y-1 text-sm">
                     {(["public", "private", "approval"] as const).map((value) => (
                       <label key={value} className="flex items-start gap-1.5">
@@ -331,7 +331,7 @@ export default function TeamsPanel({
                         />
                         <span>
                           {PRIVACY_LABEL[value]}
-                          <span className="block text-[11px] text-neutral-400">{PRIVACY_HINT[value]}</span>
+                          <span className="block text-[11px] text-subtle">{PRIVACY_HINT[value]}</span>
                         </span>
                       </label>
                     ))}
@@ -340,10 +340,10 @@ export default function TeamsPanel({
               </div>
             </div>
 
-            {msg && <p className="mt-3 text-sm text-red-600">{msg}</p>}
+            {msg && <p className="mt-3 text-sm text-danger">{msg}</p>}
 
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100">
+              <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100">
                 キャンセル
               </button>
               <button

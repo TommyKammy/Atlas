@@ -58,7 +58,7 @@ export function TwoFactorSection({
         description="メンバーとゲストに 2 つ目の認証方法を使用してサインインすることを義務づけます。"
       />
       <div className="mt-4 max-w-2xl rounded-lg border border-neutral-200 p-4">
-        <div className="text-xs font-medium text-neutral-600">二要素認証のポリシー</div>
+        <div className="text-xs font-medium text-secondary">二要素認証のポリシー</div>
         <div className="mt-2 space-y-2 text-sm">
           <label className="flex items-start gap-2">
             <input
@@ -70,7 +70,7 @@ export function TwoFactorSection({
             />
             <span>
               任意
-              <span className="block text-[11px] text-neutral-400">
+              <span className="block text-[11px] text-subtle">
                 ユーザーが自分のプロフィールから二要素認証を有効化できます。
               </span>
             </span>
@@ -85,7 +85,7 @@ export function TwoFactorSection({
             />
             <span>
               すべてのメンバーとゲストに対して必須
-              <span className="block text-[11px] text-neutral-400">
+              <span className="block text-[11px] text-subtle">
                 次回サインイン時に、プロフィールから二要素認証の設定を促します。
               </span>
             </span>
@@ -100,7 +100,7 @@ export function TwoFactorSection({
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
-          {msg && <span className="text-sm text-neutral-600">{msg}</span>}
+          {msg && <span className="text-sm text-secondary">{msg}</span>}
         </div>
       </div>
 
@@ -117,12 +117,12 @@ export function TwoFactorSection({
               <UserAvatar name={user.name} url={null} className="h-6 w-6" textClassName="text-[9px]" />
               <span className="min-w-0 flex-1 truncate">
                 {user.name}
-                {user.id === currentUserId && <span className="ml-1 text-[10px] text-neutral-400">(自分)</span>}
+                {user.id === currentUserId && <span className="ml-1 text-[10px] text-subtle">(自分)</span>}
               </span>
-              <span className="w-24 text-[11px] text-neutral-500">{user.role_name ?? "–"}</span>
+              <span className="w-24 text-[11px] text-muted">{user.role_name ?? "–"}</span>
               <span
                 className={`w-20 rounded px-1.5 py-0.5 text-center text-[11px] ${
-                  user.totp_enabled ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"
+                  user.totp_enabled ? "bg-emerald-100 text-emerald-700" : "bg-surface-muted text-muted"
                 }`}
               >
                 {user.totp_enabled ? "有効" : "未設定"}
