@@ -8,6 +8,7 @@ import { dueSegs } from "@/lib/dates";
 import { taskSectionId } from "@/lib/task-section";
 import type { BoardCardFields } from "./BoardToolbar";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
+import DueStateIcon from "../task/DueStateIcon";
 import TaskAvatar from "../task/TaskAvatar";
 import TaskStatusChip from "../task/TaskStatusChip";
 import TaskMetaBadges from "../task/TaskMetaBadges";
@@ -47,6 +48,7 @@ export default function BoardCard({
   onMove: (delta: 1 | -1) => void;
 }) {
   const sectionId = taskSectionId(task);
+  const overdue = !task.completed && task.due_on !== null && task.due_on < today;
   return (
     <div
       data-board-card={task.id}
@@ -100,14 +102,18 @@ export default function BoardCard({
           (task.start_on || task.due_on) &&
           (() => {
             const [s1, s2] = dueSegs(task.start_on, task.due_on);
+            const dueLabel = s2 ? `${s1} – ${s2}` : s1;
             return (
               <span
                 className={`rounded-full px-1.5 py-0.5 ${
-                  !task.completed && task.due_on !== null && task.due_on < today
+                  overdue
                     ? "bg-danger-soft font-semibold text-danger"
                     : "bg-surface-muted text-secondary"
                 }`}
+                title={overdue ? `期限超過: ${dueLabel}` : undefined}
               >
+                {overdue && <DueStateIcon state="overdue" className="mr-0.5 align-[-2px]" />}
+                {overdue && <span className="sr-only">期限超過: </span>}
                 <span className="whitespace-nowrap">{s1}</span>
                 {s2 && <span className="whitespace-nowrap"> – {s2}</span>}
               </span>

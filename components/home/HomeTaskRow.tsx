@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { HomeTask } from "@/lib/home-widgets";
+import DueStateIcon from "../task/DueStateIcon";
 
 /** Compact task row used by the My tasks and Assigned tasks widgets. */
 export default function HomeTaskRow({
@@ -56,7 +57,12 @@ export default function HomeTaskRow({
         className={`w-[76px] shrink-0 text-right text-[11px] ${
           overdue ? "font-semibold text-danger" : "text-muted"
         }`}
+        title={overdue && task.due_on ? `期限超過: ${task.due_on}` : undefined}
       >
+        {overdue && (
+          <DueStateIcon state="overdue" sizeClassName="h-2.5 w-2.5" className="mr-0.5 align-[-1px]" />
+        )}
+        {overdue && <span className="sr-only">期限超過: </span>}
         {task.due_on ?? "–"}
       </span>
     </div>

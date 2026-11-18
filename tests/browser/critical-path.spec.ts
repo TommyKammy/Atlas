@@ -194,10 +194,15 @@ test("all tied paths and a zero-duration milestone are highlighted and the optio
   await expect(page.locator("[data-timeline]")).toHaveAttribute("data-timeline-zoom-preset", "month");
   await criticalDisplay(page, true);
   await assertCritical(page, allCritical, true);
-  await expect(bar(page, milestone).locator('[data-task-milestone-critical="true"]')).toHaveCount(1);
+  const criticalIcon = bar(page, milestone).locator('[data-task-milestone-critical="true"]');
+  await expect(criticalIcon).toHaveCount(1);
+  await expect(criticalIcon).toHaveAttribute("title", "クリティカルパス上のマイルストーン");
+  await expect(criticalIcon).toHaveAttribute("aria-label", "クリティカルパス上のマイルストーン");
   const completedIcon = bar(page, completedMilestone).locator("[data-task-milestone]");
   await expect(completedIcon).toHaveAttribute("data-task-milestone-completed", "true");
   await expect(completedIcon).not.toHaveAttribute("data-task-milestone-critical", "true");
+  await expect(completedIcon).toHaveAttribute("title", "マイルストーン");
+  await expect(completedIcon).toHaveAttribute("aria-label", "マイルストーン");
   await expect(completedIcon).not.toHaveClass(/(?:bg|ring)-red-/);
   await criticalDisplay(page, false);
   await assertCritical(page, allCritical, false);

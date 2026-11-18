@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState, useTransition } from "react";
 import type { TaskRow } from "@/lib/data";
+import DueStateIcon from "./task/DueStateIcon";
 import { shiftDate } from "@/lib/timeline-dnd";
 import { ApiError, api } from "@/lib/api-client";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
@@ -324,7 +325,18 @@ export default function MyTasksView({
                   className={`w-24 shrink-0 ${
                     bucket.alert ? "font-semibold text-danger" : "text-secondary"
                   }`}
+                  title={
+                    bucket.alert && task.due_on
+                      ? `期限超過: ${task.due_on}`
+                      : bucket.key === "today" && task.due_on
+                        ? `今日が期日: ${task.due_on}`
+                        : undefined
+                  }
                 >
+                  {bucket.alert && <DueStateIcon state="overdue" className="mr-1 align-[-2px]" />}
+                  {bucket.key === "today" && <DueStateIcon state="today" className="mr-1 align-[-2px]" />}
+                  {bucket.alert && <span className="sr-only">期限超過: </span>}
+                  {bucket.key === "today" && <span className="sr-only">今日が期日: </span>}
                   {task.due_on ?? "–"}
                 </span>
                 <span className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">

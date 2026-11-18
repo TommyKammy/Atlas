@@ -12,14 +12,16 @@ export default function TaskMilestoneIcon({
   completed?: boolean;
   critical?: boolean;
 }) {
+  const criticalState = critical && !completed;
+  const label = criticalState ? "クリティカルパス上のマイルストーン" : "マイルストーン";
   return (
     <span
       data-task-milestone
       data-task-milestone-completed={completed ? "true" : undefined}
-      data-task-milestone-critical={critical && !completed ? "true" : undefined}
-      title="マイルストーン"
-      aria-label="マイルストーン"
-      className={`inline-flex shrink-0 items-center ${MILESTONE_ICON_COLOR} ${critical && !completed ? `rounded-sm ${MILESTONE_CRITICAL_BACKGROUND} ring-2 ${MILESTONE_CRITICAL_RING}` : ""} ${sizeClassName} ${className}`}
+      data-task-milestone-critical={criticalState ? "true" : undefined}
+      title={label}
+      aria-label={label}
+      className={`inline-flex shrink-0 items-center ${MILESTONE_ICON_COLOR} ${criticalState ? `rounded-sm ${MILESTONE_CRITICAL_BACKGROUND} ring-2 ${MILESTONE_CRITICAL_RING}` : ""} ${sizeClassName} ${className}`}
     >
       <svg viewBox="0 0 32 32" className="h-full w-full" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <path

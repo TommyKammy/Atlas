@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { dueSegs, todayISO } from "@/lib/dates";
 import DueDatePicker from "../fields/DueDatePicker";
+import DueStateIcon from "./DueStateIcon";
 
 /** Asana-style due-date field for the task detail pane. */
 export default function TaskDueDateField({
@@ -47,12 +48,14 @@ export default function TaskDueDateField({
         className={`flex h-7 min-w-0 items-center gap-1.5 rounded px-1 text-[13px] ${
           overdue ? "font-medium text-danger" : "text-text"
         } hover:bg-hover`}
-        aria-label="期日を設定"
+        aria-label={overdue ? `期限超過: ${label}。期日を設定` : "期日を設定"}
+        title={overdue ? `期限超過: ${label}` : undefined}
       >
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.3">
           <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" />
           <path d="M5 2v3M11 2v3M2.5 6.5h11" />
         </svg>
+        {overdue && <DueStateIcon state="overdue" />}
         <span className="truncate">{label}</span>
       </button>
       {(start || due) && (

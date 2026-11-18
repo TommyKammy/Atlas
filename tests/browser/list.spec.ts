@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { todayISO } from "../../lib/dates";
+import { shiftDate } from "../../lib/timeline-dnd";
 
 const EMAIL = process.env.E2E_EMAIL ?? "admin@example.com";
 const PASSWORD = process.env.E2E_PASSWORD ?? "atlas-dev-2026";
@@ -56,6 +58,8 @@ test("milestone icons replace the completion check and use Asana green", async (
             : `[data-calendar-single="${id}"]`;
       const icon = page.locator(`${container} [data-task-milestone]`);
       await expect(icon).toBeVisible();
+      await expect(icon).toHaveAttribute("aria-label", "マイルストーン");
+      await expect(icon).toHaveAttribute("title", "マイルストーン");
       const info = await icon.evaluate((element) => {
         const button = element.closest("button");
         const svg = element.querySelector("svg");
@@ -90,5 +94,61 @@ test("milestone icons replace the completion check and use Asana green", async (
   } finally {
     await page.request.delete(`/api/tasks/${id}`);
     await page.request.delete(`/api/tasks/${id}?force=1`);
+  }
+});
+
+test("due dates pair overdue and today colors with a shape cue and accessible state", async ({ page }) => {
+  const meResponse = await page.request.get("/api/me");
+  expect(meResponse.ok()).toBeTruthy();
+  const me = await meResponse.json() as { id: number };
+  const today = todayISO();
+  const yesterday = shiftDate(today, -1);
+  const createdIds: number[] = [];
+
+  const createTask = async (name: string, due: string) => {
+    const response = await page.request.post("/api/tasks", {
+      data: { project_id: 1, section_id: 2, name, due_on: due, assignee_id: me.id },
+    });
+    expect(response.status()).toBe(201);
+    const { id } = await response.json() as { id: number };
+    createdIds.push(id);
+    return id;
+  };
+
+  const overdueId = await createTask(`E2E overdue due cue ${Date.now()}`, yesterday);
+  const todayId = await createTask(`E2E today due cue ${Date.now()}`, today);
+
+  try {
+    await page.goto("/projects/1?view=list");
+    const overdueRow = page.locator(`[data-list-row="${overdueId}"]`);
+    await expect(overdueRow).toContainText("期限超過");
+    await expect(overdueRow.locator('[data-due-state="overdue"]').filter({ visible: true })).toHaveCount(1);
+    const todayRow = page.locator(`[data-list-row="${todayId}"]`);
+    await expect(todayRow).toContainText("今日が期日");
+    await expect(todayRow.locator('[data-due-state="today"]').filter({ visible: true })).toHaveCount(1);
+
+    await page.goto("/projects/1?view=board");
+    const overdueCard = page.locator(`[data-board-card="${overdueId}"]`);
+    await expect(overdueCard).toContainText("期限超過");
+    await expect(overdueCard.locator('[data-due-state="overdue"]')).toHaveCount(1);
+
+    await page.goto("/my-tasks");
+    const myOverdueRow = page.locator(`[data-my-task-row="${overdueId}"]`);
+    await expect(myOverdueRow).toContainText("期限超過");
+    await expect(myOverdueRow.locator('[data-due-state="overdue"]')).toHaveCount(1);
+    const myTodayRow = page.locator(`[data-my-task-row="${todayId}"]`);
+    await expect(myTodayRow).toContainText("今日が期日");
+    await expect(myTodayRow.locator('[data-due-state="today"]')).toHaveCount(1);
+
+    await page.goto(`/projects/1?view=list&task=${overdueId}`);
+    const dueButton = page.locator("[data-task-pane]").getByRole("button", { name: /^期限超過: / });
+    await expect(dueButton).toBeVisible();
+    await expect(dueButton).toHaveAttribute("title", /^期限超過: /);
+    await expect(dueButton.locator('[data-due-state="overdue"]')).toHaveCount(1);
+  } finally {
+    for (const id of createdIds) {
+      await page.request.delete(`/api/tasks/${id}`);
+      await page.request.delete(`/api/tasks/${id}?force=1`);
+    }
   }
 });

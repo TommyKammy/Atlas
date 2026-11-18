@@ -19,6 +19,7 @@ import EmptyCellIcon from "../fields/EmptyCellIcon";
 import AssigneePicker from "../fields/AssigneePicker";
 import DueDatePicker from "../fields/DueDatePicker";
 import TaskCompletionToggle from "../task/TaskCompletionToggle";
+import DueStateIcon from "../task/DueStateIcon";
 import TaskStatusChip from "../task/TaskStatusChip";
 import TaskApprovalBadge from "../task/TaskApprovalBadge";
 import ReferencePicker from "../fields/ReferencePicker";
@@ -399,7 +400,19 @@ export default function TaskListRow({
         </span>
         <span className="flex w-full flex-wrap items-center gap-2 pl-6 text-[11px] text-muted lg:hidden">
           {t.due_on && (
-            <span className={overdue ? "font-semibold text-danger" : isToday ? "font-semibold text-accent-text" : ""}>
+            <span
+              className={overdue ? "font-semibold text-danger" : isToday ? "font-semibold text-accent-text" : ""}
+              title={overdue ? `期限超過: ${t.due_on}` : isToday ? `今日が期日: ${t.due_on}` : undefined}
+            >
+              {(overdue || isToday) && (
+                <DueStateIcon
+                  state={overdue ? "overdue" : "today"}
+                  sizeClassName="h-2.5 w-2.5"
+                  className="mr-0.5 align-[-1px]"
+                />
+              )}
+              {overdue && <span className="sr-only">期限超過: </span>}
+              {isToday && <span className="sr-only">今日が期日: </span>}
               期日 {t.due_on}
             </span>
           )}
@@ -449,12 +462,19 @@ export default function TaskListRow({
           {t.start_on || t.due_on ? (
             (() => {
               const [s1, s2] = dueSegs(t.start_on, t.due_on);
+              const dueLabel = s2 ? `${s1} – ${s2}` : s1;
               return (
                 <span
                   className={`whitespace-nowrap text-[12px] ${
                     overdue ? "font-medium text-danger" : isToday ? "text-success" : "text-secondary"
                   }`}
+                  title={overdue ? `期限超過: ${dueLabel}` : isToday ? `今日が期日: ${dueLabel}` : undefined}
                 >
+                  {(overdue || isToday) && (
+                    <DueStateIcon state={overdue ? "overdue" : "today"} className="mr-0.5 align-[-2px]" />
+                  )}
+                  {overdue && <span className="sr-only">期限超過: </span>}
+                  {isToday && <span className="sr-only">今日が期日: </span>}
                   {s1}
                   {s2 && ` – ${s2}`}
                 </span>
