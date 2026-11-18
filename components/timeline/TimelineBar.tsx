@@ -87,7 +87,7 @@ function TimelineBar({
   const labelOnLeft = parseFloat(x1) > 72;
   const showAvatar = Boolean(task.assignee_name) && barPx >= 140;
   const showSubtasks = task.subtask_count > 0 && barPx >= 160;
-  const defaultBarFace = "bg-white text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]";
+  const defaultBarFace = "bg-surface text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]";
   const barFaceClass = task.is_milestone ? defaultBarFace
     : task.completed ? "bg-[#aaaaaa] text-[#050505]"
     : critical ? "bg-red-200 text-neutral-900"
@@ -145,7 +145,7 @@ function TimelineBar({
         <div
           data-timeline-drag-origin={task.id}
           aria-hidden="true"
-          className="pointer-events-none absolute top-[3px] rounded-[4px] border border-dashed border-neutral-300 bg-neutral-100/60"
+          className="pointer-events-none absolute top-[3px] rounded-[4px] border border-dashed border-line-strong bg-neutral-100/60"
           style={{ left: x1, width: `calc(${x2} - ${x1})`, minWidth: 8, height: TIMELINE_BAR_HEIGHT }}
         />
       )}
@@ -194,7 +194,7 @@ function TimelineBar({
           <span
             title="行を固定中"
             aria-hidden="true"
-            className="pointer-events-none absolute -left-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#2c60b8] opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+            className="pointer-events-none absolute -left-0.5 -top-0.5 h-2 w-2 rounded-full bg-accent opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
           />
         )}
         {!skinny && showAvatar && !milestone && task.assignee_name && (
@@ -362,7 +362,7 @@ function TimelineBar({
 
       {dragMode !== null && dragMode !== "move" && (
         <span
-          className="pointer-events-none absolute top-0 z-30 h-10 w-px bg-[#2c60b8]"
+          className="pointer-events-none absolute top-0 z-30 h-10 w-px bg-accent"
           style={{ left: handleStyle(dragMode).left }}
         />
       )}

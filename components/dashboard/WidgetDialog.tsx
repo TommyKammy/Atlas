@@ -266,7 +266,7 @@ export default function WidgetDialog({
   const smallField =
     "mt-1 h-8 w-full rounded-md border border-neutral-300 bg-white px-2 text-[13px] outline-none focus:border-[#4075cf]";
   const sectionTitle = "text-[12px] font-semibold text-neutral-800";
-  const label = "mt-3 block text-[11px] text-neutral-500";
+  const label = "mt-3 block text-[11px] text-muted";
 
   return (
     <div
@@ -275,7 +275,7 @@ export default function WidgetDialog({
       data-dashboard-dialog
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-surface shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -289,14 +289,14 @@ export default function WidgetDialog({
             type="button"
             onClick={onClose}
             aria-label="閉じる"
-            className="rounded p-1 text-xl leading-none text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className="rounded p-1 text-xl leading-none text-subtle hover:bg-neutral-100 hover:text-neutral-700"
           >
             ×
           </button>
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
-          <div className="flex min-h-[320px] flex-col border-b border-neutral-200 bg-white p-5 lg:border-b-0 lg:border-r">
+          <div className="flex min-h-[320px] flex-col border-b border-neutral-200 bg-surface p-5 lg:border-b-0 lg:border-r">
             <input
               value={title}
               onChange={(event) => {
@@ -309,23 +309,23 @@ export default function WidgetDialog({
             />
             <div className="mt-4 min-h-[260px] flex-1">
               {kind === "text" ? (
-                <div className="min-h-[260px] rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700 whitespace-pre-wrap">
+                <div className="min-h-[260px] rounded-lg border border-neutral-200 bg-surface-subtle p-4 text-sm leading-6 text-neutral-700 whitespace-pre-wrap">
                   {body || "テキストを入力するとここにプレビューが表示されます。"}
                 </div>
               ) : (
                 <ChartRenderer data={preview} chartType={chartType} />
               )}
             </div>
-            <div className="mt-2 text-[11px] text-neutral-400">
+            <div className="mt-2 text-[11px] text-subtle">
               {kind === "text" ? "テキストウィジェット" : `${CHART_TYPE_LABELS[chartType]} / ${preview.matched} 件のタスク`}
             </div>
           </div>
 
           <div className="min-h-0 overflow-y-auto p-5">
             <div className={sectionTitle}>データソース</div>
-            <div className="mt-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-[13px] text-neutral-700">
+            <div className="mt-2 rounded-md border border-neutral-200 bg-surface-subtle px-3 py-2 text-[13px] text-neutral-700">
               <div className="font-medium">{projectName}</div>
-              <div className="mt-0.5 text-[11px] text-neutral-400">このプロジェクトのタスク</div>
+              <div className="mt-0.5 text-[11px] text-subtle">このプロジェクトのタスク</div>
             </div>
 
             {kind === "chart" && (
@@ -344,8 +344,8 @@ export default function WidgetDialog({
                       data-dashboard-chart-type={type}
                       className={`flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[10px] ${
                         chartType === type
-                          ? "border-[#4075cf] bg-[#eff4fd] text-[#2f5fa8]"
-                          : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                          ? "border-[#4075cf] bg-accent-soft text-[#2f5fa8]"
+                          : "border-neutral-200 text-muted hover:bg-neutral-50"
                       }`}
                     >
                       <ChartTypeIcon type={type} />
@@ -419,7 +419,7 @@ export default function WidgetDialog({
                   <div className="mt-5">
                     <div className={sectionTitle}>フィルター</div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
-                      <label className="text-[11px] text-neutral-500">
+                      <label className="text-[11px] text-muted">
                         完了ステータス
                         <select
                           value={filters.completion ?? "all"}
@@ -436,7 +436,7 @@ export default function WidgetDialog({
                           <option value="done">完了</option>
                         </select>
                       </label>
-                      <label className="text-[11px] text-neutral-500">
+                      <label className="text-[11px] text-muted">
                         期日
                         <select
                           value={filters.due ?? ""}
@@ -452,7 +452,7 @@ export default function WidgetDialog({
                           <option value="month">30日以内</option>
                         </select>
                       </label>
-                      <label className="text-[11px] text-neutral-500">
+                      <label className="text-[11px] text-muted">
                         担当者
                         <select
                           value={filters.assignee ?? ""}
@@ -474,7 +474,7 @@ export default function WidgetDialog({
                           ))}
                         </select>
                       </label>
-                      <label className="text-[11px] text-neutral-500">
+                      <label className="text-[11px] text-muted">
                         {meta.statusFieldName}
                         <select
                           value={filters.status ?? ""}
@@ -494,7 +494,7 @@ export default function WidgetDialog({
                 )}
 
                 <div className={`${sectionTitle} mt-5`}>データの注釈</div>
-                <div className="mt-2 space-y-2 text-[12px] text-neutral-600">
+                <div className="mt-2 space-y-2 text-[12px] text-secondary">
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -532,7 +532,7 @@ export default function WidgetDialog({
               </label>
             )}
 
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+            {error && <p className="mt-3 text-sm text-danger">{error}</p>}
           </div>
         </div>
 
@@ -540,7 +540,7 @@ export default function WidgetDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100"
+            className="rounded-md px-3 py-1.5 text-sm text-secondary hover:bg-neutral-100"
           >
             キャンセル
           </button>

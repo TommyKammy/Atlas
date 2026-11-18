@@ -60,7 +60,7 @@ export default function CalendarDayCell({
           type="button"
           data-calendar-more={iso}
           onClick={onExpand}
-          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] font-medium text-[#2c60b8] hover:bg-neutral-100"
+          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] font-medium text-accent-text hover:bg-neutral-100"
         >
           +{hiddenCount} 件
         </button>
@@ -70,7 +70,7 @@ export default function CalendarDayCell({
           type="button"
           data-calendar-collapse={iso}
           onClick={onCollapse}
-          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] text-neutral-500 hover:bg-neutral-100"
+          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] text-muted hover:bg-neutral-100"
         >
           折りたたむ
         </button>
@@ -92,7 +92,7 @@ export default function CalendarDayCell({
           <button
             type="button"
             onClick={onStartAdd}
-            className="flex h-8 w-full items-center rounded px-1 text-left text-[12px] text-neutral-400 opacity-0 hover:bg-neutral-100 hover:text-neutral-700 group-hover:opacity-100 focus:opacity-100"
+            className="flex h-8 w-full items-center rounded px-1 text-left text-[12px] text-subtle opacity-0 hover:bg-neutral-100 hover:text-neutral-700 group-hover:opacity-100 focus:opacity-100"
           >
             ＋ タスクを追加
           </button>

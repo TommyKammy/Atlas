@@ -61,12 +61,12 @@ export default function DashboardDrilldownContext({ projectId, selection, count,
       data-dashboard-drilldown
       data-dashboard-drilldown-count={count}
       aria-label="ダッシュボードからの絞り込み"
-      className="mx-4 mb-2 mt-3 flex flex-col gap-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 sm:flex-row sm:items-center"
+      className="mx-4 mb-2 mt-3 flex flex-col gap-3 rounded-md border border-neutral-200 bg-surface-subtle px-3 py-2.5 sm:flex-row sm:items-center"
     >
       <div className="min-w-0 flex-1">
         {selection ? (
           <>
-            <p className="text-[12px] text-neutral-600">ダッシュボードからの絞り込み</p>
+            <p className="text-[12px] text-secondary">ダッシュボードからの絞り込み</p>
             <p data-dashboard-drilldown-title className="break-words text-[14px] font-medium text-neutral-800">{selection.title}</p>
             <p data-dashboard-drilldown-conditions className="mt-0.5 break-words text-[12px] leading-5 text-neutral-700">
               {labels.length ? labels.join(" · ") : "すべてのタスク"}
@@ -80,7 +80,7 @@ export default function DashboardDrilldownContext({ projectId, selection, count,
         )}
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px]">
-        <a data-dashboard-return href={`/projects/${projectId}?view=dashboard`} className="rounded text-[#2c60b8] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">
+        <a data-dashboard-return href={`/projects/${projectId}?view=dashboard`} className="rounded text-accent-text hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">
           ダッシュボードへ戻る
         </a>
         <a data-dashboard-clear href={`/projects/${projectId}?view=list`} className="rounded text-neutral-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">

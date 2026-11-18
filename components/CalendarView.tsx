@@ -40,7 +40,7 @@ import TaskMetaBadges from "./task/TaskMetaBadges";
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const WEEKDAYS_ONLY = [1, 2, 3, 4, 5];
 const MONTH_SINGLE_LIMIT = 3;
-const UNSET_COLOR = "border-neutral-300 bg-neutral-100 text-neutral-600";
+const UNSET_COLOR = "border-line-strong bg-surface-muted text-secondary";
 const BAR_COLORS = [
   "border-[#c7d8f5] bg-[#e8f0fe] text-[#1f3a6e]",
   "border-[#c9e7d2] bg-[#e6f6ec] text-[#1f5134]",
@@ -495,7 +495,7 @@ function CalendarViewContent({
     const color = colored ? colorFor(colorKeyFor(task)) : "";
     const base = bar
       ? `flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden border px-1.5 text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:brightness-[0.98] ${
-          colored ? color : "border-neutral-200 bg-white text-neutral-900"
+          colored ? color : "border-neutral-200 bg-surface text-neutral-900"
         }`
       : `flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded px-1 text-[13px] ${
           colored ? `border ${color}` : "text-neutral-900 hover:bg-neutral-100"
@@ -508,7 +508,7 @@ function CalendarViewContent({
   );
 
   const taskMeta = (task: TaskRow) => (
-    <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] text-neutral-400">
+    <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] text-subtle">
       <TaskMetaBadges
         subtaskCount={task.subtask_count}
         commentCount={task.comment_count}

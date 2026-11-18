@@ -83,7 +83,7 @@ export default function CalendarMultiDayBar({
         gridRow: gridRow + 1,
       }}
     >
-      {continuesLeft && <span className="shrink-0 text-neutral-400">‹</span>}
+      {continuesLeft && <span className="shrink-0 text-subtle">‹</span>}
       {completion}
       {avatars}
       <span
@@ -94,7 +94,7 @@ export default function CalendarMultiDayBar({
         {task.name}
       </span>
       {meta}
-      {continuesRight && <span className="shrink-0 text-neutral-400">›</span>}
+      {continuesRight && <span className="shrink-0 text-subtle">›</span>}
       <span
         data-calendar-resize="start"
         title="開始日を変更"

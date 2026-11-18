@@ -724,7 +724,7 @@ function TimelineViewContent({
         />
       )}
       <div className="flex">
-        <div className="w-36 shrink-0 border-r border-[#eaeaea] md:w-60">
+        <div className="w-36 shrink-0 border-r border-line md:w-60">
           <div className="h-[49px]" />
           {displayGroups.map((group) => (
             <div
@@ -742,7 +742,7 @@ function TimelineViewContent({
               >
                 <svg
                   viewBox="0 0 12 12"
-                  className={`h-3 w-3 shrink-0 text-neutral-500 transition-transform ${group.collapsed ? "-rotate-90" : ""}`}
+                  className={`h-3 w-3 shrink-0 text-muted transition-transform ${group.collapsed ? "-rotate-90" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.5"
@@ -802,7 +802,7 @@ function TimelineViewContent({
                 className="pointer-events-none absolute z-[1] border-x border-[#2c60b8]/20 bg-[#2c60b8]/5"
                 style={{ top: hover.top, height: hover.height, left: pct(hover.day), width: `${dayPct}%` }}
               >
-                <span className="absolute left-1/2 top-2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-[#2c60b8] text-[12px] leading-none text-white shadow-sm">
+                <span className="absolute left-1/2 top-2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-accent text-[12px] leading-none text-white shadow-sm">
                   +
                 </span>
               </div>
@@ -865,7 +865,7 @@ function TimelineViewContent({
                     data-timeline-draft
                   >
                     <div
-                      className="tl-bar absolute top-[3px] z-10 flex items-center rounded-[4px] bg-white px-2 text-[13px] text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]"
+                      className="tl-bar absolute top-[3px] z-10 flex items-center rounded-[4px] bg-surface px-2 text-[13px] text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]"
                       style={{
                         height: BAR_H,
                         left: pct(draft.day),
@@ -915,7 +915,7 @@ function TimelineViewContent({
                 className="pointer-events-none absolute inset-x-0 z-[5] border-y border-[#2c60b8] bg-[#2c60b8]/10"
                 style={{ top: drag.rowDrop.top, height: ROW_PITCH }}
               >
-                <span data-timeline-drop-label className="sticky left-2 inline-block rounded-b bg-[#2c60b8] px-2 py-0.5 text-[11px] font-medium text-white">
+                <span data-timeline-drop-label className="sticky left-2 inline-block rounded-b bg-accent px-2 py-0.5 text-[11px] font-medium text-white">
                   {groups.find((group) => group.sectionId === drag.rowDrop?.sectionId)?.section.name}・{drag.rowDrop.insert ? "挿入" : "行"} {drag.rowDrop.row + 1}
                 </span>
               </div>
@@ -923,7 +923,7 @@ function TimelineViewContent({
 
             {showToday && (
               <div
-                className="pointer-events-none absolute bottom-0 top-[49px] z-[3] w-[2px] bg-[#2C60B8]"
+                className="pointer-events-none absolute bottom-0 top-[49px] z-[3] w-[2px] bg-accent"
                 style={{ left: pct(todayDay) }}
                 title="今日"
               />
@@ -941,14 +941,14 @@ function TimelineViewContent({
         {undatedOpen && (
           <aside
             data-timeline-drawer
-            className="sticky top-0 min-h-[calc(100vh-220px)] max-h-[calc(100vh-220px)] w-[340px] shrink-0 overflow-y-auto border-l border-neutral-200 bg-white"
+            className="sticky top-0 min-h-[calc(100vh-220px)] max-h-[calc(100vh-220px)] w-[340px] shrink-0 overflow-y-auto border-l border-neutral-200 bg-surface"
           >
             <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
               <h2 className="text-[15px] font-semibold">日付なしのタスク</h2>
               <button
                 type="button"
                 onClick={() => setUndatedOpen(false)}
-                className="text-xl leading-none text-neutral-400 hover:text-neutral-700"
+                className="text-xl leading-none text-subtle hover:text-neutral-700"
                 aria-label="閉じる"
               >
                 ×
@@ -956,7 +956,7 @@ function TimelineViewContent({
             </div>
             <div className="p-3">
               {undated.length === 0 ? (
-                <p className="text-sm text-neutral-500">日付なしのタスクはありません。</p>
+                <p className="text-sm text-muted">日付なしのタスクはありません。</p>
               ) : (
                 undated.map((t) => (
                   <button
@@ -970,7 +970,7 @@ function TimelineViewContent({
                   </button>
                 ))
               )}
-              <div className="mt-4 border-t border-neutral-100 pt-3 text-xs font-medium text-neutral-500">
+              <div className="mt-4 border-t border-neutral-100 pt-3 text-xs font-medium text-muted">
                 このプロジェクト内のタスク
               </div>
               {visibleTasks.map((t) => (
@@ -981,7 +981,7 @@ function TimelineViewContent({
                   className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-neutral-100"
                 >
                   <span title={t.name} dir="auto" className="min-w-0 flex-1 truncate">{t.name}</span>
-                  <span className="shrink-0 text-[11px] text-neutral-400">{t.due_on ?? "—"}</span>
+                  <span className="shrink-0 text-[11px] text-subtle">{t.due_on ?? "—"}</span>
                 </button>
               ))}
             </div>

@@ -28,8 +28,8 @@ function TimelineAxis({
 }) {
   return (
     <>
-      <div className="relative h-[49px] cursor-default border-b border-[#e1e1e1] bg-white">
-        <div className="relative h-[24px] text-xs text-neutral-600">
+      <div className="relative h-[49px] cursor-default border-b border-[#e1e1e1] bg-surface">
+        <div className="relative h-[24px] text-xs text-secondary">
           {axisTop.map((interval) => {
             const widthPx = interval.daysWide * dayWidth;
             if (widthPx < 28) return null;
@@ -46,7 +46,7 @@ function TimelineAxis({
             );
           })}
         </div>
-        <div className="relative h-[25px] text-[11px] text-neutral-500">
+        <div className="relative h-[25px] text-[11px] text-muted">
           {axisBottom.map((interval) => {
             const widthPx = interval.daysWide * dayWidth;
             return (
@@ -54,7 +54,7 @@ function TimelineAxis({
                 key={`cell-${interval.key}`}
                 data-timeline-axis-row="bottom"
                 data-timeline-axis-interval={interval.key}
-                className="absolute top-0 h-[25px] border-t border-[#eaeaea]"
+                className="absolute top-0 h-[25px] border-t border-line"
                 style={{ left: pct(interval.start), width: `${interval.daysWide * dayPct}%` }}
               >
                 {widthPx >= 28 && (
@@ -68,7 +68,7 @@ function TimelineAxis({
         </div>
         {showToday && (
           <span
-            className="pointer-events-none absolute z-20 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#2c60b8]"
+            className="pointer-events-none absolute z-20 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-accent"
             style={{ left: pct(todayDay), top: 22 }}
             title="今日"
           />
@@ -82,7 +82,7 @@ function TimelineAxis({
             <div
               key={`weekend-${d}`}
               data-timeline-weekend
-              className="absolute inset-y-0 bg-[#eaeaea]"
+              className="absolute inset-y-0 bg-line"
               style={{ left: pct(d), width: `${dayPct}%` }}
             />
           ))}
@@ -90,7 +90,7 @@ function TimelineAxis({
           <div
             key={`grid-${d}`}
             data-timeline-grid={d}
-            className="absolute inset-y-0 w-px bg-[#eaeaea]"
+            className="absolute inset-y-0 w-px bg-line"
             style={{ left: pct(d) }}
           />
         ))}

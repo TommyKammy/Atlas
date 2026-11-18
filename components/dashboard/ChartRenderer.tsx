@@ -43,7 +43,7 @@ function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
   const [open, setOpen] = useState(false);
   if (!hrefFor || data.categories.length === 0) return null;
   return (
-    <details data-dashboard-chart-data onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-1 text-[11px] text-neutral-600">
+    <details data-dashboard-chart-data onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-1 text-[11px] text-secondary">
       <summary
         aria-label={`${title ?? "チャート"}のデータを表示`}
         className="w-fit cursor-pointer rounded px-1 py-1 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
@@ -118,7 +118,7 @@ function niceTicks(maxValue: number): { max: number; values: number[] } {
 
 function EmptyChart() {
   return (
-    <div className="flex h-[250px] items-center justify-center rounded-md border border-dashed border-neutral-200 text-sm text-neutral-400">
+    <div className="flex h-[250px] items-center justify-center rounded-md border border-dashed border-neutral-200 text-sm text-subtle">
       データがありません
     </div>
   );
@@ -409,9 +409,9 @@ function DonutChart({ data, title, hrefFor }: ChartProps) {
               data-dashboard-chart-link="legend"
               data-dashboard-chart-category={slice.category.key}
               data-dashboard-chart-series={0}
-              className="flex items-center gap-2 rounded px-1 py-0.5 text-[12px] text-neutral-600 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+              className="flex items-center gap-2 rounded px-1 py-0.5 text-[12px] text-secondary hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
             >{content}</a>
-          ) : <div key={slice.category.key ?? slice.categoryIndex} className="flex items-center gap-2 text-[12px] text-neutral-600">{content}</div>;
+          ) : <div key={slice.category.key ?? slice.categoryIndex} className="flex items-center gap-2 text-[12px] text-secondary">{content}</div>;
         })}
       </div>
     </div>
@@ -530,9 +530,9 @@ export default function ChartRenderer({
 }) {
   if (data.kind === "disabled-status") {
     return (
-      <div data-dashboard-status-disabled className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-4 py-5">
+      <div data-dashboard-status-disabled className="rounded-md border border-dashed border-line-strong bg-surface-subtle px-4 py-5">
         <div className="font-semibold text-neutral-800">Statusフィールドは削除されています</div>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-muted">
           カスタマイズ → フィールドからStatusを再追加すると、保持されている値が再表示されます。
         </p>
       </div>
