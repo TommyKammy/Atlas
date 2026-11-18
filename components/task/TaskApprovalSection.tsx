@@ -7,7 +7,7 @@ import type { TaskApprovalAction, TaskApprovalResponse, TaskApprovalSummary } fr
 import { TASK_APPROVAL_ACTION_LABELS, TASK_APPROVAL_STATUS_LABELS } from "@/lib/task-approval";
 import TaskApprovalBadge from "./TaskApprovalBadge";
 
-const inputClass = "w-full rounded border border-line-strong bg-white px-2.5 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-500 focus:border-[#2c60b8] focus:outline-none focus:ring-1 focus:ring-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500";
+const inputClass = "w-full rounded border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-500 focus:border-[#2c60b8] focus:outline-none focus:ring-1 focus:ring-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500";
 const secondaryButton = "rounded border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8] disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function TaskApprovalSection({ task, viewerId, canEdit, openSignal, onSummaryChange, onChanged }: {

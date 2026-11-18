@@ -525,7 +525,7 @@ export default function TaskPane({
                         <button
                           type="button"
                           onClick={() => removeMembership(membership.id)}
-                          className="shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-neutral-100 hover:text-red-600"
+                          className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
                           title="所属を外す"
                           aria-label={`${membership.name} から外す`}
                         >
@@ -549,7 +549,7 @@ export default function TaskPane({
                     <select
                       value={newMemberProject}
                       onChange={(event) => onPickMemberProject(event.target.value)}
-                      className="h-8 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                      className="h-8 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
                       aria-label="プロジェクトを選択"
                     >
                       <option value="">プロジェクトを選択</option>
@@ -566,7 +566,7 @@ export default function TaskPane({
                         <select
                           value={newMemberSection}
                           onChange={(event) => setNewMemberSection(event.target.value)}
-                          className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                          className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
                           aria-label="セクションを選択"
                         >
                           <option value="">セクションなし</option>

@@ -243,7 +243,7 @@ export default function TaskFeedSection({
                   data-comment-reaction-add={emoji}
                   onClick={() => onToggleReaction(comment.id, emoji)}
                   title="リアクションする"
-                  className="rounded-full border border-dashed border-neutral-200 px-1.5 py-0.5 text-[11px] text-subtle hover:bg-neutral-50 hover:text-neutral-600"
+                  className="rounded-full border border-dashed border-neutral-200 px-1.5 py-0.5 text-[11px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
                 >
                   {emoji} ＋
                 </button>

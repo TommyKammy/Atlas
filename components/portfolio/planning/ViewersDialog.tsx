@@ -148,7 +148,7 @@ export default function ViewersDialog({
                   type="button"
                   onClick={() => void remove(viewer)}
                   disabled={busy}
-                  className="rounded px-2 py-1 text-[12px] text-muted hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                  className="rounded px-2 py-1 text-[12px] text-neutral-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
                 >
                   外す
                 </button>

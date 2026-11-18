@@ -240,7 +240,7 @@ export default function SubmitProposalDialog({
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             name="reason"
-            className="mt-1 min-h-28 w-full rounded-md border border-line-strong bg-white px-2.5 py-2 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
+            className="mt-1 min-h-28 w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
             maxLength={1000}
             placeholder="選んだ案の理由、見送る効果、不足への対応も記録できます"
             autoFocus

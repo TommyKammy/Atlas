@@ -49,7 +49,7 @@ export default function TaskDependenciesSection({
             <button
               type="button"
               onClick={() => onRemove(dependency.id)}
-              className="shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-neutral-100 hover:text-red-600"
+              className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
               title="依存を外す"
               aria-label={`${dependency.name} の依存を外す`}
             >
@@ -64,7 +64,7 @@ export default function TaskDependenciesSection({
               <select
                 value={draft}
                 onChange={(event) => onDraftChange(event.target.value)}
-                className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
                 aria-label="依存関係を追加"
               >
                 <option value="">このタスクの前に…</option>

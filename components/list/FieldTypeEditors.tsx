@@ -20,7 +20,7 @@ export function NumberFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                   <select
                     value={numberFormat}
                     onChange={(event) => setNumberFormat(event.target.value as NumberFormat)}
-                    className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                    className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                   >
                     {Object.entries(NUMBER_FORMAT_LABELS).map(([value, text]) => (
                       <option key={value} value={value}>
@@ -39,7 +39,7 @@ export function NumberFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                     onChange={(event) =>
                       setDecimals(Math.max(0, Math.min(6, Number(event.target.value) || 0)))
                     }
-                    className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                    className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                   />
                 </label>
                 {numberFormat === "currency" && (
@@ -48,7 +48,7 @@ export function NumberFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                     <select
                       value={currency}
                       onChange={(event) => setCurrency(event.target.value)}
-                      className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                      className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                     >
                       {CURRENCY_CHOICES.map((code) => (
                         <option key={code} value={code}>
@@ -65,7 +65,7 @@ export function NumberFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                       value={customSuffix}
                       onChange={(event) => setCustomSuffix(event.target.value)}
                       placeholder="例: lbs"
-                      className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                      className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                     />
                   </label>
                 )}
@@ -93,7 +93,7 @@ export function TimerFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                   onChange={(event) =>
                     setTimerFormat(event.target.value === "decimal_hours" ? "decimal_hours" : "hours_minutes")
                   }
-                  className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                  className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                 >
                   <option value="hours_minutes">00 時間 00 分</option>
                   <option value="decimal_hours">0.00 時間</option>
@@ -162,7 +162,7 @@ export function LookupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                     setLookupFieldId("");
                     setRemoteFields([]);
                   }}
-                  className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                  className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                 >
                   <option value="">選択してください</option>
                   {referenceFields.map((item) => (
@@ -177,7 +177,7 @@ export function LookupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                 <select
                   value={lookupFieldId}
                   onChange={(event) => setLookupFieldId(event.target.value === "" ? "" : Number(event.target.value))}
-                  className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                  className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                 >
                   <option value="">選択してください</option>
                   {lookupTargetFields.map((item) => (
@@ -209,7 +209,7 @@ export function RollupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                     setRollupSource(event.target.value === "reference" ? "reference" : "subtasks");
                     setRollupFieldId("");
                   }}
-                  className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                  className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                 >
                   <option value="subtasks">サブタスク</option>
                   <option value="reference">リファレンス先のタスク</option>
@@ -225,7 +225,7 @@ export function RollupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                       setRollupFieldId("");
                       setRemoteFields([]);
                     }}
-                    className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                    className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                   >
                     <option value="">選択してください</option>
                     {referenceFields.map((item) => (
@@ -242,7 +242,7 @@ export function RollupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                   <select
                     value={rollupFieldId}
                     onChange={(event) => setRollupFieldId(event.target.value === "" ? "" : Number(event.target.value))}
-                    className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                    className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                   >
                     <option value="">選択してください</option>
                     {(rollupSource === "subtasks" ? numericFields.filter((item) => item.field_type === "number") : remoteFields.filter((item) => item.field_type === "number")).map((item) => (
@@ -257,7 +257,7 @@ export function RollupFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                   <select
                     value={rollupFunction}
                     onChange={(event) => setRollupFunction(event.target.value as ColumnFunction)}
-                    className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                    className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                   >
                     <option value="sum">合計</option>
                     <option value="average">平均</option>
@@ -283,7 +283,7 @@ export function FormulaFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                   onChange={(event) => setExpression(event.target.value.slice(0, 500))}
                   placeholder="例: {123} + {124}"
                   data-field-dialog-expression
-                  className="mt-1 h-9 w-full rounded border border-line-strong bg-white px-2 font-mono text-[12px] outline-none focus:border-[#4075cf]"
+                  className="mt-1 h-9 w-full rounded border border-neutral-300 bg-white px-2 font-mono text-[12px] outline-none focus:border-[#4075cf]"
                 />
               </label>
               {numericFields.length > 0 && (
@@ -295,7 +295,7 @@ export function FormulaFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                         key={item.id}
                         type="button"
                         onClick={() => setExpression((current) => `${current}${current && !/[+\-*/^(]$/.test(current.trim()) ? " + " : ""}{${item.id}}`)}
-                        className="rounded border border-neutral-200 bg-surface px-1.5 py-0.5 text-[11px] text-secondary hover:bg-blue-50"
+                        className="rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-[11px] text-secondary hover:bg-blue-50"
                       >
                         {item.name}
                       </button>
@@ -309,7 +309,7 @@ export function FormulaFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                   <select
                     value={numberFormat}
                     onChange={(event) => setNumberFormat(event.target.value as NumberFormat)}
-                    className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                    className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                   >
                     {Object.entries(NUMBER_FORMAT_LABELS).map(([value, text]) => (
                       <option key={value} value={value}>
@@ -328,7 +328,7 @@ export function FormulaFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                     onChange={(event) =>
                       setDecimals(Math.max(0, Math.min(6, Number(event.target.value) || 0)))
                     }
-                    className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                    className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                   />
                 </label>
                 {numberFormat === "currency" && (
@@ -337,7 +337,7 @@ export function FormulaFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                     <select
                       value={currency}
                       onChange={(event) => setCurrency(event.target.value)}
-                      className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                      className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                     >
                       {CURRENCY_CHOICES.map((code) => (
                         <option key={code} value={code}>
@@ -367,7 +367,7 @@ export function AutoIdFieldEditor({ dialog }: { dialog: FieldDialogState }) {
                   onChange={(event) => setPrefix(event.target.value.slice(0, 16))}
                   placeholder="ID-"
                   data-field-dialog-prefix
-                  className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                  className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
                 />
               </label>
               <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
@@ -393,12 +393,12 @@ export function SelectOptionsEditor({ dialog }: { dialog: FieldDialogState }) {
                       value={option}
                       onChange={(event) => updateOption(index, event.target.value)}
                       placeholder={`選択肢 ${index + 1}`}
-                      className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                      className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
                     />
                     <button
                       type="button"
                       onClick={() => setOptions((current) => current.filter((_, i) => i !== index))}
-                      className="rounded px-1.5 text-[12px] text-subtle hover:bg-neutral-100 hover:text-red-600"
+                      className="rounded px-1.5 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
                       aria-label="選択肢を削除"
                     >
                       ×
@@ -428,7 +428,7 @@ export function FieldAccessEditor({ dialog }: { dialog: FieldDialogState }) {
                 value={accessLevel}
                 onChange={(event) => setAccessLevel(event.target.value as FieldAccessLevel)}
                 data-field-access-level
-                className="mt-1 h-8 w-full rounded border border-line-strong bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                className="mt-1 h-8 w-full rounded border border-neutral-300 bg-white px-2 text-[12px] outline-none focus:border-[#4075cf]"
               >
                 <option value="everyone">すべてのプロジェクトメンバー</option>
                 <option value="admins">プロジェクト管理者のみ</option>

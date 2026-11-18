@@ -157,7 +157,7 @@ export default function RolesDialog({
                 onClick={() => void remove(row)}
                 disabled={busy}
                 aria-label={`${row.name || `職種 ${index + 1}`}を削除`}
-                className="mb-0.5 inline-flex h-8 items-center rounded-md px-2 text-[12px] text-muted hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                className="mb-0.5 inline-flex h-8 items-center rounded-md px-2 text-[12px] text-neutral-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
               >
                 削除
               </button>

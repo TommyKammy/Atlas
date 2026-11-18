@@ -99,7 +99,7 @@ export default function FieldDialog({
 
   const label = "mt-3 block text-[11px] font-medium text-muted";
   const fieldClass =
-    "mt-1 h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-neutral-800 outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10";
+    "mt-1 h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-neutral-800 outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10";
 
   return createPortal(
     <div
@@ -198,7 +198,7 @@ export default function FieldDialog({
               onChange={(event) => setDescription(event.target.value)}
               rows={2}
               placeholder="説明を追加（任意）"
-              className="mt-1 w-full resize-y rounded-md border border-line-strong bg-white px-2.5 py-2 text-[13px] outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10"
+              className="mt-1 w-full resize-y rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-[13px] outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/10"
             />
           </label>
 

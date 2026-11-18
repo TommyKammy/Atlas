@@ -253,7 +253,7 @@ export default function FieldTypeMenu({
                   aria-label={`${entry.name}をライブラリから削除`}
                   disabled={removingLibrary === entry.id}
                   onClick={() => void removeLibraryEntry(entry.id)}
-                  className="shrink-0 rounded px-1 text-[11px] text-subtle hover:bg-neutral-100 hover:text-red-600 disabled:opacity-40"
+                  className="shrink-0 rounded px-1 text-[11px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 disabled:opacity-40"
                 >
                   ×
                 </button>
@@ -286,7 +286,7 @@ export default function FieldTypeMenu({
                   type="button"
                   disabled={restoring === field.id}
                   onClick={() => void restore(field.id)}
-                  className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-[#2f6fd0] shadow-sm hover:bg-blue-50 disabled:opacity-50"
+                  className="rounded bg-white px-1.5 py-0.5 text-[10px] text-[#2f6fd0] shadow-sm hover:bg-blue-50 disabled:opacity-50"
                 >
                   {restoring === field.id ? "復元中…" : "復元"}
                 </button>

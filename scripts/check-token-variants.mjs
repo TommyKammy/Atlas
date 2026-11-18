@@ -1,0 +1,720 @@
+#!/usr/bin/env node
+// Guard against a token migration that silently changes a dark-theme state.
+//
+// Why this check exists
+// ---------------------
+// app/globals.css still carries the legacy dark overrides, e.g.
+//   html[data-theme="dark"] .text-neutral-400 { color: #a9a9a9; }
+// They are unlayered. An unlayered declaration always beats a utility that
+// lives inside Tailwind's @layer utilities, regardless of specificity. So an
+// element that used `text-neutral-400` got the dark override in dark mode, and
+// a state utility of the same property (`hover:text-red-600`,
+// `disabled:text-neutral-300`, `focus:border-[#4075cf]`) had no effect there.
+//
+// When `text-neutral-400` is replaced with the layered token `text-subtle`, the
+// base color in light mode is unchanged, but the state utility starts to win in
+// dark mode too. Light stays identical; only the dark state changes. That is a
+// visual regression during the "tokenize without changing appearance" step.
+//
+// The rule implemented here:
+//   inside one element's class set, if (a) a migrated token utility and (b) a
+//   state variant of the same color property (background / text / border)
+//   coexist, and (b) has no unlayered dark override in app/globals.css, report
+//   the pair. The state class must stay as-is; the token class must be reverted
+//   to its legacy class until stage 3 (palette switch) intentionally retunes the
+//   dark state.
+//
+// Exceptions encoded below
+//   - A state class that is itself a semantic token (`hover:text-text`,
+//     `hover:bg-surface-muted`, `hover:text-accent-text`, `focus:border-accent`,
+//     ...) is not reported. Its color resolves from --atlas-* variables in both
+//     themes, and both the base and the state utility are layered, so the
+//     legacy unlayered override is not part of the comparison at all.
+//   - `bg-accent` / `border-accent` are not affected: the legacy
+//     `bg-[#2c60b8]` / `border-[#2c60b8]` never had a dark override, so the
+//     state utility already won before the migration.
+//   - A state class that is itself unlayered-overridden in dark mode (today:
+//     hover:bg-white, hover:bg-neutral-50, hover:bg-neutral-100,
+//     hover:bg-neutral-200, hover:text-black, hover:text-neutral-700,
+//     hover:text-neutral-800) looks the same before and after; it is skipped.
+//     The list is read from app/globals.css, not hard-coded.
+//   - `placeholder:` is out of scope. It colors ::placeholder, not the element's
+//     own text, and the legacy dark overrides never targeted it. Pseudo-element
+//     variants (before:, after:, file:, marker:, selection:, backdrop:) are
+//     skipped for the same reason.
+//   - Non-color utilities are not misread as colors: text-[13px], text-sm,
+//     text-left, border-b, border-2, border-solid, bg-gradient-*, bg-cover,
+//     bg-[url(...)], bg-[length:...], ring-*, outline-*, divide-* and friends.
+//
+// How class sets are assembled
+// ----------------------------
+// The file is parsed with the TypeScript parser (not a regex over quoted
+// strings). For each JSX `className` attribute and each cn()/clsx()/
+// classNames()/cx() call, every static string segment in the expression is
+// collected: plain strings, both branches of a conditional, template literal
+// chunks, array items, `+` concatenations, and identifiers that resolve to a
+// string/template constant declared in the same file (transitively). Segments
+// from the same alternative belong to one element's class set.
+//
+// Conditional branches are kept as separate alternatives, so a token and a
+// state class are reported only when they can appear on the element in the same
+// branch. Merging `selected ? "bg-accent-soft" : "hover:bg-surface-muted"` into
+// one set would invent a conflict that cannot render. Static text outside the
+// conditional is added to every alternative. Alternatives are capped at 64; a
+// deeper expression falls back to the union, which is conservative (it may
+// report a cross-branch pair rather than miss a real one).
+//
+// Output: `file:line  <state class>  (with <token class>)`, one line per
+// problem, then a count. Exit code 1 when anything is found, 0 when clean.
+// The line points at the string segment that contains the state class; for a
+// class inherited from a constant, that is the constant's definition line.
+//
+// Known limits (accepted; a full type-aware analysis is out of scope)
+//   - Classes assembled at runtime from values that are not static strings are
+//     invisible. Examples: `className={`text-${tone}`}`, a class map keyed by
+//     a variable (`classByState[state]`), a constant imported from another
+//     module, or classes returned by an arbitrary helper function.
+//   - Identifiers are resolved by name within the file. Two same-named
+//     constants in different scopes are merged; the result can be a false
+//     positive. Shadowing with a non-string value is ignored.
+//   - Conditional branches are kept as alternatives, so mutually exclusive
+//     branches are not paired. Separate conditional expressions are still
+//     cross-producted: two independent conditionals that correlate in reality
+//     (`a ? "bg-accent-soft" : ""` plus `a ? "" : "hover:bg-surface-muted"`)
+//     can produce a pair that never renders. That is a possible false positive.
+//   - A class split across a template interpolation (`text-${size}`) cannot be
+//     reconstructed. A class token split by a newline is fine.
+//   - Only color utilities whose property is background-color, color, or
+//     border-color are compared. ring/outline/divide/fill/stroke, gradients,
+//     shadows, opacity modifiers on the token side, and CSS-in-JS style
+//     objects are not inspected. `divide-line` is therefore not covered.
+//   - Arbitrary values that hide the color behind a CSS variable
+//     (`text-[color:var(--foreground)]`) are skipped: the utility name alone
+//     does not prove the property is a color.
+//   - The dark-override list is parsed from simple selector forms
+//     (`html[data-theme="dark"] .hover\:bg-white:hover` and
+//     `[class~="..."]`). A hypothetical override grouped under a different
+//     selector shape would be missed.
+//   - A comment or prose string that forms a valid className-like expression is
+//     still parsed as source; comments are ignored by the parser, but strings
+//     passed to className/cn() in dead code are reported.
+//
+// Usage:
+//   node scripts/check-token-variants.mjs
+//   node scripts/check-token-variants.mjs --help
+
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
+
+const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const SCAN_ROOTS = ["components", "app"];
+const SOURCE_EXTENSIONS = new Set([".ts", ".tsx"]);
+const EXCLUDED_DIRS = new Set(["node_modules", "tests", "test", "__tests__", "__mocks__", "fixtures", "__fixtures__"]);
+const EXCLUDED_FILE = /(?:\.(?:test|spec))\.(?:[cm]?[jt]sx?)$/;
+
+// Token utilities that replaced a legacy class which has a dark override in
+// globals.css (docs/design-tokens.md section 4). `bg-accent` / `border-accent`
+// are intentionally absent: their legacy classes had no dark override.
+export const TOKEN_PROPERTIES = new Map([
+  // Surfaces: bg-white, bg-neutral-50/100/200, bg-[#eaeaea], bg-[#eff4fd],
+  // bg-red-50, bg-green-100, bg-amber-50.
+  ["bg-surface", "bg"],
+  ["bg-surface-subtle", "bg"],
+  ["bg-surface-muted", "bg"],
+  ["bg-surface-strong", "bg"],
+  ["bg-line", "bg"],
+  ["bg-accent-soft", "bg"],
+  ["bg-danger-soft", "bg"],
+  ["bg-warning-soft", "bg"],
+  ["bg-success-soft", "bg"],
+  // Text: text-neutral-900/600/500/400, text-[#050505], text-[#2c60b8],
+  // text-red-600, text-green-700, text-amber-800.
+  ["text-text", "text"],
+  ["text-foreground", "text"], // back-compat alias of text-text
+  ["text-secondary", "text"],
+  ["text-muted", "text"],
+  ["text-subtle", "text"],
+  ["text-accent-text", "text"],
+  ["text-danger", "text"],
+  ["text-warning", "text"],
+  ["text-success", "text"],
+  // Borders: border-neutral-200/300, border-[#eaeaea].
+  ["border-line", "border"],
+  ["border-line-strong", "border"],
+]);
+
+const PALETTE_NAMES =
+  "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
+const PALETTE_VALUE = `(?:${PALETTE_NAMES})-(?:50|[1-9]00|950)(?:/\\d{1,3})?`;
+const MONOCHROME_VALUE = "(?:white|black|transparent|current|inherit|currentColor)";
+const ARBITRARY_COLOR = String.raw`\[(?:color:)?(?:#[0-9a-fA-F]{3,8}|(?:rgba?|hsla?|oklch|oklab|lab|lch|color)\([^\]]*\))\](?:/\d{1,3})?`;
+
+// Semantic color tokens from docs/design-tokens.md section 3, plus the
+// back-compat aliases from section 1. `background` and `foreground` are the
+// legacy aliases of `bg` and `text`. `focus-ring` and `scrim` are registered as
+// colors as well, even though they are normally used for box-shadow/backdrop.
+const SEMANTIC_TOKEN_VALUES = new Set([
+  "bg",
+  "surface",
+  "surface-subtle",
+  "surface-muted",
+  "surface-strong",
+  "scrim",
+  "line",
+  "line-strong",
+  "text",
+  "secondary",
+  "muted",
+  "subtle",
+  "accent",
+  "accent-text",
+  "accent-soft",
+  "danger",
+  "danger-soft",
+  "warning",
+  "warning-soft",
+  "success",
+  "success-soft",
+  "focus-ring",
+  "background",
+  "foreground",
+]);
+const TOKEN_COLOR_VALUE = `(?:${[...SEMANTIC_TOKEN_VALUES].sort((a, b) => b.length - a.length).join("|")})(?:/\\d{1,3})?`;
+const COLOR_VALUE = new RegExp(
+  `^(?:${PALETTE_VALUE}|${MONOCHROME_VALUE}|${ARBITRARY_COLOR}|${TOKEN_COLOR_VALUE})$`,
+);
+
+// Values that look like `text-*` / `bg-*` / `border-*` but are not a color of
+// that property. Matched against the part after the utility prefix.
+const BG_NON_COLOR =
+  /^(?:none|auto|cover|contain|fixed|local|scroll|repeat(?:-[xy])?|no-repeat|repeat-round|repeat-space|clip-.+|origin-.+|blend-.+|opacity-.+|gradient-.+|linear-gradient\(.+|radial-gradient\(.+|conic-gradient\(.+|\[(?:url|length|position|size|image|linear-gradient|radial-gradient|conic-gradient|repeating-linear-gradient|repeating-radial-gradient)[:(].*)$/;
+const TEXT_NON_COLOR =
+  /^(?:xs|sm|base|lg|[2-9]xl|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip|opacity-.+|shadow-.+|\[(?:length|size):.*|\[(?:\d*\.?\d+(?:px|rem|em|%|vh|vw|vmin|vmax|ch|ex|lh|rlh|pt|pc|in|cm|mm|q)|(?:calc|clamp|min|max)\([^\]]*\))\]|\[var\(--[^\]]*\)\])$/;
+const BORDER_NON_COLOR =
+  /^(?:\d+|\[(?:length:)?\d*\.?\d+(?:px|rem|em|%|pt|pc|in|cm|mm|q)\]|solid|dashed|dotted|double|hidden|none|collapse|separate|spacing-.+|opacity-.+|\[length:.*|\[var\(--[^\]]*\)\])$/;
+
+const BORDER_SIDE = /^[trblxyse]-(.+)$/;
+
+/**
+ * Classify a base (non-variant) utility as a color utility of one property.
+ * Returns "bg" | "text" | "border" | null.
+ */
+export function colorProperty(utility) {
+  const bg = /^bg-(.+)$/.exec(utility);
+  if (bg && !BG_NON_COLOR.test(bg[1]) && COLOR_VALUE.test(bg[1])) return "bg";
+
+  const text = /^text-(.+)$/.exec(utility);
+  if (text && !TEXT_NON_COLOR.test(text[1]) && COLOR_VALUE.test(text[1])) return "text";
+
+  const border = /^border-(.+)$/.exec(utility);
+  if (border) {
+    const rest = border[1];
+    const side = BORDER_SIDE.exec(rest);
+    const value = side ? side[1] : rest;
+    if (!BORDER_NON_COLOR.test(rest) && COLOR_VALUE.test(value)) return "border";
+  }
+  return null;
+}
+
+/**
+ * True when a base (non-variant) color utility references a semantic token,
+ * e.g. `text-text`, `bg-surface-muted`, `border-accent`, `border-t-line`.
+ * Such a state class is excluded: it resolves from --atlas-* variables in both
+ * themes and is already inside the utilities layer.
+ */
+export function isSemanticTokenColor(utility) {
+  const property = colorProperty(utility);
+  if (!property) return false;
+  let value = utility.slice(property.length + 1);
+  if (property === "border") {
+    const side = BORDER_SIDE.exec(value);
+    if (side) value = side[1];
+  }
+  value = value.replace(/\/\d{1,3}$/, "");
+  return SEMANTIC_TOKEN_VALUES.has(value);
+}
+
+const SIMPLE_STATE_NAMES = new Set([
+  "hover",
+  "focus",
+  "focus-visible",
+  "focus-within",
+  "active",
+  "enabled",
+  "disabled",
+  "checked",
+  "indeterminate",
+  "required",
+  "valid",
+  "invalid",
+  "placeholder-shown",
+  "autofill",
+  "read-only",
+  "read-write",
+  "open",
+  "closed",
+  "inert",
+  "first",
+  "last",
+  "odd",
+  "even",
+  "first-of-type",
+  "last-of-type",
+  "only",
+  "only-of-type",
+  "empty",
+  "target",
+  "visited",
+  "link",
+  "any-link",
+  "default",
+  "optional",
+  "user-valid",
+  "user-invalid",
+  "in-range",
+  "out-of-range",
+]);
+
+// Variants that color something other than the element's own background/text/
+// border. A dark override on the element's base class does not compete with
+// these, so they are not state conflicts even though they contain a colon.
+const NON_ELEMENT_VARIANTS = new Set([
+  "placeholder",
+  "file",
+  "marker",
+  "selection",
+  "backdrop",
+  "before",
+  "after",
+  "first-letter",
+  "first-line",
+]);
+
+const BREAKPOINT = /^(?:sm|md|lg|xl|2xl|min-\[[^\]]+\]|max-\[[^\]]+\]|dark|print|motion-reduce|motion-safe|contrast-more|contrast-less|portrait|landscape|rtl|ltr|forced-colors)$/;
+
+function isStateVariant(segment) {
+  const name = segment.split("/")[0];
+  if (SIMPLE_STATE_NAMES.has(name)) return true;
+  if (/^(?:group|peer)-/.test(name)) return true;
+  if (/^(?:aria|data|has)-/.test(name)) return true;
+  // Arbitrary variants such as [&:hover] or [&:focus-visible].
+  if (/^\[.*:(?:hover|focus|focus-visible|focus-within|active|disabled|checked|open)\b.*\]$/.test(name)) return true;
+  return false;
+}
+
+/** Split a utility into variant prefixes and the base utility. */
+export function splitVariants(token) {
+  const parts = [];
+  let current = "";
+  let depth = 0;
+  for (let index = 0; index < token.length; index += 1) {
+    const char = token[index];
+    if (char === "[") depth += 1;
+    else if (char === "]") depth = Math.max(0, depth - 1);
+    if (char === ":" && depth === 0) {
+      parts.push(current);
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  parts.push(current);
+  return { variants: parts.slice(0, -1), base: parts[parts.length - 1] };
+}
+
+/**
+ * Read the state classes that have an unlayered dark override from globals.css.
+ * Returns a Set of class names such as "hover:bg-neutral-50".
+ */
+export function parseDarkOverriddenVariants(css) {
+  const overridden = new Set();
+  const darkBlock = /html\[data-theme=["']dark["']\]([^{}]*)\{/g;
+
+  const addClass = (value) => {
+    const unescaped = value.replace(/\\(.)/g, "$1");
+    overridden.add(unescaped);
+  };
+
+  for (const block of css.matchAll(darkBlock)) {
+    const selectorText = block[1];
+    for (const attribute of selectorText.matchAll(/\[class~=["']([^"']+)["']\]/g)) {
+      addClass(attribute[1]);
+    }
+    for (const dotted of selectorText.matchAll(/\.((?:\\.|[^\s,{:.>+~#()])+)/g)) {
+      addClass(dotted[1]);
+    }
+  }
+  return overridden;
+}
+
+function comparePaths(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function walk(directory, files) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (EXCLUDED_DIRS.has(entry.name)) continue;
+      walk(path, files);
+    } else if (entry.isFile() && SOURCE_EXTENSIONS.has(entry.name.slice(entry.name.lastIndexOf(".")))) {
+      if (EXCLUDED_FILE.test(entry.name)) continue;
+      files.push(path);
+    }
+  }
+}
+
+function collectStringConstants(sourceFile) {
+  const constants = new Map();
+  const visit = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const list = constants.get(node.name.text) ?? [];
+      list.push(node.initializer);
+      constants.set(node.name.text, list);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return constants;
+}
+
+const MAX_ALTERNATIVES = 64;
+
+function addChunk(chunks, sourceFile, node, text) {
+  if (!text) return;
+  // Start just after the opening quote/backtick so positions point into `text`.
+  const pos = node.getStart(sourceFile) + 1;
+  chunks.push({ text, pos });
+}
+
+function mergeAlternatives(alternatives) {
+  const merged = [];
+  const seen = new Set();
+  for (const chunks of alternatives) {
+    for (const chunk of chunks) {
+      const key = `${chunk.pos}\u0000${chunk.text}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(chunk);
+    }
+  }
+  return [merged];
+}
+
+function unionAlternatives(...groups) {
+  const all = groups.flat();
+  if (all.length <= MAX_ALTERNATIVES) return all;
+  return mergeAlternatives(all);
+}
+
+function crossAlternatives(left, right) {
+  if (left.length * right.length > MAX_ALTERNATIVES) {
+    return mergeAlternatives([...left, ...right]);
+  }
+  const result = [];
+  for (const a of left) {
+    for (const b of right) result.push([...a, ...b]);
+  }
+  return result;
+}
+
+function crossAll(groups) {
+  let result = [[]];
+  for (const group of groups) result = crossAlternatives(result, group);
+  return result;
+}
+
+/**
+ * Return every possible class-set alternative for an expression, as an array
+ * of chunk lists. Each alternative is one possible rendering of the expression.
+ * An unknown/dynamic value contributes an empty alternative.
+ */
+function collectAlternatives(node, sourceFile, constants, seen) {
+  const empty = [[]];
+  if (!node) return empty;
+
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    const chunks = [];
+    addChunk(chunks, sourceFile, node, node.text);
+    return [chunks];
+  }
+
+  if (ts.isTemplateExpression(node)) {
+    let result = [[{ text: node.head.text, pos: node.head.getStart(sourceFile) + 1 }]].filter(
+      (chunks) => chunks[0].text,
+    );
+    if (result.length === 0) result = [[]];
+    for (const span of node.templateSpans) {
+      const expressionAlternatives = collectAlternatives(span.expression, sourceFile, constants, seen);
+      const literalChunks = span.literal.text
+        ? [{ text: span.literal.text, pos: span.literal.getStart(sourceFile) + 1 }]
+        : [];
+      result = crossAlternatives(result, expressionAlternatives);
+      if (literalChunks.length) result = crossAlternatives(result, [literalChunks]);
+    }
+    return result;
+  }
+
+  if (ts.isConditionalExpression(node)) {
+    return unionAlternatives(
+      collectAlternatives(node.whenTrue, sourceFile, constants, seen),
+      collectAlternatives(node.whenFalse, sourceFile, constants, seen),
+    );
+  }
+
+  if (ts.isBinaryExpression(node)) {
+    const operator = node.operatorToken.kind;
+    if (operator === ts.SyntaxKind.PlusToken) {
+      return crossAlternatives(
+        collectAlternatives(node.left, sourceFile, constants, seen),
+        collectAlternatives(node.right, sourceFile, constants, seen),
+      );
+    }
+    if (
+      operator === ts.SyntaxKind.AmpersandAmpersandToken ||
+      operator === ts.SyntaxKind.BarBarToken ||
+      operator === ts.SyntaxKind.QuestionQuestionToken
+    ) {
+      // `cond && "..."` either contributes nothing or the right side. Union
+      // both; do not cross-product, because only one side renders.
+      return unionAlternatives(
+        collectAlternatives(node.left, sourceFile, constants, seen),
+        collectAlternatives(node.right, sourceFile, constants, seen),
+      );
+    }
+    return empty;
+  }
+
+  if (
+    ts.isParenthesizedExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isSatisfiesExpression(node) ||
+    ts.isNonNullExpression(node)
+  ) {
+    return collectAlternatives(node.expression, sourceFile, constants, seen);
+  }
+
+  if (ts.isArrayLiteralExpression(node)) {
+    return crossAll([...node.elements].map((element) => collectAlternatives(element, sourceFile, constants, seen)));
+  }
+
+  if (ts.isCallExpression(node)) {
+    return crossAll([...node.arguments].map((argument) => collectAlternatives(argument, sourceFile, constants, seen)));
+  }
+
+  if (ts.isIdentifier(node) && !seen.has(node.text)) {
+    const initializers = constants.get(node.text);
+    if (!initializers) return empty;
+    const nextSeen = new Set(seen);
+    nextSeen.add(node.text);
+    return unionAlternatives(
+      ...initializers.map((initializer) => collectAlternatives(initializer, sourceFile, constants, nextSeen)),
+    );
+  }
+
+  // Anything else (property access, element access, arbitrary runtime value)
+  // is intentionally ignored: see the known limits in the header.
+  return empty;
+}
+
+function classHelperName(call) {
+  const callee = call.expression;
+  if (ts.isIdentifier(callee)) return callee.text;
+  if (ts.isPropertyAccessExpression(callee)) return callee.name.text;
+  return null;
+}
+
+const CLASS_HELPERS = new Set(["cn", "clsx", "classNames", "cx"]);
+
+function tokensWithPositions(sourceFile, chunks) {
+  const tokens = new Map();
+  for (const chunk of chunks) {
+    for (const match of chunk.text.matchAll(/\S+/g)) {
+      const token = match[0];
+      if (tokens.has(token)) continue;
+      const line = sourceFile.getLineAndCharacterOfPosition(chunk.pos + match.index).line + 1;
+      tokens.set(token, line);
+    }
+  }
+  return tokens;
+}
+
+function inspectClassSet(tokens, overriddenVariants) {
+  const tokensByProperty = { bg: [], text: [], border: [] };
+  for (const token of tokens.keys()) {
+    const property = TOKEN_PROPERTIES.get(token);
+    if (property) tokensByProperty[property].push(token);
+  }
+  if (!tokensByProperty.bg.length && !tokensByProperty.text.length && !tokensByProperty.border.length) {
+    return [];
+  }
+
+  const findings = [];
+  for (const [token, line] of tokens) {
+    const { variants, base } = splitVariants(token);
+    if (variants.length === 0) continue;
+    if (variants.some((variant) => NON_ELEMENT_VARIANTS.has(variant.split("/")[0]))) continue;
+    const stateful = variants.some((variant) => !BREAKPOINT.test(variant) && isStateVariant(variant));
+    if (!stateful) continue;
+
+    const property = colorProperty(base);
+    if (!property || !tokensByProperty[property].length) continue;
+    if (isSemanticTokenColor(base)) continue;
+    if (overriddenVariants.has(token)) continue;
+
+    findings.push({ line, stateClass: token, token: tokensByProperty[property][0] });
+  }
+  return findings;
+}
+
+/**
+ * Find conflicts in one source file.
+ * Returns [{ line, stateClass, token }] in source order.
+ */
+export function findTokenVariantConflicts(source, { filename = "source.tsx", overriddenVariants = new Set() } = {}) {
+  const scriptKind = filename.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, scriptKind);
+  const constants = collectStringConstants(sourceFile);
+  const classSets = [];
+
+  const visit = (node) => {
+    if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === "className") {
+      const initializer = node.initializer;
+      let alternatives = [];
+      if (initializer && ts.isStringLiteral(initializer)) {
+        const chunks = [];
+        addChunk(chunks, sourceFile, initializer, initializer.text);
+        alternatives = [chunks];
+      } else if (initializer && ts.isJsxExpression(initializer) && initializer.expression) {
+        alternatives = collectAlternatives(initializer.expression, sourceFile, constants, new Set());
+      }
+      if (alternatives.some((chunks) => chunks.length)) classSets.push(alternatives);
+    }
+
+    if (ts.isCallExpression(node) && CLASS_HELPERS.has(classHelperName(node))) {
+      const alternatives = crossAll(
+        [...node.arguments].map((argument) => collectAlternatives(argument, sourceFile, constants, new Set())),
+      );
+      if (alternatives.some((chunks) => chunks.length)) classSets.push(alternatives);
+    }
+
+    // Exported class strings (e.g. `export const inputClass = "..."`) are used
+    // as className in other modules. Imports are not resolved, so the module
+    // that defines the constant must also be checked. This adds only
+    // module-scope string/template constants; object values and local strings
+    // that never reach a className are picked up only through the className or
+    // cn() expression above.
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      (ts.isStringLiteral(node.initializer) || ts.isNoSubstitutionTemplateLiteral(node.initializer) || ts.isTemplateExpression(node.initializer)) &&
+      ts.isSourceFile(node.parent.parent.parent)
+    ) {
+      const alternatives = collectAlternatives(node.initializer, sourceFile, constants, new Set([node.name.text]));
+      if (alternatives.some((chunks) => chunks.length)) classSets.push(alternatives);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+
+  const findings = [];
+  const seen = new Set();
+  for (const alternatives of classSets) {
+    for (const chunks of alternatives) {
+      const tokens = tokensWithPositions(sourceFile, chunks);
+      for (const finding of inspectClassSet(tokens, overriddenVariants)) {
+        const key = `${finding.line}\u0000${finding.stateClass}\u0000${finding.token}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        findings.push(finding);
+      }
+    }
+  }
+  return findings.sort((a, b) => a.line - b.line || comparePaths(a.stateClass, b.stateClass));
+}
+
+/** List scannable files (absolute paths) under app/ and components/. */
+export function listTargetFiles(root = ROOT) {
+  const files = [];
+  for (const name of SCAN_ROOTS) {
+    const directory = join(root, name);
+    if (!existsSync(directory)) continue;
+    walk(directory, files);
+  }
+  return files.sort(comparePaths);
+}
+
+/**
+ * Scan a project tree.
+ * Returns { findings: [{ path, line, stateClass, token }], scannedFileCount }.
+ * `path` is POSIX-style and relative to the root.
+ */
+export function scanTree(root = ROOT) {
+  const cssPath = join(root, "app/globals.css");
+  const overriddenVariants = existsSync(cssPath)
+    ? parseDarkOverriddenVariants(readFileSync(cssPath, "utf8"))
+    : new Set();
+  const targets = listTargetFiles(root);
+  const findings = [];
+  for (const file of targets) {
+    const relativePath = relative(root, file).split(sep).join("/");
+    const conflicts = findTokenVariantConflicts(readFileSync(file, "utf8"), {
+      filename: relativePath,
+      overriddenVariants,
+    });
+    for (const conflict of conflicts) findings.push({ path: relativePath, ...conflict });
+  }
+  findings.sort(
+    (a, b) => comparePaths(a.path, b.path) || a.line - b.line || comparePaths(a.stateClass, b.stateClass),
+  );
+  return { findings, scannedFileCount: targets.length };
+}
+
+function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(
+      [
+        "Usage: node scripts/check-token-variants.mjs",
+        "",
+        "Reports migrated token classes that sit next to a state variant of the",
+        "same color property without a legacy dark override. Revert the token",
+        "class; see docs/design-tokens.md.",
+      ].join("\n"),
+    );
+    return;
+  }
+  const unknown = process.argv.slice(2).filter((argument) => argument !== "--help" && argument !== "-h");
+  if (unknown.length) {
+    console.error(`check-token-variants: unknown argument: ${unknown[0]}`);
+    process.exitCode = 2;
+    return;
+  }
+
+  const { findings, scannedFileCount } = scanTree(ROOT);
+  if (findings.length === 0) {
+    console.log(`check-token-variants: OK (scanned ${scannedFileCount} file(s))`);
+    return;
+  }
+  console.error("check-token-variants: token/state variant conflicts found");
+  console.error("");
+  for (const finding of findings) {
+    console.error(`${finding.path}:${finding.line}  ${finding.stateClass}  (with ${finding.token})`);
+  }
+  console.error("");
+  console.error(
+    `${findings.length} conflict(s) in ${new Set(findings.map((finding) => finding.path)).size} file(s).`,
+  );
+  console.error(
+    "Revert each token class to its legacy class (docs/design-tokens.md section 4); keep the state class unchanged.",
+  );
+  process.exitCode = 1;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

@@ -8,7 +8,7 @@ export const buttonSecondary =
 export const buttonQuiet =
   "inline-flex items-center rounded px-1 py-0.5 text-[13px] font-medium text-[#24529c] hover:underline disabled:cursor-not-allowed disabled:opacity-50";
 export const inputClass =
-  "h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]";
+  "h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]";
 export const labelClass = "block text-[12px] font-medium text-secondary";
 export const sectionTitle = "text-[15px] font-semibold text-neutral-900";
 

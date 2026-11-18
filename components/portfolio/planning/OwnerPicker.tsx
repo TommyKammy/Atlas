@@ -188,7 +188,7 @@ export default function OwnerPicker({
                   setOpen(false);
                 }
               }}
-              className="h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
+              className="h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
             />
             {open && (
               <div className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-md border border-line-strong bg-surface shadow-lg">

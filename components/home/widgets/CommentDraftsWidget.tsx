@@ -75,7 +75,7 @@ export default function CommentDraftsWidget({ drafts }: { drafts: HomeCommentDra
                 aria-label="下書きを削除"
                 title="下書きを削除"
                 onClick={() => void discard(draft)}
-                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-[14px] text-subtle hover:bg-red-50 hover:text-red-600"
+                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-[14px] text-neutral-400 hover:bg-red-50 hover:text-red-600"
               >
                 ×
               </button>

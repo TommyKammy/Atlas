@@ -252,7 +252,7 @@ export default function PortfolioWorkspace({
                       type="button"
                       onClick={() => void remove(detail.portfolio)}
                       disabled={busy}
-                      className="text-[11px] text-subtle hover:text-rose-600 disabled:opacity-50"
+                      className="text-[11px] text-neutral-400 hover:text-rose-600 disabled:opacity-50"
                     >
                       ポートフォリオを削除
                     </button>
@@ -272,7 +272,7 @@ export default function PortfolioWorkspace({
                           aria-label={`${project.name}を外す`}
                           onClick={() => void removeProject(project)}
                           disabled={busy}
-                          className="text-subtle hover:text-rose-600"
+                          className="text-neutral-400 hover:text-rose-600"
                         >
                           ×
                         </button>

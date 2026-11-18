@@ -30,6 +30,8 @@ jobs:
         run: npm run lint
       - name: Color literal ratchet
         run: npm run check:colors
+      - name: Token / state variant conflicts
+        run: npm run check:token-variants
       - name: Unit tests
         run: npm test
       - name: Production build

@@ -94,7 +94,7 @@ export default function TaskSubtasksSection({
             <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}`}
               className={`min-w-0 flex-1 truncate hover:text-blue-700 hover:underline ${
-                subtask.completed ? "text-subtle line-through" : "text-neutral-800"
+                subtask.completed ? "text-neutral-400 line-through" : "text-neutral-800"
               }`}
               title={subtask.name}
             >
@@ -110,7 +110,7 @@ export default function TaskSubtasksSection({
               onClick={() => onDelete(subtask)}
               title="サブタスクを削除"
               aria-label={`${subtask.name} を削除`}
-              className="invisible shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-neutral-100 hover:text-red-600 group-hover/sub:visible"
+              className="invisible shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 group-hover/sub:visible"
             >
               ×
             </button>
@@ -130,7 +130,7 @@ export default function TaskSubtasksSection({
             }}
             placeholder="サブタスク名を入力"
             autoFocus
-            className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-[#4075cf]"
+            className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
           />
           <button
             type="button"
@@ -153,7 +153,7 @@ export default function TaskSubtasksSection({
           type="button"
           disabled={!canEdit}
           onClick={onStartAdd}
-          className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-subtle hover:bg-neutral-50 hover:text-neutral-600"
+          className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600"
         >
           <span className="text-base leading-none">＋</span>
           <span className="min-w-0 flex-1 truncate">サブタスクを追加</span>

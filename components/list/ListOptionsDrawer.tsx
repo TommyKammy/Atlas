@@ -387,7 +387,7 @@ export default function ListOptionsDrawer({
                 aria-label="現在のビューを保存"
                 disabled={!canSaveView}
                 title={!canSaveView ? "この集計条件から開いたリストは保存できません。通常のリストに戻って保存してください。" : undefined}
-                className="text-[13px] text-secondary hover:text-black disabled:cursor-not-allowed disabled:text-neutral-400"
+                className="text-[13px] text-neutral-600 hover:text-black disabled:cursor-not-allowed disabled:text-neutral-400"
               >
                 ビューを保存
               </button>

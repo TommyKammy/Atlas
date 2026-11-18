@@ -67,7 +67,7 @@ export default function TaskPaneHeader({
   };
 
   const iconButton =
-    "flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-neutral-100 hover:text-neutral-800";
+    "flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800";
   const collaboratorTitle = collaborators.map((person) => person.name).join("・");
 
   return (
@@ -229,7 +229,7 @@ export default function TaskPaneHeader({
 
       <Link
         href={closeHref}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-neutral-100 hover:text-neutral-900"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
         title="詳細を閉じる"
         aria-label="詳細を閉じる"
       >

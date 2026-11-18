@@ -17,7 +17,7 @@ export default function TaskSaveStatus({ states, reloading, onReload }: {
       {failures.map((state) => (
         <div key={state.key} className="mb-2 last:mb-0" data-task-save-field={state.key}>
           <p><span className="font-medium">{state.label}は未保存です。</span> {state.message}</p>
-          {state.retry && <button type="button" data-task-save-control onClick={() => void state.retry?.()} className="mt-1 rounded border border-rose-300 bg-surface px-2 py-1 hover:bg-rose-50">{state.label}を再試行</button>}
+          {state.retry && <button type="button" data-task-save-control onClick={() => void state.retry?.()} className="mt-1 rounded border border-rose-300 bg-white px-2 py-1 hover:bg-rose-50">{state.label}を再試行</button>}
         </div>
       ))}
       <button type="button" data-task-save-control data-task-conflict-discard onClick={onReload} disabled={saving} className="mt-2 rounded border border-line-strong bg-surface px-2 py-1 text-neutral-800 hover:bg-neutral-50 disabled:opacity-50">入力を破棄して最新表示</button>

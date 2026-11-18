@@ -70,7 +70,7 @@ export default function AddWidgetPanel({
                         type="button"
                         disabled={added}
                         onClick={() => onAdd(type)}
-                        className="ml-auto rounded px-2 py-0.5 text-[12px] text-accent-text hover:bg-[#eff4fd] disabled:text-neutral-300"
+                        className="ml-auto rounded px-2 py-0.5 text-[12px] text-[#2c60b8] hover:bg-[#eff4fd] disabled:text-neutral-300"
                       >
                         {added ? "追加済み" : "＋ 追加"}
                       </button>
