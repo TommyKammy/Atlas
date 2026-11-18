@@ -42,17 +42,17 @@ export default function RuleMultiEntityPicker({ projectId, kind, fieldId, value,
         {selected.map((entry, index) => {
           const variable = variables?.find((item) => `{{${item.path}}}` === entry);
           const name = variable?.label ?? (labels?.key === key ? labels.options.find((option) => option.value === Number(entry))?.label : undefined) ?? "選択済みの項目";
-          return <li key={index} className="flex max-w-full items-center gap-1 rounded-full bg-neutral-100 py-1 pl-2.5 pr-1 text-[12px]">
+          return <li key={index} className="flex max-w-full items-center gap-1 rounded-full bg-surface-muted py-1 pl-2.5 pr-1 text-[12px]">
             <span className="truncate">{name}</span>
             <button type="button" aria-label={`${name}を削除`} onClick={() => onChange(selected.filter((_, item) => item !== index))}
-              className="rounded-full px-1.5 text-neutral-500 hover:bg-neutral-200">×</button>
+              className="rounded-full px-1.5 text-muted hover:bg-neutral-200">×</button>
           </li>;
         })}
       </ul>}
       {variables && <RuleVariableMenu variables={variables} target="id_collection"
         onSelect={(variable) => onChange(insertRuleVariable(selected, variable, "id_collection") as unknown[])} />}
-      {!allowScalar && !Array.isArray(value) && value != null && value !== "" && <p className="text-[11px] text-neutral-500">保存済みの値を保持しています。項目を選ぶと置き換わります。</p>}
-      <button type="button" onClick={() => onChange([])} className="text-[11px] text-neutral-500 hover:text-neutral-800">選択をクリア</button>
+      {!allowScalar && !Array.isArray(value) && value != null && value !== "" && <p className="text-[11px] text-muted">保存済みの値を保持しています。項目を選ぶと置き換わります。</p>}
+      <button type="button" onClick={() => onChange([])} className="text-[11px] text-muted hover:text-neutral-800">選択をクリア</button>
     </div>
   );
 }

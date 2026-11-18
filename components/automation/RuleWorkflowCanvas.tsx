@@ -18,10 +18,10 @@ function Card({ title, category, children, selected, onClick, tone = "blue", tes
   invalid?: boolean;
 }) {
   return <button type="button" data-rule-node={testId} data-rule-node-invalid={invalid || undefined} aria-pressed={selected} onClick={onClick}
-    className={`w-full rounded-lg border bg-white p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8] ${selected ? "border-[#2c60b8] bg-[#eff4fd] ring-1 ring-[#2c60b8]" : invalid ? "border-rose-300 hover:border-rose-500" : "border-neutral-200 hover:border-neutral-400"}`}>
-    {category && <span className={`mb-2 block text-[11px] font-semibold ${tone === "amber" ? "text-amber-700" : "text-[#2c60b8]"}`}>{category}</span>}
+    className={`w-full rounded-lg border bg-white p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8] ${selected ? "border-accent bg-[#eff4fd] ring-1 ring-[#2c60b8]" : invalid ? "border-rose-300 hover:border-rose-500" : "border-neutral-200 hover:border-neutral-400"}`}>
+    {category && <span className={`mb-2 block text-[11px] font-semibold ${tone === "amber" ? "text-amber-700" : "text-accent-text"}`}>{category}</span>}
     <span className="block break-words text-[13px] font-semibold text-neutral-900">{title}</span>
-    {children && <span className="mt-2 block break-words text-[12px] leading-5 text-neutral-600">{children}</span>}
+    {children && <span className="mt-2 block break-words text-[12px] leading-5 text-secondary">{children}</span>}
     {invalid && <span className="mt-2 block text-[11px] font-semibold text-rose-700">! 入力を確認してください</span>}
   </button>;
 }
@@ -46,15 +46,15 @@ export default function RuleWorkflowCanvas({ document, descriptors, selected, re
       </Card>
     </div>)}
     {!readOnly && <button type="button" onClick={() => onAddAction(branch)} disabled={totalActions >= descriptors.limits.actionsPerRule}
-      className="mt-4 w-full rounded-md border border-dashed border-neutral-300 bg-white px-3 py-2 text-[12px] text-neutral-600 hover:border-[#2c60b8] hover:text-[#2c60b8] disabled:opacity-40">＋ アクション</button>}
+      className="mt-4 w-full rounded-md border border-dashed border-neutral-300 bg-surface px-3 py-2 text-[12px] text-neutral-600 hover:border-[#2c60b8] hover:text-[#2c60b8] disabled:opacity-40">＋ アクション</button>}
   </div>;
 
   const branches = document.branches.map((branch, index) => ({ branch, index })).sort((a, b) => Number(Boolean(a.branch.else)) - Number(Boolean(b.branch.else)));
-  return <section aria-label="ワークフロー" className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-neutral-50">
-    <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-neutral-200 bg-white px-5 py-2 text-[11px] text-neutral-600">
+  return <section aria-label="ワークフロー" className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-subtle">
+    <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-neutral-200 bg-surface px-5 py-2 text-[11px] text-secondary">
       <span>きっかけ → 条件 → 実行すること</span>
       {document.useBranches && <span>分岐は上から最初に一致したパスを実行</span>}
-      {document.useBranches && document.conditions.length === 0 && <button type="button" onClick={() => onSelect({ kind: "conditions" })} className="rounded px-2 py-1 text-[#2c60b8] hover:bg-blue-50">共通の条件を追加</button>}
+      {document.useBranches && document.conditions.length === 0 && <button type="button" onClick={() => onSelect({ kind: "conditions" })} className="rounded px-2 py-1 text-accent-text hover:bg-blue-50">共通の条件を追加</button>}
       {!readOnly && <button type="button" aria-pressed={document.useBranches} onClick={onToggleBranches} className="ml-auto rounded border border-neutral-200 px-2 py-1 hover:bg-neutral-50">{document.useBranches ? "単純なフローに切り替え" : "条件で分岐する"}</button>}
     </div>
     <div className="min-h-0 flex-1 overflow-auto p-6 sm:p-10" data-rule-canvas>
@@ -67,7 +67,7 @@ export default function RuleWorkflowCanvas({ document, descriptors, selected, re
             {trigger.days !== undefined ? `${trigger.days}日${trigger.event === "task.overdue" ? "過ぎたら" : "前"}` : "クリックして設定"}
           </Card>)}
           {!readOnly && <button type="button" onClick={onAddTrigger} disabled={document.triggers.length >= descriptors.limits.triggersPerRule}
-            className="w-full rounded-md border border-dashed border-neutral-300 bg-white p-2 text-[12px] text-neutral-600 hover:text-[#2c60b8] disabled:opacity-40">＋ きっかけ</button>}
+            className="w-full rounded-md border border-dashed border-neutral-300 bg-surface p-2 text-[12px] text-neutral-600 hover:text-[#2c60b8] disabled:opacity-40">＋ きっかけ</button>}
         </div>
         <div className="pt-12"><Arrow /></div>
         {(!document.useBranches || document.conditions.length > 0) && <><div className="w-[250px] shrink-0">
@@ -80,8 +80,8 @@ export default function RuleWorkflowCanvas({ document, descriptors, selected, re
         <div className="pt-12"><Arrow /></div></>}
         {document.useBranches ? <div className="space-y-8">
           {branches.map(({ branch, index }, order) => <div key={index} className="relative flex items-start">
-            <span aria-hidden="true" className="absolute -left-4 border-l border-neutral-300" style={{ top: order === 0 ? 56 : -32, bottom: order === branches.length - 1 ? "calc(100% - 56px)" : -32 }} />
-            <span aria-hidden="true" className="absolute -left-4 top-14 w-4 border-t border-neutral-300" />
+            <span aria-hidden="true" className="absolute -left-4 border-l border-line-strong" style={{ top: order === 0 ? 56 : -32, bottom: order === branches.length - 1 ? "calc(100% - 56px)" : -32 }} />
+            <span aria-hidden="true" className="absolute -left-4 top-14 w-4 border-t border-line-strong" />
             <div className="w-[250px] shrink-0">
               <Card title={branch.name} category={branch.else ? "それ以外" : `判定 ${order + 1}`} tone="amber" testId={`branch-${index}`}
                 invalid={problems.some((problem) => problem.selection?.kind === "branch" && problem.selection.index === index && problem.conditionIndex !== undefined)}
@@ -92,20 +92,20 @@ export default function RuleWorkflowCanvas({ document, descriptors, selected, re
             <div className="pt-12"><Arrow /></div>{actionColumn(branch.actions, index)}
           </div>)}
           {!readOnly && <button type="button" onClick={onAddBranch} disabled={document.branches.length >= 20}
-            className="rounded-md border border-dashed border-neutral-300 bg-white px-4 py-2 text-[12px] text-neutral-600 disabled:opacity-40">＋ 分岐を追加</button>}
+            className="rounded-md border border-dashed border-line-strong bg-surface px-4 py-2 text-[12px] text-secondary disabled:opacity-40">＋ 分岐を追加</button>}
         </div> : actionColumn(document.actions)}
       </div>
     </div>
     <div className="flex shrink-0 items-center gap-2 px-5 pb-3">
-      <div className="flex items-center rounded-md border border-neutral-200 bg-white text-[12px]">
+      <div className="flex items-center rounded-md border border-neutral-200 bg-surface text-[12px]">
         <button type="button" aria-label="縮小" disabled={zoom <= 0.5} onClick={() => setZoom((value) => Math.max(0.5, value - 0.1))} className="h-8 px-3 disabled:opacity-30">−</button>
         <button type="button" aria-label="ズームをリセット" onClick={() => setZoom(1)} className="h-8 px-2">{Math.round(zoom * 100)}%</button>
         <button type="button" aria-label="拡大" disabled={zoom >= 1.5} onClick={() => setZoom((value) => Math.min(1.5, value + 0.1))} className="h-8 px-3 disabled:opacity-30">＋</button>
       </div>
-      <button type="button" onClick={onUndo} disabled={!canUndo || readOnly} aria-label="元に戻す" className="h-8 rounded-md border border-neutral-200 bg-white px-3 text-sm disabled:opacity-30">↶</button>
-      <button type="button" onClick={onRedo} disabled={!canRedo || readOnly} aria-label="やり直す" className="h-8 rounded-md border border-neutral-200 bg-white px-3 text-sm disabled:opacity-30">↷</button>
+      <button type="button" onClick={onUndo} disabled={!canUndo || readOnly} aria-label="元に戻す" className="h-8 rounded-md border border-neutral-200 bg-surface px-3 text-sm disabled:opacity-30">↶</button>
+      <button type="button" onClick={onRedo} disabled={!canRedo || readOnly} aria-label="やり直す" className="h-8 rounded-md border border-neutral-200 bg-surface px-3 text-sm disabled:opacity-30">↷</button>
     </div>
-    <div className="mx-4 mb-4 rounded-lg border border-neutral-200 bg-white p-3 text-[12px] leading-5 text-neutral-600">
+    <div className="mx-4 mb-4 rounded-lg border border-neutral-200 bg-surface p-3 text-[12px] leading-5 text-secondary">
       <span className="mr-3 font-semibold text-neutral-800">このルールの動作</span>{editorSummary(document, descriptors)}
     </div>
   </section>;

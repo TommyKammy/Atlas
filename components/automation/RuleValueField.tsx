@@ -64,8 +64,8 @@ export default function RuleValueField({ label, value, onChange, type = "text", 
             requestAnimationFrame(() => input.current?.focus());
           }} />
       )}
-      {help && <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">{help}</p>}
-      {value !== null && typeof value === "object" && <p className="mt-1 text-[11px] text-neutral-500">保存済みの値を保持しています。入力すると置き換わります。</p>}
+      {help && <p className="mt-1 text-[11px] leading-relaxed text-muted">{help}</p>}
+      {value !== null && typeof value === "object" && <p className="mt-1 text-[11px] text-muted">保存済みの値を保持しています。入力すると置き換わります。</p>}
     </div>
   );
 }

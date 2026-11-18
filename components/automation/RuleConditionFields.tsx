@@ -53,10 +53,10 @@ export function RuleConditionFields({ conditions, descriptors, projectId, onChan
   }
   return (
     <div className="space-y-3" data-rule-condition-fields>
-      <p className="text-[12px] leading-relaxed text-neutral-500">すべての条件を満たしたときに進みます。条件がない場合は、毎回この先へ進みます。</p>
+      <p className="text-[12px] leading-relaxed text-muted">すべての条件を満たしたときに進みます。条件がない場合は、毎回この先へ進みます。</p>
       {conditions.map((condition, index) => {
         const problem = conditionInputProblem(condition, ruleConditionType(condition.field, descriptors));
-        return <div key={index} data-rule-condition-index={index} className={`space-y-3 rounded-lg border bg-white p-3 ${problem ? "border-rose-300" : "border-neutral-200"}`}>
+        return <div key={index} data-rule-condition-index={index} className={`space-y-3 rounded-lg border bg-surface p-3 ${problem ? "border-rose-300" : "border-neutral-200"}`}>
         <div className="flex items-start gap-2">
           <label className="min-w-0 flex-1 text-[12px] font-medium text-neutral-700">条件の項目
             <select value={condition.field} className={`${ruleInputClass} mt-1`}
@@ -81,7 +81,7 @@ export function RuleConditionFields({ conditions, descriptors, projectId, onChan
       <button type="button" disabled={conditions.length >= descriptors.limits.conditionsPerPath} onClick={() => {
         const field = fields[0]?.id ?? "task.name";
         onChange([...conditions, changeRuleCondition({ field: "", op: "eq" }, field, "eq", descriptors)]);
-      }} className="rounded-md border border-neutral-300 px-3 py-2 text-[12px] font-medium hover:bg-neutral-50 disabled:opacity-40">条件を追加</button>
+      }} className="rounded-md border border-line-strong px-3 py-2 text-[12px] font-medium hover:bg-neutral-50 disabled:opacity-40">条件を追加</button>
     </div>
   );
 }

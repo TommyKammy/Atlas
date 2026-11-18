@@ -41,19 +41,19 @@ export default function RuleCollectionField({ label, value, onChange, options, t
           <div className="min-w-0 flex-1"><RuleValueField label="値を追加" value={draft} onChange={setDraft} type={type} invalid={invalid} describedBy={describedBy} /></div>
           <button type="button" disabled={draft === "" || draft == null} onClick={() => {
             onChange(selected.includes(draft) ? selected : [...selected, draft]); setDraft("");
-          }} className="h-9 rounded-md border border-neutral-300 px-3 text-[12px] hover:bg-neutral-50 disabled:opacity-40">追加</button>
+          }} className="h-9 rounded-md border border-line-strong px-3 text-[12px] hover:bg-neutral-50 disabled:opacity-40">追加</button>
         </div>
       )}
       {selected.length > 0 && <ul className="flex flex-wrap gap-1.5" aria-label={`${label}の設定値`}>
-        {selected.map((entry, index) => <li key={index} className="flex max-w-full items-center gap-1 rounded-full bg-neutral-100 py-1 pl-2.5 pr-1 text-[12px]">
+        {selected.map((entry, index) => <li key={index} className="flex max-w-full items-center gap-1 rounded-full bg-surface-muted py-1 pl-2.5 pr-1 text-[12px]">
           <span className="truncate">{variables?.find((variable) => `{{${variable.path}}}` === entry)?.label ?? (typeof entry === "object" ? "保存済みの値" : entry === true ? "はい" : entry === false ? "いいえ" : String(entry))}</span>
           <button type="button" aria-label={`${label}の${index + 1}件目を削除`} onClick={() => onChange(selected.filter((_, item) => item !== index))}
-            className="rounded-full px-1.5 text-neutral-500 hover:bg-neutral-200">×</button>
+            className="rounded-full px-1.5 text-muted hover:bg-neutral-200">×</button>
         </li>)}
       </ul>}
       {variables && <RuleVariableMenu variables={variables} target="text_collection"
         onSelect={(variable) => onChange(insertRuleVariable(selected, variable, "text_collection") as unknown[])} />}
-      <button type="button" onClick={() => onChange([])} className="text-[11px] text-neutral-500 hover:text-neutral-800">選択をクリア</button>
+      <button type="button" onClick={() => onChange([])} className="text-[11px] text-muted hover:text-neutral-800">選択をクリア</button>
     </fieldset>
   );
 }
