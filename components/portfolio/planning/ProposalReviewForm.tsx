@@ -76,12 +76,12 @@ export default function ProposalReviewForm({
       }}
       className="rounded-md border border-accent-line bg-accent-soft px-3 py-3"
     >
-      <h3 className="text-[13px] font-semibold text-blue-950">レビュー</h3>
+      <h3 className="text-[13px] font-semibold text-text">レビュー</h3>
       <p className="mt-1 text-[11px] text-accent-text">
         コメントは判断の記録として保存されます。担当: {reviewerName}
       </p>
 
-      <label htmlFor={noteId} className="mt-2 block text-[12px] font-medium text-blue-950">
+      <label htmlFor={noteId} className="mt-2 block text-[12px] font-medium text-text">
         レビューのコメント・差し戻し理由
         <span className="ml-1 text-red-700" aria-hidden>
           *
@@ -95,7 +95,7 @@ export default function ProposalReviewForm({
             setNote(event.target.value);
             if (event.target.value.trim() !== "") setInvalid(false);
           }}
-          className="mt-1 min-h-24 w-full rounded-md border border-line-strong bg-white px-2.5 py-2 text-[13px] text-text outline-none focus:border-accent"
+          className="mt-1 min-h-24 w-full rounded-md border border-line-strong bg-field px-2.5 py-2 text-[13px] text-text outline-none focus:border-accent"
           maxLength={2000}
           placeholder="確認した内容、懸念点、差し戻す場合は修正してほしい点"
           aria-describedby={invalid ? errorId : undefined}

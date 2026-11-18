@@ -22,8 +22,8 @@ import { FilterIcon, GroupIcon, OptionsIcon, SortIcon } from "../view/ViewToolba
 
 const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
-const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
-const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
+const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-accent-soft-hover";
+const clearPill = "px-1.5 text-[12px] hover:bg-accent-soft-hover";
 const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-line bg-surface shadow-lg";
 
 export type BoardCardFields = {

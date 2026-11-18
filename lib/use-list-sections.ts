@@ -65,7 +65,7 @@ export function useListSections({
       textOverflow: "ellipsis",
       boxSizing: "border-box",
       background: "rgba(255, 255, 255, 0.9)",
-      border: "1px solid #e1e1e1",
+      border: "1px solid var(--atlas-line)",
       borderRadius: "4px",
       boxShadow: "0 8px 24px rgba(0, 0, 0, 0.18)",
       color: computed.color,

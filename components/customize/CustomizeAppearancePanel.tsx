@@ -2,6 +2,7 @@
 
 import ProjectIcon from "../ProjectIcon";
 import { PROJECT_COLORS, PROJECT_ICONS, projectColor, type ProjectIconKey } from "@/lib/project-appearance";
+import { PROJECT_COLOR_FALLBACK } from "@/lib/data-colors";
 
 /** Appearance panel: project color and icon picker. */
 export default function CustomizeAppearancePanel({
@@ -40,10 +41,10 @@ export default function CustomizeAppearancePanel({
             title={entry.name}
             disabled={!canAdmin || busy}
             onClick={() => onSave({ color: entry.value })}
-            className={`flex h-6 w-6 items-center justify-center rounded-[5px] border border-black/10 text-xs text-white [text-shadow:0_1px_1px_rgba(0,0,0,0.45)] disabled:cursor-not-allowed disabled:opacity-50 ${
-              color === entry.value ? "ring-2 ring-[#2c60b8] ring-offset-1" : ""
+            className={`flex h-6 w-6 items-center justify-center rounded-[5px] border border-data-line text-xs text-on-strong [text-shadow:0_1px_1px_rgba(0,0,0,0.45)] disabled:cursor-not-allowed disabled:opacity-50 ${
+              color === entry.value ? "ring-2 ring-accent ring-offset-1" : ""
             }`}
-            style={{ backgroundColor: entry.value ?? "#d9d9d9" }}
+            style={{ backgroundColor: entry.value ?? PROJECT_COLOR_FALLBACK }}
           >
             {color === entry.value ? "✓" : ""}
           </button>

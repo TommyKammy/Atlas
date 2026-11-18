@@ -17,7 +17,7 @@ import RuleStepInspector from "./RuleStepInspector";
 import RulePreviewDialog from "./RulePreviewDialog";
 import RuleExecutionHistory from "./RuleExecutionHistory";
 
-const inputClass = "h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent";
+const inputClass = "h-9 w-full rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent";
 const buttonBase = "inline-flex h-8 items-center justify-center rounded-md border border-line bg-surface px-3 text-[12px] hover:bg-hover disabled:opacity-40";
 const buttonClass = `${buttonBase} text-secondary`;
 const dangerButtonClass = `${buttonBase} text-danger`;
@@ -354,7 +354,7 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
     {canEdit && problems.length > 0 && <section data-rule-validation-summary aria-labelledby="rule-validation-heading" className="max-h-44 shrink-0 overflow-y-auto border-b border-warning-line bg-warning-soft px-6 py-3 text-[12px] text-warning">
       <h2 id="rule-validation-heading" className="font-semibold">公開前に入力を確認してください</h2>
       <p className="mt-1 leading-5">未入力の内容は下書きに保存できます。次の項目を修正すると公開できます。</p>
-      <ul className="mt-2 space-y-1">{problems.map((problem, index) => <li key={index}><button type="button" onClick={() => selectProblem(problem)} className="text-left leading-5 underline decoration-amber-700/50 underline-offset-2 hover:decoration-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">{problem.label}</button></li>)}</ul>
+      <ul className="mt-2 space-y-1">{problems.map((problem, index) => <li key={index}><button type="button" onClick={() => selectProblem(problem)} className="text-left leading-5 underline decoration-warning/50 underline-offset-2 hover:decoration-warning focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">{problem.label}</button></li>)}</ul>
     </section>}
     {(error || conflict) && <div role="alert" className="shrink-0 border-b border-rose-200 bg-rose-50 px-6 py-3 text-[12px] text-rose-700">
       <p>{error}</p>{conflict && <div className="mt-2 flex flex-wrap items-center gap-3"><span>編集中の内容は保持しています。</span><button type="button" className={buttonClass} onClick={() => void reloadDraft()}>{conflict === "rule_conflict" ? "公開版から読み直す（編集内容を破棄）" : "最新の下書きを読み込む（編集内容を破棄）"}</button></div>}

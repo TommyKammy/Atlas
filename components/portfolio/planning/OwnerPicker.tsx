@@ -88,7 +88,7 @@ export default function OwnerPicker({
             className={`mt-1 rounded-md border px-3 py-2 ${
               selectedIsInactive
                 ? "border-warning-line bg-warning-soft/70"
-                : "border-emerald-300 bg-success-soft/70"
+                : "border-success-line bg-success-soft/70"
             }`}
           >
             <p
@@ -188,7 +188,7 @@ export default function OwnerPicker({
                   setOpen(false);
                 }
               }}
-              className="h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-text outline-none focus:border-accent"
+              className="h-9 w-full rounded-md border border-line-strong bg-field px-2.5 text-[13px] text-text outline-none focus:border-accent"
             />
             {open && (
               <div className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-md border border-line-strong bg-surface shadow-lg">
@@ -220,8 +220,8 @@ export default function OwnerPicker({
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => choose(candidate)}
                           className={`flex w-full items-start gap-2 px-3 py-2 text-left ${
-                            isSelected ? "bg-blue-50 hover:bg-blue-100" : "bg-surface hover:bg-hover"
-                          } ${isActive ? "ring-2 ring-[#2c60b8] ring-inset" : ""}`}
+                            isSelected ? "bg-accent-soft hover:bg-accent-soft" : "bg-surface hover:bg-hover"
+                          } ${isActive ? "ring-2 ring-accent ring-inset" : ""}`}
                         >
                           <span className="min-w-0 flex-1">
                             <span className="flex min-w-0 flex-wrap items-center gap-1">

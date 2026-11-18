@@ -1,5 +1,7 @@
 "use client";
 
+import { STATUS_DRAFT_DOT } from "@/lib/data-colors";
+
 type StatusDraft = { key: number; original: string | null; value: string };
 
 /** Status field name/options editor. */
@@ -45,20 +47,20 @@ export default function CustomizeStatusPanel({
           value={statusFieldName}
           disabled={!canAdmin}
           onChange={(event) => onStatusFieldName(event.target.value)}
-          className="mt-1 h-8 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-neutral-50"
+          className="mt-1 h-8 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-surface-subtle"
         />
       </label>
       <div className="mt-4 text-[12px] font-medium text-secondary">選択肢</div>
       <div className="mt-2 space-y-2">
         {drafts.map((draft) => (
           <div key={draft.key} className="flex items-center gap-2">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-[#8db8ff]" />
+            <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DRAFT_DOT}`} />
             <input
               data-customize-status-input={draft.key}
               value={draft.value}
               disabled={!canAdmin}
               onChange={(event) => onChangeDraft(draft.key, event.target.value)}
-              className="h-8 min-w-0 flex-1 rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-neutral-50"
+              className="h-8 min-w-0 flex-1 rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-surface-subtle"
             />
             {canAdmin && (
               <button
@@ -79,7 +81,7 @@ export default function CustomizeStatusPanel({
             type="button"
             data-customize-status-add
             onClick={onAddDraft}
-            className="mt-3 flex h-8 items-center gap-1 rounded-md px-2 text-[13px] text-accent-text hover:bg-[#eff4fd]"
+            className="mt-3 flex h-8 items-center gap-1 rounded-md px-2 text-[13px] text-accent-text hover:bg-accent-soft"
           >
             ＋ ステータスを追加
           </button>

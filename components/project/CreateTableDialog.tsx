@@ -49,7 +49,7 @@ export default function CreateTableDialog({
       open
       onClose={onClose}
       title="プロジェクトからテーブルを作成"
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="w-[min(540px,94vw)] rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-table-dialog className="p-6">
@@ -63,8 +63,8 @@ export default function CreateTableDialog({
           </button>
         </div>
         {created ? (
-          <div className="mt-5 rounded-lg border border-green-200 bg-green-50 p-4" data-table-created>
-            <p className="font-medium text-green-900">テーブルを作成しました（{created.row_count}行）</p>
+          <div className="mt-5 rounded-lg border border-success-line bg-success-soft p-4" data-table-created>
+            <p className="font-medium text-success">テーブルを作成しました（{created.row_count}行）</p>
             <div className="mt-3 flex gap-2">
               <a
                 href={`/tables/${created.id}`}

@@ -82,7 +82,7 @@ export default function CustomizeTemplatesPanel({
                       type="button"
                       data-customize-template-use={template.id}
                       onClick={() => onUse(template)}
-                      className="h-7 rounded-md bg-[#eff4fd] px-2 text-[12px] font-medium text-accent-text hover:bg-[#e1ecfc]"
+                      className="h-7 rounded-md bg-accent-soft px-2 text-[12px] font-medium text-accent-text hover:bg-accent-soft-hover"
                     >
                       使用
                     </button>}

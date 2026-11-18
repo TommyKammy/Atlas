@@ -8,7 +8,7 @@ import RuleConditionFields from "./RuleConditionFields";
 import type { RuleAction } from "@/lib/automation/types";
 import { toast } from "@/lib/ui-feedback";
 
-const inputClass = "mt-1 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent";
+const inputClass = "mt-1 h-9 w-full rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent";
 const buttonBase = "rounded-md border border-line px-2 py-1.5 text-[12px] hover:bg-hover disabled:opacity-40";
 const buttonClass = `${buttonBase} text-secondary`;
 const dangerButtonClass = `${buttonBase} text-danger`;

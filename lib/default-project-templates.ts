@@ -1,4 +1,5 @@
 import type { ProjectIconKey } from "./project-appearance";
+import { TEMPLATE_COLORS } from "./data-colors";
 import type { ProjectTemplatePayload, TemplateTask } from "./project-template-payload";
 
 export type DefaultProjectTemplate = {
@@ -28,7 +29,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "プロジェクトマネジメント",
     description: "キックオフから振り返りまで、プロジェクトの計画・実行・完了を一貫して管理",
     category: "プロジェクト管理",
-    color: "#4573d2",
+    color: TEMPLATE_COLORS.blue,
     icon: "target",
     sections: [
       {
@@ -63,7 +64,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "エンジニアリングプロジェクト計画",
     description: "要件定義からリリースまで、開発プロジェクトの工程を整理",
     category: "エンジニアリング",
-    color: "#5da283",
+    color: TEMPLATE_COLORS.teal,
     icon: "rocket",
     sections: [
       {
@@ -105,7 +106,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "バグ追跡",
     description: "バグの報告から修正・確認までを一元管理",
     category: "エンジニアリング",
-    color: "#f06a6a",
+    color: TEMPLATE_COLORS.coral,
     icon: "board",
     sections: [
       {
@@ -145,7 +146,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "製品リリース",
     description: "新機能や製品のリリース準備を関係者と進める",
     category: "プロジェクト管理",
-    color: "#8d84e8",
+    color: TEMPLATE_COLORS.violet,
     icon: "rocket",
     sections: [
       {
@@ -187,7 +188,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "目標設定（OKR）",
     description: "目標と主要結果を設定し、四半期の進捗を管理",
     category: "プロジェクト管理",
-    color: "#f7bd51",
+    color: TEMPLATE_COLORS.amber,
     icon: "target",
     sections: [
       {
@@ -220,7 +221,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "コンテンツカレンダー",
     description: "ブログ・SNS・メールなど、コンテンツ制作と配信を計画",
     category: "マーケティング",
-    color: "#f1bd6c",
+    color: TEMPLATE_COLORS.peach,
     icon: "list",
     sections: [
       {
@@ -261,7 +262,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "マーケティングキャンペーン",
     description: "ターゲット設定から効果測定まで、キャンペーンを管理",
     category: "マーケティング",
-    color: "#ec8d71",
+    color: TEMPLATE_COLORS.terracotta,
     icon: "target",
     sections: [
       {
@@ -304,7 +305,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "ソフトウェア導入",
     description: "新しいツールの導入計画、移行、トレーニングを管理",
     category: "オペレーション",
-    color: "#6ad8bc",
+    color: TEMPLATE_COLORS.aqua,
     icon: "briefcase",
     sections: [
       {
@@ -347,7 +348,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "リクエスト管理",
     description: "社内外からの依頼を収集し、優先順位をつけて対応",
     category: "オペレーション",
-    color: "#aaaaaa",
+    color: TEMPLATE_COLORS.gray,
     icon: "board",
     sections: [
       {
@@ -387,7 +388,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "新入社員オンボーディング",
     description: "入社前から90日後まで、新しいメンバーの立ち上がりを支援",
     category: "人材",
-    color: "#82d990",
+    color: TEMPLATE_COLORS.green,
     icon: "heart",
     sections: [
       {
@@ -435,7 +436,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "会議の議題",
     description: "アジェンダ、決定事項、アクションアイテムを整理",
     category: "生産性",
-    color: "#8db8ff",
+    color: TEMPLATE_COLORS.sky,
     icon: "list",
     sections: [
       {
@@ -468,7 +469,7 @@ export const DEFAULT_PROJECT_TEMPLATES: DefaultProjectTemplate[] = [
     name: "1on1ミーティング",
     description: "定期的な1on1のアジェンダ、メモ、アクションを管理",
     category: "生産性",
-    color: "#e39ef2",
+    color: TEMPLATE_COLORS.orchid,
     icon: "heart",
     sections: [
       {

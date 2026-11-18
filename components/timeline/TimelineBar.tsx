@@ -3,6 +3,7 @@ import { QuickTaskName } from "../task/QuickTaskContext";
 
 import { memo, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { TaskTimelineRow } from "@/lib/timeline-task-payload";
+import { TIMELINE_COMPLETED_BAR, TIMELINE_CRITICAL_BAR } from "@/lib/data-colors";
 import { timelineInterval } from "@/lib/timeline-lanes";
 import { isSingleDayTimelineTask, usesTimelineExternalLabel } from "@/lib/timeline-marker";
 import { timelineBarDragStyle } from "@/lib/timeline-drag-style";
@@ -87,10 +88,10 @@ function TimelineBar({
   const labelOnLeft = parseFloat(x1) > 72;
   const showAvatar = Boolean(task.assignee_name) && barPx >= 140;
   const showSubtasks = task.subtask_count > 0 && barPx >= 160;
-  const defaultBarFace = "bg-surface text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]";
+  const defaultBarFace = "bg-surface text-text shadow-[0_0_0_1px_var(--atlas-line),0_1px_4px_rgba(118,118,118,0.08)]";
   const barFaceClass = task.is_milestone ? defaultBarFace
-    : task.completed ? "bg-[#aaaaaa] text-[#050505]"
-    : critical ? "bg-red-200 text-text"
+    : task.completed ? `${TIMELINE_COMPLETED_BAR} text-text`
+    : critical ? `${TIMELINE_CRITICAL_BAR} text-text`
     : defaultBarFace;
   const barInfo = `${task.name}（${task.start_on ?? "?"} 〜 ${task.due_on ?? "?"}・進捗${task.progress}%${task.assignee_name ? `・担当${task.assignee_name}` : ""}${rowLocked ? "・行固定" : ""}）${!task.completed && critical ? "【クリティカルパス】" : ""} — 左右で日付移動、上下でセクション・行移動、左右端で期間変更、Alt+上下で行移動、Alt+Shift+上下でセクション移動`;
 
@@ -126,7 +127,7 @@ function TimelineBar({
       data-timeline-bar-label={task.id}
       dir="auto"
       title={task.name}
-      className={`absolute top-1/2 -translate-y-1/2 truncate text-[12px] font-medium whitespace-nowrap text-[#050505] ${
+      className={`absolute top-1/2 -translate-y-1/2 truncate text-[12px] font-medium whitespace-nowrap text-text ${
         labelOnLeft ? "right-full mr-2 text-right" : "left-full ml-2"
       } ${task.completed ? "line-through" : ""} ${labelHidden ? "opacity-0" : ""}`}
       style={{ maxWidth: 172 }}
@@ -135,7 +136,7 @@ function TimelineBar({
     </span>
   );
   const dependencyHandleClass = (visible: boolean) =>
-    `absolute z-40 flex h-3.5 w-3.5 cursor-crosshair touch-none items-center justify-center rounded-full border border-line-strong bg-white shadow-sm hover:border-[#2c60b8] hover:bg-[#2c60b8] ${
+    `absolute z-40 flex h-3.5 w-3.5 cursor-crosshair touch-none items-center justify-center rounded-full border border-line-strong bg-surface shadow-sm hover:border-accent hover:bg-accent ${
       visible ? "opacity-100" : "pointer-events-none opacity-0"
     }`;
 
@@ -178,8 +179,8 @@ function TimelineBar({
           collapsedMarker && milestone ? "bg-transparent shadow-none" : barFaceClass
         } ${
           active ? "z-30 shadow-lg transition-none" : "z-10"
-        } ${dependencyTarget ? "ring-2 ring-[#2c60b8] ring-offset-1" : ""} ${
-          overlapping ? "outline outline-2 outline-offset-1 outline-amber-400" : ""
+        } ${dependencyTarget ? "ring-2 ring-accent ring-offset-1" : ""} ${
+          overlapping ? "outline outline-2 outline-offset-1 outline-warning" : ""
         } ${
           dx !== 0 ? "opacity-80" : ""
         }`}
@@ -254,7 +255,7 @@ function TimelineBar({
         onPointerEnter={enterBar}
         onPointerLeave={onBarLeave}
         onClick={(event) => event.stopPropagation()}
-        className={`tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-l-[4px] bg-transparent transition-colors hover:bg-[#2c60b8]/90 ${
+        className={`tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-l-[4px] bg-transparent transition-colors hover:bg-accent/90 ${
           collapsedMarker ? "pointer-events-none" : ""
         }`}
         style={handleStyle("start")}
@@ -270,7 +271,7 @@ function TimelineBar({
         onPointerEnter={enterBar}
         onPointerLeave={onBarLeave}
         onClick={(event) => event.stopPropagation()}
-        className={`tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-r-[4px] bg-transparent transition-colors hover:bg-[#2c60b8]/90 ${
+        className={`tl-bar absolute top-[3px] z-20 cursor-ew-resize touch-none rounded-r-[4px] bg-transparent transition-colors hover:bg-accent/90 ${
           collapsedMarker ? "pointer-events-none" : ""
         }`}
         style={handleStyle("end")}
@@ -338,7 +339,7 @@ function TimelineBar({
             <span
               data-timeline-bar-tooltip={task.id}
               role="tooltip"
-              className="pointer-events-none absolute z-50 w-max max-w-[260px] whitespace-normal rounded-[4px] bg-[#333] px-3 py-2 text-[12px] leading-[18px] text-[#f3f3f3] shadow-[0_1px_4px_rgba(118,118,118,0.08)]"
+              className="pointer-events-none absolute z-50 w-max max-w-[260px] whitespace-normal rounded-[4px] bg-inverse-surface-muted px-3 py-2 text-[12px] leading-[18px] text-inverse-text-strong shadow-[0_1px_4px_rgba(118,118,118,0.08)]"
               style={
                 labelOnLeft
                   ? { right: `calc(100% - ${x1} + 8px)`, top: "50%", transform: "translateY(-50%)" }
@@ -347,7 +348,7 @@ function TimelineBar({
             >
               <span
                 aria-hidden
-                className="absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 rounded-[1px] bg-[#333]"
+                className="absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 rounded-[1px] bg-inverse-surface-muted"
                 style={labelOnLeft ? { right: -5 } : { left: -5 }}
               />
               <span dir="auto" className="relative block break-words">{task.name}</span>

@@ -84,7 +84,7 @@ export default function CalendarDayCell({
           onKeyDown={onDraftKeyDown}
           onBlur={onDraftBlur}
           placeholder="タスク名を入力"
-          className="h-8 w-full rounded border border-blue-500 px-2 text-[13px] outline-none"
+          className="h-8 w-full rounded border border-accent px-2 text-[13px] outline-none"
         />
       ) : (
         !compact &&

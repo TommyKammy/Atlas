@@ -30,25 +30,19 @@ import CalendarLegend from "./calendar/CalendarLegend";
 import CalendarMultiDayBar from "./calendar/CalendarMultiDayBar";
 import CalendarSingleTask from "./calendar/CalendarSingleTask";
 import CalendarToolbar from "./calendar/CalendarToolbar";
+import { CALENDAR_BAR_COLORS } from "@/lib/data-colors";
 import TaskAvatar from "./task/TaskAvatar";
 import TaskCompletionToggle from "./task/TaskCompletionToggle";
 import TaskMetaBadges from "./task/TaskMetaBadges";
 
 // Asana calendar metrics measured 2026-11-06 (read-only, 1920×839):
 // compact weekend columns 44px, weekday columns share the rest; week header
-// 70px, range bar 36px / 4px radius / 1px #eaeaea, day row 36px.
+// 70px, range bar 36px / 4px radius / 1px line, day row 36px.
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const WEEKDAYS_ONLY = [1, 2, 3, 4, 5];
 const MONTH_SINGLE_LIMIT = 3;
 const UNSET_COLOR = "border-line-strong bg-surface-muted text-secondary";
-const BAR_COLORS = [
-  "border-[#c7d8f5] bg-[#e8f0fe] text-[#1f3a6e]",
-  "border-[#c9e7d2] bg-[#e6f6ec] text-[#1f5134]",
-  "border-[#f3d9b1] bg-[#fdf2e2] text-[#6b4a1d]",
-  "border-[#e6cdea] bg-[#f6e8f8] text-[#5b2a63]",
-  "border-[#f1c9c9] bg-[#fdecec] text-[#6b2727]",
-  "border-[#c9e3e7] bg-[#e8f6f8] text-[#1f4e56]",
-];
+const BAR_COLORS = CALENDAR_BAR_COLORS;
 
 function monthLabel(month: string): string {
   const [y, m] = month.split("-").map(Number);

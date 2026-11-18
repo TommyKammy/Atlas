@@ -71,7 +71,7 @@ export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, 
   };
   const switchOperation = (next: Operation) => { setOperation(next); setError(""); setNotice(""); };
   const trigger = enabled ? <span ref={triggerContainer} className="inline-flex">
-    <KnowledgeActionMenu label="AIアシスト" onOpen={() => void load()} className={`${knowledgeActionBase} border-accent-line bg-blue-50 text-accent-text hover:bg-blue-100`}
+    <KnowledgeActionMenu label="AIアシスト" onOpen={() => void load()} className={`${knowledgeActionBase} border-accent-line bg-accent-soft text-accent-text hover:bg-accent-soft`}
       icon={<><KnowledgeIcon name="ai" /><span>AIアシスト</span><KnowledgeIcon name="chevron" /></>}>
         {loading && <p role="status" className="px-3 py-2 text-sm text-secondary">準備中…</p>}
         {error && !open && <p role="alert" className="px-3 py-2 text-sm text-danger">{error}</p>}
@@ -90,7 +90,7 @@ export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, 
     </div>
     <div role="tablist" aria-label="AIアシストの操作" className="mb-5 flex border-b border-line">
       {(["summary", "improve"] as const).map(kind => <button key={kind} id={`${id}-${kind}`} role="tab" aria-selected={operation === kind} aria-controls={`${id}-result`} tabIndex={operation === kind ? 0 : -1} disabled={busy || saving}
-        className={`-mb-px border-b-2 px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50 ${operation === kind ? "border-accent font-medium text-accent-text" : "border-transparent text-neutral-600 hover:text-neutral-900"}`}
+        className={`-mb-px border-b-2 px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50 ${operation === kind ? "border-accent font-medium text-accent-text" : "border-transparent text-secondary hover:text-text"}`}
         onClick={() => switchOperation(kind)} onKeyDown={event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const next = event.key === "Home" ? "summary" : event.key === "End" ? "improve" : kind === "summary" ? "improve" : "summary"; switchOperation(next); document.getElementById(`${id}-${next}`)?.focus(); } }}>{labels[kind]}</button>)}
     </div>
     <div id={`${id}-result`} role="tabpanel" aria-labelledby={`${id}-${operation}`} className="space-y-4">
@@ -108,7 +108,7 @@ export default function KnowledgeAi({ projectId, note, onSaved, enabled = true, 
         <label className="block text-xs text-secondary">別ノートのタイトル<input aria-label="別ノートのタイトル" maxLength={300} disabled={saving} className="mt-1.5 block w-full rounded-md border border-line px-3 py-2 text-sm text-text focus:outline-focus-ring" value={proposal.title} onChange={event => setProposals(previous => ({ ...previous, [operation]: { ...proposal, title: event.target.value } }))} /></label>
         <div className="flex flex-wrap items-center gap-4 text-xs">
           <button className="rounded py-1 text-accent-text hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50" disabled={busy || saving || loading} onClick={() => void generate(operation)}>再生成</button>
-          <button className="rounded py-1 text-neutral-600 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50" disabled={busy || saving} onClick={() => { setProposals(previous => ({ ...previous, [operation]: undefined })); setNotice(""); }}>結果を破棄</button>
+          <button className="rounded py-1 text-secondary hover:text-text focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50" disabled={busy || saving} onClick={() => { setProposals(previous => ({ ...previous, [operation]: undefined })); setNotice(""); }}>結果を破棄</button>
         </div>
         <details className="border-t border-line-subtle pt-3 text-xs text-secondary"><summary className="cursor-pointer">生成時の原文を確認</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words font-sans leading-6">{result.source_text}</pre><p className="mt-2">別ノートへの保存期限：生成から1時間</p></details>
       </div>}

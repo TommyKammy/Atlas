@@ -8,7 +8,7 @@ export const buttonSecondary =
 export const buttonQuiet =
   "inline-flex items-center rounded px-1 py-0.5 text-[13px] font-medium text-accent-text hover:underline disabled:cursor-not-allowed disabled:opacity-50";
 export const inputClass =
-  "h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-[13px] text-text outline-none focus:border-accent";
+  "h-9 w-full rounded-md border border-line-strong bg-surface px-2.5 text-[13px] text-text outline-none focus:border-accent";
 export const labelClass = "block text-[12px] font-medium text-secondary";
 export const sectionTitle = "text-[15px] font-semibold text-text";
 
@@ -110,7 +110,7 @@ export function EmptyPanel({
 
 export function FieldError({ children }: { children: ReactNode }) {
   return (
-    <p role="alert" className="mt-1 text-[11px] text-red-700">
+    <p role="alert" className="mt-1 text-[11px] text-danger">
       {children}
     </p>
   );

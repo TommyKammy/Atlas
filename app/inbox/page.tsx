@@ -40,7 +40,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           </Link>
           <span>（{c.project_name}）</span>
           {mentioned && (
-            <span className="rounded-full bg-amber-200 px-2 py-0.5 font-semibold text-amber-900">
+            <span className="rounded-full bg-warning-soft px-2 py-0.5 font-semibold text-warning">
               自分宛
             </span>
           )}
@@ -67,7 +67,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       <nav aria-label="通知の表示" className="mt-4 flex flex-wrap gap-2 text-sm">
         {[["unread", `未読（${page.unread}）`], ["read", `既読・自分の投稿（${page.read}）`], ["all", `すべて（${page.all}）`]].map(([key, label]) =>
           <Link key={key} href={`/inbox?filter=${key}`} aria-current={filter === key ? "page" : undefined}
-            data-inbox-filter={key} className={`rounded border px-3 py-1 ${filter === key ? "border-blue-300 bg-accent-soft text-accent-text" : "text-secondary"}`}>{label}</Link>)}
+            data-inbox-filter={key} className={`rounded border px-3 py-1 ${filter === key ? "border-accent-line bg-accent-soft text-accent-text" : "text-secondary"}`}>{label}</Link>)}
       </nav>
       {invalidCursor && <p role="alert" className="mt-3 text-sm text-danger">通知の表示位置を読み込めなかったため、先頭から表示しています。</p>}
       <h2 data-inbox-total={page.total} className="mt-4 font-semibold">対象の通知：{page.total}件</h2>

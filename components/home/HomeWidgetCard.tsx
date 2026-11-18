@@ -82,7 +82,7 @@ export default function HomeWidgetCard({
           }}
           onDragEnd={onDragEnd}
           title="ドラッグして並び替え"
-          className="cursor-grab select-none text-[13px] text-neutral-300 hover:text-neutral-500"
+          className="cursor-grab select-none text-[13px] text-subtle hover:text-muted"
         >
           ⠿
         </span>

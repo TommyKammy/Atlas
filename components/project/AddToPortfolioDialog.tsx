@@ -66,7 +66,7 @@ export default function AddToPortfolioDialog({
       open
       onClose={onClose}
       title="ポートフォリオに追加"
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="w-[min(480px,94vw)] rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-portfolio-dialog className="p-6">

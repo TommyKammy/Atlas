@@ -11,6 +11,7 @@ import { isImeComposing } from "@/lib/ime-keyboard";
 import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { ApiError, api } from "@/lib/api-client";
+import { TIMELINE_CRITICAL_LINE } from "@/lib/data-colors";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -729,7 +730,7 @@ function TimelineViewContent({
           {displayGroups.map((group) => (
             <div
               key={group.section.id}
-              className={`relative ${drag?.rowDrop?.sectionId === group.sectionId ? "bg-[#e8f0fe]" : ""}`}
+              className={`relative ${drag?.rowDrop?.sectionId === group.sectionId ? "bg-accent-soft" : ""}`}
               data-timeline-section={group.section.id}
               data-timeline-drop-target={drag?.rowDrop?.sectionId === group.sectionId ? "true" : undefined}
             >
@@ -738,7 +739,7 @@ function TimelineViewContent({
                 data-timeline-section-row={group.section.id}
                 aria-expanded={!group.collapsed}
                 onClick={() => toggleSection(group.section.id)}
-                className="flex h-10 w-full items-center gap-1.5 pl-5 pr-2 text-left text-[14px] font-medium text-[#050505] hover:bg-hover"
+                className="flex h-10 w-full items-center gap-1.5 pl-5 pr-2 text-left text-[14px] font-medium text-text hover:bg-hover"
               >
                 <svg
                   viewBox="0 0 12 12"
@@ -762,7 +763,7 @@ function TimelineViewContent({
                     data-timeline-lane-spacer={`${group.section.id}-${index}`}
                   />
                 ))}
-              <span data-timeline-group-line className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[#e1e1e1]" />
+              <span data-timeline-group-line className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-line" />
             </div>
           ))}
           {canConfigure && (
@@ -799,7 +800,7 @@ function TimelineViewContent({
             {hover && !drag && (
               <div
                 data-timeline-hover
-                className="pointer-events-none absolute z-[1] border-x border-[#2c60b8]/20 bg-[#2c60b8]/5"
+                className="pointer-events-none absolute z-[1] border-x border-accent/20 bg-accent/5"
                 style={{ top: hover.top, height: hover.height, left: pct(hover.day), width: `${dayPct}%` }}
               >
                 <span className="absolute left-1/2 top-2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-accent text-[12px] leading-none text-on-accent shadow-sm">
@@ -813,7 +814,7 @@ function TimelineViewContent({
                 key={`milestone-line-${line.id}`}
                 data-timeline-milestone-line={line.id}
                 aria-hidden="true"
-                className="pointer-events-none absolute bottom-0 top-0 z-[2] w-0.5 bg-[#46a75a] opacity-20"
+                className={`pointer-events-none absolute bottom-0 top-0 z-[2] w-0.5 ${TIMELINE_CRITICAL_LINE} opacity-20`}
                 style={{ left: line.left }}
               />
             ))}
@@ -826,7 +827,7 @@ function TimelineViewContent({
                 data-timeline-group={group.section.id}
               >
                 {drag?.rowDrop?.sectionId === group.sectionId && (
-                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[#2c60b8]/[0.04]" />
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-accent/[0.04]" />
                 )}
                 {!group.collapsed &&
                   group.tasks.map((t) => {
@@ -865,7 +866,7 @@ function TimelineViewContent({
                     data-timeline-draft
                   >
                     <div
-                      className="tl-bar absolute top-[3px] z-10 flex items-center rounded-[4px] bg-surface px-2 text-[13px] text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]"
+                      className="tl-bar absolute top-[3px] z-10 flex items-center rounded-[4px] bg-surface px-2 text-[13px] text-text shadow-[0_0_0_1px_var(--atlas-line),0_1px_4px_rgba(118,118,118,0.08)]"
                       style={{
                         height: BAR_H,
                         left: pct(draft.day),
@@ -894,14 +895,14 @@ function TimelineViewContent({
                         onBlur={(e) => finishDraft(e.currentTarget.value)}
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
-                        className="h-full w-full min-w-0 bg-transparent text-[13px] outline-none placeholder:text-neutral-400"
+                        className="h-full w-full min-w-0 bg-transparent text-[13px] outline-none placeholder:text-subtle"
                       />
                     </div>
                   </div>
                 )}
                 <span
                   data-timeline-group-line
-                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-px bg-[#e1e1e1]"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-px bg-line"
                 />
               </div>
             ))}
@@ -912,7 +913,7 @@ function TimelineViewContent({
                 data-timeline-row-drop-index={drag.rowDrop.row}
                 data-timeline-row-insert={drag.rowDrop.insert ? "true" : undefined}
                 data-timeline-row-drop-section={drag.rowDrop.sectionId ?? "none"}
-                className="pointer-events-none absolute inset-x-0 z-[5] border-y border-[#2c60b8] bg-[#2c60b8]/10"
+                className="pointer-events-none absolute inset-x-0 z-[5] border-y border-accent bg-accent/10"
                 style={{ top: drag.rowDrop.top, height: ROW_PITCH }}
               >
                 <span data-timeline-drop-label className="sticky left-2 inline-block rounded-b bg-accent px-2 py-0.5 text-[11px] font-medium text-on-accent">

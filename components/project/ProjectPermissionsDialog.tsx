@@ -79,7 +79,7 @@ export default function ProjectPermissionsDialog({
       open
       onClose={onClose}
       title="プロジェクト権限"
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="flex max-h-[90vh] w-[min(760px,94vw)] flex-col overflow-hidden rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-permissions-dialog className="flex min-h-0 flex-1 flex-col">
@@ -105,7 +105,7 @@ export default function ProjectPermissionsDialog({
                 <label
                   key={`edit-${option.value}`}
                   className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${
-                    settings?.who_can_edit === option.value ? "border-[#4075cf] bg-accent-soft" : "border-line"
+                    settings?.who_can_edit === option.value ? "border-accent bg-accent-soft" : "border-line"
                   }`}
                 >
                   <input
@@ -134,7 +134,7 @@ export default function ProjectPermissionsDialog({
                 <label
                   key={`share-${option.value}`}
                   className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 ${
-                    settings?.who_can_share === option.value ? "border-[#4075cf] bg-accent-soft" : "border-line"
+                    settings?.who_can_share === option.value ? "border-accent bg-accent-soft" : "border-line"
                   }`}
                 >
                   <input

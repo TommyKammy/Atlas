@@ -1,8 +1,9 @@
 # Atlas デザイントークン（配色）
 
 - 対象: `app/globals.css`
-- ステータス: **基盤のみ**。第1段階（T11〜T24）が完了し、第2段階（S2）のトークンと対応表を追加済み。コンポーネント（`app/**/*.tsx`, `components/**/*.tsx`）はまだ移行していない。
-- 第1段階の受け入れ条件は「見た目を一切変えないこと」。第2段階では見た目がわずかに変わる（承認済み）が、S2-1 はトークン追加だけなので画面は変わらない。既存の `html[data-theme="dark"] .bg-white { … }` などの上書きルール（約94個）は**まだ削除していない**。
+- ステータス: **第3段階 S3-1 完了**。第1段階（T11〜T24）と第2段階（S2）に続き、`app/`・`components/`・`lib/` の UI 色をトークンへ移した。残る直書きは、S3-2 で配色を切り替えるときに一緒に移す AA 待ちのステータス組み合わせ（36箇所）と、データ色モジュール `lib/data-colors.ts` だけ。
+- 第1段階の受け入れ条件は「見た目を一切変えないこと」。S2 と S3-1 では、ダークで色が漏れていた箇所と、暗幕を `scrim` に揃えた箇所だけが見た目に現れる（いずれも意図した差として記録する）。
+- 旧ダーク上書きは、データ色・AA 待ちのステータス・リッチテキストに必要なものだけを残した。残りの一覧は 7 章。
 - Tailwind CSS v4 の `@theme inline` を使っている。
 
 ## 1. 定義場所とテーマ切替
@@ -48,9 +49,12 @@ html[data-theme="dark"] {
 3. アクセント色の**文字**には `text-accent-text` を使う。`text-accent` はダーク背景でコントラストが不足する（`#2c60b8` のまま）。
 4. ステータス色は「文字・アイコン」と「薄い面」を分けて使う（`text-danger` / `bg-danger-soft` など）。
 5. 移行時は、旧クラスを置き換えたうえで、そのクラス専用のダーク上書きルールを削除する。上書きルールを残したままだと、新しいトークン値が上書きされてしまう。
-6. 半透明の面（`bg-white/70` など）や画像上の白文字用のトークンはまだない。「未対応」を参照。
+6. 半透明の白い面は `bg-surface/70` のように `surface` の不透明度で表す。画像・暗幕・色付き面の上の白いベールは `bg-overlay/10` など、暗幕は `bg-scrim`（弱いドロワー用は `bg-scrim-soft`）を使う。
 7. ホバー面は `bg-hover` / `bg-hover-strong` を使い、`hover:` と組み合わせる。選択行や現在地など静止した面には使わない（`surface-muted` / `accent-soft` を使う）。
-8. `text-on-accent` はアクセント・ステータスの塗り面の上だけで使う。画像・暗幕・色付きのデータ面の上は第2段階では `text-white` のまま残す。
+8. `text-on-accent` はアクセントの塗り面の上だけで使う。暗いクローム（サイドバー、フローティングツールバー、トースト）とデータ色の面の上は `text-on-strong` を使う。`on-accent` が S3-2 で変わる可能性があるため、代用しない。
+9. 入力欄の面は `bg-field`。読み取り専用の入力欄は `bg-surface-subtle`。プレースホルダは `placeholder:text-subtle` / `placeholder:text-muted` を使う。
+10. データの色（グラフ系列、進捗バー、ステータスの色ドット、アバター、プロジェクト色、ラベル色）はテーマで変えない。`lib/data-colors.ts` から参照し、コンポーネントに直書きしない。このファイルだけが `check-color-literals` の除外対象。
+11. 暗いクローム専用の面・線・文字は `inverse-*`、データ色の上の白文字は `on-strong`、データ色の縁は `border-data-line` を使う。`surface` / `line` / `text` を暗いクロームに使うと、ライトテーマで明るくなりすぎる。
 9. ステータスの枠は `border-danger-line` / `border-warning-line` / `border-success-line`、面は `bg-*-soft`、文字は `text-*` を組み合わせる。枠だけを移さず、同じ要素の面・文字も同じ段で移す。
 
 ### テキスト系ユーティリティ名について
@@ -79,12 +83,29 @@ Tailwind の `text-*` ユーティリティと自然に組み合わせるため�
 | `--atlas-surface-subtle` | `bg-surface-subtle` | `oklch(98.5% 0 none)` ≒ `#fafafa` | `#2a2a2a` | ごく薄い面。ゼブラ、弱い下地 |
 | `--atlas-surface-muted` | `bg-surface-muted` | `oklch(97% 0 none)` ≒ `#f5f5f5` | `#303030` | 弱い面。入力欄の下地、選択行 |
 | `--atlas-surface-strong` | `bg-surface-strong` | `oklch(92.2% 0 none)` ≒ `#e5e5e5` | `#3a3a3a` | 強い面。押下状態、無効化された面 |
+| `--atlas-field` | `bg-field` | `#ffffff` | `#2b2b2b` | 入力欄（`input` / `select` / `textarea`）の面。S3-1 |
 | `--atlas-hover` | `bg-hover`（`hover:bg-hover`） | `#f5f5f5` | `#363636` | 行・項目・ボタンのホバー面。`hover:` と組み合わせる（第2段階） |
 | `--atlas-hover-strong` | `bg-hover-strong` | `#e5e5e5` | `#3f3f3f` | 強いホバー・押下（第2段階） |
-| `--atlas-scrim` | `backdrop:bg-scrim` | `rgb(0 0 0 / 0.25)` | `rgb(0 0 0 / 0.55)` | モーダル背面の暗幕。`::backdrop` 用。値に不透明度を含む |
+| `--atlas-overlay` | `bg-overlay/10` / `border-overlay/15` / `ring-overlay/20` | `#ffffff` | `#ffffff` | 画像・暗いクローム・色付き面の上の白いベール。不透明度は `/10` などで付ける |
+| `--atlas-scrim` | `bg-scrim` / `backdrop:bg-scrim` | `rgb(0 0 0 / 0.25)` | `rgb(0 0 0 / 0.55)` | モーダルの暗幕。`::backdrop` 以外の全画面オーバーレイにも使う。値に不透明度を含む |
+| `--atlas-scrim-soft` | `bg-scrim-soft` | `rgb(0 0 0 / 0.15)` | `rgb(0 0 0 / 0.15)` | サイドドロワーなど弱い暗幕 |
+| `--atlas-inverse-surface` | `bg-inverse-surface` | `#262626` | `#262626` | 常に暗いクロームの面（サイドバー、ドラッグ中のプレビュー） |
+| `--atlas-inverse-surface-subtle` | `bg-inverse-surface-subtle` | `#1f1f1f` | `#1f1f1f` | 暗いクロームの浮いた面（フライアウト、一括操作バー） |
+| `--atlas-inverse-surface-muted` | `bg-inverse-surface-muted` | `#2c2c2c` | `#2c2c2c` | 暗いクローム内の入力欄・ツールチップ |
+| `--atlas-inverse-surface-deep` | `bg-inverse-surface-deep` | `#171717` | `#171717` | トースト・ツールチップなど最も濃い面 |
+| `--atlas-inverse-line` | `border-inverse-line` | `#505050` | `#505050` | 暗いクロームの罫線 |
+| `--atlas-inverse-line-subtle` | `border-inverse-line-subtle` | `#333333` | `#333333` | 暗いクロームの弱い罫線 |
+| `--atlas-inverse-text` | `text-inverse-text` | `#e5e5e5` | `#e0e0e0` | 暗いクロームの本文 |
+| `--atlas-inverse-text-strong` | `text-inverse-text-strong` | `#f3f3f3` | `#f3f3f3` | 暗いクロームの見出し・強調 |
+| `--atlas-inverse-text-muted` | `text-inverse-text-muted` | `#a0a0a0` | `#a0a0a0` | 暗いクロームの補助文字・アイコン |
+| `--atlas-inverse-accent` | `text-inverse-accent` / `bg-inverse-accent` / `outline-inverse-accent` | `#8db8ff` | `#8db8ff` | 暗いクローム上のアクセント（ドロップ位置、フォーカス、リンク） |
+| `--atlas-inverse-danger` | `text-inverse-danger` | `#ffa3a3` | `#ffa3a3` | 暗いクローム上のエラー文字 |
+| `--atlas-inverse-favorite` | `text-inverse-favorite` | `#fde68a` | `#fde68a` | 暗いクローム上のお気に入り星 |
+| `--atlas-on-strong` | `text-on-strong` | `#ffffff` | `#ffffff` | 暗いクローム・データ色の面の上の文字 |
 | `--atlas-line` | `border-line` / `divide-line` / `bg-line` | `#eaeaea` | `#3a3a3a` | 既定の罫線・区切り線。`@layer base` の `border-color` に適用済み |
 | `--atlas-line-strong` | `border-line-strong` | `oklch(87% 0 none)` ≒ `#d4d4d4` | `#4a4a4a` | 強調罫線、入力欄の境界 |
 | `--atlas-line-subtle` | `border-line-subtle` / `divide-line-subtle` | `#f5f5f5` | `#333333` | 行の区切りなど弱い罫線（第2段階） |
+| `--atlas-data-line` | `border-data-line` | `rgb(0 0 0 / 0.10)` | `rgb(0 0 0 / 0.10)` | データ色（プロジェクト色・写真）の縁。色の上で黒 10% のまま |
 | `--atlas-text` | `text-text`（互換: `text-foreground`） | `#171717` | `#ededed` | 既定の本文色。`body` に適用済み |
 | `--atlas-text-secondary` | `text-secondary` | `oklch(43.9% 0 none)` ≒ `#525252` | `#cfcfcf` | 副次テキスト。ラベル、説明 |
 | `--atlas-text-muted` | `text-muted` | `oklch(55.6% 0 none)` ≒ `#737373` | `#bdbdbd` | 補助テキスト。メタ情報 |
@@ -93,17 +114,25 @@ Tailwind の `text-*` ユーティリティと自然に組み合わせるため�
 | `--atlas-accent` | `bg-accent` / `border-accent` | `#2c60b8` | `#2c60b8` | アクセントの塗り・線 |
 | `--atlas-accent-text` | `text-accent-text` | `#2c60b8` | `#8db8ff` | アクセント色の文字。ダークでは明るい青 |
 | `--atlas-accent-soft` | `bg-accent-soft` | `#eff4fd` | `#20344f` | アクセントの薄い面。選択行、情報ボックス |
+| `--atlas-accent-soft-hover` | `bg-accent-soft-hover` | `#dbe8fb` | `#2a4363` | アクセントの薄い面のホバー・選択タブ。S3-1 |
 | `--atlas-accent-hover` | `bg-accent-hover` | `#24529c` | `#24529c` | 主ボタンのホバー（第2段階） |
 | `--atlas-accent-line` | `border-accent-line` | `#bedbff` | `#2f4a6d` | 選択・情報の枠（第2段階） |
 | `--atlas-danger` | `text-danger` | `oklch(57.7% 0.245 27.325)` ≒ `#e7000b` | `#ff8f8f` | エラーの文字・アイコン |
 | `--atlas-danger-soft` | `bg-danger-soft` | `oklch(97.1% 0.013 17.38)` ≒ `#fef2f2` | `#3a2020` | エラーの薄い面 |
 | `--atlas-danger-line` | `border-danger-line` | `#ffcaca` | `#5c3030` | エラーの枠（第2段階） |
+| `--atlas-danger-strong` | `bg-danger-strong` / `hover:bg-danger-strong` | `oklch(57.7% 0.245 27.325)` ≒ `#e40014` | 同じ | 白文字を乗せるエラー塗り（`bg-red-600`）。S3-1 |
+| `--atlas-danger-strong-hover` | `hover:bg-danger-strong-hover` | `oklch(50.5% 0.213 27.518)` ≒ `#c10007` | 同じ | 上記のホバー（`bg-red-700`） |
+| `--atlas-danger-action` | `bg-danger-action` | `#c94848` | `#c94848` | 削除ボタンの塗り（`bg-[#c94848]`）。S3-1 |
+| `--atlas-danger-action-hover` | `hover:bg-danger-action-hover` | `#b83c3c` | `#b83c3c` | 上記のホバー（`bg-[#b83c3c]`） |
 | `--atlas-success` | `text-success` | `oklch(52.7% 0.154 150.069)` ≒ `#008236` | `#8fe0a0` | 成功の文字・アイコン |
 | `--atlas-success-soft` | `bg-success-soft` | `oklch(96.2% 0.044 156.743)` ≒ `#dcfce7` | `#1e3a2a` | 成功の薄い面 |
 | `--atlas-success-line` | `border-success-line` | `#b9f8cf` | `#2f5a3a` | 成功の枠（第2段階） |
+| `--atlas-success-strong` | `bg-success-strong` / `border-success-strong` | `oklch(52.7% 0.154 150.069)` ≒ `#008236` | 同じ | 白文字を乗せる成功塗り（`bg-green-700`）。S3-1 |
+| `--atlas-success-strong-hover` | `hover:bg-success-strong-hover` | `oklch(44.8% 0.119 151.328)` ≒ `#016630` | 同じ | 上記のホバー（`bg-green-800`） |
 | `--atlas-warning` | `text-warning` | `oklch(47.3% 0.137 46.201)` ≒ `#973c00` | `#f0c987` | 警告の文字・アイコン |
 | `--atlas-warning-soft` | `bg-warning-soft` | `oklch(98.7% 0.022 95.277)` ≒ `#fffbeb` | `#332a18` | 警告の薄い面 |
 | `--atlas-warning-line` | `border-warning-line` | `#fee685` | `#5a4520` | 注意の枠（第2段階） |
+| `--atlas-favorite` | `text-favorite` | `oklch(66.6% 0.179 58.318)` ≒ `#e17100` | 同じ | お気に入り星（`text-amber-600`）。S3-1 |
 | `--atlas-focus-ring` | CSS のみ（`box-shadow`） | `#2c60b8` | `#2c60b8` | キーボードフォーカスのリング。`@layer base` に適用済み |
 
 補足:
@@ -115,6 +144,11 @@ Tailwind の `text-*` ユーティリティと自然に組み合わせるため�
 - 第2段階で追加した `--atlas-hover` / `--atlas-hover-strong` / `--atlas-line-subtle` / `--atlas-accent-line` / `--atlas-danger-line` は、対応する旧クラス（`hover:bg-neutral-100` / `hover:bg-neutral-200` / `border-neutral-100` / `border-blue-200` / `border-red-200`）と**ライト・ダークとも完全一致**する。旧クラスのダーク上書きを削除しても見た目は変わらない。
 - `--atlas-warning-line` / `--atlas-success-line` のライト値は Tailwind v4 の `amber-200`（`#fee685`）/ `green-200`（`#b9f8cf`）。ダーク値は旧上書きがないため新規に定めた。
 - 第2段階の値は Tailwind v4 の実値で確認した。v3 の `blue-200` / `red-200` / `amber-200` / `green-200`（`#bfdbfe` / `#fecaca` / `#fde68a` / `#bbf7d0`）とは異なるので、v3 の値に戻さない。
+- `--atlas-field` のダーク値は、旧 `html[data-theme="dark"] input, select, textarea` の `#2b2b2b`。この要素ルールは `@layer base` のフォールバックに移したため、`bg-field` などのユーティリティが勝つ。`bg-white` だった入力欄はダークで `#242424` から `#2b2b2b` に揃う（ごく小さい差）。
+- `--atlas-overlay` / `--atlas-on-strong` / `--atlas-inverse-*` はライト・ダークとも同じ値。暗いクロームやデータ色はテーマに追従させない。
+- `--atlas-scrim` は S3-1 で `backdrop:` 以外の全画面暗幕にも使うようにした。そのため、旧 `bg-black/25` 以外の `bg-black/30`・`/35`・`/40` はライトで 25%、ダークで 55% に揃う。これは意図した差。
+- `--atlas-danger-strong` / `--atlas-success-strong` のダーク値は、旧クラスにダーク上書きがなかったためライトと同じ。白文字とのコントラストは danger 4.77、success 4.95。
+- `--atlas-favorite` は `text-amber-600` の値。アイコン専用で、本文には使わない。
 
 ## 4. 旧クラス → 新トークン 置き換え表
 
@@ -323,17 +357,143 @@ Tailwind の `text-*` ユーティリティと自然に組み合わせるため�
 1. **S2-2 中立色**: 4.6.1 の文字（`text-white` を除く）と 4.6.2 の罫線を移す。
 2. **S2-3 ホバーとアクセント**: 4.6.3 のホバー面（不透明度付き surface を含む）、4.6.4 のアクセント、`text-white` → `text-on-accent` を移す。主ボタンは `bg-accent` と `hover:bg-accent-hover`、塗り面上の文字を同じ変更で扱う。
 3. **S2-4 ステータス**: 4.6.5 の文字・面・枠を移す。同じ要素の `text-*` / `bg-*-soft` / `border-*-line` は同じ段で揃える。
+4. **S3-1 残りの片付け**: 4.7 の UI 色、4.8 のデータ色の集約、暗幕、入力欄の要素ルールを移す。AA 待ち（4.9）は移さない。
+5. **S3-2 配色の切替**: 4.9 の AA 待ちをトークンへ移し、トークンの値を新しい配色へ一度に切り替える。
 
 各段で守る規則:
 
 - **同じ要素の基底クラスと状態付きクラスは一緒に移す。** 例: `<button className="border-neutral-200 hover:bg-neutral-100 focus:border-[#4075cf]">` は `border-line hover:bg-hover focus:border-accent` へ一度に移す。状態クラスだけをトークンにすると、基底の旧クラスの unlayered ダーク上書きがレイヤー内の状態トークンより常に勝ち、ダークでホバー・フォーカスが効かなくなる。この組み合わせは 6.1.4 の `token-variant-over-legacy` が検出する。
 - **同じ面の文字・枠・下地を別々の段に分けない。** 例: `bg-danger-soft` と `text-danger`、`border-danger-line` は S2-4 で揃える。片方だけ移すと、ダークで面と文字のコントラストが一時的に崩れる。
 - 各段の完了時に `npm run check:colors` と `npm run check:token-variants` を通し、ライト・ダークのスクリーンショットを比較する。旧クラスのダーク上書きは、そのクラスを使う箇所がすべて移るまで削除しない（PRODUCT.md の Migration 1）。
-- 第3段階（パレット切り替え）では、旧ダーク上書きを削除したうえで、`bg-scrim`・データ色・入力欄の要素ルールをまとめて扱う。
+- 第3段階では、S3-1 で旧ダーク上書きを削除し、`bg-scrim`・データ色・入力欄の要素ルールをまとめて扱う。S3-2 でトークン値を切り替える。
+
+### 4.7 第3段階 S3-1 の対応表（残りの直書き UI 色）
+
+S3-1 では、S2 までに残った UI の直書き色を既存トークンへ寄せ、用途があるものだけ新しいトークンを追加した。データの色は 4.8、AA 待ちで残したステータスは 4.9。値は Tailwind v4 の実値。`bg-white` は入力欄だけ `bg-field`、それ以外は `bg-surface`。
+
+#### 4.7.1 面・文字・罫線
+
+| 旧クラス | 新クラス | 備考 |
+|---|---|---|
+| `bg-white` | `bg-surface` | カード・パネル・ポップオーバー |
+| `bg-white`（`input` / `select` / `textarea`） | `bg-field` | ダークは `#242424` → `#2b2b2b` に揃う |
+| `bg-white/70`, `bg-white/95` | `bg-surface/70`, `bg-surface/95` | ライト・ダークとも同じ合成結果 |
+| `bg-white/10`, `bg-white/15`, `bg-white/5` | `bg-overlay/10`, `bg-overlay/15`, `bg-overlay/5` | 画像・暗いクロームの上の白ベール |
+| `border-white/10`, `border-white/15` | `border-overlay/10`, `border-overlay/15` | 同上 |
+| `ring-white/20` | `ring-overlay/20` | 暗いクロームのフォーカス |
+| `border-white` | `border-surface` / `border-on-accent` / `border-data-line` | 置く面で選ぶ。完了チェックは `on-accent`、写真は `data-line` |
+| `text-white` | `text-on-strong` | 暗いクローム・データ色の上の文字 |
+| `bg-neutral-50` | `bg-surface-subtle` | |
+| `bg-neutral-100` | `bg-surface-muted` | |
+| `bg-neutral-200` | `bg-surface-strong` | |
+| `bg-[#f3f3f3]`, `bg-[#f3f3f3]/70` | `bg-surface-muted`, `bg-surface-muted/70` | カラム面・タイムラインの下地 |
+| `bg-[#f8f8f8]`, `bg-[#f7f7f7]` | `bg-surface-subtle` | 告知バー・作成画面の下地。ダークの白漏れを修正 |
+| `bg-[#eaeaea]` | `bg-line` | |
+| `bg-neutral-800` | `bg-inverse-surface` | ドラッグ中のプレビュー・招待ボタン |
+| `bg-neutral-900` | `bg-inverse-surface-deep` | トースト・ツールチップ |
+| `bg-[#262626]` | `bg-inverse-surface` | サイドバー |
+| `bg-[#1f1f1f]`, `bg-[#1e1e1e]` | `bg-inverse-surface-subtle` | フライアウト・一括操作バー（`#1e1e1e` は 1 段階の差） |
+| `bg-[#2c2c2c]`, `bg-[#333]` | `bg-inverse-surface-muted` | 暗いクローム内の入力欄・ツールチップ |
+| `text-neutral-900`, `text-neutral-800` | `text-text` | |
+| `text-neutral-700`, `text-neutral-600` | `text-secondary` | |
+| `text-neutral-500` | `text-muted` | |
+| `text-neutral-400`, `text-neutral-300` | `text-subtle` | 無効・補助のみ。本文には使わない |
+| `text-black`, `hover:text-black` | `text-text`, `hover:text-text` | |
+| `text-[#050505]` | `text-text` | |
+| `text-[#636363]` | `text-secondary` | |
+| `text-[#E5E5E5]` | `text-inverse-text` | サイドバー本文 |
+| `text-[#F3F3F3]` | `text-inverse-text-strong` | サイドバー見出し |
+| `text-[#A0A0A0]` | `text-inverse-text-muted` | サイドバーのセクション名 |
+| `text-[#8ab4f8]` | `text-inverse-accent` | トーストのリンク |
+| `text-amber-200`, `text-amber-300` | `text-inverse-favorite` | サイドバーのお気に入り星 |
+| `text-red-300` | `text-inverse-danger` | 暗いクロームのエラー |
+| `text-blue-300` | `text-accent-line` | 区切り記号 |
+| `border-neutral-300`, `border-neutral-400` | `border-line-strong` | `neutral-400` はライトで薄くなる |
+| `border-neutral-200` | `border-line` | |
+| `border-neutral-100` | `border-line-subtle` | |
+| `border-[#eaeaea]`, `border-[#e1e1e1]` | `border-line` | |
+| `border-[#cfcfcf]` | `border-line-strong` | |
+| `border-[#505050]` | `border-inverse-line` | サイドバーの罫線 |
+| `border-[#333333]` | `border-inverse-line-subtle` | サイドバーの弱い罫線 |
+| `border-[#424242]` | `border-inverse-line` | 招待ボタン（14 段階の差） |
+| `border-black/10` | `border-data-line` | 写真・プロジェクト色の縁 |
+| `ring-neutral-200` | `ring-line` | |
+| `ring-white` | `ring-surface` | 重ねたアバターの縁 |
+| `outline-blue-400` | `outline-inverse-accent` | 暗いサイドバーのフォーカス |
+| `outline-amber-400` | `outline-warning` | タイムラインの重なり警告 |
+| `decoration-neutral-300` | `decoration-line-strong` | |
+| `decoration-amber-700/50`, `decoration-amber-950` | `decoration-warning/50`, `decoration-warning` | |
+
+#### 4.7.2 アクセント・ステータス・暗幕
+
+| 旧クラス | 新クラス | 備考 |
+|---|---|---|
+| `bg-[#2c60b8]` | `bg-accent` | 完全一致 |
+| `bg-[#4075cf]`, `bg-[#2f6fd0]` | `bg-accent` | S2 の承認済み対応 |
+| `bg-[#4075cf]/10` | `bg-accent-soft` | |
+| `bg-[#eff4fd]` | `bg-accent-soft` | 完全一致 |
+| `bg-[#e1ecfc]`, `bg-[#e3edfc]`, `bg-[#e1ebfc]`, `bg-[#dbe8fb]` | `bg-accent-soft-hover` | 近い青をまとめる。ダークの白漏れを修正 |
+| `bg-[#e8f0fe]`, `bg-[#eef3fb]` | `bg-accent-soft` | カレンダー選択日・メニューのフォーカス |
+| `bg-[#f5f9ff]`, `bg-[#fbfdff]` | `bg-accent-soft/40` | ごく薄いアクセント面 |
+| `bg-blue-50`, `bg-blue-100` | `bg-accent-soft` | 情報ボックス・種別バッジ |
+| `bg-blue-300` | `bg-accent-line` | 列幅のホバー |
+| `border-blue-500`, `border-blue-600`, `border-blue-400` | `border-accent` | 選択中の入力欄・タブ |
+| `border-blue-300` | `border-accent-line` | |
+| `ring-[#2c60b8]`, `ring-[#4075cf]` | `ring-accent` | |
+| `ring-[#4573d2]`, `ring-[#4075cf]/20` | `ring-focus-ring`, `ring-focus-ring/20` | ルールエディタのフォーカス |
+| `text-[#2c60b8]`, `text-[#2C60B8]` | `text-accent-text` | 完全一致 |
+| `text-[#2f5fa8]`, `text-[#365fa6]`, `text-[#5f7bd0]`, `text-[#6d5bd0]` | `text-accent-text` | 青・紫の近い色を accent に統一 |
+| `text-[#1b4da0]`, `hover:text-[#1b4da0]` | `text-accent-text`, `hover:text-accent-hover` | |
+| `border-[#2c60b8]`, `border-[#4075cf]`, `border-[#4573d2]` | `border-accent` | |
+| `bg-[#c94848]`, `hover:bg-[#b83c3c]` | `bg-danger-action`, `hover:bg-danger-action-hover` | 削除ボタンの塗り。完全一致 |
+| `bg-red-600`, `hover:bg-red-700` | `bg-danger-strong`, `hover:bg-danger-strong-hover` | 白文字のエラー塗り |
+| `bg-rose-500` | `bg-danger-strong` | 未読バッジ。白文字のコントラスト 3.75 → 4.77 |
+| `text-red-600`, `text-red-500`（白・通常面） | `text-danger` | |
+| `text-rose-500`, `text-rose-600`（白・通常面） | `text-danger` | いいね・削除メニュー。色相を danger に統一 |
+| `text-green-700`, `text-green-900` | `text-success` | |
+| `text-emerald-700`, `text-emerald-900`, `text-emerald-950` | `text-success` | |
+| `text-blue-950` | `text-text` | 情報ボックスの見出し |
+| `text-amber-700`, `text-amber-900` | `text-warning` | |
+| `text-amber-600` | `text-favorite` | お気に入り星（アイコン専用） |
+| `bg-green-600`, `bg-green-700`, `border-green-600`, `border-green-700` | `bg-success-strong`, `border-success-strong` | 完了チェック・承認ボタン |
+| `hover:bg-green-800` | `hover:bg-success-strong-hover` | |
+| `bg-emerald-800` | `bg-success-strong` | 二要素認証の有効バッジ |
+| `bg-green-50`, `bg-emerald-50`, `bg-emerald-100` | `bg-success-soft` | |
+| `border-green-200`, `border-emerald-200`, `border-emerald-300` | `border-success-line` | |
+| `bg-amber-100`, `bg-amber-200` | `bg-warning-soft` | ゲスト・特権・未読のバッジ |
+| `bg-[#fdf2f1]` | `bg-danger-soft` | 危険メニューのホバー |
+| `border-[#b42318]`, `focus:border-[#b42318]` | `danger` 系（`border-danger`） | 削除ダイアログのフォーカス |
+| `bg-black/15` | `bg-scrim-soft` | サイドドロワー |
+| `bg-black/25`, `bg-black/30`, `bg-black/35`, `bg-black/40` | `bg-scrim` | 全画面の暗幕。ライトは 25%、ダークは 55% に揃う |
+| `backdrop:bg-black/25` など | `backdrop:bg-scrim` | |
+
+`bg-[#e1ecfc]` / `bg-[#e3edfc]` のダーク値は旧上書きの `#2a4363`。それ以外の近い青は旧上書きがなくダークで白く漏れていたため、S3-1 で `#2a4363` に揃えた。
+
+### 4.8 データの色
+
+グラフの系列色、進捗バー、ステータスの色ドット、アバター、プロジェクト色、ラベル色は、色そのものが情報や識別を表す。テーマを切り替えても意味が変わらないため、`--atlas-*` トークンにはせず、`lib/data-colors.ts` に集約した。値は変更していない。コンポーネントはこのモジュールから定数を import する。
+
+| 用途 | 定数（`lib/data-colors.ts`） |
+|---|---|
+| ダッシュボードの系列・基準線・完了ドーナツ | `CHART_SERIES_COLORS`, `CHART_BENCHMARK_COLOR`, `CHART_COMPLETION_COLOR` |
+| 利用状況・進捗バー | `PROGRESS_BAR_COLORS` |
+| プロジェクトのステータスドット | `PROJECT_STATUS_DOT_CLASSES` |
+| アバター・コメントのアバター | `AVATAR_COLORS`, `AVATAR_FALLBACK_CLASS`, `COMMENT_AVATAR_CLASS` |
+| カレンダーの分類バー | `CALENDAR_BAR_COLORS` |
+| タイムラインの完了・クリティカル・マイルストーン | `TIMELINE_COMPLETED_BAR`, `TIMELINE_CRITICAL_BAR`, `TIMELINE_CRITICAL_LINE`, `MILESTONE_*` |
+| キャパシティ比較バー | `CAPACITY_BAR_COLORS` |
+| ステータス設定の色ドット | `STATUS_DRAFT_DOT` |
+| プロジェクト色・テンプレート色 | `PROJECT_COLOR_OPTIONS`, `DEFAULT_PROJECT_COLORS`, `PROJECT_COLOR_*`, `TEMPLATE_COLORS` |
+
+`scripts/check-color-literals.mjs` の走査対象は `app/`・`components/`・`lib/` で、`lib/data-colors.ts` だけをパスで明示的に除外する。除外理由は「データ色はテーマに追従させず、値の変更を S3-2 の配色切替から分離するため」。新しいデータ色を追加するときは、コンポーネントではなくこのファイルに追加する。
+
+### 4.9 S3-2 まで残す AA 待ちのステータス
+
+`text-danger` は `bg-danger-soft` の上で 4.46:1（ライト）になり、AA の 4.5:1 をわずかに下回る。`bg-surface-muted`（4.47）や `bg-accent-soft`（4.42）の上でも同じ。S2-4 ではこの組み合わせを直書きのまま残し、S3-1 でも移さなかった。S3-2 で配色を切り替えるときに、面・文字・枠を同じ変更で移す。該当箇所は 36 色クラス（19ファイル）。最終回答にファイル:行と組み合わせを列挙する。
 
 ## 5. 未対応（トークンがないよく使われる色）
 
-以下は 2026-11-17 時点で `app/` と `components/` の TSX を grep した出現数（概算）。移行担当者向けの優先順位付け用。ここにないクラスも、上の対応表になければ未対応。**第1段階時点の記録**であり、4.6 で新しいトークンへ対応したクラスも含む。現在の対応は 4.6 を優先する。
+以下は 2026-11-17 時点の**第1段階の記録**。S3-1 完了時点では、ここに載る UI 色は 4.7 でトークンへ移済み。残っているのは 4.8 のデータ色と 4.9 の AA 待ちだけ。現在の対応は 4.7〜4.9 を優先する。
 
 | 分類 | クラス（出現数の多い順） | 理由 / 最寄りのトークン |
 |---|---|---|
@@ -369,7 +529,7 @@ grep -rhoE "(bg|text|border|divide|ring|outline)-\[#[0-9a-fA-F]{3,8}\]" app comp
 
 ### 6.1 旧ダーク上書きと競合するときはトークン化しない
 
-`globals.css` の旧ダーク上書き（例: `html[data-theme="dark"] .text-neutral-400 { color: #a9a9a9; }`）とフォーム要素のルール（`html[data-theme="dark"] input, select, textarea { background-color: #2b2b2b; color: #ededed; }`）は、どちらもレイヤー外（unlayered）にある。unlayered の宣言は `@layer utilities` 内のトークンより常に優先されるため、次の5種類の競合では**移行したトークンのクラスだけを旧クラスに戻す**か、**要素に残す色クラスを1つにする**。旧クラス側は変更しない。6.1.1〜6.1.3 では基底のトークンを戻し、6.1.4 では状態付きトークンを戻す。6.1.5 はレイヤー内の出力順が変わる種類で、旧クラスへ戻すのではなく、変更前に表示されていた色だけを残す。
+S3-1 完了時点で、レイヤー外（unlayered）の旧ダーク上書きは、データ色・AA 待ちのステータス・リッチテキストに必要なものだけになった（7章）。フォーム要素のダーク配色は `@layer base` のフォールバックに移し、`bg-field` などのユーティリティが勝つようにした。以下は、旧上書きが残るクラス（データ色・AA 待ち）に新しいトークンを重ねるときの規則として残す。unlayered の宣言は `@layer utilities` 内のトークンより常に優先されるため、次の5種類の競合では**移行したトークンのクラスだけを旧クラスに戻す**か、**要素に残す色クラスを1つにする**。旧クラス側は変更しない。6.1.1〜6.1.3 では基底のトークンを戻し、6.1.4 では状態付きトークンを戻す。6.1.5 はレイヤー内の出力順が変わる種類で、旧クラスへ戻すのではなく、変更前に表示されていた色だけを残す。
 
 #### 6.1.1 状態付きユーティリティとの競合（variant）
 
@@ -390,9 +550,11 @@ grep -rhoE "(bg|text|border|divide|ring|outline)-\[#[0-9a-fA-F]{3,8}\]" app comp
 
 JSX の組み込み要素 `<input>` / `<select>` / `<textarea>` に、背景色または文字色のトークンが付いている場合。クラス定数を経由してその要素に渡っているものも含む。
 
-例: `ProjectShareDialog` の読み取り専用 URL 入力の `text-neutral-600`。移行前は旧クラスのダーク上書き `html[data-theme="dark"] .text-neutral-600 { color: #cfcfcf; }` が、要素セレクタのルールより詳細度が高く勝っていた。トークン化するとレイヤー内の宣言になり、unlayered の要素ルールが勝ってダークで `#ededed` になる。`background-color` も同様に `#2b2b2b` になる。
+S2 までは `html[data-theme="dark"] input, select, textarea { … }` がレイヤー外にあり、トークンより優先されていた。S3-1 でこのルールを `@layer base` のフォールバックに移し、`bg-field` / `text-text` / `placeholder:text-subtle` / `disabled:*` がユーティリティとして勝つようにした。そのため、**`@layer` 内の要素ルールは競合として扱わない**。検査はレイヤー外の要素ルールだけを読み、`@layer base { … }` の中身は無視する。現在の `globals.css` にレイヤー外のフォーム要素ルールはない。
 
-**トークンのダーク値が要素ルールの同じプロパティの値と一致する場合は対象外**。例: `text-text` のダーク値 `#ededed` は要素ルールの `color: #ededed` と同じなので、要素ルールに負けても見た目は変わらない。値は `globals.css` の `html[data-theme="dark"]` ブロックの `--atlas-*` と、`@theme inline` の `--color-*` → `--atlas-*` の対応から解決し、小文字に正規化した値で比較する。解決できないトークンは従来どおり報告する。
+過去の例: `ProjectShareDialog` の読み取り専用 URL 入力の `text-neutral-600`。移行前は旧クラスのダーク上書き `html[data-theme="dark"] .text-neutral-600 { color: #cfcfcf; }` が要素セレクタより詳細度が高く勝っていた。トークン化すると `text-secondary` になり、ダークで `#cfcfcf` を保つ。
+
+**トークンのダーク値が要素ルールの同じプロパティの値と一致する場合は対象外**。値は `globals.css` の `html[data-theme="dark"]` ブロックの `--atlas-*` と、`@theme inline` の `--color-*` → `--atlas-*` の対応から解決し、小文字に正規化した値で比較する。解決できないトークンは報告する。
 
 枠線色は要素ルールに含まれないため対象外（`border-line` / `border-line-strong` はそのまま）。`placeholder:` などの擬似要素バリアントも、要素自身の色ではないため対象外。
 
@@ -447,7 +609,7 @@ npm run check:token-variants
 
 `scripts/check-token-variants.mjs` が `app/` と `components/` の `.ts` / `.tsx` を TypeScript の構文木で走査し、`className` 属性・`cn()` / `clsx()` 呼び出し・モジュール内のクラス文字列定数を合成して判定する。条件分岐は同時に描画され得る組み合わせごとに評価する。違反があれば `ファイル:行  [種類] 競合クラス  (with トークン / <要素>)` を出力して終了コード 1。種類は `variant` / `token-variant-over-legacy` / `legacy-overlap` / `same-property-overlap` / `form-control`。`--stats` を付けると、報告対象外の旧クラス同士の `same-property-overlap` の件数も表示する。CI の `verify` ジョブでも `check:colors` の直後に実行する。既知の見落とし（実行時に組み立てるクラス、他モジュールから import した定数、`divide-line` / `divide-line-subtle`、`<Input>` などのラッパー越しのクラス、`:where()` / `:not()` を使った要素ルールなど）はスクリプト冒頭のコメントに記載している。
 
-第3段階（パレット切り替え・旧ダーク上書き削除）では、この制約を解く。旧上書きを削除したうえで状態付きクラスもトークン化し、ライト・ダーク両方のホバー・フォーカス・無効状態を意図的に確認して整える。この検査は第1〜2段階の「見た目を変えない」ためのガードであり、第3段階では前提（レイヤー外のダーク上書き）がなくなるため、役割を終えた時点で削除または目的に合わせた検査へ置き換える。
+S3-1 で旧ダーク上書きの大半を削除したため、この検査の対象は、データ色・AA 待ちのステータス・リッチテキストに残る上書きだけになった。それでも、新しいトークンを残った旧クラスに重ねる事故（例: `bg-red-100` の隣に `text-danger`）を防ぐため、検査は残している。S3-2 で AA 待ちの組み合わせを移し、データ色とリッチテキストの上書きを整理した時点で、役割を終えた検査として削除または置き換える。
 
 ## 7. 今回 `globals.css` で置き換えた箇所
 
@@ -459,14 +621,28 @@ npm run check:token-variants
 | `@layer base` の既定 `border-color`（ダーク） | `#3a3a3a` | `var(--atlas-line)` |
 | フォーカスリングの `box-shadow` | `#2c60b8` | `var(--atlas-focus-ring)` |
 
-第2段階（S2-1）では、上の置き換えに加えて9個のトークン（`on-accent` / `line-subtle` / `hover` / `hover-strong` / `accent-hover` / `accent-line` / `danger-line` / `warning-line` / `success-line`）を `:root` と `html[data-theme="dark"]` の両方に追加し、`@theme inline` に登録した。既存トークンの値は変えていない。追加分の値と用途は3章、旧クラスとの対応は4.6 を参照。
+第2段階（S2-1）では、上の置き換えに加えて9個のトークン（`on-accent` / `line-subtle` / `hover` / `hover-strong` / `accent-hover` / `accent-line` / `danger-line` / `warning-line` / `success-line`）を追加した。
+
+第3段階 S3-1 では、次のトークンを追加した。値と用途は3章、旧クラスとの対応は4.7。
+
+- 面・文字: `field` / `overlay` / `data-line`
+- アクセント: `accent-soft-hover`
+- 塗りステータス: `danger-strong` / `danger-strong-hover` / `danger-action` / `danger-action-hover` / `success-strong` / `success-strong-hover` / `favorite`
+- 暗幕: `scrim-soft`
+- 暗いクローム: `inverse-surface` / `inverse-surface-subtle` / `inverse-surface-muted` / `inverse-surface-deep` / `inverse-line` / `inverse-line-subtle` / `inverse-text` / `inverse-text-strong` / `inverse-text-muted` / `inverse-accent` / `inverse-danger` / `inverse-favorite` / `on-strong`
+
+`globals.css` の変更:
+
+- 旧 `html[data-theme="dark"] .<クラス>` 上書きを、データ色・AA 待ち・リッチテキストに必要なものだけに削減した。残るクラス上書きは次の10個（`bg-[#aaaaaa]` / `bg-red-100` / `bg-red-200` / `text-red-500` / `text-red-700` / アバター5色の文字色）。理由は、`bg-[#aaaaaa]`・`bg-red-100`・`bg-red-200` がデータ色と AA 待ち、`text-red-500` / `text-red-700` が AA 待ち、アバター5色がダークでイニシャルを暗く保つため。
+- フォーム要素のダーク配色をレイヤー外から `@layer base` のフォールバックへ移した。`select option` の色も `var(--atlas-field)` / `var(--atlas-text)` にした。
+- `input::placeholder` のダーク上書きを削除した。プレースホルダは `placeholder:text-subtle` などのトークンでテーマに追従する（ダークは `#8f8f8f` → `#a9a9a9` に改善）。
 
 置き換えなかったもの:
 
 - フォーカス時の白い `outline: 2px solid #ffffff`（対応するトークンがない）
-- `html[data-theme="dark"] .bg-white { … }` など 約94個のクラス上書き（後の段階で削除するため、値も含めて現状維持）
-- `.atlas-rich-text` / `.knowledge-document` 内の色（トークンと完全一致しない）
+- `.atlas-rich-text` / `.knowledge-document` 内の色（トークンと完全一致しない。E の一覧を参照）
 - タイムラインのスクロールバー色（`#c7c7c7` など。トークンがない）
+- S3-2 まで残す AA 待ちのステータス（4.9）
 
 ## 8. 確認の手順
 
@@ -567,7 +743,7 @@ node scripts/check-color-literals.mjs --update   # 現状でベースライン�
 node scripts/check-color-literals.mjs --summary  # 全体・種類別・上位20ファイルを表示
 ```
 
-- 走査対象は `app/` と `components/` の `.ts` / `.tsx`。テストとフィクスチャは除外する。
+- 走査対象は `app/`・`components/`・`lib/` の `.ts` / `.tsx`。テストとフィクスチャは除外する。`lib/data-colors.ts` だけはパスで明示的に除外する（データ色の唯一の置き場。理由は 4.8）。
 - 数えるもの:
   - Tailwind 既定パレットのクラス（`bg-red-500`、`text-neutral-700/50`、`bg-white/70`、`fill-black` など。`shadow-*` を含む）
   - Tailwind の任意値（`[#fff]`、`[#2c60b8]`、`[rgb(...)]`、`[rgba(...)]`、`[hsl(...)]`）
@@ -576,6 +752,7 @@ node scripts/check-color-literals.mjs --summary  # 全体・種類別・上位20
 - 件数が減ったファイルは「改善」として表示し、成功扱いにする。`--update` でベースラインを下げる。
 - 誤検出を避けるため、`href="#..."` / `src="#..."`、`url(#...)`、HTML 実体参照、`querySelector("#...")` などは除外している。判定の詳細と限界（コメント内の `#fff` は数える、4桁 hex は文字列中では対象外、など）はスクリプト冒頭のコメントに記載している。
 - CI の `verify` ジョブで `npm run check:colors` を実行する。意図的に直書きを増やす場合は、理由を添えて `--update` でベースラインを更新する。
-- 6.1 の規則に従ってトークンを旧クラスへ戻すと、その分だけ直書きが増える。これは意図した待機（第3段階でトークン化する）なので、`node scripts/check-color-literals.mjs --update` でベースラインを更新し、`npm run check:colors` が通ることを確認する。T15b では、この戻しによって 57 箇所・27 ファイルの件数が増えた。
-- 戻した箇所を再度トークン化してしまう事故は、`npm run check:token-variants`（6.1）で検出する。`check:colors` のラチェットは「直書きを増やさない」、`check:token-variants` は「状態付きユーティリティとの競合を作らない」という別の方向から守る。第2段階では 6.1.4 の `token-variant-over-legacy` が、状態クラスだけを先にトークン化して基底の旧クラスを残した組み合わせも検出する。
+- S3-1 完了時点の残数は 36。すべて 4.9 の AA 待ちで、`app/`・`components/`・`lib/` に UI 色の直書きはそれ以外ない。データ色は `lib/data-colors.ts` に集約済み。
+- データ色を追加するときは `lib/data-colors.ts` に追加する。UI 色を追加するときはトークンを追加し、`docs` の 3 章・4.7 を更新する。
+- `npm run check:token-variants`（6.1）は、残った旧クラス（データ色・AA 待ち）に新しいトークンを重ねる事故を検出する。`check:colors` のラチェットは「直書きを増やさない」、`check:token-variants` は「状態付きユーティリティとの競合を作らない」という別の方向から守る。
 

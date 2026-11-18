@@ -66,8 +66,9 @@ export default function TaskPaneHeader({
     event.currentTarget.closest("details")?.removeAttribute("open");
   };
 
-  const iconButton =
-    "flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-hover hover:text-neutral-800";
+  const iconButtonBase =
+    "flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover hover:text-text";
+  const iconButton = `${iconButtonBase} text-muted`;
   const collaboratorTitle = collaborators.map((person) => person.name).join("・");
 
   return (
@@ -80,7 +81,7 @@ export default function TaskPaneHeader({
         aria-label={task.approval ? "承認の操作を開く" : undefined}
         className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium ${
           task.completed
-            ? "border-green-700 bg-green-700 text-on-accent hover:bg-green-800"
+            ? "border-success-strong bg-success-strong text-on-accent hover:bg-success-strong-hover"
             : "border-line-strong bg-surface text-secondary hover:bg-hover"
         }`}
       >
@@ -89,7 +90,7 @@ export default function TaskPaneHeader({
         ) : (
           <span
             className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] ${
-              task.completed ? "border-white" : "border-line-strong"
+              task.completed ? "border-on-strong" : "border-line-strong"
             }`}
           >
             {task.completed ? "✓" : ""}
@@ -112,7 +113,7 @@ export default function TaskPaneHeader({
             <UserAvatar
               name={person.name}
               url={person.avatar_url}
-              className="h-6 w-6 border-2 border-white"
+              className="h-6 w-6 border-2 border-on-strong"
               textClassName="text-[9px]"
             />
           </span>
@@ -141,7 +142,7 @@ export default function TaskPaneHeader({
         aria-label={liked ? "いいねを取り消す" : "いいね"}
         aria-pressed={liked}
         title={liked ? "いいねを取り消す" : "いいね"}
-        className={`${iconButton} ${liked ? "text-rose-500 hover:text-rose-600" : ""}`}
+        className={`${iconButtonBase} ${liked ? "text-danger hover:text-danger" : "text-muted"}`}
       >
         <svg viewBox="0 0 16 16" className="h-4 w-4" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3">
           <path d="M8 13.2S2.5 10 2.5 6.1A2.8 2.8 0 0 1 8 4.4a2.8 2.8 0 0 1 5.5 1.7C13.5 10 8 13.2 8 13.2z" />
@@ -229,7 +230,7 @@ export default function TaskPaneHeader({
 
       <Link
         href={closeHref}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-hover hover:text-neutral-900"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-text"
         title="詳細を閉じる"
         aria-label="詳細を閉じる"
       >

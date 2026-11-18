@@ -1,6 +1,7 @@
 "use client";
 
 import { toast as toastMessage } from "@/lib/ui-feedback";
+import { PROJECT_STATUS_DOT_CLASSES } from "@/lib/data-colors";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,11 +16,11 @@ const OPTIONS = [
 ] as const;
 
 const DOT: Record<string, string> = {
-  green: "bg-green-600",
-  yellow: "bg-amber-500",
-  red: "bg-red-600",
-  blue: "bg-blue-600",
-  muted: "bg-neutral-400",
+  green: PROJECT_STATUS_DOT_CLASSES.green,
+  yellow: PROJECT_STATUS_DOT_CLASSES.yellow,
+  red: PROJECT_STATUS_DOT_CLASSES.red,
+  blue: PROJECT_STATUS_DOT_CLASSES.blue,
+  muted: PROJECT_STATUS_DOT_CLASSES.muted,
   none: "border border-line-strong bg-transparent",
 };
 
@@ -72,8 +73,8 @@ export default function ProjectHeaderStatus({
   const body = (
     <>
       <span className={`h-3 w-3 shrink-0 rounded-full ${DOT[color] ?? DOT.none}`} />
-      <span className={status ? "" : "text-neutral-500"}>{label}</span>
-      {canEdit && <span className="text-[10px] text-neutral-400">▾</span>}
+      <span className={status ? "" : "text-muted"}>{label}</span>
+      {canEdit && <span className="text-[10px] text-subtle">▾</span>}
     </>
   );
 
@@ -83,7 +84,7 @@ export default function ProjectHeaderStatus({
         data-project-status-button
         data-project-status-current={status}
         aria-label={status ? `現在のステータス: ${status}` : "ステータス未設定"}
-        className="ml-1 hidden h-7 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-xs whitespace-nowrap text-neutral-600 md:@min-[700px]:inline-flex"
+        className="ml-1 hidden h-7 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-xs whitespace-nowrap text-secondary md:@min-[700px]:inline-flex"
       >
         {body}
       </span>
@@ -99,7 +100,7 @@ export default function ProjectHeaderStatus({
         aria-label={status ? `現在のステータス: ${status}` : "ステータスを設定"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs text-neutral-600 hover:bg-hover"
+        className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs text-secondary hover:bg-hover"
       >
         {body}
       </button>
@@ -108,7 +109,7 @@ export default function ProjectHeaderStatus({
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div
             data-project-status-menu
-            className="absolute top-8 left-0 z-40 w-52 rounded-lg border border-line bg-white p-1.5 shadow-lg"
+            className="absolute top-8 left-0 z-40 w-52 rounded-lg border border-line bg-surface p-1.5 shadow-lg"
           >
             {OPTIONS.map((option) => (
               <button
@@ -120,7 +121,7 @@ export default function ProjectHeaderStatus({
               >
                 <span className={`h-3 w-3 rounded-full ${DOT[option.color]}`} />
                 {option.label}
-                {status === option.label && <span className="ml-auto text-[11px] text-neutral-400">✓</span>}
+                {status === option.label && <span className="ml-auto text-[11px] text-subtle">✓</span>}
               </button>
             ))}
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 
 type Series = { day: string; n: number }[];
 
@@ -44,15 +45,15 @@ export default function UsageStats() {
       <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
           <h3 className="text-sm font-medium">タスク作成</h3>
-          <Bars data={stats.created} color="bg-blue-500" />
+          <Bars data={stats.created} color={PROGRESS_BAR_COLORS.created} />
         </div>
         <div>
           <h3 className="text-sm font-medium">タスク完了</h3>
-          <Bars data={stats.completed} color="bg-green-500" />
+          <Bars data={stats.completed} color={PROGRESS_BAR_COLORS.completed} />
         </div>
         <div>
           <h3 className="text-sm font-medium">コメント</h3>
-          <Bars data={stats.comments} color="bg-amber-500" />
+          <Bars data={stats.comments} color={PROGRESS_BAR_COLORS.comments} />
         </div>
       </div>
     </div>

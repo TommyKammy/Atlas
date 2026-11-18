@@ -74,9 +74,9 @@ export function RuleActionFields({ action, descriptors, projectId, onChange, tri
           <div className="flex gap-3 text-[11px]">
             <button type="button" onClick={() => change(param.name, "")} className="text-muted hover:text-text">署名キーを削除</button>
             {value !== undefined && action.webhookActionId && <button type="button" onClick={() => change(param.name, undefined)}
-              className="text-[#365fa6]">保存済みのキーを使う</button>}
+              className="text-accent-text">保存済みのキーを使う</button>}
           </div>
-          {value === "" && <p className="text-[11px] text-amber-700">保存すると署名キーを削除します。</p>}
+          {value === "" && <p className="text-[11px] text-warning">保存すると署名キーを削除します。</p>}
         </div>;
         return <RuleValueField key={param.name} label={param.label} value={value} onChange={(next) => change(param.name, next)}
           type={param.type === "number" || param.type === "date" || param.type === "boolean" ? param.type : "text"}

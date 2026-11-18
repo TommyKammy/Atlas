@@ -262,15 +262,15 @@ export default function WidgetDialog({
   };
 
   const field =
-    "mt-1 w-full rounded-md border border-line-strong bg-white px-2.5 py-2 text-sm outline-none focus:border-accent";
+    "mt-1 w-full rounded-md border border-line-strong bg-field px-2.5 py-2 text-sm outline-none focus:border-accent";
   const smallField =
-    "mt-1 h-8 w-full rounded-md border border-line-strong bg-white px-2 text-[13px] outline-none focus:border-accent";
+    "mt-1 h-8 w-full rounded-md border border-line-strong bg-field px-2 text-[13px] outline-none focus:border-accent";
   const sectionTitle = "text-[12px] font-semibold text-text";
   const label = "mt-3 block text-[11px] text-muted";
 
   return (
     <div
-      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/35 p-3 sm:p-6"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-scrim p-3 sm:p-6"
       onClick={onClose}
       data-dashboard-dialog
     >

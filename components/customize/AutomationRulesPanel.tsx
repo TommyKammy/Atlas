@@ -421,7 +421,7 @@ export default function AutomationRulesPanel({
               onClick={() => void addPreset(preset)}
               disabled={!canEdit || presetBusy || !descriptors}
               title={preset.description}
-              className="rounded-full border border-neutral-200 bg-surface px-2.5 py-1 text-[11px] text-neutral-700 hover:border-[#4075cf] hover:text-[#2c60b8] disabled:opacity-50"
+              className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] text-secondary hover:border-accent hover:text-accent-text disabled:opacity-50"
             >
               ＋ {preset.name}
             </button>
@@ -560,7 +560,7 @@ export default function AutomationRulesPanel({
                 </div>
                 {canEdit && (
                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-                    {projectId && projectId > 0 && <Link href={`/projects/${projectId}/rules/${rule.id}`} data-automation-editor-link className="flex h-7 items-center rounded-md border border-accent-line bg-[#eff4fd] px-2 text-[11px] text-accent-text hover:bg-blue-100">フロー編集</Link>}
+                    {projectId && projectId > 0 && <Link href={`/projects/${projectId}/rules/${rule.id}`} data-automation-editor-link className="flex h-7 items-center rounded-md border border-accent-line bg-accent-soft px-2 text-[11px] text-accent-text hover:bg-accent-soft">フロー編集</Link>}
                     <button
                       type="button"
                       onClick={() => setBuilderRule(rule)}

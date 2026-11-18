@@ -67,7 +67,7 @@ export default function StatusUpdatesWidget({
           data-home-status-update-open
           onClick={startComposer}
           disabled={projects.length === 0}
-          className="rounded px-1.5 py-0.5 text-[12px] text-[#2c60b8] hover:bg-[#eff4fd] disabled:text-neutral-300"
+          className="rounded px-1.5 py-0.5 text-[12px] text-accent-text hover:bg-accent-soft disabled:text-subtle"
         >
           ＋ ステータスを更新
         </button>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ProjectStats } from "@/lib/data";
+import { AVATAR_COLORS, CHART_COMPLETION_COLOR, PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 
 export function StatCards({ stats }: { stats: ProjectStats }) {
   const pct = stats.total === 0 ? 0 : Math.round((stats.done / stats.total) * 100);
@@ -46,7 +47,7 @@ export function SectionProgress({
                   {s.name}
                 </Link>
                 <div className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-surface-strong">
-                  <div className="h-full bg-green-500" style={{ width: `${pct}%` }} />
+                  <div className={`h-full ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${pct}%` }} />
                 </div>
                 <span className="w-24 shrink-0 text-right text-xs text-muted">
                   {s.done}/{s.total}（{pct}%）
@@ -98,13 +99,13 @@ export function Donut({ stats }: { stats: ProjectStats }) {
   return (
     <div className="flex items-center gap-4">
       <svg width="130" height="130" viewBox="0 0 130 130">
-        <circle cx="65" cy="65" r={r} fill="none" stroke="#e5e5e5" strokeWidth="14" />
+        <circle cx="65" cy="65" r={r} fill="none" stroke="var(--atlas-surface-strong)" strokeWidth="14" />
         <circle
           cx="65"
           cy="65"
           r={r}
           fill="none"
-          stroke="#16a34a"
+          stroke={CHART_COMPLETION_COLOR}
           strokeWidth="14"
           strokeLinecap="round"
           strokeDasharray={`${c * pct} ${c}`}
@@ -136,7 +137,7 @@ export function StatusBars({ stats }: { stats: { byStatus: { status: string; n: 
           <div key={s.status} className="flex items-center gap-2 text-sm">
             <span className="w-32 shrink-0 truncate">{s.status}</span>
             <div className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-surface-strong">
-              <div className="h-full bg-amber-500" style={{ width: `${(s.n / max) * 100}%` }} />
+              <div className={`h-full ${PROGRESS_BAR_COLORS.amber}`} style={{ width: `${(s.n / max) * 100}%` }} />
             </div>
             <span className="w-10 shrink-0 text-right text-xs text-muted">{s.n}</span>
           </div>
@@ -185,7 +186,7 @@ export function TrendBars({ trend }: { trend: { day: string; n: number }[] }) {
           <div key={t.day} className="flex min-w-0 flex-1 flex-col items-center gap-1" title={`${t.day}: ${t.n}件`}>
             <span className="text-[10px] text-muted">{t.n > 0 ? t.n : ""}</span>
             <div className="flex h-20 w-full items-end rounded bg-surface-muted">
-              <div className="w-full rounded bg-green-500" style={{ height: `${(t.n / max) * 100}%` }} />
+              <div className={`w-full rounded ${PROGRESS_BAR_COLORS.green}`} style={{ height: `${(t.n / max) * 100}%` }} />
             </div>
             <span className="text-[9px] text-subtle">{t.day.slice(5)}</span>
           </div>
@@ -206,12 +207,12 @@ export function AssigneeBars({ stats }: { stats: ProjectStats }) {
       <div className="mt-2 space-y-2">
         {stats.byAssignee.map((a) => (
           <div key={a.id} className="flex items-center gap-2 text-sm">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-400 text-xs font-bold text-text">
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-text ${AVATAR_COLORS[0]}`}>
               {a.name.slice(0, 1)}
             </span>
             <span className="w-32 shrink-0 truncate">{a.name}</span>
             <div className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-surface-strong">
-              <div className="h-full bg-blue-500" style={{ width: `${(a.open / max) * 100}%` }} />
+              <div className={`h-full ${PROGRESS_BAR_COLORS.blue}`} style={{ width: `${(a.open / max) * 100}%` }} />
             </div>
             <span className="w-10 shrink-0 text-right text-xs text-muted">{a.open}</span>
           </div>

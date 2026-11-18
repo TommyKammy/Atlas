@@ -71,9 +71,9 @@ export default function ListSectionHeader({
       data-section-dragging={sectionDragging === sectionId ? "true" : undefined}
       className={`relative flex h-[37px] items-center gap-2 ${depth > 0 ? "pl-10" : "pl-6"} ${
         sectionDragging === sectionId
-          ? "bg-[#f3f3f3]/70 [&>*]:invisible"
+          ? "bg-surface-muted/70 [&>*]:invisible"
           : target
-            ? "bg-[#f3f3f3]"
+            ? "bg-surface-muted"
             : ""
       }`}
     >
@@ -111,7 +111,7 @@ export default function ListSectionHeader({
               onBlur={() => onSaveName(sectionId)}
               aria-label="セクション名"
               autoFocus
-              className="h-9 w-[200px] rounded border border-[#4573d2] bg-white px-2 text-[14px] font-semibold text-text ring-2 ring-[#4573d2]/15 outline-none"
+              className="h-9 w-[200px] rounded border border-accent bg-field px-2 text-[14px] font-semibold text-text ring-2 ring-focus-ring/15 outline-none"
             />
           ) : (
             <button

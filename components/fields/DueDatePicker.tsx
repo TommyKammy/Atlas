@@ -178,7 +178,7 @@ export default function DueDatePicker({
 
   return (
     <span ref={rootRef} data-due-picker className="relative z-[140] min-w-0">
-      <span className="flex h-8 w-full min-w-0 items-center truncate rounded border border-blue-500 bg-surface px-2 text-[12px] text-secondary">
+      <span className="flex h-8 w-full min-w-0 items-center truncate rounded border border-accent bg-surface px-2 text-[12px] text-secondary">
         {rangeText || "期日"}
       </span>
       {position && (
@@ -228,7 +228,7 @@ export default function DueDatePicker({
                     type="button"
                     aria-label="開始日をクリア"
                     onClick={() => applyRange("", parseShortDate(dueText) ?? due)}
-                    className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-neutral-400 hover:bg-hover hover:text-neutral-600"
+                    className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-subtle hover:bg-hover hover:text-secondary"
                   >
                     ×
                   </button>
@@ -260,7 +260,7 @@ export default function DueDatePicker({
                     type="button"
                     aria-label="期日をクリア"
                     onClick={() => applyRange(parseShortDate(startText) ?? start, "")}
-                    className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-neutral-400 hover:bg-hover hover:text-neutral-600"
+                    className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-subtle hover:bg-hover hover:text-secondary"
                   >
                     ×
                   </button>
@@ -310,11 +310,11 @@ export default function DueDatePicker({
                       selected
                         ? "bg-accent font-medium text-on-accent"
                         : inRange
-                          ? "bg-[#e8f0fe] text-accent-text"
+                          ? "bg-accent-soft text-accent-text"
                           : inMonth
                             ? "text-secondary hover:bg-hover"
                             : "text-subtle hover:bg-hover"
-                    } ${!selected && isToday ? "ring-1 ring-[#2c60b8]" : ""}`}
+                    } ${!selected && isToday ? "ring-1 ring-accent" : ""}`}
                   >
                     {Number(iso.slice(8, 10))}
                   </button>

@@ -16,8 +16,8 @@ import { FilterIcon, OptionsIcon } from "../view/ViewToolbarIcons";
 
 const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
-const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
-const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
+const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-accent-soft-hover";
+const clearPill = "px-1.5 text-[12px] hover:bg-accent-soft-hover";
 const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-line bg-surface shadow-lg";
 
 export default function CalendarToolbar({
@@ -367,7 +367,7 @@ export default function CalendarToolbar({
             placeholder="このビュー内で検索"
             aria-label="このビュー内で検索"
             autoFocus
-            className="h-7 w-44 rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
+            className="h-7 w-44 rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
           />
         )}
         <button
@@ -416,7 +416,7 @@ export default function CalendarToolbar({
             <select
               value={colorBy}
               onChange={(event) => setColor(event.target.value)}
-              className="mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
+              className="mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
             >
               {colorOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -438,7 +438,7 @@ export default function CalendarToolbar({
             <select
               value={weekStart}
               onChange={(event) => setWeekStartOn(event.target.value === "1" ? 1 : 0)}
-              className="mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
+              className="mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
             >
               <option value={0}>日曜日</option>
               <option value={1}>月曜日</option>

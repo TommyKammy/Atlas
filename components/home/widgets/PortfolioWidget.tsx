@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import { useState } from "react";
 import type { HomePortfolioProject } from "@/lib/home-widgets";
 import ProjectIcon from "../../ProjectIcon";
@@ -117,7 +118,7 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded bg-surface-strong">
-                    <span className="block h-full bg-green-500" style={{ width: `${progress}%` }} />
+                    <span className={`block h-full ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${progress}%` }} />
                   </span>
                   <span className="shrink-0 text-[10px] text-muted">
                     {project.done}/{project.total}

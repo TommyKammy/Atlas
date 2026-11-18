@@ -100,14 +100,14 @@ export default function CalendarMultiDayBar({
         title="開始日を変更"
         onPointerDown={(event) => onResizeDown("start", event)}
         onPointerUp={(event) => onResizeUp("start", event)}
-        className="absolute inset-y-0 left-0 z-20 w-2 touch-none cursor-ew-resize rounded-l bg-[#2c60b8]/0 hover:bg-[#2c60b8]/40"
+        className="absolute inset-y-0 left-0 z-20 w-2 touch-none cursor-ew-resize rounded-l bg-accent/0 hover:bg-accent/40"
       />
       <span
         data-calendar-resize="end"
         title="期日を変更"
         onPointerDown={(event) => onResizeDown("end", event)}
         onPointerUp={(event) => onResizeUp("end", event)}
-        className="absolute inset-y-0 right-0 z-20 w-2 touch-none cursor-ew-resize rounded-r bg-[#2c60b8]/0 hover:bg-[#2c60b8]/40"
+        className="absolute inset-y-0 right-0 z-20 w-2 touch-none cursor-ew-resize rounded-r bg-accent/0 hover:bg-accent/40"
       />
     </div>
   );

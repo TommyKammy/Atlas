@@ -99,7 +99,7 @@ export default function ProjectDescriptionEditor({
               setEditing(true);
             }
           }}
-          className={`prose-sm mt-2 max-w-none text-sm text-secondary [&_a]:text-accent-text [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 ${
+          className={`prose-sm mt-2 max-w-none text-sm text-secondary [&_a]:text-accent-text [&_code]:rounded [&_code]:bg-surface-muted [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 ${
             canEdit ? "cursor-text rounded p-2 hover:bg-hover" : ""
           }`}
           dangerouslySetInnerHTML={{ __html: renderMarkdown(initial) }}

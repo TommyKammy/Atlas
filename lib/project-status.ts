@@ -1,3 +1,5 @@
+import { PROJECT_STATUS_DOT_CLASSES } from "./data-colors";
+
 export const PROJECT_STATUS_COLORS = ["none", "green", "yellow", "red", "blue", "muted"] as const;
 export type ProjectStatusColor = (typeof PROJECT_STATUS_COLORS)[number];
 
@@ -14,11 +16,10 @@ export function isProjectStatusColor(value: unknown): value is ProjectStatusColo
   return typeof value === "string" && (PROJECT_STATUS_COLORS as readonly string[]).includes(value);
 }
 
-/** Asana-style status dot classes shared by the home widget and header chips. */
 export function statusColorDot(color: string | null | undefined): string {
-  if (color === "green") return "bg-green-600";
-  if (color === "yellow") return "bg-amber-500";
-  if (color === "red") return "bg-red-600";
-  if (color === "blue") return "bg-blue-600";
-  return "bg-neutral-400";
+  if (color === "green") return PROJECT_STATUS_DOT_CLASSES.green;
+  if (color === "yellow") return PROJECT_STATUS_DOT_CLASSES.yellow;
+  if (color === "red") return PROJECT_STATUS_DOT_CLASSES.red;
+  if (color === "blue") return PROJECT_STATUS_DOT_CLASSES.blue;
+  return PROJECT_STATUS_DOT_CLASSES.muted;
 }

@@ -250,7 +250,7 @@ export default function FormsView({
                     data-form-answer={form.id}
                     disabled={!form.published}
                     onClick={() => openAnswer(form)}
-                    className="h-7 rounded-md bg-[#eff4fd] px-2 text-[12px] font-medium text-accent-text hover:bg-[#e1ecfc] disabled:opacity-40"
+                    className="h-7 rounded-md bg-accent-soft px-2 text-[12px] font-medium text-accent-text hover:bg-accent-soft-hover disabled:opacity-40"
                   >
                     回答
                   </button>
@@ -384,7 +384,7 @@ export default function FormsView({
                         })
                       }
                       data-form-field-type={index}
-                      className="h-7 rounded border border-line bg-white px-1 text-[12px] disabled:bg-neutral-100"
+                      className="h-7 rounded border border-line bg-field px-1 text-[12px] disabled:bg-surface-muted"
                     >
                       {FORM_FIELD_TYPES.map((type) => (
                         <option key={type.value} value={type.value}>
@@ -489,7 +489,7 @@ export default function FormsView({
               {answering.fields.map((field) => (
                 <label key={field.key} htmlFor={`${formId}-answer-field-${field.key}`} className="block text-[12px] font-medium text-secondary">
                   {field.label}
-                  {field.required && <span className="ml-1 text-red-500">*</span>}
+                  {field.required && <span className="ml-1 text-danger">*</span>}
                   {field.type === "textarea" ? (
                     <textarea
                       id={`${formId}-answer-field-${field.key}`}
@@ -513,7 +513,7 @@ export default function FormsView({
                       value={answers[field.key] ?? ""}
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
-                      className="mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
+                      className="mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
                     >
                       <option value="">選択してください</option>
                       {field.options.map((option) => (

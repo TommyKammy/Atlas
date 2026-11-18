@@ -67,7 +67,7 @@ export default function ProjectTitle({
             setEditing(false);
           }
         }}
-        className="min-w-0 w-[min(60vw,520px)] max-w-full rounded-md border border-blue-500 bg-white px-1 text-[18px] leading-7 font-medium outline-none md:max-w-[420px] sm:text-[20px]"
+        className="min-w-0 w-[min(60vw,520px)] max-w-full rounded-md border border-accent bg-field px-1 text-[18px] leading-7 font-medium outline-none md:max-w-[420px] sm:text-[20px]"
       />
     );
   }

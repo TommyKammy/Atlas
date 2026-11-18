@@ -261,7 +261,7 @@ export default function DashboardView({
           action={
             <a
               href={`/projects/${projectId}?view=list`}
-              className="h-8 rounded-md bg-[#2c60b8] px-4 text-[13px] font-medium leading-8 text-on-accent hover:bg-accent-hover"
+              className="h-8 rounded-md bg-accent px-4 text-[13px] font-medium leading-8 text-on-accent hover:bg-accent-hover"
             >
               リストでタスクを追加
             </a>
@@ -295,7 +295,7 @@ export default function DashboardView({
               className={`group relative flex flex-col rounded-lg border bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${
                 isNumber ? "min-h-[140px]" : "min-h-[180px]"
               } ${
-                overId === widget.id && dragId !== null ? "border-[#4075cf] ring-2 ring-focus-ring/20" : "border-line"
+                overId === widget.id && dragId !== null ? "border-accent ring-2 ring-focus-ring/20" : "border-line"
               } ${span}`}
             >
               <div className="flex items-start gap-2 px-4 pb-1 pt-3">
@@ -322,7 +322,7 @@ export default function DashboardView({
                       }}
                       aria-label="ウィジェットを移動"
                       title="ドラッグして移動"
-                      className="cursor-grab rounded p-0.5 text-neutral-300 opacity-0 hover:bg-hover hover:text-neutral-500 group-hover:opacity-100"
+                      className="cursor-grab rounded p-0.5 text-subtle opacity-0 hover:bg-hover hover:text-muted group-hover:opacity-100"
                     >
                       <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
                         <circle cx="5" cy="4" r="1" />

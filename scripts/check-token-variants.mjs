@@ -230,6 +230,7 @@ export const TOKEN_PROPERTIES = new Map([
   ["bg-surface-subtle", "bg"],
   ["bg-surface-muted", "bg"],
   ["bg-surface-strong", "bg"],
+  ["bg-field", "bg"],
   ["bg-line", "bg"],
   ["bg-accent-soft", "bg"],
   ["bg-danger-soft", "bg"],
@@ -276,12 +277,29 @@ const SEMANTIC_TOKEN_VALUES = new Set([
   "surface-subtle",
   "surface-muted",
   "surface-strong",
+  "field",
   "hover",
   "hover-strong",
+  "overlay",
   "scrim",
+  "scrim-soft",
+  "inverse-surface",
+  "inverse-surface-subtle",
+  "inverse-surface-muted",
+  "inverse-surface-deep",
+  "inverse-line",
+  "inverse-line-subtle",
+  "inverse-text",
+  "inverse-text-strong",
+  "inverse-text-muted",
+  "inverse-accent",
+  "inverse-danger",
+  "inverse-favorite",
+  "on-strong",
   "line",
   "line-strong",
   "line-subtle",
+  "data-line",
   "text",
   "secondary",
   "muted",
@@ -290,17 +308,25 @@ const SEMANTIC_TOKEN_VALUES = new Set([
   "accent",
   "accent-text",
   "accent-soft",
+  "accent-soft-hover",
   "accent-hover",
   "accent-line",
   "danger",
   "danger-soft",
   "danger-line",
+  "danger-strong",
+  "danger-strong-hover",
+  "danger-action",
+  "danger-action-hover",
   "warning",
   "warning-soft",
   "warning-line",
+  "favorite",
   "success",
   "success-soft",
   "success-line",
+  "success-strong",
+  "success-strong-hover",
   "focus-ring",
   "background",
   "foreground",
@@ -590,16 +616,50 @@ export function parseDarkOverriddenVariants(css) {
 }
 
 /**
+ * Remove `@layer <name> { ... }` blocks so only unlayered rules remain.
+ * Utilities live in a layer, so a layered element rule is a fallback that a
+ * token utility overrides; it is not a conflict.
+ */
+function stripLayeredBlocks(css) {
+  let result = "";
+  let index = 0;
+  while (index < css.length) {
+    const start = css.indexOf("@layer", index);
+    if (start < 0) {
+      result += css.slice(index);
+      break;
+    }
+    result += css.slice(index, start);
+    const open = css.indexOf("{", start);
+    if (open < 0) {
+      result += css.slice(start);
+      break;
+    }
+    let depth = 1;
+    let cursor = open + 1;
+    while (cursor < css.length && depth > 0) {
+      if (css[cursor] === "{") depth += 1;
+      else if (css[cursor] === "}") depth -= 1;
+      cursor += 1;
+    }
+    index = cursor;
+  }
+  return result;
+}
+
+/**
  * Read the unlayered dark element rules for form controls from globals.css.
  * Returns a Map of element name -> Map of color property -> normalised value,
  * e.g. "input" -> Map([["bg", "#2b2b2b"], ["text", "#ededed"]]).
  * The selector must be exactly `html[data-theme="dark"] input` (likewise
  * select / textarea); grouped selectors are supported. Pseudo-element rules
  * (`input::placeholder`) and descendant rules (`select option`) are ignored.
+ * Rules inside `@layer` are fallbacks and are ignored: a token utility wins
+ * over them. Only unlayered element rules can block a token in dark mode.
  */
 export function parseFormControlRules(css) {
   const result = new Map();
-  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const withoutComments = stripLayeredBlocks(css.replace(/\/\*[\s\S]*?\*\//g, ""));
   for (const block of withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const values = declaredColorValues(block[2]);
     if (!values.size) continue;

@@ -83,7 +83,7 @@ export default function AssigneePicker({
         }}
         placeholder="名前またはメールアドレス"
         aria-label="担当者を検索"
-        className="h-8 w-full min-w-0 rounded border border-blue-500 bg-white px-2 text-[13px] outline-none"
+        className="h-8 w-full min-w-0 rounded border border-accent bg-field px-2 text-[13px] outline-none"
       />
       {position && (
         <>

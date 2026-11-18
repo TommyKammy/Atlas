@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
+import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import {
   customFieldDisplay,
   customValueToArray,
@@ -261,7 +262,7 @@ export default function TaskPane({
           onBlur={(event) =>
             setCustomValue(field.id, event.target.value === "" ? null : Number(event.target.value))
           }
-          className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
+          className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-field focus:border-accent focus:bg-field"
         />
       );
     }
@@ -272,7 +273,7 @@ export default function TaskPane({
           defaultValue={value?.value_date ?? ""}
           key={`cf-${task.id}-${field.id}`}
           onBlur={(event) => setCustomValue(field.id, event.target.value || null)}
-          className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
+          className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-field focus:border-accent focus:bg-field"
         />
       );
     }
@@ -310,7 +311,7 @@ export default function TaskPane({
           defaultValue={customValueToInput(field, value)}
           key={`cf-${task.id}-${field.id}`}
           onChange={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
-          className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
+          className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-field focus:border-accent focus:bg-field"
         >
           <option value="">–</option>
           {field.options.map((option) => (
@@ -326,7 +327,7 @@ export default function TaskPane({
         defaultValue={customValueToInput(field, value)}
         key={`cf-${task.id}-${field.id}`}
         onBlur={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
-        className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
+        className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-line hover:bg-field focus:border-accent focus:bg-field"
       />
     );
   };
@@ -356,7 +357,7 @@ export default function TaskPane({
       aria-modal="true"
       aria-label="タスク詳細"
       data-task-pane
-      className={`taskpane-enter flex w-full shrink-0 flex-col overflow-hidden border-t bg-white ${
+      className={`taskpane-enter flex w-full shrink-0 flex-col overflow-hidden border-t bg-surface ${
         maximized
           ? "fixed inset-0 z-[120]"
           : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[100dvh] md:w-[560px] md:self-start md:border-l md:border-t-0 xl:w-[680px] 2xl:w-[760px]"
@@ -407,7 +408,7 @@ export default function TaskPane({
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={retryOverwrite}
-                  className="rounded bg-red-600 px-3 py-1 text-on-accent hover:bg-red-700"
+                  className="rounded bg-danger-strong px-3 py-1 text-on-accent hover:bg-danger-strong-hover"
                 >
                   最新で上書きする
                 </button>
@@ -612,11 +613,11 @@ export default function TaskPane({
                   onSave={(value, stamp) => patch({ progress: Math.max(0, Math.min(100, Number(value))) }, stamp)}
                   normalize={(value) => String(Math.max(0, Math.min(100, Number(value))))}
                   label="進捗"
-                  className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
+                  className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-field focus:border-accent focus:bg-field"
                 />
                 <span className="text-[10px] text-subtle">%</span>
                 <span className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-strong">
-                  <span className="block h-full rounded-full bg-green-500" style={{ width: `${task.progress}%` }} />
+                  <span className={`block h-full rounded-full ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${task.progress}%` }} />
                 </span>
               </div>
             </FieldRow>
@@ -652,7 +653,7 @@ export default function TaskPane({
               <select
                 value={task.recurrence ?? "none"}
                 onChange={(event) => patch({ recurrence: event.target.value })}
-                className="h-7 max-w-[180px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-white focus:border-accent focus:bg-white"
+                className="h-7 max-w-[180px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-line hover:bg-field focus:border-accent focus:bg-field"
                 aria-label="繰り返し"
               >
                 <option value="none">なし</option>

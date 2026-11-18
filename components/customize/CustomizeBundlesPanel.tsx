@@ -82,7 +82,7 @@ export default function CustomizeBundlesPanel({
                     data-customize-bundle-apply={bundle.id}
                     disabled={!canEdit || busy || bundle.applied}
                     onClick={() => onApply(bundle)}
-                    className="h-7 rounded-md bg-[#eff4fd] px-2 text-[12px] font-medium text-accent-text hover:bg-[#e1ecfc] disabled:opacity-40"
+                    className="h-7 rounded-md bg-accent-soft px-2 text-[12px] font-medium text-accent-text hover:bg-accent-soft-hover disabled:opacity-40"
                   >
                     {bundle.applied ? "適用済み" : "適用"}
                   </button>

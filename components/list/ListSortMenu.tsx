@@ -41,7 +41,7 @@ export default function ListSortMenu({
           type="button"
           onClick={onClear}
           disabled={sortKey === "position"}
-          className="text-[12px] text-[#2c60b8] hover:underline disabled:text-neutral-300 disabled:no-underline"
+          className="text-[12px] text-accent-text hover:underline disabled:text-subtle disabled:no-underline"
         >
           クリア
         </button>

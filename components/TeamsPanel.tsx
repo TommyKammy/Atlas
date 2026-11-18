@@ -173,7 +173,7 @@ export default function TeamsPanel({
                 <span className="flex items-center gap-1.5">
                   <span className="truncate font-medium">{team.name}</span>
                   {team.status === "approved" && (
-                    <span className="rounded bg-amber-100 px-1 text-[10px] text-warning">認定済み</span>
+                    <span className="rounded bg-warning-soft px-1 text-[10px] text-warning">認定済み</span>
                   )}
                 </span>
                 {team.description && (
@@ -187,7 +187,7 @@ export default function TeamsPanel({
                       key={member.id}
                       name={member.name}
                       url={member.avatar_url}
-                      className="h-6 w-6 ring-2 ring-white"
+                      className="h-6 w-6 ring-2 ring-on-strong"
                       textClassName="text-[9px]"
                     />
                   ))}
@@ -217,7 +217,7 @@ export default function TeamsPanel({
       {msg && <p className="mt-3 text-sm text-danger">{msg}</p>}
 
       {open && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-scrim p-4" onClick={() => setOpen(false)}>
           <div
             className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-surface p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}

@@ -10,12 +10,12 @@ import SidebarToggle from "./SidebarToggle";
 import { RAIL_FLYOUTS, RAIL_ITEMS, visibleNavItems, type SidebarIconName } from "@/lib/navigation";
 
 const RAIL_BUTTON = "flex h-9 w-9 items-center justify-center rounded-lg";
-const RAIL_IDLE = "text-neutral-400 hover:bg-white/10 hover:text-white";
-const RAIL_ACTIVE = "bg-white/15 text-white";
+const RAIL_IDLE = "text-inverse-text-muted hover:bg-overlay/10 hover:text-on-strong";
+const RAIL_ACTIVE = "bg-overlay/15 text-on-strong";
 const FLYOUT_PANEL =
-  "absolute left-full top-0 z-[60] ml-2 w-56 rounded-lg border border-white/10 bg-[#1f1f1f] p-2 text-neutral-200 shadow-2xl";
+  "absolute left-full top-0 z-[60] ml-2 w-56 rounded-lg border border-overlay/10 bg-inverse-surface-subtle p-2 text-inverse-text shadow-2xl";
 const FLYOUT_LINK =
-  "flex items-center rounded px-2 py-1.5 text-[13px] text-neutral-200 hover:bg-white/10 hover:text-white";
+  "flex items-center rounded px-2 py-1.5 text-[13px] text-inverse-text hover:bg-overlay/10 hover:text-on-strong";
 
 function RailIcon({ name }: { name: SidebarIconName }) {
   const common = {
@@ -127,7 +127,7 @@ export default function SidebarRail({
               data-sidebar-flyout={item.href}
               className={`${FLYOUT_PANEL} ${collapsed && openHref === item.href ? "" : "hidden"}`}
             >
-              <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-subtle">
+              <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-inverse-text-muted">
                 {item.label}
               </div>
               {visibleNavItems(RAIL_FLYOUTS[item.href] ?? [], showPortfolio).map((link) => (

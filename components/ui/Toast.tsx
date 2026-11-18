@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 
 export default function Toast({
   message,
-  className = "fixed bottom-6 left-1/2 z-[120] -translate-x-1/2 rounded-md bg-neutral-900 px-4 py-2 text-sm text-on-accent shadow-lg",
+  className = "fixed bottom-6 left-1/2 z-[120] -translate-x-1/2 rounded-md bg-inverse-surface-deep px-4 py-2 text-sm text-on-strong shadow-lg",
   portal = false,
 }: {
   message: string;

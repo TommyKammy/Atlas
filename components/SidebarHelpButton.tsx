@@ -49,7 +49,7 @@ export default function SidebarHelpButton() {
         onClick={openMenu}
         aria-label="ヘルプ"
         title="ヘルプ"
-        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-white/10 hover:text-white"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-inverse-text-muted hover:bg-overlay/10 hover:text-on-strong"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
           <circle cx="12" cy="12" r="9" />
@@ -110,7 +110,7 @@ export default function SidebarHelpButton() {
       {shortcuts &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/40 p-4" onClick={() => setShortcuts(false)}>
+          <div className="fixed inset-0 z-[140] flex items-center justify-center bg-scrim p-4" onClick={() => setShortcuts(false)}>
             <div data-shortcuts-dialog className="w-[28rem] max-w-[90vw] rounded-lg bg-surface p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
               <h2 className="font-bold">キーボードショートカット</h2>
               <div className="mt-3 space-y-2 text-sm">
@@ -122,7 +122,7 @@ export default function SidebarHelpButton() {
                 ))}
               </div>
               <div className="mt-4 text-right">
-                <button type="button" data-shortcuts-close onClick={() => setShortcuts(false)} className="rounded bg-neutral-800 px-3 py-1 text-sm text-on-accent">
+                <button type="button" data-shortcuts-close onClick={() => setShortcuts(false)} className="rounded bg-inverse-surface px-3 py-1 text-sm text-on-strong">
                   閉じる
                 </button>
               </div>

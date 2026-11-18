@@ -39,7 +39,7 @@ export default function ProjectShareDialog({
       open
       onClose={onClose}
       title={title ?? `${projectName}を共有`}
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="max-h-[90vh] w-[min(560px,90vw)] overflow-y-auto rounded-lg bg-surface text-sm shadow-xl"
     >
       <div className="p-5" data-project-share-dialog>
@@ -61,7 +61,7 @@ export default function ProjectShareDialog({
           <input
             readOnly
             value={url}
-            className="h-8 min-w-0 flex-1 rounded-md border bg-neutral-50 px-2 text-xs text-neutral-600"
+            className="h-8 min-w-0 flex-1 rounded-md border bg-surface-subtle px-2 text-xs text-secondary"
           />
           <button
             type="button"

@@ -59,7 +59,7 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
                   textClassName="text-[9px]"
                 />
                 {isUnread(mention) && (
-                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-accent" />
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-on-strong bg-accent" />
                 )}
               </span>
               <span className="min-w-0 flex-1">

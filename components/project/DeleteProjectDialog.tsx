@@ -49,7 +49,7 @@ export default function DeleteProjectDialog({
       open
       onClose={onClose}
       title="プロジェクトを削除"
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="w-[min(540px,94vw)] rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-delete-dialog className="p-6">
@@ -83,7 +83,7 @@ export default function DeleteProjectDialog({
           <input
             value={confirmName}
             onChange={(event) => setConfirmName(event.target.value)}
-            className="h-9 w-full rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-[#b42318] focus:ring-2 focus:ring-[#b42318]/20"
+            className="h-9 w-full rounded-md border border-line-strong px-2.5 text-sm outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
             placeholder={projectName}
           />
         </label>
@@ -97,7 +97,7 @@ export default function DeleteProjectDialog({
             type="button"
             onClick={() => void submit()}
             disabled={!matches || busy}
-            className="flex h-8 items-center rounded-md bg-[#c94848] px-3 text-sm font-medium text-on-accent hover:bg-[#b83c3c] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-8 items-center rounded-md bg-danger-action px-3 text-sm font-medium text-on-accent hover:bg-danger-action-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? "削除中…" : "プロジェクトを削除"}
           </button>

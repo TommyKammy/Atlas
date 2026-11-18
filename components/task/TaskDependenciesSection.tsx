@@ -83,7 +83,7 @@ export default function TaskDependenciesSection({
                   onAdd();
                   setAdding(false);
                 }}
-                className="shrink-0 rounded bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-neutral-200 disabled:text-neutral-500"
+                className="shrink-0 rounded bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-surface-strong disabled:text-muted"
               >
                 追加
               </button>

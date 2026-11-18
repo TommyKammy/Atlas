@@ -20,7 +20,7 @@ export default function ArchiveProjectDialog({
       open
       onClose={onClose}
       title="プロジェクトをアーカイブ"
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="w-[min(420px,90vw)] rounded-lg bg-surface text-sm shadow-xl"
     >
       <div data-project-archive-dialog className="p-5">
@@ -34,7 +34,7 @@ export default function ArchiveProjectDialog({
           </button>
           <button
             type="button"
-            className="flex h-8 items-center rounded-md bg-[#c94848] px-3 text-sm font-medium text-on-accent hover:bg-[#b83c3c] disabled:opacity-60"
+            className="flex h-8 items-center rounded-md bg-danger-action px-3 text-sm font-medium text-on-accent hover:bg-danger-action-hover disabled:opacity-60"
             disabled={busy}
             onClick={onArchive}
           >

@@ -153,7 +153,7 @@ export function SamlSection({
           <div>
             <div className="text-muted">ACS URL</div>
             <div className="mt-0.5 flex gap-2">
-              <input readOnly value={acsUrl} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
+              <input readOnly value={acsUrl} className="min-w-0 flex-1 rounded border bg-surface-subtle px-2 py-1 font-mono" />
               <button onClick={() => copy(acsUrl)} className="rounded border px-2 py-1 hover:bg-hover">
                 コピー
               </button>
@@ -162,7 +162,7 @@ export function SamlSection({
           <div>
             <div className="text-muted">SP メタデータ URL</div>
             <div className="mt-0.5 flex gap-2">
-              <input readOnly value={metadataUrl} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
+              <input readOnly value={metadataUrl} className="min-w-0 flex-1 rounded border bg-surface-subtle px-2 py-1 font-mono" />
               <button onClick={() => copy(metadataUrl)} className="rounded border px-2 py-1 hover:bg-hover">
                 コピー
               </button>
@@ -171,7 +171,7 @@ export function SamlSection({
           <div>
             <div className="text-muted">Issuer / Entity ID</div>
             <div className="mt-0.5 flex gap-2">
-              <input readOnly value={issuer} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
+              <input readOnly value={issuer} className="min-w-0 flex-1 rounded border bg-surface-subtle px-2 py-1 font-mono" />
               <button onClick={() => copy(issuer)} className="rounded border px-2 py-1 hover:bg-hover">
                 コピー
               </button>

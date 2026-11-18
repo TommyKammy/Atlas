@@ -217,7 +217,7 @@ export default function AdminPanel({
                       <span className="rounded bg-surface-strong px-1 text-[10px] text-secondary">無効</span>
                     )}
                     {u.totp_enabled && (
-                      <span className="rounded bg-emerald-100 px-1 text-[10px] text-emerald-700" title="二要素認証が有効です">
+                      <span className="rounded bg-success-soft px-1 text-[10px] text-success" title="二要素認証が有効です">
                         2FA
                       </span>
                     )}
@@ -231,7 +231,7 @@ export default function AdminPanel({
                   value={roleOf(u)}
                   onChange={(e) => setRoleFor(u.id, e.target.value)}
                   disabled={!u.can_manage || u.id === currentUserId}
-                  className="h-7 w-full rounded border bg-white px-1 text-xs disabled:bg-neutral-100 disabled:text-neutral-400"
+                  className="h-7 w-full rounded border bg-field px-1 text-xs disabled:bg-surface-muted disabled:text-subtle"
                   title={u.id === currentUserId ? "自分自身の権限は変更できません" : undefined}
                 >
                   {roleOptions.map((r) => (
@@ -344,7 +344,7 @@ export default function AdminPanel({
             {inviteResult.emailed ? "招待メールを送信しました" : "SMTP未設定: 下のリンクを招待者に共有してください"}
           </div>
           <div className="mt-1 flex gap-2">
-            <input readOnly value={inviteResult.url} className="min-w-0 flex-1 rounded border bg-white px-2 py-1 font-mono" />
+            <input readOnly value={inviteResult.url} className="min-w-0 flex-1 rounded border bg-field px-2 py-1 font-mono" />
             <button
               onClick={() => navigator.clipboard?.writeText(inviteResult.url).catch(() => undefined)}
               className="rounded border bg-surface px-2 py-1 text-secondary hover:bg-hover"
@@ -376,7 +376,7 @@ export default function AdminPanel({
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setEditing(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4" onClick={() => setEditing(null)}>
           <div className="w-full max-w-md rounded-xl bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-semibold">ユーザー編集</h2>
             <div className="mt-3 grid gap-2">

@@ -164,7 +164,7 @@ export default function SidebarProjectLink({
     <>
       <Link {...reorderProps} data-project-reorder={reorderProps ? project.id : undefined} href={href} className={className} onContextMenu={openMenu}>
         {leading === "star" ? (
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0 text-amber-300">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0 text-inverse-favorite">
             <path d="m12 3 2.7 5.9 6.3.7-4.7 4.3 1.3 6.3-5.6-3.2-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z" />
           </svg>
         ) : (

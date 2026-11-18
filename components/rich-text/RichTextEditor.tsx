@@ -145,7 +145,7 @@ export default function RichTextEditor({
         borderless
           ? "border-0"
           : focused
-            ? "border border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]"
+            ? "border border-accent shadow-[0_0_0_2px_rgba(64,117,207,0.12)]"
             : "border border-line-strong"
       } ${className}`}
       aria-busy={!ready}

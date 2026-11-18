@@ -94,7 +94,7 @@ export function RuleEntityPicker({ projectId, kind, value, onChange, label, fiel
             }
             if (event.key === "Enter" && open) { event.preventDefault(); if (options[activeIndex]) choose(options[activeIndex]); }
           }}
-          className="h-9 min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] outline-none focus:border-[#4573d2] focus:ring-2 focus:ring-[#4573d2]/15 disabled:bg-neutral-50" />
+          className="h-9 min-w-0 flex-1 rounded-md border border-line-strong bg-field px-2.5 text-[13px] outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/15 disabled:bg-surface-subtle" />
         {value !== null && !disabled && <button type="button" aria-label={`${label}をクリア`}
           onClick={() => { onChange(null); setQuery(""); }} className="rounded px-2 text-subtle hover:bg-hover hover:text-secondary">×</button>}
       </div>

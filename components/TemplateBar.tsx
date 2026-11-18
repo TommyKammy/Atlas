@@ -138,7 +138,7 @@ export default function TemplateBar({
           </button>
         </span>
       ) : (
-        <button onClick={() => setForming(true)} aria-label="テンプレートを新規作成" className="text-secondary hover:text-black">
+        <button onClick={() => setForming(true)} aria-label="テンプレートを新規作成" className="text-secondary hover:text-text">
           ＋ 新規
         </button>
       )}

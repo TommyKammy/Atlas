@@ -122,7 +122,7 @@ export function TwoFactorSection({
               <span className="w-24 text-[11px] text-muted">{user.role_name ?? "–"}</span>
               <span
                 className={`w-20 rounded px-1.5 py-0.5 text-center text-[11px] ${
-                  user.totp_enabled ? "bg-emerald-100 text-emerald-700" : "bg-surface-muted text-muted"
+                  user.totp_enabled ? "bg-success-soft text-success" : "bg-surface-muted text-muted"
                 }`}
               >
                 {user.totp_enabled ? "有効" : "未設定"}

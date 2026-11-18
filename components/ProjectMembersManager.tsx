@@ -135,7 +135,7 @@ export default function ProjectMembersManager({
             value={addUserId}
             onChange={(e) => setAddUserId(e.target.value)}
             aria-label="追加するユーザー"
-            className="h-8 min-w-40 flex-1 rounded-md border border-line bg-white px-2 text-sm"
+            className="h-8 min-w-40 flex-1 rounded-md border border-line bg-field px-2 text-sm"
           >
             <option value="">ユーザーを選択…</option>
             {candidates.map((u) => (
@@ -148,7 +148,7 @@ export default function ProjectMembersManager({
           <select
             value={addRole}
             onChange={(e) => setAddRole(e.target.value as ProjectRole)}
-            className="h-8 rounded-md border border-line bg-white px-2 text-xs"
+            className="h-8 rounded-md border border-line bg-field px-2 text-xs"
             title={PROJECT_ROLE_DESCRIPTIONS[addRole]}
           >
             {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (
@@ -179,7 +179,7 @@ export default function ProjectMembersManager({
               <div className="flex items-center gap-1">
                 <span className="truncate text-sm font-medium">{m.name}</span>
                 {m.is_guest && (
-                  <span className="rounded bg-amber-100 px-1 text-[10px] text-warning">ゲスト</span>
+                  <span className="rounded bg-warning-soft px-1 text-[10px] text-warning">ゲスト</span>
                 )}
                 {m.deactivated_at && (
                   <span className="rounded bg-surface-strong px-1 text-[10px] text-secondary">無効</span>
@@ -199,7 +199,7 @@ export default function ProjectMembersManager({
                   value={m.role}
                   onChange={(e) => changeRole(m.id, e.target.value as ProjectRole)}
                   disabled={busy}
-                  className="h-7 rounded border border-line bg-white px-1 text-xs"
+                  className="h-7 rounded border border-line bg-field px-1 text-xs"
                   title={PROJECT_ROLE_DESCRIPTIONS[m.role]}
                 >
                   {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (

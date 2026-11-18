@@ -143,14 +143,14 @@ export default function ProjectSettingsDialog({
   };
 
   const field =
-    "h-9 w-full rounded-md border border-line-strong bg-white px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20";
+    "h-9 w-full rounded-md border border-line-strong bg-field px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20";
 
   return (
     <Dialog
       open
       onClose={onClose}
       title="プロジェクト設定"
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="flex max-h-[90vh] w-[min(880px,94vw)] flex-col overflow-hidden rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-settings-dialog className="flex min-h-0 flex-1 flex-col">
@@ -179,8 +179,8 @@ export default function ProjectSettingsDialog({
                 onClick={() => setTab(entry.key)}
                 className={`flex h-9 w-full items-center rounded-md px-3 text-left text-[13px] ${
                   tab === entry.key
-                    ? "bg-surface font-semibold text-text shadow-sm ring-1 ring-neutral-200"
-                    : "text-secondary hover:bg-white/70"
+                    ? "bg-surface font-semibold text-text shadow-sm ring-1 ring-line"
+                    : "text-secondary hover:bg-surface/70"
                 }`}
               >
                 {entry.label}
@@ -204,7 +204,7 @@ export default function ProjectSettingsDialog({
                         value={description}
                         onChange={(event) => setDescription(event.target.value)}
                         rows={3}
-                        className="w-full rounded-md border border-line-strong bg-white px-2.5 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
+                        className="w-full rounded-md border border-line-strong bg-field px-2.5 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
                         maxLength={5000}
                       />
                     </label>
@@ -251,7 +251,7 @@ export default function ProjectSettingsDialog({
                         key={mode}
                         className={`flex cursor-pointer items-start gap-2 rounded-md border p-3 ${
                           settings.dependency_buffer === mode
-                            ? "border-[#4075cf] bg-accent-soft"
+                            ? "border-accent bg-accent-soft"
                             : "border-line hover:bg-hover"
                         }`}
                       >
@@ -307,7 +307,7 @@ export default function ProjectSettingsDialog({
                               }
                               className={`h-9 w-10 rounded-md border text-sm ${
                                 active
-                                  ? "border-[#4075cf] bg-accent-soft font-semibold text-accent-text"
+                                  ? "border-accent bg-accent-soft font-semibold text-accent-text"
                                   : "border-line bg-surface text-muted hover:bg-hover"
                               }`}
                             >

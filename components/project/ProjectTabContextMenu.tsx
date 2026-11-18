@@ -31,8 +31,9 @@ export default function ProjectTabContextMenu({
   useMenuKeyboard({ containerRef: panelRef, onClose });
 
   if (typeof document === "undefined") return null;
-  const item =
-    "flex h-9 w-full items-center px-3 text-left text-[14px] text-neutral-800 hover:bg-hover disabled:cursor-default disabled:text-neutral-400 disabled:hover:bg-hover";
+  const itemBase =
+    "flex h-9 w-full items-center px-3 text-left text-[14px] hover:bg-hover disabled:cursor-default disabled:text-subtle disabled:hover:bg-hover";
+  const item = `${itemBase} text-text`;
 
   return createPortal(
     <>
@@ -98,7 +99,7 @@ export default function ProjectTabContextMenu({
           data-project-tab-menu-item="delete"
           disabled={!canEdit || !canDelete || busy}
           onClick={() => onAction("delete")}
-          className={`${item} text-red-600 hover:bg-danger-soft disabled:text-neutral-400 disabled:hover:bg-hover`}
+          className={`${itemBase} text-danger hover:bg-danger-soft disabled:text-subtle disabled:hover:bg-hover`}
         >
           削除
         </button>

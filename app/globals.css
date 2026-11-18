@@ -17,16 +17,35 @@
   --atlas-surface-subtle: oklch(98.5% 0 none);
   --atlas-surface-muted: oklch(97% 0 none);
   --atlas-surface-strong: oklch(92.2% 0 none);
+  --atlas-field: #ffffff;
   --atlas-hover: #f5f5f5;
   --atlas-hover-strong: #e5e5e5;
 
   /* Overlay */
+  --atlas-overlay: #ffffff;
   --atlas-scrim: rgb(0 0 0 / 0.25);
+  --atlas-scrim-soft: rgb(0 0 0 / 0.15);
+
+  /* Inverse chrome (always-dark sidebar, floating toolbars, toasts) */
+  --atlas-inverse-surface: #262626;
+  --atlas-inverse-surface-subtle: #1f1f1f;
+  --atlas-inverse-surface-muted: #2c2c2c;
+  --atlas-inverse-surface-deep: #171717;
+  --atlas-inverse-line: #505050;
+  --atlas-inverse-line-subtle: #333333;
+  --atlas-inverse-text: #e5e5e5;
+  --atlas-inverse-text-strong: #f3f3f3;
+  --atlas-inverse-text-muted: #a0a0a0;
+  --atlas-inverse-accent: #8db8ff;
+  --atlas-inverse-danger: #ffa3a3;
+  --atlas-inverse-favorite: #fde68a;
+  --atlas-on-strong: #ffffff;
 
   /* Lines */
   --atlas-line: #eaeaea;
   --atlas-line-strong: oklch(87% 0 none);
   --atlas-line-subtle: #f5f5f5;
+  --atlas-data-line: rgb(0 0 0 / 0.10);
 
   /* Text */
   --atlas-text: #171717;
@@ -39,6 +58,7 @@
   --atlas-accent: #2c60b8;
   --atlas-accent-text: #2c60b8;
   --atlas-accent-soft: #eff4fd;
+  --atlas-accent-soft-hover: #dbe8fb;
   --atlas-accent-hover: #24529c;
   --atlas-accent-line: #bedbff;
 
@@ -46,12 +66,19 @@
   --atlas-danger: oklch(57.7% 0.245 27.325);
   --atlas-danger-soft: oklch(97.1% 0.013 17.38);
   --atlas-danger-line: #ffcaca;
+  --atlas-danger-strong: oklch(57.7% 0.245 27.325);
+  --atlas-danger-strong-hover: oklch(50.5% 0.213 27.518);
+  --atlas-danger-action: #c94848;
+  --atlas-danger-action-hover: #b83c3c;
   --atlas-success: oklch(52.7% 0.154 150.069);
   --atlas-success-soft: oklch(96.2% 0.044 156.743);
   --atlas-success-line: #b9f8cf;
+  --atlas-success-strong: oklch(52.7% 0.154 150.069);
+  --atlas-success-strong-hover: oklch(44.8% 0.119 151.328);
   --atlas-warning: oklch(47.3% 0.137 46.201);
   --atlas-warning-soft: oklch(98.7% 0.022 95.277);
   --atlas-warning-line: #fee685;
+  --atlas-favorite: oklch(66.6% 0.179 58.318);
 
   /* Focus */
   --atlas-focus-ring: #2c60b8;
@@ -72,12 +99,29 @@
   --color-surface-subtle: var(--atlas-surface-subtle);
   --color-surface-muted: var(--atlas-surface-muted);
   --color-surface-strong: var(--atlas-surface-strong);
+  --color-field: var(--atlas-field);
   --color-hover: var(--atlas-hover);
   --color-hover-strong: var(--atlas-hover-strong);
+  --color-overlay: var(--atlas-overlay);
   --color-scrim: var(--atlas-scrim);
+  --color-scrim-soft: var(--atlas-scrim-soft);
+  --color-inverse-surface: var(--atlas-inverse-surface);
+  --color-inverse-surface-subtle: var(--atlas-inverse-surface-subtle);
+  --color-inverse-surface-muted: var(--atlas-inverse-surface-muted);
+  --color-inverse-surface-deep: var(--atlas-inverse-surface-deep);
+  --color-inverse-line: var(--atlas-inverse-line);
+  --color-inverse-line-subtle: var(--atlas-inverse-line-subtle);
+  --color-inverse-text: var(--atlas-inverse-text);
+  --color-inverse-text-strong: var(--atlas-inverse-text-strong);
+  --color-inverse-text-muted: var(--atlas-inverse-text-muted);
+  --color-inverse-accent: var(--atlas-inverse-accent);
+  --color-inverse-danger: var(--atlas-inverse-danger);
+  --color-inverse-favorite: var(--atlas-inverse-favorite);
+  --color-on-strong: var(--atlas-on-strong);
   --color-line: var(--atlas-line);
   --color-line-strong: var(--atlas-line-strong);
   --color-line-subtle: var(--atlas-line-subtle);
+  --color-data-line: var(--atlas-data-line);
   --color-text: var(--atlas-text);
   --color-secondary: var(--atlas-text-secondary);
   --color-muted: var(--atlas-text-muted);
@@ -86,17 +130,25 @@
   --color-accent: var(--atlas-accent);
   --color-accent-text: var(--atlas-accent-text);
   --color-accent-soft: var(--atlas-accent-soft);
+  --color-accent-soft-hover: var(--atlas-accent-soft-hover);
   --color-accent-hover: var(--atlas-accent-hover);
   --color-accent-line: var(--atlas-accent-line);
   --color-danger: var(--atlas-danger);
   --color-danger-soft: var(--atlas-danger-soft);
   --color-danger-line: var(--atlas-danger-line);
+  --color-danger-strong: var(--atlas-danger-strong);
+  --color-danger-strong-hover: var(--atlas-danger-strong-hover);
+  --color-danger-action: var(--atlas-danger-action);
+  --color-danger-action-hover: var(--atlas-danger-action-hover);
   --color-success: var(--atlas-success);
   --color-success-soft: var(--atlas-success-soft);
   --color-success-line: var(--atlas-success-line);
+  --color-success-strong: var(--atlas-success-strong);
+  --color-success-strong-hover: var(--atlas-success-strong-hover);
   --color-warning: var(--atlas-warning);
   --color-warning-soft: var(--atlas-warning-soft);
   --color-warning-line: var(--atlas-warning-line);
+  --color-favorite: var(--atlas-favorite);
   --color-focus-ring: var(--atlas-focus-ring);
 
   --font-sans: var(--font-geist-sans);
@@ -122,16 +174,35 @@ html[data-theme="dark"] {
   --atlas-surface-subtle: #2a2a2a;
   --atlas-surface-muted: #303030;
   --atlas-surface-strong: #3a3a3a;
+  --atlas-field: #2b2b2b;
   --atlas-hover: #363636;
   --atlas-hover-strong: #3f3f3f;
 
   /* Overlay */
+  --atlas-overlay: #ffffff;
   --atlas-scrim: rgb(0 0 0 / 0.55);
+  --atlas-scrim-soft: rgb(0 0 0 / 0.15);
+
+  /* Inverse chrome (always-dark sidebar, floating toolbars, toasts) */
+  --atlas-inverse-surface: #262626;
+  --atlas-inverse-surface-subtle: #1f1f1f;
+  --atlas-inverse-surface-muted: #2c2c2c;
+  --atlas-inverse-surface-deep: #171717;
+  --atlas-inverse-line: #505050;
+  --atlas-inverse-line-subtle: #333333;
+  --atlas-inverse-text: #e0e0e0;
+  --atlas-inverse-text-strong: #f3f3f3;
+  --atlas-inverse-text-muted: #a0a0a0;
+  --atlas-inverse-accent: #8db8ff;
+  --atlas-inverse-danger: #ffa3a3;
+  --atlas-inverse-favorite: #fde68a;
+  --atlas-on-strong: #ffffff;
 
   /* Lines */
   --atlas-line: #3a3a3a;
   --atlas-line-strong: #4a4a4a;
   --atlas-line-subtle: #333333;
+  --atlas-data-line: rgb(0 0 0 / 0.10);
 
   /* Text */
   --atlas-text: #ededed;
@@ -144,6 +215,7 @@ html[data-theme="dark"] {
   --atlas-accent: #2c60b8;
   --atlas-accent-text: #8db8ff;
   --atlas-accent-soft: #20344f;
+  --atlas-accent-soft-hover: #2a4363;
   --atlas-accent-hover: #24529c;
   --atlas-accent-line: #2f4a6d;
 
@@ -151,12 +223,19 @@ html[data-theme="dark"] {
   --atlas-danger: #ff8f8f;
   --atlas-danger-soft: #3a2020;
   --atlas-danger-line: #5c3030;
+  --atlas-danger-strong: oklch(57.7% 0.245 27.325);
+  --atlas-danger-strong-hover: oklch(50.5% 0.213 27.518);
+  --atlas-danger-action: #c94848;
+  --atlas-danger-action-hover: #b83c3c;
   --atlas-success: #8fe0a0;
   --atlas-success-soft: #1e3a2a;
   --atlas-success-line: #2f5a3a;
+  --atlas-success-strong: oklch(52.7% 0.154 150.069);
+  --atlas-success-strong-hover: oklch(44.8% 0.119 151.328);
   --atlas-warning: #f0c987;
   --atlas-warning-soft: #332a18;
   --atlas-warning-line: #5a4520;
+  --atlas-favorite: oklch(66.6% 0.179 58.318);
 
   /* Focus */
   --atlas-focus-ring: #2c60b8;
@@ -171,56 +250,15 @@ html[data-theme="dark"] body {
   color: var(--atlas-text);
 }
 
-/* Surfaces */
-html[data-theme="dark"] .bg-white { background-color: #242424; }
-html[data-theme="dark"] .bg-neutral-50 { background-color: #2a2a2a; }
-html[data-theme="dark"] .bg-neutral-100 { background-color: #303030; }
-html[data-theme="dark"] .bg-neutral-200 { background-color: #3a3a3a; }
-html[data-theme="dark"] .bg-neutral-300 { background-color: #4a4a4a; }
-html[data-theme="dark"] [class~="bg-white/95"] { background-color: rgba(36, 36, 36, 0.95); }
-html[data-theme="dark"] [class~="bg-white/70"] { background-color: rgba(36, 36, 36, 0.7); }
-html[data-theme="dark"] [class~="bg-[#f3f3f3]"] { background-color: #2c2c2c; }
-html[data-theme="dark"] [class~="bg-[#f5f5f5]"] { background-color: #2a2a2a; }
-html[data-theme="dark"] [class~="bg-[#f5f9ff]"] { background-color: #1c2a3d; }
-html[data-theme="dark"] [class~="bg-[#eff4fd]"] { background-color: #20344f; }
-html[data-theme="dark"] [class~="bg-[#e1ecfc]"] { background-color: #263d5c; }
-html[data-theme="dark"] [class~="bg-[#dfe8fa]"] { background-color: #2a4363; }
-html[data-theme="dark"] [class~="bg-[#e3edfc]"] { background-color: #2a4363; }
-html[data-theme="dark"] [class~="bg-[#eaeaea]"] { background-color: #3a3a3a; }
-html[data-theme="dark"] [class~="bg-[#e1e1e1]"] { background-color: #3a3a3a; }
+/* Surfaces used by data colors and the AA-waiting status pairs (S3-2). */
 html[data-theme="dark"] [class~="bg-[#aaaaaa]"] { background-color: #4a4a4a; }
-html[data-theme="dark"] .bg-blue-50 { background-color: #1e2c40; }
-html[data-theme="dark"] .bg-blue-100 { background-color: #223a5c; }
-html[data-theme="dark"] .bg-red-50 { background-color: #3a2020; }
 html[data-theme="dark"] .bg-red-100 { background-color: #4a2323; }
 html[data-theme="dark"] .bg-red-200 { background-color: #5c2a2a; }
-html[data-theme="dark"] .bg-blue-300 { background-color: #31527d; }
-html[data-theme="dark"] .bg-amber-50 { background-color: #332a18; }
-html[data-theme="dark"] .bg-green-100 { background-color: #1e3a2a; }
-html[data-theme="dark"] .bg-amber-100 { background-color: #3d2f14; }
 
-/* Text */
-html[data-theme="dark"] .text-neutral-900 { color: #f5f5f5; }
-html[data-theme="dark"] .text-neutral-800 { color: #ebebeb; }
-html[data-theme="dark"] .text-neutral-700 { color: #dedede; }
-html[data-theme="dark"] .text-neutral-600 { color: #cfcfcf; }
-html[data-theme="dark"] .text-neutral-500 { color: #bdbdbd; }
-html[data-theme="dark"] .text-neutral-400 { color: #a9a9a9; }
-html[data-theme="dark"] .text-neutral-300 { color: #8f8f8f; }
-html[data-theme="dark"] .text-neutral-200 { color: #e0e0e0; }
-html[data-theme="dark"] [class~="text-[#050505]"] { color: #ededed; }
-html[data-theme="dark"] [class~="text-[#2c60b8]"],
-html[data-theme="dark"] [class~="text-[#2C60B8]"] { color: #8db8ff; }
+/* Status text kept as literals until S3-2 (danger on a soft/danger surface
+   is 4.46:1 and cannot use text-danger yet). */
 html[data-theme="dark"] .text-red-500 { color: #ff9a9a; }
-html[data-theme="dark"] .text-red-600 { color: #ff8f8f; }
 html[data-theme="dark"] .text-red-700 { color: #ffb3b3; }
-html[data-theme="dark"] .text-green-600 { color: #8fe0a0; }
-html[data-theme="dark"] .text-green-700 { color: #8fe0a0; }
-html[data-theme="dark"] .text-green-800 { color: #a7e8b4; }
-html[data-theme="dark"] .text-blue-700 { color: #a9ccff; }
-html[data-theme="dark"] .text-blue-800 { color: #b8d4ff; }
-html[data-theme="dark"] .text-blue-900 { color: #c0dbff; }
-html[data-theme="dark"] .text-amber-800 { color: #f0c987; }
 
 /* Keep initials on pastel avatar chips dark for contrast. */
 html[data-theme="dark"] .bg-violet-400,
@@ -229,46 +267,10 @@ html[data-theme="dark"] .bg-emerald-500,
 html[data-theme="dark"] .bg-sky-500,
 html[data-theme="dark"] .bg-rose-400 { color: #171717 !important; }
 
-/* Borders and dividers */
-html[data-theme="dark"] .border-neutral-200 { border-color: #3a3a3a; }
-html[data-theme="dark"] .border-neutral-100 { border-color: #333333; }
-html[data-theme="dark"] .border-neutral-300 { border-color: #4a4a4a; }
-html[data-theme="dark"] .border-neutral-400 { border-color: #5a5a5a; }
-html[data-theme="dark"] [class~="border-[#eaeaea]"] { border-color: #3a3a3a; }
-html[data-theme="dark"] [class~="border-[#e1e1e1]"] { border-color: #3a3a3a; }
-html[data-theme="dark"] [class~="divide-[#eaeaea]"] > * { border-color: #3a3a3a; }
-html[data-theme="dark"] .border-blue-200 { border-color: #2f4a6d; }
-html[data-theme="dark"] .border-red-200 { border-color: #5c3030; }
-html[data-theme="dark"] .border-red-300 { border-color: #6b3838; }
-
-/* Form controls without an explicit surface */
-html[data-theme="dark"] input,
-html[data-theme="dark"] select,
-html[data-theme="dark"] textarea {
-  background-color: #2b2b2b;
-  color: #ededed;
-}
-html[data-theme="dark"] input::placeholder,
-html[data-theme="dark"] textarea::placeholder { color: #8f8f8f; }
-html[data-theme="dark"] select option { background-color: #2b2b2b; color: #ededed; }
-
-/* Hover states that would otherwise flash white or black */
-html[data-theme="dark"] .hover\:bg-white:hover { background-color: #2e2e2e; }
-html[data-theme="dark"] .hover\:bg-neutral-50:hover { background-color: #303030; }
-html[data-theme="dark"] .hover\:bg-neutral-100:hover { background-color: #363636; }
-html[data-theme="dark"] .hover\:bg-neutral-200:hover { background-color: #3f3f3f; }
-html[data-theme="dark"] .hover\:text-black:hover { color: #ffffff; }
-html[data-theme="dark"] .hover\:text-neutral-700:hover { color: #dedede; }
-html[data-theme="dark"] .hover\:text-neutral-800:hover { color: #ebebeb; }
-
-/* Timeline bars and calendar day cells */
-html[data-theme="dark"] [class*="shadow-[0_0_0_1px_#eaeaea"] {
-  box-shadow: 0 0 0 1px #3a3a3a, 0 1px 4px rgba(0, 0, 0, 0.45);
-}
+/* Timeline scrollbar (not a utility class). */
 html[data-theme="dark"] .timeline-scroll { scrollbar-color: #5a5a5a transparent; }
 html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb { background: #5a5a5a; }
 html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { background: #737373; }
-
 
 /* Asana parity: hairline separators use #eaeaea, not currentColor.
    Tailwind v4 defaults bare `border` to currentColor (near-black text),
@@ -287,6 +289,20 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
   html[data-theme="dark"] ::before,
   html[data-theme="dark"] ::after {
     border-color: var(--atlas-line);
+  }
+
+  /* Fallback for form controls without an explicit field surface. Utilities
+     (bg-field, text-secondary, placeholder:text-subtle, disabled:*) win because
+     they live in the utilities layer. */
+  html[data-theme="dark"] input,
+  html[data-theme="dark"] select,
+  html[data-theme="dark"] textarea {
+    background-color: var(--atlas-field);
+    color: var(--atlas-text);
+  }
+  html[data-theme="dark"] select option {
+    background-color: var(--atlas-field);
+    color: var(--atlas-text);
   }
 
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {

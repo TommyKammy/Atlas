@@ -5,7 +5,7 @@ import type { CustomField } from "@/lib/custom-fields";
 import type { DescriptorOption } from "@/lib/automation/descriptors";
 import ReferencePicker from "../fields/ReferencePicker";
 
-const inputClass = "mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[12px] outline-none focus:border-accent";
+const inputClass = "mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[12px] outline-none focus:border-accent";
 
 /** Use the same stored value shapes as the task's custom-field editors. */
 export default function AutomationCustomFieldValue({ field, users, value, onChange }: {

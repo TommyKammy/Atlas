@@ -91,7 +91,7 @@ export default function FeedbackHost() {
           key={toastItem.id}
           role="status"
           data-toast
-          className="fixed bottom-6 left-1/2 z-[140] flex -translate-x-1/2 items-center gap-3 rounded-md bg-neutral-900 px-4 py-2 text-sm text-on-accent shadow-lg"
+          className="fixed bottom-6 left-1/2 z-[140] flex -translate-x-1/2 items-center gap-3 rounded-md bg-inverse-surface-deep px-4 py-2 text-sm text-on-strong shadow-lg"
         >
           <span>{toastItem.message}</span>
           {toastItem.action && (
@@ -99,7 +99,7 @@ export default function FeedbackHost() {
               type="button"
               data-toast-action
               onClick={runToastAction}
-              className="shrink-0 rounded px-1.5 py-0.5 text-sm font-medium text-[#8ab4f8] underline-offset-2 hover:bg-white/10 hover:underline"
+              className="shrink-0 rounded px-1.5 py-0.5 text-sm font-medium text-inverse-accent underline-offset-2 hover:bg-overlay/10 hover:underline"
             >
               {toastItem.actionLabel ?? "元に戻す"}
             </button>
@@ -110,7 +110,7 @@ export default function FeedbackHost() {
         open={confirmRequest !== null}
         onClose={() => finish(false)}
         title={confirmRequest?.title ?? "確認"}
-        backdropClassName="backdrop:bg-black/30"
+        backdropClassName="backdrop:bg-scrim"
         panelClassName="w-[min(440px,94vw)] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
       >
         <div className="p-5">

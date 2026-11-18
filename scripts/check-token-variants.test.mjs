@@ -15,9 +15,29 @@ import {
 } from "./check-token-variants.mjs";
 
 const GLOBALS_CSS = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-const DARK_OVERRIDES = parseDarkOverrides(GLOBALS_CSS);
-const FORM_CONTROLS = parseFormControlProperties(GLOBALS_CSS);
-const FORM_CONTROL_RULES = parseFormControlRules(GLOBALS_CSS);
+// Keep the legacy-overlap cases covered even though the migration removed most
+// real overrides. globals.css itself is checked separately below.
+const DARK_OVERRIDE_CSS = [
+  'html[data-theme="dark"] .bg-white { background-color: #242424; }',
+  'html[data-theme="dark"] .border-neutral-200 { border-color: #3a3a3a; }',
+  'html[data-theme="dark"] .text-neutral-700 { color: #dedede; }',
+  'html[data-theme="dark"] .text-blue-700 { color: #a9ccff; }',
+  'html[data-theme="dark"] .bg-violet-400 { color: #171717; }',
+].join("\n");
+const DARK_OVERRIDES = parseDarkOverrides(DARK_OVERRIDE_CSS);
+// globals.css keeps the form-control colors in @layer base as a fallback, so
+// the unlayered parser should find nothing there. The rule shape is still
+// covered by this sample.
+const FORM_CONTROL_CSS = [
+  'html[data-theme="dark"] input,',
+  'html[data-theme="dark"] select,',
+  'html[data-theme="dark"] textarea {',
+  "  background-color: #2b2b2b;",
+  "  color: #ededed;",
+  "}",
+].join("\n");
+const FORM_CONTROLS = parseFormControlProperties(FORM_CONTROL_CSS);
+const FORM_CONTROL_RULES = parseFormControlRules(FORM_CONTROL_CSS);
 const TOKEN_DARK_VALUES = parseTokenDarkValues(GLOBALS_CSS);
 
 const OVERRIDDEN = new Set([
@@ -129,6 +149,18 @@ test("classifies semantic token colors", () => {
   assert.equal(isSemanticTokenColor("border-t-line"), true);
   assert.equal(isSemanticTokenColor("bg-danger-soft"), true);
   assert.equal(isSemanticTokenColor("bg-scrim"), true);
+  assert.equal(isSemanticTokenColor("bg-scrim-soft"), true);
+  assert.equal(isSemanticTokenColor("bg-field"), true);
+  assert.equal(isSemanticTokenColor("bg-overlay/10"), true);
+  assert.equal(isSemanticTokenColor("bg-inverse-surface"), true);
+  assert.equal(isSemanticTokenColor("text-inverse-text"), true);
+  assert.equal(isSemanticTokenColor("border-inverse-line"), true);
+  assert.equal(isSemanticTokenColor("border-data-line"), true);
+  assert.equal(isSemanticTokenColor("text-on-strong"), true);
+  assert.equal(isSemanticTokenColor("bg-danger-strong"), true);
+  assert.equal(isSemanticTokenColor("hover:bg-danger-strong-hover"), false);
+  assert.equal(isSemanticTokenColor("bg-success-strong"), true);
+  assert.equal(isSemanticTokenColor("bg-accent-soft-hover"), true);
   assert.equal(isSemanticTokenColor("text-red-600"), false);
   assert.equal(isSemanticTokenColor("bg-[#2c60b8]"), false);
   assert.equal(isSemanticTokenColor("text-[13px]"), false);
@@ -239,6 +271,26 @@ test("splits stacked variants and keeps arbitrary variant colons intact", () => 
   assert.deepEqual(splitVariants("text-subtle"), { variants: [], base: "text-subtle" });
 });
 
+test("globals.css keeps only the data and AA-waiting dark overrides", () => {
+  assert.deepEqual(
+    [...parseDarkOverrides(GLOBALS_CSS).keys()].sort(),
+    [
+      "atlas-mention",
+      "atlas-rich-text",
+      "bg-[#aaaaaa]",
+      "bg-amber-400",
+      "bg-emerald-500",
+      "bg-red-100",
+      "bg-red-200",
+      "bg-rose-400",
+      "bg-sky-500",
+      "bg-violet-400",
+      "text-red-500",
+      "text-red-700",
+    ],
+  );
+});
+
 test("reads dark overrides from escaped selectors and [class~=...] selectors", () => {
   const css = [
     'html[data-theme="dark"] .hover\\:bg-neutral-50:hover { background-color: #303030; }',
@@ -330,6 +382,18 @@ test("matches the dark override property, not just the class name", () => {
   ]);
 });
 
+test("ignores form-control element rules inside @layer (fallbacks, not conflicts)", () => {
+  assert.deepEqual(parseFormControlRules(GLOBALS_CSS), new Map());
+  const layered = [
+    "@layer base {",
+    '  html[data-theme="dark"] input { background-color: #2b2b2b; }',
+    "}",
+    'html[data-theme="dark"] input { background-color: #222222; }',
+  ].join("\n");
+  const parsed = parseFormControlRules(layered);
+  assert.equal(parsed.get("input").get("bg"), "#222222");
+});
+
 test("reads background-color and color values from the dark form-control rule", () => {
   assert.deepEqual(FORM_CONTROLS.get("input"), new Set(["bg", "text"]));
   assert.deepEqual(FORM_CONTROLS.get("select"), new Set(["bg", "text"]));
@@ -348,6 +412,7 @@ test("resolves token dark values from the dark variables and @theme inline mappi
   assert.equal(TOKEN_DARK_VALUES.get("text-secondary"), "#cfcfcf");
   assert.equal(TOKEN_DARK_VALUES.get("text-muted"), "#bdbdbd");
   assert.equal(TOKEN_DARK_VALUES.get("bg-surface"), "#242424");
+  assert.equal(TOKEN_DARK_VALUES.get("bg-field"), "#2b2b2b");
   assert.equal(TOKEN_DARK_VALUES.get("bg-surface-muted"), "#303030");
   assert.equal(TOKEN_DARK_VALUES.get("bg-hover"), "#363636");
   assert.equal(TOKEN_DARK_VALUES.get("bg-hover-strong"), "#3f3f3f");

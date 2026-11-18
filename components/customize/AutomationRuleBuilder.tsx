@@ -19,7 +19,7 @@ import Dialog from "../ui/Dialog";
 import AutomationActionEditor, { defaultParams } from "./AutomationActionEditor";
 
 const inputClass =
-  "mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[12px] outline-none focus:border-accent";
+  "mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[12px] outline-none focus:border-accent";
 type RuleSuggestion = { name: string; description: string; definition: RuleDefinition };
 
 export default function AutomationRuleBuilder({
@@ -226,14 +226,14 @@ export default function AutomationRuleBuilder({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
-        <div className="rounded-lg border border-accent-line bg-[#f5f9ff] p-3">
+        <div className="rounded-lg border border-accent-line bg-accent-soft/40 p-3">
           <div className="text-[12px] font-semibold text-accent-text">AIアシスト</div>
           <div className="mt-2 flex gap-2">
             <input
               value={aiPrompt}
               onChange={(event) => setAiPrompt(event.target.value)}
               placeholder="例: 新規タスクを進行中にして担当者を田中さんにする"
-              className="h-8 min-w-0 flex-1 rounded-md border border-line bg-white px-2 text-[12px] outline-none focus:border-accent"
+              className="h-8 min-w-0 flex-1 rounded-md border border-line bg-field px-2 text-[12px] outline-none focus:border-accent"
             />
             <button
               type="button"
@@ -288,7 +288,7 @@ export default function AutomationRuleBuilder({
               type="button"
               onClick={addTrigger}
               disabled={triggers.length >= descriptors.limits.triggersPerRule}
-              className="text-[11px] text-[#2c60b8] hover:underline disabled:text-neutral-300"
+              className="text-[11px] text-accent-text hover:underline disabled:text-subtle"
             >
               ＋ トリガーを追加
             </button>
@@ -780,7 +780,7 @@ export default function AutomationRuleBuilder({
             <button
               type="button"
               onClick={addBranch}
-              className="h-8 rounded-md border border-dashed border-line-strong px-3 text-[11px] text-accent-text hover:bg-[#f5f9ff]"
+              className="h-8 rounded-md border border-dashed border-line-strong px-3 text-[11px] text-accent-text hover:bg-accent-soft/40"
             >
               ＋ パスを追加
             </button>
@@ -797,7 +797,7 @@ export default function AutomationRuleBuilder({
               type="button"
               onClick={addAction}
               disabled={actions.length >= descriptors.limits.actionsPerRule}
-              className="text-[11px] text-[#2c60b8] hover:underline disabled:text-neutral-300"
+              className="text-[11px] text-accent-text hover:underline disabled:text-subtle"
             >
               ＋ アクションを追加
             </button>

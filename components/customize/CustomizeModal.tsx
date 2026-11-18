@@ -18,7 +18,7 @@ export default function CustomizeModal({
       open
       onClose={onClose}
       title={title}
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="w-[min(560px,94vw)] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-line-subtle px-5 py-4">

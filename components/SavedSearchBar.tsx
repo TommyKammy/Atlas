@@ -59,7 +59,7 @@ export default function SavedSearchBar({
             type="button"
             data-saved-search-apply={item.id}
             onClick={() => router.push(`/search?${queryFrom(item.params)}`)}
-            className="py-0.5 text-neutral-700 hover:text-[#2c60b8]"
+            className="py-0.5 text-secondary hover:text-accent-text"
           >
             {item.name}
           </button>
@@ -79,7 +79,7 @@ export default function SavedSearchBar({
         data-saved-search-save
         disabled={busy}
         onClick={() => void save()}
-        className="rounded-full border border-accent px-2 py-0.5 text-accent-text hover:bg-[#eff4fd] disabled:opacity-50"
+        className="rounded-full border border-accent px-2 py-0.5 text-accent-text hover:bg-accent-soft disabled:opacity-50"
       >
         ＋ 現在の条件を保存
       </button>

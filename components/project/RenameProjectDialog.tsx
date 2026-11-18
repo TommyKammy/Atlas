@@ -28,7 +28,7 @@ export default function RenameProjectDialog({
       open
       onClose={onClose}
       title="名前を変更"
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="w-[min(420px,90vw)] rounded-lg bg-surface text-sm shadow-xl"
     >
       <div className="p-5">

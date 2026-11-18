@@ -38,12 +38,12 @@ const TimelineDependencyEdge = memo(function TimelineDependencyEdge({
       <path
         d={shape.d}
         fill="none"
-        stroke={selected ? "#2c60b8" : "#737373"}
+        stroke={selected ? "var(--atlas-accent)" : "var(--atlas-text-muted)"}
         strokeWidth={selected ? 2 : 1.5}
         strokeLinejoin="round"
       />
-      <circle cx={shape.from.x} cy={shape.y1} r="2.5" fill={selected ? "#2c60b8" : "#737373"} />
-      <path d={shape.arrow} fill={selected ? "#2c60b8" : "#737373"} />
+      <circle cx={shape.from.x} cy={shape.y1} r="2.5" fill={selected ? "var(--atlas-accent)" : "var(--atlas-text-muted)"} />
+      <path d={shape.arrow} fill={selected ? "var(--atlas-accent)" : "var(--atlas-text-muted)"} />
       <path
         data-timeline-dependency-hit={shape.key}
         d={shape.d}
@@ -142,11 +142,11 @@ function TimelineDependencyLayer({
             data-timeline-dependency-draft
             d={`M ${draft.x1} ${draft.y1} L ${draft.x2} ${draft.y2}`}
             fill="none"
-            stroke="#2c60b8"
+            stroke="var(--atlas-accent)"
             strokeWidth="2"
             strokeDasharray="5 4"
           />
-          <circle cx={draft.x1} cy={draft.y1} r="3" fill="#2c60b8" />
+          <circle cx={draft.x1} cy={draft.y1} r="3" fill="var(--atlas-accent)" />
         </svg>
       )}
     </>

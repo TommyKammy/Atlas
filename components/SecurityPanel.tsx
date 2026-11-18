@@ -61,7 +61,7 @@ export default function SecurityPanel({
             data-security-tab={key}
             className={`-mb-px rounded-t px-3 py-2 text-sm ${
               section === key
-                ? "border-b-2 border-[#4075cf] font-medium text-[#2f5fa8]"
+                ? "border-b-2 border-accent font-medium text-accent-text"
                 : "text-muted hover:bg-hover"
             }`}
           >

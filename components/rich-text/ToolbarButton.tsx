@@ -75,7 +75,7 @@ export default function ToolbarButton({
         className={`flex h-8 min-w-8 items-center justify-center rounded-md px-1.5 text-[13px] transition-colors ${
           active
             ? "bg-accent-soft text-accent-text"
-            : "text-neutral-600 hover:bg-hover hover:text-neutral-900"
+            : "text-secondary hover:bg-hover hover:text-text"
         } disabled:cursor-not-allowed disabled:opacity-35`}
       >
         {children}
@@ -92,7 +92,7 @@ export default function ToolbarButton({
               top: tooltip.y,
               transform: tooltip.above ? "translate(-50%, -100%)" : "translate(-50%, 0)",
             }}
-            className="pointer-events-none z-[320] whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-[11px] font-medium text-on-accent shadow-lg"
+            className="pointer-events-none z-[320] whitespace-nowrap rounded-md bg-inverse-surface-deep px-2 py-1 text-[11px] font-medium text-on-strong shadow-lg"
           >
             {label}
           </div>,

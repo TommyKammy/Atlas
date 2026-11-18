@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CAPACITY_BAR_COLORS } from "@/lib/data-colors";
 import { formatDays, formatManYen, monthLabelFromStart } from "@/lib/planning/format";
 import type { PlanningScenarioResult } from "@/lib/planning/calculations";
 import {
@@ -213,7 +214,7 @@ function ScenarioCard({
                 >
                   <div
                     className={`h-full rounded-full ${
-                      focusCell.shortageDays > 0 ? "bg-[#c2602f]" : "bg-[#7f9dcc]"
+                      focusCell.shortageDays > 0 ? CAPACITY_BAR_COLORS.shortage : CAPACITY_BAR_COLORS.available
                     }`}
                     style={{ width: `${focusRatio}%` }}
                   />
@@ -458,7 +459,7 @@ export default function CompareView({
             <span>
               最終承認者: <b>{approval.finalApprover?.name ?? "未設定"}</b>
             </span>
-            <span className="text-blue-300" aria-hidden>
+            <span className="text-accent-line" aria-hidden>
               |
             </span>
             <span>
@@ -529,7 +530,7 @@ export default function CompareView({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-accent-line bg-accent-soft px-3 py-2">
           <span className="min-w-0 text-[12px] text-accent-text">
             <b>採用記録　{latest.chosenScenarioName}</b>
-            <span className="mx-2 text-blue-300">|</span>
+            <span className="mx-2 text-accent-line">|</span>
             {latest.restricted ? "閲覧権限のない案件を含むため理由は非表示です" : latest.reason}
           </span>
           <a href="#decision-history" className={buttonQuiet}>

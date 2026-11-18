@@ -53,7 +53,7 @@ export default function CustomizeFieldModal({
             onChange={(event) =>
               onDraft({ ...draft, field_type: event.target.value as CustomField["field_type"] })
             }
-            className={`${fieldTypeClass} disabled:bg-neutral-50 disabled:text-neutral-500`}
+            className={`${fieldTypeClass} disabled:bg-surface-subtle disabled:text-muted`}
           >
             <option value="text">テキスト</option>
             <option value="number">数値</option>

@@ -157,7 +157,7 @@ export default function TaskDescriptionSection({
         <button
           type="button"
           onClick={start}
-          className="min-h-[132px] w-full rounded-lg px-2 py-2 text-left text-[13px] text-neutral-400 hover:bg-hover hover:text-neutral-500"
+          className="min-h-[132px] w-full rounded-lg px-2 py-2 text-left text-[13px] text-subtle hover:bg-hover hover:text-muted"
         >
           このタスクの内容を入力します
         </button>

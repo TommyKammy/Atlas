@@ -12,7 +12,7 @@ function ViewIcon({ view }: { view: string }) {
     strokeWidth: 1.6,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    className: "h-5 w-5 shrink-0 text-[#5f7bd0]",
+    className: "h-5 w-5 shrink-0 text-accent-text",
   };
   if (view === "overview")
     return (
@@ -157,7 +157,7 @@ export default function ProjectTabAddMenu({
                     data-project-tab-add-option={option.value}
                     disabled={busyView !== null}
                     onClick={() => onSelect(option)}
-                    className="flex items-start gap-3 rounded-md px-2 py-2 text-left hover:bg-hover focus-visible:bg-neutral-50 focus-visible:outline-none disabled:opacity-50"
+                    className="flex items-start gap-3 rounded-md px-2 py-2 text-left hover:bg-hover focus-visible:bg-surface-subtle focus-visible:outline-none disabled:opacity-50"
                   >
                     <ViewIcon view={option.value} />
                     <span className="min-w-0">
@@ -177,7 +177,7 @@ export default function ProjectTabAddMenu({
         })}
         {error && <p className="mt-2 px-2 text-[12px] text-danger">{error}</p>}
         <div className="mt-2 border-t border-line-subtle px-2 pt-2">
-          <a href="/help" className="text-[12px] text-[#6d5bd0] hover:underline">
+          <a href="/help" className="text-[12px] text-accent-text hover:underline">
             フィードバックを送る
           </a>
         </div>

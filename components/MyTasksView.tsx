@@ -253,8 +253,8 @@ export default function MyTasksView({
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOverBucket(null);
             }}
             onDrop={(e) => dropOnBucket(e, bucket.key)}
-            className={`mb-5 rounded-lg border border-transparent px-1 pb-1 ${
-              overBucket === bucket.key ? "border-blue-300 bg-accent-soft/40" : ""
+            className={`mb-5 rounded-lg border px-1 pb-1 ${
+              overBucket === bucket.key ? "border-accent-line bg-accent-soft/40" : "border-transparent"
             }`}
           >
             <h2
@@ -303,7 +303,7 @@ export default function MyTasksView({
               >
                 <span
                   data-my-task-drag-handle
-                  className="w-3 shrink-0 text-center text-neutral-300 group-hover:text-neutral-500"
+                  className="w-3 shrink-0 text-center text-subtle group-hover:text-muted"
                   aria-hidden="true"
                 >
                   ⠿

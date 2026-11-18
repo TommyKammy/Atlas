@@ -132,7 +132,7 @@ export default function ProjectCreateScreen({
         type="button"
         data-project-template-card={template.id}
         onClick={() => openTemplate(template)}
-        className="flex h-full w-full items-start gap-3 rounded-xl border border-neutral-200 bg-surface p-4 text-left transition hover:border-[#4075cf] hover:shadow-sm"
+        className="flex h-full w-full items-start gap-3 rounded-xl border border-line bg-surface p-4 text-left transition hover:border-accent hover:shadow-sm"
       >
         <ProjectIcon
           id={template.id}
@@ -178,7 +178,7 @@ export default function ProjectCreateScreen({
   );
 
   return (
-    <div data-project-create-screen data-project-create-mode={view} className="min-h-full bg-[#f7f7f7]">
+    <div data-project-create-screen data-project-create-mode={view} className="min-h-full bg-surface-subtle">
       <div className="mx-auto flex min-h-full w-full max-w-[1320px] flex-col lg:flex-row">
         <aside className="shrink-0 border-b border-line bg-surface px-4 py-4 lg:w-[240px] lg:border-b-0 lg:border-r lg:px-4 lg:py-6">
           <Link href="/" className="text-[12px] text-muted hover:text-text">
@@ -249,7 +249,7 @@ export default function ProjectCreateScreen({
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="テンプレートを検索"
                   aria-label="テンプレートを検索"
-                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-neutral-400"
+                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-subtle"
                 />
                 {query !== "" && (
                   <button
@@ -334,7 +334,7 @@ export default function ProjectCreateScreen({
                 type="button"
                 data-project-create-blank
                 onClick={openBlank}
-                className="mt-4 flex w-full items-center gap-4 rounded-xl border-2 border-dashed border-neutral-300 bg-white px-4 py-4 text-left hover:border-[#4075cf] hover:bg-[#fbfdff]"
+                className="mt-4 flex w-full items-center gap-4 rounded-xl border-2 border-dashed border-line-strong bg-surface px-4 py-4 text-left hover:border-accent hover:bg-accent-soft/40"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-[20px] text-accent-text">
                   ＋

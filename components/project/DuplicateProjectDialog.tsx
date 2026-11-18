@@ -59,7 +59,7 @@ export default function DuplicateProjectDialog({
       open
       onClose={onClose}
       title="プロジェクトを複製"
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="max-h-[90vh] w-[min(580px,94vw)] overflow-y-auto rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-duplicate-dialog className="p-6">

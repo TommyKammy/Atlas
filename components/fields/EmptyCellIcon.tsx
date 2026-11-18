@@ -7,11 +7,11 @@ export default function EmptyCellIcon({ kind }: { kind: "assignee" | "due" }) {
         cy="12"
         r="11"
         fill="none"
-        stroke="#767676"
+        stroke="var(--atlas-text-muted)"
         strokeWidth="2"
         strokeDasharray="4 2"
       />
-      <g transform="translate(6 6) scale(0.5)" fill="#767676">
+      <g transform="translate(6 6) scale(0.5)" fill="var(--atlas-text-muted)">
         {kind === "assignee" ? (
           <path d="M12,14c-3.859,0-7-3.14-7-7S8.141,0,12,0s7,3.14,7,7-3.141,7-7,7Zm0-12c-2.757,0-5,2.243-5,5s2.243,5,5,5,5-2.243,5-5-2.243-5-5-5Zm10,21v-2c0-2.757-2.243-5-5-5H7c-2.757,0-5,2.243-5,5v2c0,.552,.447,1,1,1s1-.448,1-1v-2c0-1.654,1.346-3,3-3h10c1.654,0,3,1.346,3,3v2c0,.552,.447,1,1,1s1-.448,1-1Z" />
         ) : (

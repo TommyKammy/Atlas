@@ -60,7 +60,7 @@ export default function CustomizeAppModal({
               {definition.fields.map((field) => (
                 <label key={field.key} className="mt-3 block text-[12px] font-medium text-secondary">
                   {field.label}
-                  {field.required && <span className="ml-1 text-red-500">*</span>}
+                  {field.required && <span className="ml-1 text-danger">*</span>}
                   <input
                     value={draft.config[field.key] ?? ""}
                     onChange={(event) =>

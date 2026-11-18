@@ -37,20 +37,20 @@ export default function ListBulkToolbar({
       data-bulk-toolbar
       role="toolbar"
       aria-label="複数タスクの一括編集"
-      className="fixed bottom-12 left-1/2 z-[75] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-lg bg-[#1e1e1e] px-3 py-2 text-on-accent shadow-[0_0_0_1px_#eaeaea,0_6px_12px_rgba(118,118,118,0.24)]"
+      className="fixed bottom-12 left-1/2 z-[75] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 rounded-lg bg-inverse-surface-subtle px-3 py-2 text-on-strong shadow-[0_0_0_1px_var(--atlas-line),0_6px_12px_rgba(118,118,118,0.24)]"
     >
       <span aria-live="polite" className="mr-1 whitespace-nowrap px-1 text-[13px] font-semibold">
         {selectedCount} 件のタスクを選択中
       </span>
       <button
         onClick={onComplete}
-        className="rounded px-2 py-1 text-[12px] text-neutral-200 hover:bg-white/10"
+        className="rounded px-2 py-1 text-[12px] text-inverse-text hover:bg-overlay/10"
       >
         完了
       </button>
       <button
         onClick={onReopen}
-        className="rounded px-2 py-1 text-[12px] text-neutral-200 hover:bg-white/10"
+        className="rounded px-2 py-1 text-[12px] text-inverse-text hover:bg-overlay/10"
       >
         未完了
       </button>
@@ -62,7 +62,7 @@ export default function ListBulkToolbar({
           if (value) onMove(Number(value));
         }}
         aria-label="セクションを移動"
-        className="h-8 rounded border border-white/15 bg-[#2c2c2c] px-2 text-[12px] text-white outline-none"
+        className="h-8 rounded border border-overlay/15 bg-inverse-surface-muted px-2 text-[12px] text-on-strong outline-none"
       >
         <option value="">セクション移動…</option>
         {sections.map((section) => (
@@ -79,7 +79,7 @@ export default function ListBulkToolbar({
           if (value) onAssign(value === "none" ? null : Number(value));
         }}
         aria-label="担当者を変更"
-        className="h-8 rounded border border-white/15 bg-[#2c2c2c] px-2 text-[12px] text-white outline-none"
+        className="h-8 rounded border border-overlay/15 bg-inverse-surface-muted px-2 text-[12px] text-on-strong outline-none"
       >
         <option value="">担当者…</option>
         <option value="none">未割当</option>
@@ -91,7 +91,7 @@ export default function ListBulkToolbar({
       </select>
       <button
         onClick={onDelete}
-        className="rounded px-2 py-1 text-[12px] text-red-300 hover:bg-red-500/15"
+        className="rounded px-2 py-1 text-[12px] text-inverse-danger hover:bg-danger-strong/15"
       >
         削除
       </button>
@@ -99,7 +99,7 @@ export default function ListBulkToolbar({
         onClick={onClear}
         aria-label="選択を解除"
         title="選択を解除"
-        className="flex h-8 w-8 items-center justify-center rounded text-[18px] leading-none text-neutral-300 hover:bg-white/10 hover:text-white"
+        className="flex h-8 w-8 items-center justify-center rounded text-[18px] leading-none text-inverse-text-muted hover:bg-overlay/10 hover:text-on-strong"
       >
         ×
       </button>

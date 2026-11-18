@@ -156,7 +156,7 @@ function MenuItem({
       onClick={onClick}
       className={`flex h-8 w-full items-center gap-2.5 px-3 text-left text-[13px] ${
         danger
-          ? "text-rose-600 hover:bg-rose-50 disabled:text-rose-300"
+          ? "text-danger hover:bg-danger-soft disabled:text-subtle"
           : "text-secondary hover:bg-hover disabled:text-subtle"
       }`}
     >
@@ -616,7 +616,7 @@ export default function ProjectTaskContextMenu({
             <select
               value={parentId}
               onChange={(event) => setParentId(event.target.value)}
-              className="mt-3 h-9 w-full rounded-md border border-line bg-white px-2 text-[13px]"
+              className="mt-3 h-9 w-full rounded-md border border-line bg-field px-2 text-[13px]"
             >
               <option value="">親タスクを選択…</option>
               {candidates.map((candidate) => (

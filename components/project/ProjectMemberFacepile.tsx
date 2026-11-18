@@ -38,7 +38,7 @@ export default function ProjectMemberFacepile({
   const visible = members.slice(0, MAX_VISIBLE);
   const overflow = members.length - visible.length;
   const ring =
-    "relative inline-flex shrink-0 rounded-full border-2 border-white transition hover:z-10 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4075cf] focus-visible:ring-offset-1";
+    "relative inline-flex shrink-0 rounded-full border-2 border-on-strong transition hover:z-10 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1";
 
   return (
     <>
@@ -79,7 +79,7 @@ export default function ProjectMemberFacepile({
             aria-expanded={open}
             title={`ほか${overflow}人`}
             onClick={() => openDialog(false)}
-            className="relative inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-white bg-surface-muted px-1 text-[10px] font-semibold text-secondary hover:z-10 hover:bg-hover-strong focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4075cf] focus-visible:ring-offset-1"
+            className="relative inline-flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-on-strong bg-surface-muted px-1 text-[10px] font-semibold text-secondary hover:z-10 hover:bg-hover-strong focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
           >
             +{overflow}
           </button>
@@ -92,7 +92,7 @@ export default function ProjectMemberFacepile({
           aria-expanded={open}
           title="メンバーを追加"
           onClick={() => openDialog(true)}
-          className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-neutral-300 bg-surface text-neutral-500 transition hover:z-10 hover:border-[#4075cf] hover:text-[#4075cf] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4075cf] focus-visible:ring-offset-1"
+          className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-line-strong bg-surface text-muted transition hover:z-10 hover:border-accent hover:text-accent-text focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
         >
           <svg
             aria-hidden="true"

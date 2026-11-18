@@ -134,7 +134,7 @@ export default function PlanningHeader({
               className={`-mb-px border-b-2 px-0.5 py-2 font-medium ${
                 current
                   ? "border-accent text-accent-text"
-                  : "border-transparent text-neutral-600 hover:border-neutral-300 hover:text-neutral-900"
+                  : "border-transparent text-secondary hover:border-line-strong hover:text-text"
               }`}
             >
               {item.label}

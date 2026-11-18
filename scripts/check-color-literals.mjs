@@ -1,5 +1,11 @@
 #!/usr/bin/env node
-// Ratchet for hard-coded colors in app/ and components/.
+// Ratchet for hard-coded colors in app/, components/ and lib/.
+//
+// One file is excluded by path: lib/data-colors.ts. It is the single home for
+// data colors (chart series, progress bars, status dots, avatars, project and
+// template colors) whose values identify data and must not follow the theme.
+// Keeping those literals in one module lets the rest of the tree stay free of
+// hard-coded colors; see docs/design-tokens.md "データの色".
 //
 // Why: docs/design-tokens.md defines semantic color utilities (bg-surface,
 // text-muted, border-line, ...). While components are migrated to those tokens,
@@ -66,12 +72,17 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const BASELINE_PATH = resolve(ROOT, "tests/fixtures/color-literal-baseline.json");
-const SCAN_ROOTS = ["app", "components"];
+const SCAN_ROOTS = ["app", "components", "lib"];
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx"]);
 // Directory names that hold tests or fixtures. app/ and components/ currently
 // contain none, but excluding them keeps the rule explicit and future-proof.
 const EXCLUDED_DIRS = new Set(["node_modules", "tests", "test", "__tests__", "__mocks__", "fixtures", "__fixtures__"]);
 const EXCLUDED_FILE = /(?:\.(?:test|spec))\.(?:[cm]?[jt]sx?)$/;
+// Data colors identify data or a user's own choice (chart series, progress
+// bars, status dots, avatars, project/label colors). They must not follow the
+// theme, so their literals live in one module instead of becoming --atlas-*
+// tokens. See docs/design-tokens.md "データの色".
+const EXCLUDED_FILES = new Set(["lib/data-colors.ts"]);
 
 const PALETTE_NAMES =
   "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
@@ -209,7 +220,9 @@ export function listTargetFiles(root = ROOT) {
     if (!existsSync(directory)) continue;
     walk(directory, files);
   }
-  return files.sort(comparePaths);
+  return files
+    .filter((file) => !EXCLUDED_FILES.has(relative(root, file).split(sep).join("/")))
+    .sort(comparePaths);
 }
 
 /**

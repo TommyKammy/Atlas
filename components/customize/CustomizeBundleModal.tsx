@@ -102,7 +102,7 @@ export default function CustomizeBundleModal({
                     })
                   }
                   data-customize-bundle-field-type={index}
-                  className="h-7 rounded border border-line bg-white px-1 text-[12px]"
+                  className="h-7 rounded border border-line bg-field px-1 text-[12px]"
                 >
                   <option value="text">テキスト</option>
                   <option value="number">数値</option>

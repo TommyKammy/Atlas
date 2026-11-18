@@ -266,8 +266,8 @@ function ProposalDetail({
           ) : null}
 
           {proposal.decisionAction && proposal.decidedAt && (
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-950">
-              <div className="text-[11px] font-semibold text-emerald-900">
+            <div className="rounded-md border border-success-line bg-success-soft px-3 py-2 text-[12px] text-success">
+              <div className="text-[11px] font-semibold text-success">
                 最終決裁（{proposalDecisionActionLabel(proposal.decisionAction)}） ・{" "}
                 {proposal.decidedByName ?? proposal.finalApproverName} ・{" "}
                 {formatDecisionDate(proposal.decidedAt)}

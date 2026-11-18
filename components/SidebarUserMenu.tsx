@@ -164,7 +164,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
         onClick={openMenu}
         aria-label="ユーザー設定"
         title="ユーザー設定"
-        className="flex h-7 w-7 items-center justify-center rounded-full hover:ring-2 hover:ring-white/20"
+        className="flex h-7 w-7 items-center justify-center rounded-full hover:ring-2 hover:ring-overlay/20"
       >
         <UserAvatar name={user.name} url={user.avatar_url} className="h-7 w-7" />
       </button>
@@ -186,7 +186,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                 <div className="flex items-center gap-1">
                   <span className="truncate text-sm font-semibold">{user.name}</span>
                   {user.is_guest && (
-                    <span className="rounded bg-amber-100 px-1 text-[10px] text-warning">ゲスト</span>
+                    <span className="rounded bg-warning-soft px-1 text-[10px] text-warning">ゲスト</span>
                   )}
                 </div>
                 <div className="truncate text-[11px] text-muted">{user.email ?? ""}</div>
@@ -261,7 +261,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="fixed inset-0 z-[150] flex items-center justify-center bg-black/40 p-4"
+            className="fixed inset-0 z-[150] flex items-center justify-center bg-scrim p-4"
             onClick={() => setOooOpen(false)}
           >
             <div

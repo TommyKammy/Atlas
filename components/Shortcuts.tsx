@@ -80,7 +80,7 @@ export default function Shortcuts({ projectId }: { projectId: number }) {
 
   if (!help) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setHelp(false)}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim" onClick={() => setHelp(false)}>
       <div className="w-[28rem] max-w-[90vw] rounded-lg bg-surface p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-bold">キーボードショートカット</h2>
         <div className="mt-3 space-y-2 text-sm">
@@ -92,7 +92,7 @@ export default function Shortcuts({ projectId }: { projectId: number }) {
           ))}
         </div>
         <div className="mt-4 text-right">
-          <button onClick={() => setHelp(false)} className="rounded bg-neutral-800 px-3 py-1 text-sm text-on-accent">
+          <button onClick={() => setHelp(false)} className="rounded bg-inverse-surface px-3 py-1 text-sm text-on-strong">
             閉じる
           </button>
         </div>

@@ -34,8 +34,8 @@ export default function HomeTaskRow({
         onClick={() => onToggle(task)}
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
           task.completed
-            ? "border-green-600 bg-green-600 text-[11px] text-on-accent"
-            : "border-neutral-400 hover:border-green-600"
+            ? "border-success-strong bg-success-strong text-[11px] text-on-accent"
+            : "border-line-strong hover:border-success-strong"
         } disabled:opacity-50`}
       >
         {task.completed ? "✓" : ""}

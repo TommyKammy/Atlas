@@ -9,7 +9,8 @@ import {
 import type { User } from "@/lib/data";
 
 const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted";
-const menuItem = "flex w-full items-center gap-1 rounded px-3 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-hover";
+const menuItemBase = "flex w-full items-center gap-1 rounded px-3 py-1.5 text-left text-[13px] hover:bg-hover";
+const menuItem = `${menuItemBase} text-secondary`;
 
 export default function ListColumnHeader({
   columnKey,
@@ -100,13 +101,11 @@ export default function ListColumnHeader({
         className={`group/hd relative flex w-full min-w-0 cursor-grab items-center gap-0.5 self-stretch select-none active:cursor-grabbing ${
           columnKey === "name" ? "" : "pl-2"
         } ${
-          colDropOver === columnKey
-            ? "bg-[#f3f3f3]"
-            : `hover:bg-[#f3f3f3] ${open ? "bg-[#f3f3f3]" : ""}`
-        } ${
           colDragging === columnKey
-            ? "bg-[#f3f3f3]/70 [&>*]:invisible"
-            : ""
+            ? "bg-surface-muted/70 [&>*]:invisible"
+            : colDropOver === columnKey
+              ? "bg-surface-muted"
+              : `hover:bg-surface-muted ${open ? "bg-surface-muted" : ""}`
         }`}
         onDragStart={(event) => startColumnDrag(event, columnKey, label)}
         onDragEnd={endColumnDrag}
@@ -126,7 +125,7 @@ export default function ListColumnHeader({
           <button
             onClick={() => cycleSort(columnKey as "name" | "due" | "progress")}
             title="クリックで並び替え（昇順→降順→解除）"
-            className="truncate hover:text-black"
+            className="truncate hover:text-text"
           >
             {label}
             {sortMark(columnKey as "name" | "due" | "progress")}
@@ -147,14 +146,14 @@ export default function ListColumnHeader({
           <span
             onMouseDown={(e) => gripMouseDown(e, columnKey)}
             title="ドラッグで列幅を変更"
-            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-blue-300"
+            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-accent-line"
           />
         )}
         {columnKey === "name" && (
           <span
             onMouseDown={(e) => gripMouseDown(e, columnKey)}
             title="ドラッグで列幅を変更"
-            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-blue-300"
+            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-accent-line"
           />
         )}
         {open && (
@@ -374,7 +373,7 @@ export default function ListColumnHeader({
                 >
                   列を非表示
                 </button>
-                <button className={menuItem + " text-red-600 hover:bg-danger-soft"} onClick={() => { removeField(field); setMenuCol(null); }}>
+                <button className={menuItemBase + " text-danger hover:bg-danger-soft"} onClick={() => { removeField(field); setMenuCol(null); }}>
                   フィールドを削除
                 </button>
               </>

@@ -21,7 +21,7 @@ export default function CustomizeRow({
       type="button"
       data-customize-row={title}
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-lg border border-[#e1e1e1] bg-surface px-4 py-3 text-left transition-colors hover:border-[#cfcfcf] hover:bg-hover"
+      className="flex w-full items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3 text-left transition-colors hover:border-line-strong hover:bg-hover"
     >
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-secondary">{icon}</span>
       <span className="min-w-0 flex-1">

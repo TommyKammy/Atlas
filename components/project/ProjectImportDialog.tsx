@@ -60,7 +60,7 @@ export default function ProjectImportDialog({
       open
       onClose={onClose}
       title="インポート"
-      backdropClassName="backdrop:bg-black/25"
+      backdropClassName="backdrop:bg-scrim"
       panelClassName="w-[min(560px,94vw)] rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-import-dialog data-import-mode={initialMode} className="p-6">
@@ -86,7 +86,7 @@ export default function ProjectImportDialog({
             if (dropped) choose(dropped);
           }}
           className={`mt-4 rounded-lg border-2 border-dashed p-8 text-center transition ${
-            dragging ? "border-[#4075cf] bg-accent-soft" : "border-line-strong bg-surface-subtle/50"
+            dragging ? "border-accent bg-accent-soft" : "border-line-strong bg-surface-subtle/50"
           }`}
         >
           <div className="text-sm font-medium text-secondary">

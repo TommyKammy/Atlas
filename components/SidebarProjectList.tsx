@@ -48,17 +48,17 @@ export default function SidebarProjectList({ workspaceId, projects, favoriteIds 
       {sorted.map(project => {
         const target = drag?.active && drag.target?.id === project.id && drag.id !== project.id ? drag.target.placement : null;
         return <div key={project.id} data-sidebar-project={project.id} data-reorder-id={project.id}
-          className={`relative flex min-w-0 items-center rounded-md hover:bg-white/10 ${drag?.active && drag.id === project.id ? "opacity-40" : ""}`}>
-          {target && <span data-project-drop={target} className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded bg-blue-400 ${target === "before" ? "top-0" : "bottom-0"}`} />}
+          className={`relative flex min-w-0 items-center rounded-md hover:bg-overlay/10 ${drag?.active && drag.id === project.id ? "opacity-40" : ""}`}>
+          {target && <span data-project-drop={target} className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded bg-inverse-accent ${target === "before" ? "top-0" : "bottom-0"}`} />}
           <SidebarProjectLink project={project} href={`/projects/${project.id}`} starred={favoriteIds.includes(project.id)}
             reorderProps={{ ...itemProps<HTMLAnchorElement>(project.id, project.name), "aria-describedby": instructions }}
-            className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-[14px] leading-[22px] text-[#E5E5E5] focus-visible:outline-2 focus-visible:outline-blue-400" />
+            className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-[14px] leading-[22px] text-inverse-text focus-visible:outline-2 focus-visible:outline-inverse-accent" />
         </div>;
       })}
     </div>
     <p role="status" aria-live="polite" data-project-order-status className="sr-only">{status}</p>
-    {error && <p role="alert" className="px-2 py-1 text-xs text-red-300">{error}</p>}
-    {drag?.active && createPortal(<div aria-hidden="true" className="pointer-events-none fixed z-50 max-w-60 truncate rounded-md bg-neutral-800 px-3 py-2 text-sm text-neutral-100 shadow-md"
+    {error && <p role="alert" className="px-2 py-1 text-xs text-inverse-danger">{error}</p>}
+    {drag?.active && createPortal(<div aria-hidden="true" className="pointer-events-none fixed z-50 max-w-60 truncate rounded-md bg-inverse-surface px-3 py-2 text-sm text-inverse-text-strong shadow-md"
       style={{ left: drag.x + 12, top: drag.y + 12 }}>{drag.title}</div>, document.body)}
   </>;
 }

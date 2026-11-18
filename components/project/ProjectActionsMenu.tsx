@@ -92,8 +92,8 @@ export default function ProjectActionsMenu({
 
   const topButtons = groups.flatMap((group) => group.items);
   const itemClass = (danger: boolean | undefined) =>
-    `flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13.5px] leading-5 outline-none transition focus-visible:bg-[#eef3fb] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${
-      danger ? "text-danger hover:bg-[#fdf2f1] focus-visible:bg-[#fdf2f1]" : "text-text hover:bg-hover"
+    `flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13.5px] leading-5 outline-none transition focus-visible:bg-accent-soft focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+      danger ? "text-danger hover:bg-danger-soft focus-visible:bg-danger-soft" : "text-text hover:bg-hover"
     }`;
 
   return createPortal(

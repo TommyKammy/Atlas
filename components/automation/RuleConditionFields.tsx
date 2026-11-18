@@ -56,7 +56,7 @@ export function RuleConditionFields({ conditions, descriptors, projectId, onChan
       <p className="text-[12px] leading-relaxed text-muted">すべての条件を満たしたときに進みます。条件がない場合は、毎回この先へ進みます。</p>
       {conditions.map((condition, index) => {
         const problem = conditionInputProblem(condition, ruleConditionType(condition.field, descriptors));
-        return <div key={index} data-rule-condition-index={index} className={`space-y-3 rounded-lg border bg-surface p-3 ${problem ? "border-rose-300" : "border-line"}`}>
+        return <div key={index} data-rule-condition-index={index} className={`space-y-3 rounded-lg border bg-surface p-3 ${problem ? "border-danger-line" : "border-line"}`}>
         <div className="flex items-start gap-2">
           <label className="min-w-0 flex-1 text-[12px] font-medium text-secondary">条件の項目
             <select value={condition.field} className={`${ruleInputClass} mt-1`}

@@ -89,7 +89,7 @@ export default function TaskSubtasksSection({
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}&approval=1`}
               aria-label={`${subtask.name} の承認を開く`}
               title="承認の詳細を開く"
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-blue-300 text-[10px] text-accent-text hover:bg-accent-soft"
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-accent-line text-[10px] text-accent-text hover:bg-accent-soft"
             >承</Link> : <TaskCompletionToggle disabled={!canEdit} completed={subtask.completed} milestone={subtask.is_milestone} onToggle={() => onToggle(subtask)} />}
             <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}`}
@@ -136,7 +136,7 @@ export default function TaskSubtasksSection({
             type="button"
             onClick={onAdd}
             disabled={!draft.trim()}
-            className="shrink-0 rounded bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-neutral-200 disabled:text-neutral-500"
+            className="shrink-0 rounded bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-surface-strong disabled:text-muted"
           >
             追加
           </button>
@@ -153,7 +153,7 @@ export default function TaskSubtasksSection({
           type="button"
           disabled={!canEdit}
           onClick={onStartAdd}
-          className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-neutral-400 hover:bg-hover hover:text-neutral-600"
+          className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-subtle hover:bg-hover hover:text-secondary"
         >
           <span className="text-base leading-none">＋</span>
           <span className="min-w-0 flex-1 truncate">サブタスクを追加</span>

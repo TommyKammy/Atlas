@@ -48,7 +48,7 @@ export function MarkAllReadButton({ workspaceId }: { workspaceId: number }) {
   return (
     <button
       onClick={mark}
-      className="rounded bg-neutral-800 px-3 py-1 text-sm text-on-accent hover:bg-black"
+      className="rounded bg-inverse-surface px-3 py-1 text-sm text-on-strong hover:bg-inverse-surface-deep"
     >
       {done ? "既読にしました" : "すべて既読にする"}
     </button>

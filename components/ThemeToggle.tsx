@@ -24,7 +24,7 @@ export default function ThemeToggle({ initialTheme }: { initialTheme: "light" | 
       aria-label={theme === "dark" ? "ライトモードに切り替える" : "ダークモードに切り替える"}
       aria-pressed={theme === "dark"}
       title={theme === "dark" ? "ライトモード" : "ダークモード"}
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-400 hover:bg-white/10 hover:text-white"
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-inverse-text-muted hover:bg-overlay/10 hover:text-on-strong"
     >
       {theme === "dark" ? (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">

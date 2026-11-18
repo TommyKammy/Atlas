@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import { getPortfolio, getPortfolioProjects, getWorkspace } from "@/lib/data";
 import { hasPermission } from "@/lib/permissions";
 import { requirePageUser } from "@/lib/current-user";
@@ -80,7 +81,7 @@ export default async function PortfolioPage({
               </Link>
               <span className="flex items-center gap-2">
                 <span className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-surface-strong">
-                  <span className="block h-full bg-green-500" style={{ width: `${pct}%` }} />
+                  <span className={`block h-full ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${pct}%` }} />
                 </span>
                 <span className="shrink-0 text-xs text-muted">
                   {p.done}/{p.total}

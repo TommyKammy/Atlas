@@ -62,7 +62,7 @@ export default function ListSectionAdd({
             }}
             placeholder="セクション名"
             autoFocus
-            className={`${compact ? "w-full min-w-0 " : ""}rounded border px-2 py-1 text-sm outline-none focus:border-accent disabled:bg-neutral-50`}
+            className={`${compact ? "w-full min-w-0 " : ""}rounded border px-2 py-1 text-sm outline-none focus:border-accent disabled:bg-surface-subtle`}
           />
           <button
             type="button"

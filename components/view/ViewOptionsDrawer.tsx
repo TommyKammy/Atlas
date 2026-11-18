@@ -145,7 +145,7 @@ export default function ViewOptionsDrawer({
                 aria-expanded={iconOpen}
                 disabled={renameDisabled || iconBusy}
                 onClick={() => setIconOpen((value) => !value)}
-                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-line text-lg hover:bg-hover disabled:bg-neutral-50"
+                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-line text-lg hover:bg-hover disabled:bg-surface-subtle"
               >
                 {iconDraft ?? "📋"}
               </button>
@@ -190,7 +190,7 @@ export default function ViewOptionsDrawer({
                 }}
                 disabled={renameDisabled || renameBusy}
                 aria-label="ビューの名前"
-                className="mt-1 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-neutral-50 disabled:text-neutral-500"
+                className="mt-1 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-surface-subtle disabled:text-muted"
               />
             </div>
           </div>
@@ -226,7 +226,7 @@ export default function ViewOptionsDrawer({
           {children}
 
           <div className="mt-4 border-t border-line-subtle px-2 pt-3">
-            <a href="/help" className="text-[12px] text-[#6d5bd0] hover:underline">
+            <a href="/help" className="text-[12px] text-accent-text hover:underline">
               フィードバックを送る
             </a>
           </div>

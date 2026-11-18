@@ -18,8 +18,8 @@ function Card({ title, category, children, selected, onClick, tone = "blue", tes
   invalid?: boolean;
 }) {
   return <button type="button" data-rule-node={testId} data-rule-node-invalid={invalid || undefined} aria-pressed={selected} onClick={onClick}
-    className={`w-full rounded-lg border bg-white p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring ${selected ? "border-accent bg-[#eff4fd] ring-1 ring-[#2c60b8]" : invalid ? "border-rose-300 hover:border-rose-500" : "border-line hover:border-line-strong"}`}>
-    {category && <span className={`mb-2 block text-[11px] font-semibold ${tone === "amber" ? "text-amber-700" : "text-accent-text"}`}>{category}</span>}
+    className={`w-full rounded-lg border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring ${selected ? "border-accent bg-accent-soft ring-1 ring-accent" : invalid ? "border-danger-line bg-surface hover:border-danger" : "border-line bg-surface hover:border-line-strong"}`}>
+    {category && <span className={`mb-2 block text-[11px] font-semibold ${tone === "amber" ? "text-warning" : "text-accent-text"}`}>{category}</span>}
     <span className="block break-words text-[13px] font-semibold text-text">{title}</span>
     {children && <span className="mt-2 block break-words text-[12px] leading-5 text-secondary">{children}</span>}
     {invalid && <span className="mt-2 block text-[11px] font-semibold text-danger">! 入力を確認してください</span>}
@@ -46,7 +46,7 @@ export default function RuleWorkflowCanvas({ document, descriptors, selected, re
       </Card>
     </div>)}
     {!readOnly && <button type="button" onClick={() => onAddAction(branch)} disabled={totalActions >= descriptors.limits.actionsPerRule}
-      className="mt-4 w-full rounded-md border border-dashed border-neutral-300 bg-surface px-3 py-2 text-[12px] text-neutral-600 hover:border-[#2c60b8] hover:text-[#2c60b8] disabled:opacity-40">＋ アクション</button>}
+      className="mt-4 w-full rounded-md border border-dashed border-line-strong bg-surface px-3 py-2 text-[12px] text-secondary hover:border-accent hover:text-accent-text disabled:opacity-40">＋ アクション</button>}
   </div>;
 
   const branches = document.branches.map((branch, index) => ({ branch, index })).sort((a, b) => Number(Boolean(a.branch.else)) - Number(Boolean(b.branch.else)));
@@ -67,7 +67,7 @@ export default function RuleWorkflowCanvas({ document, descriptors, selected, re
             {trigger.days !== undefined ? `${trigger.days}日${trigger.event === "task.overdue" ? "過ぎたら" : "前"}` : "クリックして設定"}
           </Card>)}
           {!readOnly && <button type="button" onClick={onAddTrigger} disabled={document.triggers.length >= descriptors.limits.triggersPerRule}
-            className="w-full rounded-md border border-dashed border-neutral-300 bg-surface p-2 text-[12px] text-neutral-600 hover:text-[#2c60b8] disabled:opacity-40">＋ きっかけ</button>}
+            className="w-full rounded-md border border-dashed border-line-strong bg-surface p-2 text-[12px] text-secondary hover:text-accent-text disabled:opacity-40">＋ きっかけ</button>}
         </div>
         <div className="pt-12"><Arrow /></div>
         {(!document.useBranches || document.conditions.length > 0) && <><div className="w-[250px] shrink-0">

@@ -60,7 +60,7 @@ export default function TaskAttachmentsSection({
       />
 
       {attachments.length === 0 ? (
-        canEdit ? <label htmlFor={`${uploadId}-empty`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[13px] text-neutral-400 hover:bg-hover hover:text-neutral-600">
+        canEdit ? <label htmlFor={`${uploadId}-empty`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[13px] text-subtle hover:bg-hover hover:text-secondary">
           <span className="text-base leading-none">＋</span>
           <span>{uploading ? "アップロード中…" : "添付を追加"}</span>
           <input

@@ -5,7 +5,7 @@ import type { DescriptorOption } from "@/lib/automation/descriptors";
 import { insertRuleVariable, type RuleVariable } from "@/lib/automation/no-code-inputs";
 import RuleVariableMenu from "./RuleVariableMenu";
 
-export const ruleInputClass = "h-9 w-full min-w-0 rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] outline-none focus:border-[#4573d2] focus:ring-2 focus:ring-[#4573d2]/15";
+export const ruleInputClass = "h-9 w-full min-w-0 rounded-md border border-line-strong bg-field px-2.5 text-[13px] outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/15";
 
 export default function RuleValueField({ label, value, onChange, type = "text", multiline, options, variables, placeholder, help, invalid, describedBy }: {
   label: string;

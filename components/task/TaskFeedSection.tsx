@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CommentRow } from "@/lib/data";
+import { COMMENT_AVATAR_CLASS } from "@/lib/data-colors";
 import { docToText, markdownToDoc } from "@/lib/rich-text-markdown";
 import type { MentionUser, RichTextDoc } from "@/lib/rich-text-types";
 import { toast } from "@/lib/ui-feedback";
@@ -32,7 +33,7 @@ function Avatar({ name, className = "h-7 w-7" }: { name: string | null; classNam
   const label = (name ?? "?").trim() || "?";
   return (
     <span
-      className={`${className} flex shrink-0 items-center justify-center rounded-full bg-[#d8e3f3] text-[10px] font-semibold text-[#38506e]`}
+      className={`${className} flex shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${COMMENT_AVATAR_CLASS}`}
       title={label}
     >
       {label.slice(0, 1)}
@@ -95,7 +96,7 @@ function CommentEditForm({
           data-comment-edit-save={comment.id}
           disabled={!text.trim()}
           onClick={() => void save()}
-          className="rounded bg-accent px-3 py-1 text-[11px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-neutral-200 disabled:text-neutral-500"
+          className="rounded bg-accent px-3 py-1 text-[11px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-surface-strong disabled:text-muted"
         >
           保存
         </button>
@@ -186,7 +187,7 @@ export default function TaskFeedSection({
                   type="button"
                   data-comment-delete={comment.id}
                   onClick={() => onDelete(comment.id)}
-                  className="text-[10px] text-red-500 hover:text-red-700 hover:underline"
+                  className="text-[10px] text-danger hover:text-danger-strong-hover hover:underline"
                 >
                   削除
                 </button>
@@ -226,7 +227,7 @@ export default function TaskFeedSection({
                 title="リアクション切替"
                 className={`rounded-full border px-1.5 py-0.5 text-[11px] ${
                   reaction.mine
-                    ? "border-blue-400 bg-accent-soft text-accent-text"
+                    ? "border-accent bg-accent-soft text-accent-text"
                     : "border-line bg-surface text-secondary hover:bg-hover"
                 }`}
               >
@@ -243,7 +244,7 @@ export default function TaskFeedSection({
                   data-comment-reaction-add={emoji}
                   onClick={() => onToggleReaction(comment.id, emoji)}
                   title="リアクションする"
-                  className="rounded-full border border-dashed border-line px-1.5 py-0.5 text-[11px] text-neutral-400 hover:bg-hover hover:text-neutral-600"
+                  className="rounded-full border border-dashed border-line px-1.5 py-0.5 text-[11px] text-subtle hover:bg-hover hover:text-secondary"
                 >
                   {emoji} ＋
                 </button>

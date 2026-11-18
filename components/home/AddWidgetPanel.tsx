@@ -33,7 +33,7 @@ export default function AddWidgetPanel({
   if (!open) return null;
   return (
     <>
-      <div className="fixed inset-0 z-[100] bg-black/15" onClick={onClose} />
+      <div className="fixed inset-0 z-[100] bg-scrim-soft" onClick={onClose} />
       <aside
         data-home-add-widget
         className="fixed bottom-0 right-0 top-12 z-[101] flex w-[min(380px,94vw)] flex-col border-l border-line bg-surface shadow-2xl"
@@ -70,7 +70,7 @@ export default function AddWidgetPanel({
                         type="button"
                         disabled={added}
                         onClick={() => onAdd(type)}
-                        className="ml-auto rounded px-2 py-0.5 text-[12px] text-[#2c60b8] hover:bg-[#eff4fd] disabled:text-neutral-300"
+                        className="ml-auto rounded px-2 py-0.5 text-[12px] text-accent-text hover:bg-accent-soft disabled:text-subtle"
                       >
                         {added ? "追加済み" : "＋ 追加"}
                       </button>

@@ -7,7 +7,7 @@ import type { TaskApprovalAction, TaskApprovalResponse, TaskApprovalSummary } fr
 import { TASK_APPROVAL_ACTION_LABELS, TASK_APPROVAL_STATUS_LABELS } from "@/lib/task-approval";
 import TaskApprovalBadge from "./TaskApprovalBadge";
 
-const inputClass = "w-full rounded border border-line-strong bg-white px-2.5 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-500 focus:border-accent focus:outline-none focus:ring-1 focus:ring-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500";
+const inputClass = "w-full rounded border border-line-strong bg-field px-2.5 py-2 text-[13px] text-text placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:bg-surface-subtle disabled:text-muted";
 const secondaryButtonBase = "rounded border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:opacity-50";
 const secondaryButton = `${secondaryButtonBase} text-secondary`;
 const dangerSecondaryButton = `${secondaryButtonBase} text-danger`;
@@ -208,7 +208,7 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
   if (data && !approval && !data.can_request && !canEdit) return null;
 
   return <section ref={sectionRef} tabIndex={-1} data-task-approval aria-label="承認" aria-busy={busy || loading}
-    className="my-4 min-w-0 border-y border-line py-3 outline-none focus-visible:ring-2 focus-visible:ring-[#2c60b8]">
+    className="my-4 min-w-0 border-y border-line py-3 outline-none focus-visible:ring-2 focus-visible:ring-accent">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <button type="button" aria-expanded={expanded} aria-controls={`task-approval-${task.id}`} onClick={() => setExpanded((value) => !value)}
         className="flex items-center gap-2 rounded px-1 py-1 text-[13px] font-semibold text-text hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus-ring">
@@ -252,7 +252,7 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
         <div className="flex flex-wrap gap-2">
           {!approval && data.can_request && <button type="button" disabled={disabled || !selected} onClick={() => void submit("request")} className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50">承認を申請</button>}
           {approval?.status === "pending" && data.can_decide && <>
-            <button type="button" disabled={disabled} onClick={() => void submit("approve")} className="rounded bg-green-700 px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-green-800 disabled:opacity-50">承認する</button>
+            <button type="button" disabled={disabled} onClick={() => void submit("approve")} className="rounded bg-success-strong px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-success-strong-hover disabled:opacity-50">承認する</button>
             <button type="button" disabled={disabled} onClick={() => void submit("request_changes")} className={secondaryButton}>差し戻す</button>
             <button type="button" disabled={disabled} onClick={() => void submit("reject")} className={dangerSecondaryButton}>却下する</button>
           </>}

@@ -1,6 +1,7 @@
 "use client";
 import { QuickTaskName } from "../task/QuickTaskContext";
 
+import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import { isImeComposing } from "@/lib/ime-keyboard";
 import { isQuickTask } from "@/lib/quick-task";
 
@@ -281,7 +282,7 @@ export default function TaskListRow({
         const dragId = Number(e.dataTransfer.getData("text/atlas-task"));
         if (dragId) moveTask(dragId, t, before);
       }}
-      className={`group grid min-h-[37px] cursor-pointer items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-[#eaeaea] border-b border-line px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${compactCells} ${
+      className={`group grid min-h-[37px] cursor-pointer items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-line border-b border-line px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${compactCells} ${
         isQuickTask(t)
           ? "bg-accent-soft"
           : selected.has(t.id)
@@ -292,8 +293,8 @@ export default function TaskListRow({
       } ${
         dropHint?.id === t.id
           ? dropHint.before
-            ? "shadow-[inset_0_2px_0_0_#3b82f6]"
-            : "shadow-[inset_0_-2px_0_0_#3b82f6]"
+            ? "shadow-[inset_0_2px_0_0_var(--atlas-accent)]"
+            : "shadow-[inset_0_-2px_0_0_var(--atlas-accent)]"
           : ""
       }`}
       style={{ gridTemplateColumns: gridCols }}
@@ -301,7 +302,7 @@ export default function TaskListRow({
       <span className="flex items-center justify-self-center">
         <span
           title="ドラッグで並替え（ホバーで表示）"
-          className="cursor-grab text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-neutral-500 active:cursor-grabbing"
+          className="cursor-grab text-subtle opacity-0 group-hover:opacity-100 hover:text-muted active:cursor-grabbing"
         >
           ⋮⋮
         </span>
@@ -309,7 +310,7 @@ export default function TaskListRow({
       <div
         className={`flex min-w-0 flex-wrap items-center gap-1.5 ${depth > 0 ? "pl-7" : ""} ${
           editing?.id === t.id && editing.field === "name"
-            ? "rounded-[2px] ring-1 ring-[#4573d2]"
+            ? "rounded-[2px] ring-1 ring-focus-ring"
             : ""
         }`}
       >
@@ -317,7 +318,7 @@ export default function TaskListRow({
           <button
             onClick={() => toggleExpand(t.id)}
             title={expanded.has(t.id) ? "サブタスクを閉じる" : "サブタスクを開く"}
-            className="w-4 shrink-0 text-center text-xs text-secondary hover:text-black"
+            className="w-4 shrink-0 text-center text-xs text-secondary hover:text-text"
           >
             {expanded.has(t.id) ? "▾" : "▸"}
           </button>
@@ -451,7 +452,7 @@ export default function TaskListRow({
               return (
                 <span
                   className={`whitespace-nowrap text-[12px] ${
-                    overdue ? "font-medium text-red-700" : isToday ? "text-success" : "text-secondary"
+                    overdue ? "font-medium text-danger" : isToday ? "text-success" : "text-secondary"
                   }`}
                 >
                   {s1}
@@ -464,7 +465,7 @@ export default function TaskListRow({
               onClick={(e) => openDueEdit(e, t)}
               title="期日を設定"
               aria-label="期日を設定"
-              className="flex h-5 w-5 items-center justify-center rounded-full text-[#767676] hover:bg-hover"
+              className="flex h-5 w-5 items-center justify-center rounded-full text-muted hover:bg-hover"
             >
               <EmptyCellIcon kind="due" />
             </button>
@@ -506,7 +507,7 @@ export default function TaskListRow({
           {t.progress > 0 ? (
             <>
               <span className="h-1.5 w-16 overflow-hidden rounded bg-surface-strong">
-                <span className="block h-full rounded bg-green-500" style={{ width: `${t.progress}%` }} />
+                <span className={`block h-full rounded ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${t.progress}%` }} />
               </span>
               <span className="text-xs text-secondary">{t.progress}%</span>
             </>
@@ -526,7 +527,7 @@ export default function TaskListRow({
               if (e.key === "Escape") cancelEdit();
             }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white py-0.5 pr-1 pl-2 text-[13px] outline-none"
+            className="w-full min-w-0 cursor-pointer rounded border border-accent bg-field py-0.5 pr-1 pl-2 text-[13px] outline-none"
           >
             {!statusOptions.includes(editVal) && <option value={editVal}>{editVal}</option>}
             {statusOptions.map((o) => (
@@ -687,7 +688,7 @@ export default function TaskListRow({
                 if (e.key === "Escape") cancelEdit();
               }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full min-w-0 cursor-pointer rounded border border-blue-500 bg-white py-0.5 pr-1 pl-2 text-[13px] outline-none"
+              className="w-full min-w-0 cursor-pointer rounded border border-accent bg-field py-0.5 pr-1 pl-2 text-[13px] outline-none"
             >
               <option value="">–</option>
               {f.options.map((o) => (

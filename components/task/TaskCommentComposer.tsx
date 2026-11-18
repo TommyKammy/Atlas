@@ -126,7 +126,7 @@ export default function TaskCommentComposer({
     <div className="shrink-0 border-t border-line bg-surface px-3 py-2.5" data-task-composer>
       <div
         className={`rounded-lg border bg-surface transition-shadow ${
-          focused ? "border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]" : "border-line-strong"
+          focused ? "border-accent shadow-[0_0_0_2px_rgba(64,117,207,0.12)]" : "border-line-strong"
         }`}
         onFocusCapture={() => setFocused(true)}
         onBlurCapture={(event) => {
@@ -235,7 +235,7 @@ export default function TaskCommentComposer({
             title="コメント"
             disabled={!text.trim() || sending}
             onClick={() => void submit()}
-            className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover disabled:bg-neutral-200 disabled:text-neutral-400"
+            className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover disabled:bg-surface-strong disabled:text-subtle"
           >
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M8 12.5v-9M4.5 7 8 3.5 11.5 7" />

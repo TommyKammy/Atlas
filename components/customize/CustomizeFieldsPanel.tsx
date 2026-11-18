@@ -100,7 +100,7 @@ export default function CustomizeFieldsPanel({
             type="button"
             data-customize-status-field-add
             onClick={onRestoreStatus}
-            className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-line-strong px-4 py-3 text-[13px] text-accent-text hover:bg-[#eff4fd]"
+            className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-line-strong px-4 py-3 text-[13px] text-accent-text hover:bg-accent-soft"
           >
             ＋ Statusフィールドを追加
           </button>
@@ -191,7 +191,7 @@ export default function CustomizeFieldsPanel({
                     className={`mt-2 h-7 w-full rounded-md text-[12px] font-medium ${
                       added
                         ? "cursor-default bg-surface-muted text-subtle"
-                        : "bg-[#eff4fd] text-accent-text hover:bg-[#e1ecfc] disabled:opacity-50"
+                        : "bg-accent-soft text-accent-text hover:bg-accent-soft-hover disabled:opacity-50"
                     }`}
                   >
                     {added ? "追加済み" : "＋ 追加"}

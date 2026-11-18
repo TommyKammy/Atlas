@@ -288,7 +288,7 @@ export default function ProfileForm({
           <h2 className="font-semibold">二要素認証</h2>
           <span
             className={`rounded px-2 py-0.5 text-[11px] ${
-              totpEnabled ? "bg-emerald-100 text-emerald-700" : "bg-surface-muted text-muted"
+              totpEnabled ? "bg-success-soft text-success" : "bg-surface-muted text-muted"
             }`}
             data-two-factor-status
           >
@@ -424,7 +424,7 @@ export default function ProfileForm({
               <button
                 type="button"
                 onClick={() => { router.push("/"); router.refresh(); }}
-                className="mt-2 rounded bg-emerald-800 px-3 py-1.5 text-sm text-on-accent"
+                className="mt-2 rounded bg-success-strong px-3 py-1.5 text-sm text-on-accent"
               >
                 ホームへ進む
               </button>

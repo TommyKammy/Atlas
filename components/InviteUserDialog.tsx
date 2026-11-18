@@ -51,7 +51,7 @@ export default function InviteUserDialog({
   const field = "w-full rounded-md border border-line-strong px-3 py-2 text-sm outline-none focus:border-accent";
   return (
     <div
-      className="fixed inset-0 z-[140] flex items-center justify-center bg-black/30 p-4"
+      className="fixed inset-0 z-[140] flex items-center justify-center bg-scrim p-4"
       onMouseDown={onClose}
     >
       <div
@@ -106,7 +106,7 @@ export default function InviteUserDialog({
               {result.emailed ? "招待メールを送信しました" : "SMTP未設定: 下のリンクを共有してください"}
             </div>
             <div className="mt-1 flex gap-1">
-              <input readOnly value={result.url} className="min-w-0 flex-1 rounded border bg-white px-2 py-1 font-mono" />
+              <input readOnly value={result.url} className="min-w-0 flex-1 rounded border bg-field px-2 py-1 font-mono" />
               <button
                 type="button"
                 onClick={() => navigator.clipboard?.writeText(result.url).catch(() => undefined)}

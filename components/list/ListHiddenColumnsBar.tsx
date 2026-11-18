@@ -41,7 +41,7 @@ export default function ListHiddenColumnsBar({
           key={key}
           onClick={() => onShowCore(key)}
           title={`${CORE_LABELS[key]}列を再表示`}
-          className="rounded-full border px-2 py-0.5 hover:bg-hover hover:text-neutral-600"
+          className="rounded-full border px-2 py-0.5 hover:bg-hover hover:text-secondary"
         >
           {CORE_LABELS[key]}を再表示
         </button>
@@ -50,7 +50,7 @@ export default function ListHiddenColumnsBar({
         <button
           onClick={onShowStatus}
           title={`${statusFieldName}列を再表示`}
-          className="rounded-full border px-2 py-0.5 hover:bg-hover hover:text-neutral-600"
+          className="rounded-full border px-2 py-0.5 hover:bg-hover hover:text-secondary"
         >
           {statusFieldName}を再表示
         </button>
@@ -60,7 +60,7 @@ export default function ListHiddenColumnsBar({
           key={field.id}
           onClick={() => onShowField(field.id)}
           title={`${field.name}列を再表示`}
-          className="rounded-full border px-2 py-0.5 hover:bg-hover hover:text-neutral-600"
+          className="rounded-full border px-2 py-0.5 hover:bg-hover hover:text-secondary"
         >
           {field.name}を再表示
         </button>

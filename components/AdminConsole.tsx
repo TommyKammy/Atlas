@@ -127,7 +127,7 @@ export default function AdminConsole({
                 aria-current={active === tab.key ? "page" : undefined}
                 className={`min-w-[110px] rounded-md px-2 py-2 text-left text-sm md:min-w-0 ${
                   active === tab.key
-                    ? "bg-[#4075cf]/10 font-medium text-[#2f5fa8]"
+                    ? "bg-accent-soft font-medium text-accent-text"
                     : "text-secondary hover:bg-hover"
                 }`}
               >

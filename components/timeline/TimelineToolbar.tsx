@@ -5,6 +5,7 @@ import { ProjectViewToolbar, viewToolbarControlClass } from "@/components/view/P
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
+import { TIMELINE_CRITICAL_BAR } from "@/lib/data-colors";
 import { toast, confirmAction } from "@/lib/ui-feedback";
 import type { User, Section } from "@/lib/data";
 import type { ListFilters } from "@/lib/list-view";
@@ -19,8 +20,8 @@ export type TimelineZoomPreset = { key: string; label: string; dayWidth: number 
 
 const toolbarBtn = viewToolbarControlClass;
 const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
-const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
-const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
+const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-accent-soft-hover";
+const clearPill = "px-1.5 text-[12px] hover:bg-accent-soft-hover";
 const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-line bg-surface shadow-lg";
 
 export default function TimelineToolbar({
@@ -199,7 +200,7 @@ export default function TimelineToolbar({
         </a>
         {showCritical && (
           <span className="ml-2 flex items-center gap-1 text-xs text-muted">
-            <span className="inline-block h-2.5 w-4 rounded bg-red-200" /> クリティカルパス
+            <span className={`inline-block h-2.5 w-4 rounded ${TIMELINE_CRITICAL_BAR}`} /> クリティカルパス
           </span>
         )}
         <span className="ml-auto" />
@@ -461,7 +462,7 @@ export default function TimelineToolbar({
             value={resetSectionId}
             onChange={(event) => setResetSectionId(event.target.value)}
             aria-label="行固定を解除するセクション"
-            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
+            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
           >
             <option value="">セクションを選択…</option>
             {sections.map((section) => (
@@ -492,7 +493,7 @@ export default function TimelineToolbar({
           <select
             value={zoom}
             onChange={(event) => changeZoom(Number(event.target.value))}
-            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-line bg-white px-2 text-[13px] outline-none focus:border-accent"
+            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
             aria-label="ズーム"
           >
             {zoomPresets.map((preset, index) => (

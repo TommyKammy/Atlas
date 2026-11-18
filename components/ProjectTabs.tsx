@@ -448,15 +448,13 @@ export default function ProjectTabs({
           const isDragOver = dragOverId === tab.id && dragId !== null;
           const isHidden = visibleKeys !== null && !visibleKeys.includes(tab.tab_key);
           const linkClass = `flex h-7 items-center rounded-md px-2 text-[14px] font-medium transition-colors ${
-            isActive
-              ? "bg-[#eff4fd] text-[#2c60b8] hover:bg-[#e1ebfc] hover:text-[#1b4da0]"
-              : "text-[#636363] hover:bg-[rgba(38,38,38,0.03)] hover:text-[#050505]"
-          } ${
             isDragOver
               ? isActive
-                ? "bg-[#e1ebfc] text-[#1b4da0]"
-                : "bg-[rgba(38,38,38,0.03)] text-[#050505]"
-              : ""
+                ? "bg-accent-soft-hover text-accent-text hover:bg-accent-soft-hover hover:text-accent-hover"
+                : "bg-hover text-text hover:bg-hover hover:text-text"
+              : isActive
+                ? "bg-accent-soft text-accent-text hover:bg-accent-soft-hover hover:text-accent-hover"
+                : "text-secondary hover:bg-hover hover:text-text"
           }`;
           return (
             <div
@@ -548,7 +546,7 @@ export default function ProjectTabs({
                   }}
                   data-project-tab-rename-input={tab.tab_key}
                   aria-label={`${tab.name}タブの名前`}
-                  className="h-7 w-32 rounded-md border border-[#2c60b8] bg-white px-2 text-[14px] font-medium text-text outline-none"
+                  className="h-7 w-32 rounded-md border border-accent bg-field px-2 text-[14px] font-medium text-text outline-none"
                 />
               ) : (
                 <Link
@@ -614,7 +612,7 @@ export default function ProjectTabs({
               if (addMenu) setAddMenu(null);
               else openAddMenu();
             }}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-[rgba(38,38,38,0.03)] hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2c60b8] md:@max-[420px]:hidden"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:@max-[420px]:hidden"
           >
             <svg
               aria-hidden="true"

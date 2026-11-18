@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROJECT_INITIAL_BACKGROUND, PROJECT_INITIAL_TEXT } from "@/lib/data-colors";
 import type {
   AdvancedTaskHit,
   GlobalFileHit,
@@ -45,7 +46,7 @@ export default function SearchResults({
             <div key={task.id} data-search-result-id={task.id} className={rowCls}>
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                  task.completed ? "border-green-700 bg-green-700 text-on-accent" : "border-line-strong"
+                  task.completed ? "border-success-strong bg-success-strong text-on-accent" : "border-line-strong"
                 }`}
               >
                 {task.completed && "✓"}
@@ -76,7 +77,7 @@ export default function SearchResults({
             <div key={project.id} data-search-result-id={project.id} className={rowCls}>
               <span
                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[10px] font-bold"
-                style={{ backgroundColor: project.color ?? "#f1bd6c", color: "#171717" }}
+                style={{ backgroundColor: project.color ?? PROJECT_INITIAL_BACKGROUND, color: PROJECT_INITIAL_TEXT }}
               >
                 {project.name.slice(0, 1)}
               </span>
@@ -95,7 +96,7 @@ export default function SearchResults({
           <div className={sectionTitle}>メッセージ（{pagination.messages.total}件）</div>
           {messages.map((message) => (
             <div key={message.id} data-search-result-id={message.id} className={rowCls}>
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-100 text-[10px] text-accent-text">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-accent-soft text-[10px] text-accent-text">
                 M
               </span>
               <Link href={messageHref(message)} className="min-w-0 flex-1 hover:underline">
@@ -116,7 +117,7 @@ export default function SearchResults({
           <div className={sectionTitle}>知識（{pagination.knowledge.total}件）</div>
           {knowledge.map((note) => (
             <div key={note.id} data-search-result-id={note.id} className={rowCls}>
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-amber-100 text-[10px] text-warning">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-warning-soft text-[10px] text-warning">
                 K
               </span>
               <Link href={knowledgeHref(note)} className="min-w-0 flex-1 hover:underline">

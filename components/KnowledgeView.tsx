@@ -159,7 +159,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
     <div className="grid min-w-0 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
       <aside aria-label="ノート一覧" className={`${editing ? "hidden lg:block" : ""} min-w-0 border-b border-line pb-4 lg:border-r lg:border-b-0 lg:pr-5`}>
         <label className="sr-only" htmlFor="knowledge-search">ノートを検索</label>
-        <input id="knowledge-search" type="search" value={search} maxLength={300} onChange={event => { searchRef.current = event.target.value; setSearch(event.target.value); setResults(null); setSearchMore(false); setError(""); }} placeholder="タイトル・本文を検索" className="mb-3 w-full rounded-md border border-line-strong px-3 py-2 text-sm placeholder:text-neutral-600 focus:outline-focus-ring" />
+        <input id="knowledge-search" type="search" value={search} maxLength={300} onChange={event => { searchRef.current = event.target.value; setSearch(event.target.value); setResults(null); setSearchMore(false); setError(""); }} placeholder="タイトル・本文を検索" className="mb-3 w-full rounded-md border border-line-strong px-3 py-2 text-sm placeholder:text-secondary focus:outline-focus-ring" />
         <p className="mb-2 text-xs text-secondary">{search && results === null ? "検索中…" : `${filtered.length} 件${(search ? searchMore : hasMore) ? "以上" : ""}のノート`}</p>
         <KnowledgeNoteList notes={filtered} selectedId={selectedId} disabled={busy} canReorder={canEdit && !search}
           onSelect={select} onMove={(id, target, placement) => void reorder(id, target, placement)} />

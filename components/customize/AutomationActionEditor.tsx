@@ -6,9 +6,9 @@ import type { RuleAction } from "@/lib/automation/types";
 import AutomationCustomFieldValue from "./AutomationCustomFieldValue";
 
 const inputClass =
-  "mt-1 h-8 w-full rounded-md border border-line bg-white px-2 text-[12px] outline-none focus:border-accent";
+  "mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[12px] outline-none focus:border-accent";
 const areaClass =
-  "mt-1 min-h-[68px] w-full rounded-md border border-line bg-white px-2 py-1.5 text-[12px] outline-none focus:border-accent";
+  "mt-1 min-h-[68px] w-full rounded-md border border-line bg-field px-2 py-1.5 text-[12px] outline-none focus:border-accent";
 
 function actionWithParam(action: RuleAction, name: string, value: unknown): RuleAction {
   const params = { ...action.params, [name]: value };
@@ -64,7 +64,7 @@ function ParamField({
   const label = (
     <span className="block text-[11px] font-medium text-secondary">
       {param.label}
-      {param.required ? <span className="ml-0.5 text-rose-500">*</span> : null}
+      {param.required ? <span className="ml-0.5 text-danger">*</span> : null}
     </span>
   );
   if (param.type === "textarea") {
