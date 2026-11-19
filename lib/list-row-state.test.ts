@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   LIST_ROW_STATE_LABELS,
+  countOverdueTasks,
   listRowState,
   listSummaryText,
   listTaskSummary,
@@ -48,6 +49,20 @@ test("listTaskSummary counts only the visible tasks and omits zero overdue from 
   const noneOverdue = listTaskSummary(visible.slice(0, 1).concat(visible.slice(2)), today);
   assert.deepEqual(noneOverdue, { total: 3, completed: 1, overdue: 0 });
   assert.equal(listSummaryText(noneOverdue), "3件 ・ 完了 1");
+});
+
+test("countOverdueTasks counts unfinished tasks before today only", () => {
+  const tasks = [
+    task({ due_on: "2026-11-16", progress: 60 }),
+    task({ due_on: "2026-11-10" }),
+    task({ completed: true, due_on: "2026-11-10", progress: 100 }),
+    task({ due_on: today }),
+    task({ due_on: "2026-11-20", progress: 40 }),
+    task({ due_on: null, progress: 80 }),
+  ];
+  assert.equal(countOverdueTasks(tasks, today), 2);
+  assert.equal(countOverdueTasks([], today), 0);
+  assert.equal(countOverdueTasks([task({ completed: true, due_on: "2026-11-01" })], today), 0);
 });
 
 test("every row state has a Japanese label", () => {

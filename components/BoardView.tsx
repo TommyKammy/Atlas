@@ -12,6 +12,7 @@ import { groupBoardTasks, type BoardGroup } from "@/lib/board-group";
 import type { Section, TaskRow, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { isQuickTask } from "@/lib/quick-task";
+import { countOverdueTasks } from "@/lib/list-row-state";
 import { parseListDateFilter, parseListGroupBy, parseListSortKey, taskMatchesListFilters, type ListDateFilter, type ListFilters, type ListGroupBy, type ListSortKey } from "@/lib/list-view";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useApiRefresh } from "@/lib/use-api-refresh";
@@ -191,6 +192,9 @@ function BoardViewContent({
       dayOffset: shiftDay,
     }),
   );
+  // Counted over the project's board tasks, not the filtered set: the button
+  // reports the backlog the project has, and pressing it reveals that filter.
+  const overdueCount = countOverdueTasks(tasks, today);
   const sortItems = (items: TaskRow[]) => {
     const dir = sortDir === "asc" ? 1 : -1;
     const text = (a: string | null | undefined, b: string | null | undefined) => {
@@ -567,6 +571,7 @@ function BoardViewContent({
         statusOptions={statusOptions}
         filters={filters}
         activeFilterCount={activeFilters}
+        overdueCount={overdueCount}
         onFilterChange={setFilter}
         clearFilters={clearFilters}
         sortKey={sortKey}
@@ -615,7 +620,7 @@ function BoardViewContent({
           <div
             key={g.key}
             data-board-column={g.key}
-            className="relative w-72 shrink-0 rounded-lg bg-surface-muted p-2"
+            className="relative w-72 shrink-0 rounded-lg bg-surface-subtle p-2"
           >
             {isDragging && (
               <div
@@ -640,9 +645,9 @@ function BoardViewContent({
                 }}
               />
             )}
-            <div className="flex items-baseline gap-2 px-1 py-1">
-              <span className="font-semibold">{g.label}</span>
-              <span className="text-sm text-secondary">{g.items.length}</span>
+            <div className="flex items-baseline gap-2 px-1 pt-0.5 pb-2">
+              <span className="text-[14px] leading-6 font-semibold text-text">{g.label}</span>
+              <span className="text-[12px] font-normal text-muted">{g.items.length}</span>
             </div>
             <div className="flex flex-col gap-2">
               {(() => {
@@ -732,7 +737,7 @@ function BoardViewContent({
                   placeholder="タスク名を入力"
                   data-add-task
                   autoFocus
-                  className="w-full rounded border px-2 py-1 text-sm outline-none focus:border-accent"
+                  className="w-full rounded-md border border-line bg-field px-2 py-1 text-sm outline-none focus:border-accent"
                 />
                 <button
                   disabled={addingTask || !(drafts[g.key] ?? "").trim()}
@@ -751,7 +756,7 @@ function BoardViewContent({
                   : setAddingTo(g.key)}
                 disabled={!canEdit}
                 data-add-task-open
-                className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-secondary hover:bg-surface-strong/60 hover:text-secondary"
+                className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-muted hover:bg-hover hover:text-secondary"
               >
                 ＋ タスクを追加
               </button>

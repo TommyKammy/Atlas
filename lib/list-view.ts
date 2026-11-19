@@ -196,7 +196,9 @@ export function taskMatchesListFilters(
   if (filters.due !== "") {
     if (task.due_on === null) return false;
     if (filters.due === "overdue") {
-      if (task.due_on >= today) return false;
+      // Overdue means still open and past due, matching the list summary,
+      // the row state and the calendar filter.
+      if (task.completed || task.due_on >= today) return false;
     } else if (filters.due === "today") {
       if (task.due_on !== today) return false;
     } else if (filters.due === "week") {

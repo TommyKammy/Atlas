@@ -28,6 +28,18 @@ export function listRowState(task: ListRowStateTask, today: string): ListRowStat
   return "todo";
 }
 
+/**
+ * Unfinished tasks past their due date. Uses the same state rule as the row
+ * control, so the board's "要対応" count and its circle agree.
+ */
+export function countOverdueTasks(tasks: readonly ListRowStateTask[], today: string): number {
+  let count = 0;
+  for (const task of tasks) {
+    if (listRowState(task, today) === "overdue") count += 1;
+  }
+  return count;
+}
+
 export type ListTaskSummary = {
   total: number;
   completed: number;

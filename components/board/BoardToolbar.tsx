@@ -42,6 +42,7 @@ export default function BoardToolbar({
   statusOptions,
   filters,
   activeFilterCount,
+  overdueCount,
   onFilterChange,
   clearFilters,
   sortKey,
@@ -73,6 +74,7 @@ export default function BoardToolbar({
   statusOptions: string[];
   filters: ListFilters;
   activeFilterCount: number;
+  overdueCount: number;
   onFilterChange: (key: keyof ListFilters, value: string | boolean) => void;
   clearFilters: () => void;
   sortKey: ListSortKey;
@@ -143,6 +145,7 @@ export default function BoardToolbar({
     }
   };
 
+  const overdueActive = filters.due === "overdue";
   const sortLabel = sortKey === "position" ? "" : LIST_SORT_LABELS[sortKey] ?? sortKey;
   const sortArrow = sortDir === "asc" ? "↑" : "↓";
   const groupLabel =
@@ -157,6 +160,21 @@ export default function BoardToolbar({
       <ProjectViewToolbar className="px-4">
         <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} data-board-add disabled={!canEdit} />
         <span className="ml-auto" />
+
+        <button
+          type="button"
+          data-board-overdue-toggle
+          data-board-overdue-count={overdueCount}
+          aria-pressed={overdueActive}
+          onClick={() => onFilterChange("due", overdueActive ? "" : "overdue")}
+          className={
+            overdueActive
+              ? "inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md bg-accent-soft px-2 text-[12px] font-medium text-accent-text transition-colors hover:bg-accent-soft-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+              : toolbarBtn
+          }
+        >
+          要対応 {overdueCount}
+        </button>
 
         <span className="relative">
           {activeFilterCount > 0 ? (
