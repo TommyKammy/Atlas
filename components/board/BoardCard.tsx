@@ -4,7 +4,6 @@ import { QuickTaskName } from "../task/QuickTaskContext";
 import Link from "next/link";
 import type { DragEvent, MouseEvent } from "react";
 import type { TaskRow } from "@/lib/data";
-import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import { dueSegs } from "@/lib/dates";
 import { listRowState } from "@/lib/list-row-state";
 import { taskSectionId } from "@/lib/task-section";
@@ -19,9 +18,11 @@ import TaskApprovalBadge from "../task/TaskApprovalBadge";
  * One board card. Kept separate from BoardView so column layout, drag
  * bookkeeping and card presentation can evolve independently.
  *
- * The card follows the list's language: a surface with a line border, the
- * four-state circle from the row control, one quiet meta line and an optional
- * 3px progress bar on the bottom edge. Shadows and per-field pills are gone.
+ * The card follows the workbench mockup: a surface with a line border, 12px
+ * padding and 10px between rows. The completion circle and name lead, progress
+ * sits between the name and the meta row, and the bottom row pairs the
+ * assignee/meta with the due date. Status-like badges move to a quiet row above
+ * the name so the card keeps one reading order.
  */
 export default function BoardCard({
   task,
@@ -56,6 +57,14 @@ export default function BoardCard({
   const overdue = !task.completed && task.due_on !== null && task.due_on < today;
   const rowState = listRowState(task, today);
   const showProgress = task.progress > 0 && !task.completed;
+  const showSection = effectiveGroupBy !== "section" && sectionId !== null;
+  const showStatus = cardFields.status && statusFieldEnabled && task.status !== "inbox";
+  const showBadges = Boolean(task.approval) || showSection || showStatus;
+  const showMeta = cardFields.meta && (task.subtask_count > 0 || task.comment_count > 0);
+  const metaTitle = [
+    task.subtask_count > 0 ? `子タスク ${task.subtask_count}` : null,
+    task.comment_count > 0 ? `コメント ${task.comment_count}` : null,
+  ].filter((part): part is string => part !== null).join(" ・ ");
   return (
     <div
       data-board-card={task.id}
@@ -71,8 +80,27 @@ export default function BoardCard({
       }}
       onDragEnd={onDragEnd}
       onClick={(event) => onClick(event, task.id)}
-      className="relative cursor-pointer overflow-hidden rounded-lg border border-line bg-surface p-3 text-sm transition-colors hover:border-line-strong active:cursor-grabbing"
+      className="flex cursor-pointer flex-col gap-2.5 rounded-lg border border-line bg-surface p-3 text-sm transition-colors hover:border-line-strong active:cursor-grabbing"
     >
+      {showBadges && (
+        <div
+          data-board-card-badges
+          className="flex flex-wrap items-center justify-end gap-1.5 text-[11px] text-muted"
+        >
+          {showSection && sectionId !== null && (
+            <span data-board-section-pill className="max-w-full truncate rounded border border-line px-1.5 py-0.5">
+              {sectionName.get(sectionId) ?? ""}
+            </span>
+          )}
+          {showStatus && <TaskStatusChip status={task.status} compact />}
+          {task.approval && (
+            <TaskApprovalBadge
+              approval={task.approval}
+              href={`/projects/${projectId}?view=board&task=${task.id}&approval=1`}
+            />
+          )}
+        </div>
+      )}
       <div className="flex items-start gap-2">
         <TaskCompletionToggle
           completed={task.completed}
@@ -88,24 +116,46 @@ export default function BoardCard({
           href={`/projects/${projectId}?view=board&task=${task.id}`}
           title={task.name}
           dir="auto"
-          className={`line-clamp-2 break-words ${task.completed ? "text-muted line-through" : ""}`}
+          className={`line-clamp-2 min-w-0 flex-1 break-words font-medium ${task.completed ? "text-muted line-through" : ""}`}
         >
           {task.name || "タスク名を入力"}
         </Link></QuickTaskName>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
-        {task.approval && <TaskApprovalBadge approval={task.approval} href={`/projects/${projectId}?view=board&task=${task.id}&approval=1`} />}
-        {effectiveGroupBy !== "section" && sectionId !== null && (
-          <span className="rounded bg-surface-strong px-1.5 py-0.5">
-            {sectionName.get(sectionId) ?? ""}
-          </span>
-        )}
-        {cardFields.assignee && task.assignee_name && (
-          <span className="flex min-w-0 max-w-full items-center gap-1">
-            <TaskAvatar name={task.assignee_name} className="h-4 w-4" textClassName="text-[9px]" />
-            <span className="truncate">{task.assignee_name}</span>
-          </span>
-        )}
+      {showProgress && (
+        <div
+          data-board-progress={task.progress}
+          role="progressbar"
+          aria-label="進捗"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={task.progress}
+          className="h-[3px] rounded-[2px] bg-surface-muted"
+        >
+          <div className="h-full rounded-[2px] bg-text" style={{ width: `${task.progress}%` }} />
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2 text-[12px] text-muted">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+          {cardFields.assignee && (task.assignee_name ? (
+            <span className="flex min-w-0 items-center gap-1">
+              <TaskAvatar name={task.assignee_name} className="h-4 w-4" textClassName="text-[9px]" />
+              <span className="truncate">{task.assignee_name}</span>
+            </span>
+          ) : (
+            <span>未割当</span>
+          ))}
+          {showMeta && (
+            <span className="whitespace-nowrap" title={metaTitle}>
+              {task.subtask_count > 0 && (
+                <span data-board-subtask-badge>子タスク {task.subtask_count}</span>
+              )}
+              {task.subtask_count > 0 && task.comment_count > 0 && " ・ "}
+              {task.comment_count > 0 && (
+                <span data-board-comment-badge>コメント {task.comment_count}</span>
+              )}
+            </span>
+          )}
+        </div>
         {cardFields.due &&
           (task.start_on || task.due_on) &&
           (() => {
@@ -113,7 +163,8 @@ export default function BoardCard({
             const dueLabel = s2 ? `${s1} – ${s2}` : s1;
             return (
               <span
-                className={`whitespace-nowrap ${overdue ? "font-medium text-danger" : ""}`}
+                data-board-due-label
+                className={`shrink-0 whitespace-nowrap ${overdue ? "font-medium text-danger" : ""}`}
                 title={overdue ? `期限超過: ${dueLabel}` : undefined}
               >
                 {overdue && <DueStateIcon state="overdue" className="mr-0.5 align-[-2px]" />}
@@ -123,25 +174,8 @@ export default function BoardCard({
               </span>
             );
           })()}
-        {cardFields.meta && (task.subtask_count > 0 || task.comment_count > 0) && (
-          <span className="whitespace-nowrap" title={[
-            task.subtask_count > 0 ? `子タスク ${task.subtask_count}` : null,
-            task.comment_count > 0 ? `コメント ${task.comment_count}` : null,
-          ].filter((part): part is string => part !== null).join(" ・ ")}>
-            {task.subtask_count > 0 && (
-              <span data-board-subtask-badge>子タスク {task.subtask_count}</span>
-            )}
-            {task.subtask_count > 0 && task.comment_count > 0 && " ・ "}
-            {task.comment_count > 0 && (
-              <span data-board-comment-badge>コメント {task.comment_count}</span>
-            )}
-          </span>
-        )}
-        {cardFields.status && statusFieldEnabled && task.status !== "inbox" && (
-          <TaskStatusChip status={task.status} compact />
-        )}
       </div>
-      <div className="mt-2 flex gap-1 md:hidden">
+      <div className="flex gap-1 md:hidden">
         <button
           type="button"
           onClick={() => onMove(-1)}
@@ -157,19 +191,6 @@ export default function BoardCard({
           →
         </button>
       </div>
-      {showProgress && (
-        <div
-          data-board-progress={task.progress}
-          role="progressbar"
-          aria-label="進捗"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={task.progress}
-          className="absolute inset-x-0 bottom-0 h-[3px] bg-surface-strong"
-        >
-          <div className={`h-full ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${task.progress}%` }} />
-        </div>
-      )}
     </div>
   );
 }

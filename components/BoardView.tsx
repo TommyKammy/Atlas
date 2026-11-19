@@ -8,6 +8,7 @@ import { isImeComposing } from "@/lib/ime-keyboard";
 import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { api } from "@/lib/api-client";
+import { boardColumnState } from "@/lib/board-column-state";
 import { groupBoardTasks, type BoardGroup } from "@/lib/board-group";
 import type { Section, TaskRow, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
@@ -21,6 +22,7 @@ import { usePersistedViewState } from "@/lib/view-state-client";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useRef, useState } from "react";
 import BoardCard from "./board/BoardCard";
+import BoardColumnStateIcon from "./board/BoardColumnStateIcon";
 import BoardSectionAdd from "./board/BoardSectionAdd";
 import BoardToolbar, { type BoardCardFields } from "./board/BoardToolbar";
 import EmptyState from "./EmptyState";
@@ -542,6 +544,14 @@ function BoardViewContent({
     }
   };
 
+  // The column heading and the footer link open the same composer: a quick
+  // card in section grouping, an inline field in every other grouping.
+  const startAdd = (g: BoardGroup<TaskRow>) => {
+    if (effectiveGroupBy === "section")
+      quick?.create("task", g.key === "s-none" ? null : g.sectionId);
+    else setAddingTo(g.key);
+  };
+
   return (
     <div
       data-board-view
@@ -615,12 +625,12 @@ function BoardViewContent({
           }
         />
       )}
-      <div data-board-columns className="flex gap-3 overflow-x-auto p-4 pb-16">
+      <div data-board-columns className="flex gap-4 overflow-x-auto p-4 pb-16">
         {groups.map((g) => (
           <div
             key={g.key}
             data-board-column={g.key}
-            className="relative w-72 shrink-0 rounded-lg bg-surface-subtle p-2"
+            className="relative w-[17.5rem] shrink-0"
           >
             {isDragging && (
               <div
@@ -645,9 +655,25 @@ function BoardViewContent({
                 }}
               />
             )}
-            <div className="flex items-baseline gap-2 px-1 pt-0.5 pb-2">
-              <span className="text-[14px] leading-6 font-semibold text-text">{g.label}</span>
-              <span className="text-[12px] font-normal text-muted">{g.items.length}</span>
+            <div className="flex items-center gap-2 px-1 pt-1 pb-2">
+              <h2 data-board-column-header className="flex min-w-0 items-center gap-2 text-[13px] font-bold text-text">
+                {effectiveGroupBy === "status" && (() => {
+                  const state = boardColumnState(g.status);
+                  return state ? <BoardColumnStateIcon state={state} /> : null;
+                })()}
+                <span className="truncate" title={g.label}>{g.label}</span>
+                <span data-board-column-count className="shrink-0 font-normal text-muted">{g.items.length}</span>
+              </h2>
+              <button
+                type="button"
+                data-board-column-add
+                aria-label={`${g.label}にタスクを追加`}
+                disabled={!canEdit}
+                onClick={() => startAdd(g)}
+                className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-base leading-none text-muted hover:bg-hover hover:text-secondary disabled:opacity-40"
+              >
+                ＋
+              </button>
             </div>
             <div className="flex flex-col gap-2">
               {(() => {
@@ -751,9 +777,7 @@ function BoardViewContent({
               </div>
             ) : (
               <button
-                onClick={() => effectiveGroupBy === "section"
-                  ? quick?.create("task", g.key === "s-none" ? null : g.sectionId)
-                  : setAddingTo(g.key)}
+                onClick={() => startAdd(g)}
                 disabled={!canEdit}
                 data-add-task-open
                 className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-muted hover:bg-hover hover:text-secondary"
