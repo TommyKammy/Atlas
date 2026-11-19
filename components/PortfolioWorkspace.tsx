@@ -291,7 +291,7 @@ export default function PortfolioWorkspace({
                     <select
                       value={projectId}
                       onChange={(event) => setProjectId(event.target.value)}
-                      className="h-8 rounded-md border border-line bg-field px-2 text-[12px]"
+                      className="h-8 min-w-0 max-w-full rounded-md border border-line bg-field px-2 text-[12px]"
                     >
                       <option value="">プロジェクトを選択…</option>
                       {addableProjects.map((project) => (

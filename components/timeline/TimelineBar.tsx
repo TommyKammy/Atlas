@@ -179,7 +179,7 @@ function TimelineBar({
   );
   const dependencyHandleClass = (visible: boolean) =>
     `absolute z-40 flex h-3.5 w-3.5 cursor-crosshair touch-none items-center justify-center rounded-full border border-line-strong bg-surface shadow-sm hover:border-accent hover:bg-accent ${
-      visible ? "opacity-100" : "pointer-events-none opacity-0"
+      visible ? "opacity-100" : "pointer-events-none opacity-0 focus-visible:pointer-events-auto focus-visible:opacity-100"
     }`;
 
   return (

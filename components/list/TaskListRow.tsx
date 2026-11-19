@@ -318,7 +318,7 @@ export default function TaskListRow({
         </span>
       </span>
       <div
-        className={`flex min-w-0 items-center gap-1.5 ${isQuickTask(t) ? "" : "overflow-hidden"} ${depth > 0 ? "pl-7" : ""} ${
+        className={`flex min-w-0 items-center gap-1.5 ${isQuickTask(t) ? "" : "overflow-x-clip"} ${depth > 0 ? "pl-7" : ""} ${
           editing?.id === t.id && editing.field === "name"
             ? "rounded-[2px] ring-1 ring-focus-ring"
             : ""
@@ -742,8 +742,9 @@ export default function TaskListRow({
       <button
         style={{ order: 999 }}
         onClick={() => remove(t)}
-        className="invisible justify-self-end text-subtle hover:text-danger group-hover:visible"
+        className="invisible justify-self-end text-subtle hover:text-danger group-hover:visible group-focus-within:visible"
         title="削除"
+        aria-label={`${t.name} を削除`}
       >
         ×
       </button>

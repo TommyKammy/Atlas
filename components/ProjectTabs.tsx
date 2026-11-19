@@ -429,7 +429,7 @@ export default function ProjectTabs({
         ref={navRef}
         data-project-tabs
         style={isWide ? { minWidth: navMinWidth } : undefined}
-        className="relative flex w-full items-center gap-[4px] overflow-x-auto px-6 py-[3px] text-sm whitespace-nowrap md:w-auto md:flex-1 md:overflow-clip md:px-0 md:py-0 md:[overflow-clip-margin:8px]"
+        className="relative flex w-full items-center gap-[4px] overflow-x-auto px-6 py-1 text-sm whitespace-nowrap md:w-auto md:flex-1 md:overflow-clip md:px-0 md:py-0 md:[overflow-clip-margin:8px]"
         onDragOver={(event) => {
           if (dragId !== null) event.preventDefault();
         }}

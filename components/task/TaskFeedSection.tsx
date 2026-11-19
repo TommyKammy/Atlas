@@ -174,7 +174,7 @@ export default function TaskFeedSection({
               </span>
             )}
             {canEdit && editingCommentId !== comment.id && (
-              <span className="ml-auto flex items-center gap-2 opacity-0 transition-opacity group-hover/comment:opacity-100">
+              <span className="ml-auto flex items-center gap-2 opacity-0 transition-opacity group-hover/comment:opacity-100 focus-within:opacity-100">
                 <button
                   type="button"
                   data-comment-edit={comment.id}

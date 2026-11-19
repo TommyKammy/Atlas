@@ -737,7 +737,7 @@ function TimelineViewContent({
               data-timeline-section={group.section.id}
               data-timeline-drop-target={drag?.rowDrop?.sectionId === group.sectionId ? "true" : undefined}
             >
-              <div className="relative flex h-10 items-center">
+              <div className="relative flex h-10 items-center max-md:px-1">
                 <button
                   type="button"
                   data-timeline-section-row={group.section.id}

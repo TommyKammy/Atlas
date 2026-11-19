@@ -111,7 +111,7 @@ export default function TaskSubtasksSection({
               onClick={() => onDelete(subtask)}
               title="サブタスクを削除"
               aria-label={`${subtask.name} を削除`}
-              className="invisible shrink-0 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-danger group-hover/sub:visible"
+              className="invisible shrink-0 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-danger group-hover/sub:visible group-focus-within/sub:visible"
             >
               ×
             </button>
