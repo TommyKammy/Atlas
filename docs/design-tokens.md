@@ -764,14 +764,13 @@ rm -rf .next && npm run build
 grep -rn "text-emerald-700" app components --include="*.tsx"
 ```
 
-## 9. 直書き検査（ラチェット）
+## 9. 直書き検査（0 件必須）
 
-トークン移行の間に、コンポーネントへ新しい色の直書きが増えないよう `scripts/check-color-literals.mjs` でファイルごとの件数を監視している。既存の直書きはベースライン（`tests/fixtures/color-literal-baseline.json`）として許容し、件数が増えたファイル、または新しく直書きを持ち込んだファイルがあると失敗する。
+`scripts/check-color-literals.mjs` は、`app/`・`components/`・`lib/` に UI 色の直書きが 1 件でもあれば失敗する。ベースラインや許容件数はなく、通る状態は常に 0 件。
 
 ```bash
-npm run check:colors                 # --check と同じ。ベースラインと比較
-node scripts/check-color-literals.mjs --update   # 現状でベースラインを更新
-node scripts/check-color-literals.mjs --summary  # 全体・種類別・上位20ファイルを表示
+npm run check:colors                 # --check と同じ。直書きが 1 件でもあれば終了コード 1
+node scripts/check-color-literals.mjs --summary  # 全体・種類別・上位20ファイルを表示（終了コード 0）
 ```
 
 - 走査対象は `app/`・`components/`・`lib/` の `.ts` / `.tsx`。テストとフィクスチャは除外する。`lib/data-colors.ts` だけはパスで明示的に除外する（データ色の唯一の置き場。理由は 4.8）。
@@ -780,12 +779,12 @@ node scripts/check-color-literals.mjs --summary  # 全体・種類別・上位20
   - Tailwind の任意値（`[#fff]`、`[#2c60b8]`、`[rgb(...)]`、`[rgba(...)]`、`[hsl(...)]`）
   - 文字列・style 内の 16進カラー（`#fff` / `#ffffff` / `#ffffffff`）
 - トークン由来のクラス（`bg-surface`、`text-muted`、`border-line`、`text-accent-text` など）は数えない。
-- 件数が減ったファイルは「改善」として表示し、成功扱いにする。`--update` でベースラインを下げる。
+- 違反は `ファイル:行:列  一致した文字列  種類` で全件出力し、最後に件数と対処法を示す。
 - 誤検出を避けるため、`href="#..."` / `src="#..."`、`url(#...)`、HTML 実体参照、`querySelector("#...")` などは除外している。判定の詳細と限界（コメント内の `#fff` は数える、4桁 hex は文字列中では対象外、など）はスクリプト冒頭のコメントに記載している。
-- CI の `verify` ジョブで `npm run check:colors` を実行する。意図的に直書きを増やす場合は、理由を添えて `--update` でベースラインを更新する。
+- CI の `verify` ジョブで `npm run check:colors` を実行する。直書きを足すのではなく、UI 色はトークン（3章・4.7）、データ色は `lib/data-colors.ts`（4.8）に置く。`--update` とベースラインは廃止した。
 - S3-2 完了時点の残数は 0。AA 待ちの 36 件はトークンへ移り、`app/`・`components/`・`lib/` に UI 色の直書きはない。データ色は `lib/data-colors.ts` に集約済み。
 - データ色を追加するときは `lib/data-colors.ts` に追加する。UI 色を追加するときはトークンを追加し、`docs` の 3 章・4.7 を更新する。
-- `npm run check:token-variants`（6.1）は、新しいトークンを旧クラスに重ねる事故を検出する。`check:colors` のラチェットは「直書きを増やさない」、`check:token-variants` は「状態付きユーティリティとの競合を作らない」という別の方向から守る。
+- `npm run check:token-variants`（6.1）は、新しいトークンを旧クラスに重ねる事故を検出する。`check:colors` は「直書きを 0 に保つ」、`check:token-variants` は「状態付きユーティリティとの競合を作らない」という別の方向から守る。
 
 ## 10. S3-2 配色切替（C 案 workbench）
 
@@ -895,7 +894,7 @@ S3-2 では構造を変えず、次の箇所を確認した。いずれも今回
 
 ### 10.5 確認結果
 
-- `check-color-literals`: 36 → 0。ベースラインは空。
+- `check-color-literals`: 36 → 0。現在も 0 件（厳格検査）。
 - `check-token-variants`: 違反 0。unlayered の旧ダーク上書きは 0。
 - コントラスト監査（`bash tests/run-e2e.sh ui-contrast`）: 8 件。すべてライトの装飾用 `text-subtle`（鍵アイコン、ドラッグハンドル、空状態のチェック、開閉シェブロン）。本文・状態・アクセントの文字の違反は 0。
 - 同じデータの A/B 撮影 228 枚で、レイアウト計測（18 ページ×テーマ、5,862 行）は HEAD と完全一致。すべての画像で色が変わる（意図した差）。

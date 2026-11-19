@@ -28,7 +28,7 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
-      - name: Color literal ratchet
+      - name: Hard-coded colors (must be zero)
         run: npm run check:colors
       - name: Token / state variant conflicts
         run: npm run check:token-variants

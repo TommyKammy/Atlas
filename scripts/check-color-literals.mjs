@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Ratchet for hard-coded colors in app/, components/ and lib/.
+// Strict check: hard-coded colors are not allowed in app/, components/ and lib/.
 //
 // One file is excluded by path: lib/data-colors.ts. It is the single home for
 // data colors (chart series, progress bars, status dots, avatars, project and
@@ -8,20 +8,18 @@
 // hard-coded colors; see docs/design-tokens.md "データの色".
 //
 // Why: docs/design-tokens.md defines semantic color utilities (bg-surface,
-// text-muted, border-line, ...). While components are migrated to those tokens,
-// this check freezes the current number of hard-coded colors per file. A file
-// may keep (or reduce) its count; it may not increase it, and a new file may
-// not introduce literals. That keeps the migration monotonic without a
-// big-bang rewrite.
+// text-muted, border-line, ...). Every UI color must come from a token. This
+// check therefore fails on any literal it finds; a passing tree has zero
+// hard-coded UI colors. There is no baseline and no allowed count. Data colors
+// live in lib/data-colors.ts and are the only exception.
 //
 // Usage:
 //   node scripts/check-color-literals.mjs            # same as --check
-//   node scripts/check-color-literals.mjs --check
-//   node scripts/check-color-literals.mjs --update   # rewrite the baseline
+//   node scripts/check-color-literals.mjs --check    # fail on any literal
 //   node scripts/check-color-literals.mjs --summary  # totals, kinds, top 20
 //
-// Exit codes: 0 = no file increased, 1 = at least one file increased,
-//             2 = setup / usage error.
+// Exit codes: 0 = no hard-coded colors, 1 = at least one hard-coded color,
+//             2 = setup / usage error (including the removed --update flag).
 //
 // Detection (one count per occurrence):
 //   a) Tailwind default palette utilities, e.g. bg-red-500, text-neutral-700,
@@ -30,7 +28,7 @@
 //      decoration caret accent shadow.
 //      NOTE: ring-offset-*, inset-ring-*, inset-shadow-*, text-shadow-* are
 //      not in this list. They are rare here and can be added later; that is a
-//      known miss, not a failure of the ratchet itself.
+//      known miss, not a failure of the check itself.
 //   b) Tailwind arbitrary color values: [#fff], [#2c60b8], [rgb(...)],
 //      [rgba(...)], [hsl(...)], [hsla(...)].
 //   c) Raw hex colors: #fff / #ffffff / #ffffffff. See "Hex false positives"
@@ -63,15 +61,14 @@
 //     which is intentional: it is still a hard-coded color.
 //
 // Counts are per occurrence, not per unique class. Classes in comments and in
-// string literals are scanned too (conservative: a false positive freezes one
-// extra count instead of letting a literal slip through).
+// string literals are scanned too (conservative: a false positive fails the
+// check once rather than letting a literal slip through).
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const BASELINE_PATH = resolve(ROOT, "tests/fixtures/color-literal-baseline.json");
 const SCAN_ROOTS = ["app", "components", "lib"];
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx"]);
 // Directory names that hold tests or fixtures. app/ and components/ currently
@@ -110,7 +107,7 @@ const URL_FUNCTION_PATTERN = /\burl\([^)]*\)/gi;
 
 export const KINDS = ["palette", "arbitrary", "hex"];
 
-// Code-unit order (not localeCompare) keeps the baseline stable across
+// Code-unit order (not localeCompare) keeps output ordering stable across
 // platforms and Node ICU builds.
 function comparePaths(a, b) {
   if (a < b) return -1;
@@ -147,9 +144,29 @@ function looksLikeSelectorBlock(source, end) {
   return /^[ \t\r\n]*\{/.test(source.slice(end, end + 16));
 }
 
+function lineStartOffsets(source) {
+  const starts = [0];
+  for (let index = 0; index < source.length; index += 1) {
+    if (source.charCodeAt(index) === 10) starts.push(index + 1);
+  }
+  return starts;
+}
+
+function positionAt(starts, index) {
+  let low = 0;
+  let high = starts.length - 1;
+  while (low < high) {
+    const middle = (low + high + 1) >> 1;
+    if (starts[middle] <= index) low = middle;
+    else high = middle - 1;
+  }
+  return { line: low + 1, column: index - starts[low] + 1 };
+}
+
 /**
  * Find every hard-coded color occurrence in a source string.
- * Returns matches in source order: [{ kind, value, index }].
+ * Returns matches in source order: [{ kind, value, index, line, column }].
+ * `line` and `column` are 1-based; `index` is a UTF-16 offset.
  */
 export function findColorLiterals(source) {
   const matches = [];
@@ -180,7 +197,14 @@ export function findColorLiterals(source) {
     matches.push({ kind: "hex", value: match[0], index: start });
   }
 
-  return matches.sort((a, b) => a.index - b.index);
+  matches.sort((a, b) => a.index - b.index);
+  const starts = lineStartOffsets(source);
+  for (const match of matches) {
+    const { line, column } = positionAt(starts, match.index);
+    match.line = line;
+    match.column = column;
+  }
+  return matches;
 }
 
 function emptyKindCounts() {
@@ -212,7 +236,7 @@ function walk(directory, files) {
   }
 }
 
-/** List scannable files (absolute paths) under app/ and components/. */
+/** List scannable files (absolute paths) under app/, components/ and lib/. */
 export function listTargetFiles(root = ROOT) {
   const files = [];
   for (const name of SCAN_ROOTS) {
@@ -227,61 +251,52 @@ export function listTargetFiles(root = ROOT) {
 
 /**
  * Scan a project tree.
- * Returns { files: [{ path, total, byKind }], totals, scannedFileCount }.
+ * Returns { files: [{ path, total, byKind, violations }], totals, scannedFileCount }.
  * Only files with total > 0 are included in `files`; paths are POSIX-style
- * and relative to the root.
+ * and relative to the root. Each violation carries { line, column, value, kind }.
  */
 export function scanTree(root = ROOT) {
   const targets = listTargetFiles(root);
   const files = [];
   const totals = { total: 0, byKind: emptyKindCounts() };
   for (const file of targets) {
-    const { total, byKind } = countColorLiterals(readFileSync(file, "utf8"));
-    if (total === 0) continue;
-    files.push({ path: relative(root, file).split(sep).join("/"), total, byKind });
-    totals.total += total;
+    const matches = findColorLiterals(readFileSync(file, "utf8"));
+    if (matches.length === 0) continue;
+    const byKind = emptyKindCounts();
+    for (const match of matches) byKind[match.kind] += 1;
+    files.push({
+      path: relative(root, file).split(sep).join("/"),
+      total: matches.length,
+      byKind,
+      violations: matches.map(({ line, column, value, kind }) => ({ line, column, value, kind })),
+    });
+    totals.total += matches.length;
     for (const kind of KINDS) totals.byKind[kind] += byKind[kind];
   }
   files.sort((a, b) => comparePaths(a.path, b.path));
   return { files, totals, scannedFileCount: targets.length };
 }
 
-/** Convert scan output to a path -> count map. */
-export function countsByFile(scan) {
-  const counts = {};
-  for (const file of scan.files) counts[file.path] = file.total;
-  return counts;
+/**
+ * Flatten scan output into violations with their file path.
+ * Returns [{ path, line, column, value, kind }].
+ */
+export function collectViolations(scan) {
+  const violations = [];
+  for (const file of scan.files) {
+    for (const violation of file.violations ?? []) {
+      violations.push({ path: file.path, ...violation });
+    }
+  }
+  return violations;
 }
 
 /**
- * Serialize a baseline. Keys are sorted so the JSON is byte-for-byte stable
- * for an unchanged tree (no timestamp: re-running --update on a clean tree
- * produces no diff).
+ * Exit code for a scan: 0 when the tree has no hard-coded colors, 1 otherwise.
+ * Kept as a function so the pass/fail decision is testable without a process.
  */
-export function serializeBaseline(counts) {
-  const sorted = {};
-  for (const path of Object.keys(counts).sort(comparePaths)) {
-    sorted[path] = counts[path];
-  }
-  return `${JSON.stringify({ version: 1, tool: "check-color-literals", counts: sorted }, null, 2)}\n`;
-}
-
-/**
- * Compare current per-file counts with the baseline.
- * An increase (including a new file with a positive count) fails; a decrease
- * is an improvement and does not fail.
- */
-export function compareCounts(baseline, current) {
-  const files = [...new Set([...Object.keys(baseline), ...Object.keys(current)])].sort(comparePaths);
-  const increased = [];
-  const improved = [];
-  for (const path of files) {
-    const before = baseline[path] ?? 0;
-    const after = current[path] ?? 0;
-    if (after > before) increased.push({ path, before, after, delta: after - before });
-    else if (after < before) improved.push({ path, before, after, delta: after - before });
-  }
-  return { ok: increased.length === 0, increased, improved };
+export function exitCodeForScan(scan) {
+  return scan.totals.total > 0 ? 1 : 0;
 }
 
 function fail(message) {
@@ -296,20 +311,23 @@ function parseArgs(argv) {
     if (arg === "--check") {
       mode = "check";
       selected += 1;
-    } else if (arg === "--update") {
-      mode = "update";
-      selected += 1;
     } else if (arg === "--summary") {
       mode = "summary";
       selected += 1;
+    } else if (arg === "--update") {
+      fail(
+        "--update was removed; the check is strict and fails on any hard-coded color. " +
+          "Use design tokens instead (see docs/design-tokens.md section 9).",
+      );
     } else if (arg === "--help" || arg === "-h") {
       console.log(
         [
-          "Usage: node scripts/check-color-literals.mjs [--check|--update|--summary]",
+          "Usage: node scripts/check-color-literals.mjs [--check|--summary]",
           "",
-          "  --check    compare per-file counts with tests/fixtures/color-literal-baseline.json (default)",
-          "  --update   rewrite the baseline from the current tree",
-          "  --summary  print totals by kind and the top 20 files (no baseline check)",
+          "  --check    fail on any hard-coded color (default)",
+          "  --summary  print totals by kind and the top 20 files (always exits 0)",
+          "",
+          "The --update flag and the baseline file were removed; there is no allowed count.",
         ].join("\n"),
       );
       process.exit(0);
@@ -317,27 +335,8 @@ function parseArgs(argv) {
       fail(`unknown argument: ${arg}`);
     }
   }
-  if (selected > 1) fail("choose only one of --check, --update, --summary");
+  if (selected > 1) fail("choose only one of --check, --summary");
   return mode;
-}
-
-function readBaseline() {
-  if (!existsSync(BASELINE_PATH)) {
-    fail(`baseline not found at ${BASELINE_PATH}; run with --update first`);
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
-  } catch (error) {
-    fail(`baseline is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  if (parsed?.tool !== "check-color-literals" || typeof parsed.counts !== "object" || parsed.counts === null) {
-    fail(`baseline at ${BASELINE_PATH} has an unexpected shape`);
-  }
-  for (const [path, count] of Object.entries(parsed.counts)) {
-    if (!Number.isInteger(count) || count < 0) fail(`baseline has an invalid count for ${path}: ${count}`);
-  }
-  return parsed.counts;
 }
 
 function printSummary(scan) {
@@ -358,51 +357,32 @@ function printSummary(scan) {
   }
 }
 
-function printCheck(result) {
-  console.log(`check-color-literals: baseline ${relative(ROOT, BASELINE_PATH).split(sep).join("/")}`);
-  if (result.increased.length > 0) {
-    console.error(`FAIL: ${result.increased.length} file(s) increased`);
-    for (const entry of result.increased) {
-      const state =
-        entry.before === 0 ? `new file: 0 -> ${entry.after}` : `${entry.before} -> ${entry.after}`;
-      console.error(`  +${entry.delta}  ${entry.path}  (${state})`);
-    }
-    console.error("Replace the new literals with design tokens, or run --update if the increase is intentional.");
-  } else {
-    console.log("OK: no file increased");
+function printCheck(scan) {
+  const violations = collectViolations(scan);
+  if (violations.length === 0) {
+    console.log(`OK: no hard-coded colors (scanned ${scan.scannedFileCount} file(s))`);
+    return;
   }
-  if (result.improved.length > 0) {
-    console.log(`${result.improved.length} improvement(s) not reflected in the baseline:`);
-    for (const entry of result.improved) {
-      console.log(`  ${entry.delta}  ${entry.path}  (${entry.before} -> ${entry.after})`);
-    }
-    console.log("Run --update to lower the baseline.");
+  for (const violation of violations) {
+    console.log(`${violation.path}:${violation.line}:${violation.column}  ${violation.value}  ${violation.kind}`);
   }
+  console.error(`FAIL: ${violations.length} hard-coded color(s) in ${scan.files.length} file(s)`);
+  console.error(
+    "Use design tokens (docs/design-tokens.md section 9); put data colors in lib/data-colors.ts.",
+  );
 }
 
 function main() {
   const mode = parseArgs(process.argv.slice(2));
-
-  if (mode === "update") {
-    const scan = scanTree(ROOT);
-    mkdirSync(dirname(BASELINE_PATH), { recursive: true });
-    writeFileSync(BASELINE_PATH, serializeBaseline(countsByFile(scan)));
-    console.log(
-      `check-color-literals: wrote ${scan.files.length} file(s), ${scan.totals.total} literal(s) to ${relative(ROOT, BASELINE_PATH).split(sep).join("/")}`,
-    );
-    return;
-  }
-
   const scan = scanTree(ROOT);
+
   if (mode === "summary") {
     printSummary(scan);
     return;
   }
 
-  const baseline = readBaseline();
-  const result = compareCounts(baseline, countsByFile(scan));
-  printCheck(result);
-  if (!result.ok) process.exitCode = 1;
+  printCheck(scan);
+  process.exitCode = exitCodeForScan(scan);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

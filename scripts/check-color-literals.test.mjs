@@ -1,11 +1,20 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, relative } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
-  compareCounts,
+  collectViolations,
   countColorLiterals,
+  exitCodeForScan,
   findColorLiterals,
-  serializeBaseline,
+  listTargetFiles,
+  scanTree,
 } from "./check-color-literals.mjs";
+
+const SCRIPT_PATH = fileURLToPath(new URL("./check-color-literals.mjs", import.meta.url));
 
 function values(source) {
   return findColorLiterals(source).map((match) => match.value);
@@ -52,6 +61,20 @@ test("detects hex colors in style objects and strings", () => {
   assert.deepEqual(values(source), ["#2c60b8", "#FFF", "#ffffffff"]);
 });
 
+test("reports every violation with 1-based line and column", () => {
+  const source = [
+    '<div className="bg-red-500" />',
+    '  <p style={{ color: "#abc" }} />',
+  ].join("\n");
+  assert.deepEqual(
+    findColorLiterals(source).map(({ line, column, value, kind }) => ({ line, column, value, kind })),
+    [
+      { line: 1, column: 17, value: "bg-red-500", kind: "palette" },
+      { line: 2, column: 23, value: "#abc", kind: "hex" },
+    ],
+  );
+});
+
 test("does not count token-derived classes", () => {
   const source =
     'className="bg-surface text-muted border-line bg-surface-subtle bg-surface-muted bg-surface-strong text-accent-text bg-accent-soft border-line-strong text-secondary text-subtle bg-bg text-text"';
@@ -78,53 +101,44 @@ test("still counts a 3-digit hex outside fragment contexts", () => {
   assert.deepEqual(values(source), ["#abc"]);
 });
 
-test("fails when a file exceeds the baseline, including a new file", () => {
-  const baseline = { "app/a.tsx": 2, "app/b.tsx": 5, "app/gone.tsx": 4 };
-  const result = compareCounts(baseline, {
-    "app/a.tsx": 2,
-    "app/b.tsx": 7,
-    "app/gone.tsx": 4,
-    "components/New.tsx": 1,
-  });
-  assert.equal(result.ok, false);
-  assert.deepEqual(
-    result.increased.map((entry) => [entry.path, entry.before, entry.after, entry.delta]),
-    [
-      ["app/b.tsx", 5, 7, 2],
-      ["components/New.tsx", 0, 1, 1],
-    ],
-  );
-  assert.deepEqual(result.improved, []);
+test("excludes lib/data-colors.ts by path but scans other lib files", () => {
+  const root = mkdtempSync(join(tmpdir(), "check-color-literals-"));
+  try {
+    mkdirSync(join(root, "lib"), { recursive: true });
+    mkdirSync(join(root, "components"), { recursive: true });
+    writeFileSync(join(root, "lib", "data-colors.ts"), 'export const dataColor = "#fff";\n');
+    writeFileSync(join(root, "lib", "tokens.ts"), "export const uiColor = 'bg-surface';\n");
+    writeFileSync(join(root, "components", "Probe.tsx"), '<div className="bg-red-500" />\n');
+
+    assert.deepEqual(
+      listTargetFiles(root).map((file) => relative(root, file)),
+      ["components/Probe.tsx", "lib/tokens.ts"],
+    );
+
+    const scan = scanTree(root);
+    assert.equal(scan.totals.total, 1);
+    assert.deepEqual(scan.files.map((file) => file.path), ["components/Probe.tsx"]);
+    assert.deepEqual(collectViolations(scan), [
+      { path: "components/Probe.tsx", line: 1, column: 17, value: "bg-red-500", kind: "palette" },
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
-test("succeeds when a file decreases or disappears, and reports it as an improvement", () => {
-  const baseline = { "app/a.tsx": 2, "app/b.tsx": 5, "app/gone.tsx": 4 };
-  const result = compareCounts(baseline, { "app/a.tsx": 1, "app/b.tsx": 5 });
-  assert.equal(result.ok, true);
-  assert.deepEqual(result.increased, []);
-  assert.deepEqual(
-    result.improved.map((entry) => [entry.path, entry.before, entry.after, entry.delta]),
-    [
-      ["app/a.tsx", 2, 1, -1],
-      ["app/gone.tsx", 4, 0, -4],
-    ],
-  );
-});
-
-test("succeeds when every file matches the baseline", () => {
-  const baseline = { "app/a.tsx": 2, "app/b.tsx": 5 };
-  const result = compareCounts(baseline, { ...baseline });
-  assert.equal(result.ok, true);
-  assert.deepEqual(result.increased, []);
-  assert.deepEqual(result.improved, []);
-});
-
-test("serializes the baseline with sorted keys and stable output", () => {
-  const json = serializeBaseline({ "components/Z.tsx": 1, "app/b.tsx": 3, "app/a.tsx": 0 });
-  assert.ok(json.endsWith("\n"));
-  assert.deepEqual(Object.keys(JSON.parse(json).counts), ["app/a.tsx", "app/b.tsx", "components/Z.tsx"]);
+test("exit code is 0 for a clean scan and 1 when any literal is present", () => {
+  assert.equal(exitCodeForScan({ files: [], totals: { total: 0 } }), 0);
   assert.equal(
-    json,
-    serializeBaseline({ "app/a.tsx": 0, "components/Z.tsx": 1, "app/b.tsx": 3 }),
+    exitCodeForScan({
+      files: [{ path: "app/a.tsx", total: 1, violations: [] }],
+      totals: { total: 1 },
+    }),
+    1,
   );
+});
+
+test("--update is a usage error (exit code 2)", () => {
+  const result = spawnSync(process.execPath, [SCRIPT_PATH, "--update"], { encoding: "utf8" });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /--update was removed/);
 });
