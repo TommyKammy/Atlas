@@ -389,7 +389,13 @@ test("calendar grid and task bars use quiet lines, weekend surfaces and named st
     const longBar = page.locator(`[data-calendar-multiday="${long}"]`).first();
     await expect(longBar).toBeVisible();
     await expect(longBar).toHaveCSS("height", "26px");
-    await expect(longBar).toHaveCSS("border-radius", "6px");
+    // A bar that crosses a week boundary is squared off on the continuing side,
+    // so check the 6px radius on each end that does not continue.
+    const continues = (await longBar.getAttribute("data-calendar-continues")) ?? "none";
+    const continuesLeft = continues === "left" || continues === "both";
+    const continuesRight = continues === "right" || continues === "both";
+    await expect(longBar).toHaveCSS("border-top-left-radius", continuesLeft ? "0px" : "6px");
+    await expect(longBar).toHaveCSS("border-top-right-radius", continuesRight ? "0px" : "6px");
     await expect(longBar).toHaveCSS("background-color", await tokenColor(page, "--atlas-surface"));
     await expect(longBar).toHaveCSS("border-top-color", await tokenColor(page, "--atlas-line"));
     await expect(longBar.locator("[data-completion-state]")).toHaveAttribute("data-completion-state", "in-progress");
