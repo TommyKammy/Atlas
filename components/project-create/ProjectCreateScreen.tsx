@@ -8,6 +8,14 @@ import { formatDateTime } from "@/lib/dates";
 import type { ProjectTemplateSummary } from "@/lib/project-templates";
 import { confirmAction, toast } from "@/lib/ui-feedback";
 import ProjectIcon from "../ProjectIcon";
+import {
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  primaryButtonClass,
+  quietButtonClass,
+  secondaryButtonClass,
+} from "../ui/form-controls";
 
 type View = "gallery" | "blank" | "template";
 type Scope = "all" | "mine";
@@ -116,15 +124,13 @@ export default function ProjectCreateScreen({
   };
 
   const navClass = (active: boolean) =>
-    `flex h-8 items-center rounded-md px-2.5 text-left text-[13px] ${
+    `flex h-8 items-center whitespace-nowrap rounded-md px-2.5 text-left text-[13px] ${
       active
-        ? "bg-accent-soft font-medium text-accent-text"
+        ? "bg-sidebar-active font-medium text-sidebar-text-strong"
         : "text-secondary hover:bg-hover"
     }`;
-  const primary =
-    "rounded-md bg-accent px-4 py-2 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50";
-  const secondary =
-    "rounded-md border border-line-strong bg-surface px-4 py-2 text-[13px] text-secondary hover:bg-hover";
+  const primary = primaryButtonClass;
+  const secondary = secondaryButtonClass;
 
   const templateCard = (template: ProjectTemplateSummary) => (
     <div key={template.id} className="group relative">
@@ -132,7 +138,7 @@ export default function ProjectCreateScreen({
         type="button"
         data-project-template-card={template.id}
         onClick={() => openTemplate(template)}
-        className="flex h-full w-full items-start gap-3 rounded-xl border border-line bg-surface p-4 text-left transition hover:border-accent hover:shadow-sm"
+        className="flex h-full w-full items-start gap-3 rounded-lg border border-line bg-surface p-4 text-left transition-colors hover:border-line-strong"
       >
         <ProjectIcon
           id={template.id}
@@ -145,15 +151,15 @@ export default function ProjectCreateScreen({
           <span className="line-clamp-2 block break-words text-[14px] font-medium leading-5 text-text">
             {template.name}
           </span>
-          <span className="mt-1 line-clamp-2 block text-[11px] leading-4 text-muted">
+          <span className="mt-1 line-clamp-2 block text-[12px] leading-5 text-muted">
             {template.description ||
               `${template.section_count}個のセクションと${template.task_count}個のタスクから作成`}
           </span>
-          <span className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-subtle">
+          <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
             <span>{template.section_count}セクション</span>
             <span>{template.task_count}タスク</span>
             {template.is_builtin ? (
-              <span className="rounded bg-accent-soft px-1 text-accent-text">
+              <span className="rounded-full border border-line-subtle bg-surface-subtle px-1.5 py-0.5 text-[10px] text-muted">
                 Atlas標準・{template.category}
               </span>
             ) : (
@@ -169,7 +175,7 @@ export default function ProjectCreateScreen({
           aria-label={`テンプレート「${template.name}」を削除`}
           title="テンプレートを削除"
           onClick={() => void removeTemplate(template)}
-          className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface text-[14px] text-subtle opacity-0 shadow-sm transition hover:border-danger-line hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+          className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-line bg-surface text-[14px] text-muted opacity-0 transition-colors hover:border-danger-line hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
         >
           ×
         </button>
@@ -187,11 +193,12 @@ export default function ProjectCreateScreen({
           <h1 className="mt-3 text-[18px] font-semibold leading-6 text-text">
             プロジェクトを作成
           </h1>
-          <p className="mt-0.5 truncate text-[11px] text-subtle">{workspaceName}</p>
-          <nav className="mt-5 flex gap-1 overflow-x-auto lg:block lg:space-y-0.5">
+          <p className="mt-0.5 truncate text-[12px] text-muted">{workspaceName}</p>
+          <nav className="mt-5 flex flex-wrap gap-1 lg:block lg:space-y-0.5">
             <button
               type="button"
               data-project-create-nav="gallery"
+              aria-current={view !== "blank" && scope === "all" ? "page" : undefined}
               onClick={() => openGallery("all")}
               className={navClass(view !== "blank" && scope === "all")}
             >
@@ -200,6 +207,7 @@ export default function ProjectCreateScreen({
             <button
               type="button"
               data-project-create-nav="mine"
+              aria-current={view !== "blank" && scope === "mine" ? "page" : undefined}
               onClick={() => openGallery("mine")}
               className={navClass(view !== "blank" && scope === "mine")}
             >
@@ -208,13 +216,14 @@ export default function ProjectCreateScreen({
             <button
               type="button"
               data-project-create-nav="blank"
+              aria-current={view === "blank" ? "page" : undefined}
               onClick={openBlank}
               className={navClass(view === "blank")}
             >
               空のプロジェクト
             </button>
           </nav>
-          <div className="mt-6 hidden rounded-lg border border-line bg-surface-subtle p-3 text-[11px] leading-5 text-muted lg:block">
+          <div className="mt-6 hidden rounded-md bg-surface-subtle p-3 text-[12px] leading-5 text-muted lg:block">
             <div className="font-medium text-secondary">テンプレートを増やす</div>
             <p className="mt-1">
               プロジェクトの「…」メニューから「テンプレートとして保存」を選ぶと、ここに追加されます。
@@ -239,8 +248,8 @@ export default function ProjectCreateScreen({
                 </button>
               </div>
 
-              <div className="mt-4 flex max-w-xl items-center gap-2 rounded-md border border-line-strong bg-surface px-3 py-2">
-                <span aria-hidden className="text-[14px] text-subtle">
+              <div className="relative mt-4 flex max-w-xl items-center">
+                <span aria-hidden className="pointer-events-none absolute left-2.5 text-[14px] text-subtle">
                   ⌕
                 </span>
                 <input
@@ -249,14 +258,14 @@ export default function ProjectCreateScreen({
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="テンプレートを検索"
                   aria-label="テンプレートを検索"
-                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-subtle"
+                  className={`${fieldControlClass} pl-8 pr-8`}
                 />
                 {query !== "" && (
                   <button
                     type="button"
                     onClick={() => setQuery("")}
                     aria-label="検索をクリア"
-                    className="text-[13px] text-subtle hover:text-secondary"
+                    className="absolute right-1 flex h-6 w-6 items-center justify-center rounded-md text-[13px] text-muted hover:bg-hover hover:text-text"
                   >
                     ×
                   </button>
@@ -272,7 +281,7 @@ export default function ProjectCreateScreen({
                   className={`rounded-full px-2.5 py-1 text-[12px] ${
                     scope === "all"
                       ? "bg-accent-soft font-medium text-accent-text"
-                      : "text-muted hover:bg-hover"
+                      : "text-secondary hover:bg-hover"
                   }`}
                 >
                   すべて ({filtered.length})
@@ -285,7 +294,7 @@ export default function ProjectCreateScreen({
                   className={`rounded-full px-2.5 py-1 text-[12px] ${
                     scope === "mine"
                       ? "bg-accent-soft font-medium text-accent-text"
-                      : "text-muted hover:bg-hover"
+                      : "text-secondary hover:bg-hover"
                   }`}
                 >
                   あなたのテンプレート ({mine.length})
@@ -297,16 +306,16 @@ export default function ProjectCreateScreen({
                   data-project-template-categories
                   className="mt-3 flex flex-wrap items-center gap-1.5"
                 >
-                  <span className="mr-0.5 text-[11px] text-subtle">カテゴリ</span>
+                  <span className="mr-0.5 text-[12px] text-muted">カテゴリ</span>
                   <button
                     type="button"
                     data-project-template-category="all"
                     aria-pressed={category === "all"}
                     onClick={() => setCategory("all")}
-                    className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                    className={`rounded-full border px-2 py-0.5 text-[12px] ${
                       category === "all"
                         ? "border-accent bg-accent-soft font-medium text-accent-text"
-                        : "border-line bg-surface text-muted hover:bg-hover"
+                        : "border-line bg-surface text-secondary hover:bg-hover"
                     }`}
                   >
                     すべて
@@ -318,10 +327,10 @@ export default function ProjectCreateScreen({
                       data-project-template-category={item}
                       aria-pressed={category === item}
                       onClick={() => setCategory(item)}
-                      className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                      className={`rounded-full border px-2 py-0.5 text-[12px] ${
                         category === item
                           ? "border-accent bg-accent-soft font-medium text-accent-text"
-                          : "border-line bg-surface text-muted hover:bg-hover"
+                          : "border-line bg-surface text-secondary hover:bg-hover"
                       }`}
                     >
                       {item}
@@ -334,7 +343,7 @@ export default function ProjectCreateScreen({
                 type="button"
                 data-project-create-blank
                 onClick={openBlank}
-                className="mt-4 flex w-full items-center gap-4 rounded-xl border-2 border-dashed border-line-strong bg-surface px-4 py-4 text-left hover:border-accent hover:bg-accent-soft/40"
+                className="mt-4 flex w-full items-center gap-4 rounded-lg border border-dashed border-line-strong bg-surface px-4 py-4 text-left transition-colors hover:bg-hover"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-[20px] text-accent-text">
                   ＋
@@ -343,7 +352,7 @@ export default function ProjectCreateScreen({
                   <span className="block text-[14px] font-medium text-text">
                     空のプロジェクト
                   </span>
-                  <span className="mt-0.5 block text-[11px] text-muted">
+                  <span className="mt-0.5 block text-[12px] text-muted">
                     テンプレートを使わずに、計画中・進行中・完了のセクションから作成
                   </span>
                 </span>
@@ -355,10 +364,10 @@ export default function ProjectCreateScreen({
               {scope === "all" && visibleBuiltins.length > 0 && (
                 <section className="mt-6">
                   <div className="flex items-baseline gap-2">
-                    <h3 className="text-[14px] font-semibold text-text">
+                    <h3 className="text-[13px] font-semibold text-text">
                       Atlas おすすめテンプレート
                     </h3>
-                    <span className="text-[11px] text-subtle">
+                    <span className="text-[12px] text-muted">
                       {visibleBuiltins.length}件
                     </span>
                   </div>
@@ -369,7 +378,7 @@ export default function ProjectCreateScreen({
               )}
 
               {query.trim() !== "" && filtered.length === 0 && (
-                <div className="mt-6 rounded-xl border border-dashed border-line-strong bg-surface px-6 py-10 text-center">
+                <div className="mt-6 rounded-lg border border-dashed border-line bg-surface px-6 py-10 text-center">
                   <p className="text-[13px] text-muted">
                     「{query.trim()}」に一致するテンプレートはありません。
                   </p>
@@ -377,12 +386,12 @@ export default function ProjectCreateScreen({
               )}
 
               {query.trim() === "" && templates.length === 0 && (
-                <div className="mt-6 rounded-xl border border-dashed border-line-strong bg-surface px-6 py-10 text-center">
+                <div className="mt-6 rounded-lg border border-dashed border-line bg-surface px-6 py-10 text-center">
                   <div className="text-[24px] text-subtle">▤</div>
                   <h3 className="mt-2 text-[14px] font-medium text-text">
                     まだテンプレートがありません
                   </h3>
-                  <p className="mx-auto mt-1 max-w-md text-[11px] leading-5 text-muted">
+                  <p className="mx-auto mt-1 max-w-md text-[12px] leading-5 text-muted">
                     プロジェクトの「…」メニューから「テンプレートとして保存」を選ぶと、既存のプロジェクト構成をテンプレート化できます。
                   </p>
                 </div>
@@ -391,10 +400,10 @@ export default function ProjectCreateScreen({
               {scope === "all" && mine.length > 0 && (
                 <section className="mt-6">
                   <div className="flex items-baseline gap-2">
-                    <h3 className="text-[14px] font-semibold text-text">
+                    <h3 className="text-[13px] font-semibold text-text">
                       あなたのテンプレート
                     </h3>
-                    <span className="text-[11px] text-subtle">{mine.length}件</span>
+                    <span className="text-[12px] text-muted">{mine.length}件</span>
                   </div>
                   <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {mine.map(templateCard)}
@@ -405,10 +414,10 @@ export default function ProjectCreateScreen({
               {scope === "mine" && mine.length > 0 && (
                 <section className="mt-6">
                   <div className="flex items-baseline gap-2">
-                    <h3 className="text-[14px] font-semibold text-text">
+                    <h3 className="text-[13px] font-semibold text-text">
                       あなたのテンプレート
                     </h3>
-                    <span className="text-[11px] text-subtle">{mine.length}件</span>
+                    <span className="text-[12px] text-muted">{mine.length}件</span>
                   </div>
                   <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {mine.map(templateCard)}
@@ -417,7 +426,7 @@ export default function ProjectCreateScreen({
               )}
 
               {scope === "mine" && mine.length === 0 && templates.length > 0 && (
-                <div className="mt-6 rounded-xl border border-dashed border-line-strong bg-surface px-6 py-10 text-center">
+                <div className="mt-6 rounded-lg border border-dashed border-line bg-surface px-6 py-10 text-center">
                   <p className="text-[13px] text-muted">
                     あなたが作成したテンプレートはまだありません。
                   </p>
@@ -427,10 +436,10 @@ export default function ProjectCreateScreen({
               {scope === "all" && others.length > 0 && (
                 <section className="mt-6">
                   <div className="flex items-baseline gap-2">
-                    <h3 className="text-[14px] font-semibold text-text">
+                    <h3 className="text-[13px] font-semibold text-text">
                       ワークスペースのテンプレート
                     </h3>
-                    <span className="text-[11px] text-subtle">{others.length}件</span>
+                    <span className="text-[12px] text-muted">{others.length}件</span>
                   </div>
                   <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {others.map(templateCard)}
@@ -449,7 +458,7 @@ export default function ProjectCreateScreen({
               >
                 ← テンプレート一覧に戻る
               </button>
-              <div className="mt-4 rounded-xl border border-line bg-surface p-6">
+              <div className="mt-4 rounded-lg border border-line bg-surface p-6">
                 <div className="flex items-start gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-[22px] text-accent-text">
                     ＋
@@ -462,8 +471,8 @@ export default function ProjectCreateScreen({
                   </div>
                 </div>
                 <form onSubmit={submit} className="mt-6">
-                  <label className="block text-[12px] font-medium text-secondary">
-                    プロジェクト名
+                  <label className="block">
+                    <span className={fieldLabelClass}>プロジェクト名</span>
                     <input
                       data-project-create-name
                       autoFocus
@@ -471,7 +480,7 @@ export default function ProjectCreateScreen({
                       onChange={(event) => setName(event.target.value)}
                       maxLength={200}
                       placeholder="例: 新製品リリース"
-                      className="mt-1.5 w-full rounded-md border border-line-strong px-3 py-2 text-[14px] font-normal outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
+                      className={`mt-1.5 ${fieldControlClass}`}
                     />
                   </label>
                   {error !== "" && <p className="mt-2 text-[12px] text-danger">{error}</p>}
@@ -514,11 +523,11 @@ export default function ProjectCreateScreen({
                   <h2 className="text-[22px] font-semibold leading-7 text-text">
                     {selected.name}
                   </h2>
-                  <p className="mt-1 text-[12px] leading-5 text-muted">
+                  <p className="mt-1 text-[13px] leading-5 text-muted">
                     {selected.description ||
                       `${selected.section_count}個のセクションと${selected.task_count}個のタスクを含むテンプレートです。`}
                   </p>
-                  <div className="mt-1 text-[10px] text-subtle">
+                  <div className="mt-1 text-[12px] text-muted">
                     {selected.is_builtin
                       ? `Atlas標準テンプレート ・ ${selected.category}`
                       : selected.creator_name
@@ -532,33 +541,33 @@ export default function ProjectCreateScreen({
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-                <div className="rounded-xl border border-line bg-surface p-4">
+                <div className="rounded-lg border border-line bg-surface p-4">
                   <h3 className="text-[13px] font-semibold text-text">テンプレートの内容</h3>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-                    <div className="rounded-lg bg-surface-subtle px-3 py-2">
+                    <div className="rounded-md bg-surface-subtle px-3 py-2">
                       <div className="text-[18px] font-semibold text-text">
                         {selected.section_count}
                       </div>
-                      <div className="text-[10px] text-subtle">セクション</div>
+                      <div className="text-[12px] text-muted">セクション</div>
                     </div>
-                    <div className="rounded-lg bg-surface-subtle px-3 py-2">
+                    <div className="rounded-md bg-surface-subtle px-3 py-2">
                       <div className="text-[18px] font-semibold text-text">
                         {selected.task_count}
                       </div>
-                      <div className="text-[10px] text-subtle">タスク</div>
+                      <div className="text-[12px] text-muted">タスク</div>
                     </div>
                   </div>
                   {selected.sections.length > 0 && (
                     <div className="mt-4">
-                      <h4 className="text-[11px] font-medium text-muted">セクション</h4>
-                      <div className="mt-1.5 divide-y divide-line-subtle rounded-md border border-line">
+                      <h4 className="text-[12px] font-medium text-secondary">セクション</h4>
+                      <div className="mt-1.5 divide-y divide-line-subtle rounded-md border border-line-subtle">
                         {selected.sections.map((section, index) => (
                           <div
                             key={`${section.name}-${index}`}
                             className="flex items-center justify-between gap-3 px-3 py-1.5 text-[12px]"
                           >
                             <span className="min-w-0 truncate text-secondary">{section.name}</span>
-                            <span className="shrink-0 text-[10px] text-subtle">
+                            <span className="shrink-0 text-[12px] text-muted">
                               {section.task_count}タスク
                             </span>
                           </div>
@@ -568,14 +577,14 @@ export default function ProjectCreateScreen({
                   )}
                   {selected.sample_tasks.length > 0 && (
                     <div className="mt-4">
-                      <h4 className="text-[11px] font-medium text-muted">
+                      <h4 className="text-[12px] font-medium text-secondary">
                         含まれるタスクの例
                       </h4>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {selected.sample_tasks.map((task, index) => (
                           <span
                             key={`${task}-${index}`}
-                            className="rounded-full border border-line bg-surface-subtle px-2 py-0.5 text-[10px] text-secondary"
+                            className="rounded-full border border-line-subtle bg-surface-subtle px-2 py-0.5 text-[11px] text-secondary"
                           >
                             {task}
                           </span>
@@ -587,23 +596,23 @@ export default function ProjectCreateScreen({
 
                 <form
                   onSubmit={submit}
-                  className="h-fit rounded-xl border border-line bg-surface p-4"
+                  className="h-fit rounded-lg border border-line bg-surface p-4"
                 >
                   <h3 className="text-[13px] font-semibold text-text">
                     プロジェクトを作成
                   </h3>
-                  <label className="mt-3 block text-[12px] font-medium text-secondary">
-                    プロジェクト名
+                  <label className="mt-3 block">
+                    <span className={fieldLabelClass}>プロジェクト名</span>
                     <input
                       data-project-create-name
                       autoFocus
                       value={name}
                       onChange={(event) => setName(event.target.value)}
                       maxLength={200}
-                      className="mt-1.5 w-full rounded-md border border-line-strong px-3 py-2 text-[13px] font-normal outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
+                      className={`mt-1.5 ${fieldControlClass}`}
                     />
                   </label>
-                  <p className="mt-2 text-[10px] leading-5 text-subtle">
+                  <p className={`mt-2 ${fieldHintClass}`}>
                     「{selected.name}」の{selected.section_count}セクション・
                     {selected.task_count}タスクを新しいプロジェクトにコピーします。期日は今日を基準に再設定されます。
                   </p>
@@ -619,7 +628,7 @@ export default function ProjectCreateScreen({
                   <button
                     type="button"
                     onClick={() => openGallery()}
-                    className="mt-2 w-full rounded-md px-3 py-1.5 text-[12px] text-muted hover:bg-hover"
+                    className={`mt-2 w-full ${quietButtonClass}`}
                   >
                     キャンセル
                   </button>

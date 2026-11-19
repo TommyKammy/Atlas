@@ -6,6 +6,18 @@ import { useFocusTrap } from "@/lib/use-focus-trap";
 import type { CustomField, CustomFieldType } from "@/lib/custom-fields";
 import { useFieldDialog } from "@/lib/use-field-dialog";
 import {
+  checkboxClass,
+  dialogCloseClass,
+  dialogSubtitleClass,
+  dialogTitleClass,
+  fieldControlClass,
+  fieldLabelClass,
+  fieldTextareaClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  SelectControl,
+} from "@/components/ui/form-controls";
+import {
   AutoIdFieldEditor,
   FieldAccessEditor,
   FormulaFieldEditor,
@@ -97,10 +109,6 @@ export default function FieldDialog({
     save,
   } = dialog;
 
-  const label = "mt-3 block text-[11px] font-medium text-muted";
-  const fieldClass =
-    "mt-1 h-9 w-full rounded-md border border-line-strong bg-field px-2.5 text-[13px] text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/10";
-
   return createPortal(
     <div
       className="fixed inset-0 z-[190] flex items-center justify-center bg-scrim p-4"
@@ -115,46 +123,51 @@ export default function FieldDialog({
         onClick={(event) => event.stopPropagation()}
         className="flex max-h-[90vh] w-full max-w-[560px] flex-col overflow-hidden rounded-xl bg-surface shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-line px-5 py-3">
-          <div>
-            <h2 className="text-[17px] font-semibold text-text">
+        <div className="flex items-start justify-between gap-3 border-b border-line-subtle px-5 py-4">
+          <div className="min-w-0">
+            <h2 className={dialogTitleClass}>
               {mode === "edit" ? "フィールドを編集" : "フィールドを追加"}
             </h2>
-            {mode === "edit" && field && (
-              <div className="mt-0.5 text-[10px] text-subtle">フィールドタイプは変更できません</div>
-            )}
+            <div className={dialogSubtitleClass}>
+              {mode === "edit" && field
+                ? "フィールドタイプは変更できません"
+                : "プロジェクトに新しいフィールドを追加します"}
+            </div>
           </div>
           <button
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="rounded p-1 text-xl leading-none text-subtle hover:bg-hover hover:text-secondary"
+            className={dialogCloseClass}
           >
             ×
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          <label className="block text-[11px] font-medium text-muted">
-            フィールドタイトル <span className="text-danger">*</span>
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <label className="block">
+            <span className={fieldLabelClass}>
+              フィールドタイトル <span className="text-danger">*</span>
+            </span>
             <input
               autoFocus
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder={numberField ? "費用、数量、売上…" : "フィールド名"}
               data-field-dialog-name
-              className={fieldClass}
+              className={`mt-1.5 ${fieldControlClass}`}
             />
           </label>
 
-          <label className={label}>
-            フィールドタイプ
+          <label className="mt-4 block">
+            <span className={fieldLabelClass}>フィールドタイプ</span>
             {mode === "edit" ? (
-              <div className="mt-1 flex h-9 items-center rounded-md border border-line bg-surface-subtle px-2.5 text-[13px] text-secondary">
+              <div className="mt-1.5 flex h-8 items-center rounded-md border border-line bg-surface-subtle px-2.5 text-[13px] text-secondary">
                 {TYPE_LABELS[type]}
               </div>
             ) : (
-              <select
+              <SelectControl
+                containerClassName="mt-1.5"
                 value={type}
                 onChange={(event) => {
                   const nextType = event.target.value as CustomFieldType;
@@ -163,7 +176,6 @@ export default function FieldDialog({
                     setSourceProjectIds([projectId]);
                   }
                 }}
-                className={fieldClass}
               >
                 <option value="select">単一選択</option>
                 <option value="multi_select">複数選択</option>
@@ -187,18 +199,18 @@ export default function FieldDialog({
                 <option value="attachments">添付</option>
                 <option value="blocked_by">先行タスク</option>
                 <option value="blocking">後続を待たせている</option>
-              </select>
+              </SelectControl>
             )}
           </label>
 
-          <label className={label}>
-            説明
+          <label className="mt-4 block">
+            <span className={fieldLabelClass}>説明</span>
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               rows={2}
               placeholder="説明を追加（任意）"
-              className="mt-1 w-full resize-y rounded-md border border-line-strong bg-field px-2.5 py-2 text-[13px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/10"
+              className={`mt-1.5 ${fieldTextareaClass}`}
             />
           </label>
 
@@ -213,11 +225,12 @@ export default function FieldDialog({
           {selectField && <SelectOptionsEditor dialog={dialog} />}
 
           {mode === "create" && (
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-[11px] text-secondary">
+            <label className="mt-4 flex cursor-pointer items-center gap-2 text-[13px] text-text">
               <input
                 type="checkbox"
                 checked={addToLibrary}
                 onChange={(event) => setAddToLibrary(event.target.checked)}
+                className={checkboxClass}
               />
               このフィールドをライブラリに追加する
             </label>
@@ -228,11 +241,11 @@ export default function FieldDialog({
           {error && <p className="mt-3 text-[12px] text-danger">{error}</p>}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-line-subtle px-5 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-[12px] text-secondary hover:bg-hover"
+            className={secondaryButtonClass}
           >
             キャンセル
           </button>
@@ -241,7 +254,7 @@ export default function FieldDialog({
             onClick={() => void save()}
             disabled={saving || name.trim() === ""}
             data-field-dialog-save
-            className="rounded-md bg-accent px-4 py-1.5 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-surface-strong disabled:text-muted"
+            className={primaryButtonClass}
           >
             {saving
               ? "保存中…"
