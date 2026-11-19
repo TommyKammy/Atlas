@@ -323,6 +323,9 @@ function ProposalDetail({
       {canDecideThis && (
         <ProposalDecisionForm
           key={`decision-${proposal.id}`}
+          scenarioName={
+            proposal.restricted ? undefined : proposal.recommendedScenarioName
+          }
           onDecide={onDecide}
         />
       )}
@@ -416,7 +419,8 @@ export default function ProposalHistory({
             return (
               <li
                 key={proposal.id}
-                className="rounded-lg border border-line bg-surface p-4"
+                id={`proposal-${proposal.id}`}
+                className="scroll-mt-4 rounded-lg bg-surface-subtle p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">

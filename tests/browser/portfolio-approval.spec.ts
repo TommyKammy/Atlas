@@ -363,12 +363,12 @@ test("assigned reviewer passes and assigned approver adopts the frozen B snapsho
   await decideButton.click();
   const decisionDialog = page.getByRole("dialog", { name: "投資提案（版1）", exact: true });
   await expect(decisionDialog).toBeVisible();
-  await expect(decisionDialog.getByRole("button", { name: "承認して採用", exact: true })).toBeVisible();
+  await expect(decisionDialog.getByRole("button", { name: /^承認して(?: .+を)?採用$/ })).toBeVisible();
   await expect(decisionDialog.getByRole("button", { name: "差し戻す", exact: true })).toBeVisible();
   await expect(decisionDialog.getByRole("button", { name: "今期は見送る", exact: true })).toBeVisible();
 
   // A decision always needs its own recorded reason.
-  await decisionDialog.getByRole("button", { name: "承認して採用", exact: true }).click();
+  await decisionDialog.getByRole("button", { name: /^承認して(?: .+を)?採用$/ }).click();
   await expect(decisionDialog.getByRole("alert")).toHaveCount(1);
   await expect(decisionDialog.getByRole("alert")).toContainText("決定理由");
   const decisionField = decisionDialog.getByLabel("決定理由");
@@ -376,7 +376,7 @@ test("assigned reviewer passes and assigned approver adopts the frozen B snapsho
 
   await decisionField.fill(DECISION_REASON);
   const decisionResponse = await runWithApiWait(page, "POST", "/decision", () =>
-    decisionDialog.getByRole("button", { name: "承認して採用", exact: true }).click(),
+    decisionDialog.getByRole("button", { name: /^承認して(?: .+を)?採用$/ }).click(),
   );
   expect(decisionResponse.status(), await decisionResponse.text()).toBe(200);
   await expect(decisionDialog.getByText("承認済み").first()).toBeVisible();

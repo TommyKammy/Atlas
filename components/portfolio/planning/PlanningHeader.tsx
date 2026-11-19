@@ -122,7 +122,7 @@ export default function PlanningHeader({
         </div>
       </div>
 
-      <nav aria-label="投資計画" className="flex gap-4 overflow-x-auto border-b border-line text-[13px] whitespace-nowrap">
+      <nav aria-label="投資計画" className="flex gap-1 overflow-x-auto text-[13px] whitespace-nowrap">
         {VIEWS.map((item) => {
           const current = view === item.value;
           return (
@@ -131,10 +131,10 @@ export default function PlanningHeader({
               type="button"
               onClick={() => onView(item.value)}
               aria-current={current ? "page" : undefined}
-              className={`-mb-px border-b-2 px-0.5 py-2 font-medium ${
+              className={`rounded-md px-2.5 py-1.5 font-medium ${
                 current
-                  ? "border-accent text-accent-text"
-                  : "border-transparent text-secondary hover:border-line-strong hover:text-text"
+                  ? "bg-surface-muted text-text"
+                  : "text-muted hover:bg-hover hover:text-text"
               }`}
             >
               {item.label}

@@ -66,7 +66,7 @@ export default function ScenarioSnapshotView({
           )}
         </div>
         {scenario.shortages.length > 0 && (
-          <p className="rounded-md border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[11px] text-warning">
+          <p className="rounded-md border border-danger-line bg-danger-soft px-2.5 py-1.5 text-[11px] text-danger">
             {scenario.shortages
               .map(
                 (shortage) =>
@@ -138,7 +138,7 @@ export default function ScenarioSnapshotView({
                   <td
                     key={cell.monthIndex}
                     className={`px-3 py-2 text-[11px] tabular-nums ${
-                      cell.shortageDays > 0 ? "font-semibold text-warning" : "text-secondary"
+                      cell.shortageDays > 0 ? "font-semibold text-danger" : "text-secondary"
                     }`}
                   >
                     {cellLabel(cell)}
