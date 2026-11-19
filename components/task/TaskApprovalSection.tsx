@@ -208,7 +208,7 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
   if (data && !approval && !data.can_request && !canEdit) return null;
 
   return <section ref={sectionRef} tabIndex={-1} data-task-approval aria-label="承認" aria-busy={busy || loading}
-    className="my-4 min-w-0 border-y border-line py-3 outline-none focus-visible:ring-2 focus-visible:ring-accent">
+    className="mt-5 min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-accent">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <button type="button" aria-expanded={expanded} aria-controls={`task-approval-${task.id}`} onClick={() => setExpanded((value) => !value)}
         className="flex items-center gap-2 rounded px-1 py-1 text-[13px] font-semibold text-text hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus-ring">

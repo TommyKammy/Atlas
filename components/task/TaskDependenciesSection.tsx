@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import TaskFieldRow from "./TaskFieldRow";
 
 /** Dependency chips and an on-demand picker inside the task pane. */
 export default function TaskDependenciesSection({
@@ -28,11 +29,10 @@ export default function TaskDependenciesSection({
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="flex min-h-9 items-start gap-2 rounded-md px-1 py-1 hover:bg-hover">
-      <span className="w-[88px] shrink-0 pt-1.5 text-[12px] text-muted">依存関係</span>
-      <div className="min-w-0 flex-1">
+    <TaskFieldRow label="依存関係">
+      <div className="min-w-0">
         {dependencies.length === 0 && !adding && (
-          <span className="flex h-7 items-center text-[13px] text-subtle">依存関係なし</span>
+          <span className="flex h-7 items-center text-[13px] text-muted">依存関係なし</span>
         )}
         {dependencies.map((dependency) => (
           <div key={dependency.id} className="flex min-h-7 items-center gap-1.5 text-[13px]">
@@ -49,7 +49,7 @@ export default function TaskDependenciesSection({
             <button
               type="button"
               onClick={() => onRemove(dependency.id)}
-              className="shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-hover hover:text-danger"
+              className="shrink-0 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-danger"
               title="依存を外す"
               aria-label={`${dependency.name} の依存を外す`}
             >
@@ -100,13 +100,13 @@ export default function TaskDependenciesSection({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-secondary"
+            className="flex h-7 items-center gap-1 rounded px-0.5 text-[12px] text-muted hover:bg-hover hover:text-secondary"
           >
             <span className="text-sm leading-none">＋</span>
             依存関係を追加
           </button>
         )}
       </div>
-    </div>
+    </TaskFieldRow>
   );
 }

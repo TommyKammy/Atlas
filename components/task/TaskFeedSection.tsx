@@ -167,9 +167,9 @@ export default function TaskFeedSection({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[12px]">
             <span className="font-semibold text-text">{comment.author_name ?? "–"}</span>
-            <span className="text-subtle">{formatWhen(comment.created_at)}</span>
+            <span className="text-muted">{formatWhen(comment.created_at)}</span>
             {comment.edited_at && (
-              <span data-comment-edited={comment.id} className="text-[10px] text-subtle">
+              <span data-comment-edited={comment.id} className="text-[10px] text-muted">
                 編集済み
               </span>
             )}
@@ -244,7 +244,7 @@ export default function TaskFeedSection({
                   data-comment-reaction-add={emoji}
                   onClick={() => onToggleReaction(comment.id, emoji)}
                   title="リアクションする"
-                  className="rounded-full border border-dashed border-line px-1.5 py-0.5 text-[11px] text-subtle hover:bg-hover hover:text-secondary"
+                  className="rounded-full border border-dashed border-line px-1.5 py-0.5 text-[11px] text-muted hover:bg-hover hover:text-secondary"
                 >
                   {emoji} ＋
                 </button>
@@ -261,7 +261,7 @@ export default function TaskFeedSection({
       <div className="min-w-0 flex-1 text-[12px] leading-5">
         <span className="font-medium text-secondary">{event.actor_name ?? "システム"}</span>{" "}
         <span className="text-muted">{event.summary}</span>
-        <span className="ml-1.5 text-[10px] text-subtle">{formatWhen(event.created_at)}</span>
+        <span className="ml-1.5 text-[10px] text-muted">{formatWhen(event.created_at)}</span>
       </div>
     </div>
   );
@@ -276,7 +276,7 @@ export default function TaskFeedSection({
 
   return (
     <section className="mt-5" data-task-feed>
-      <div className="flex min-h-8 items-center gap-1 border-b border-line pb-1">
+      <div className="mb-1 flex min-h-7 items-center gap-1">
         <button
           type="button"
           onClick={() => onFeedTab("comments")}
@@ -314,7 +314,7 @@ export default function TaskFeedSection({
       </div>
 
       {items.length === 0 ? (
-        <div className="py-4 text-center text-[12px] text-subtle">
+        <div className="py-4 text-center text-[12px] text-muted">
           {feedTab === "comments" ? "まだコメントはありません" : "アクティビティはまだありません"}
         </div>
       ) : feedTab === "comments" ? (

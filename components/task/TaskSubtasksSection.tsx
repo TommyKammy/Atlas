@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { TaskRow } from "@/lib/data";
 import { dueSegs } from "@/lib/dates";
+import { subtaskSummary } from "@/lib/task-pane-presentation";
 import TaskAvatar from "./TaskAvatar";
 import TaskCompletionToggle from "./TaskCompletionToggle";
 import TaskSectionHeading from "./TaskSectionHeading";
@@ -40,13 +41,13 @@ export default function TaskSubtasksSection({
 }) {
   const [hideDone, setHideDone] = useState(false);
   const visible = hideDone ? subtasks.filter((subtask) => !subtask.completed) : subtasks;
-  const doneCount = subtasks.filter((subtask) => subtask.completed).length;
+  const summary = subtaskSummary(subtasks);
 
   return (
     <section className="mt-5" data-task-subtasks>
       <TaskSectionHeading
-        title="サブタスク"
-        count={subtasks.length}
+        title="子タスク"
+        countText={summary.text}
         action={
           <>
             <button
@@ -59,7 +60,7 @@ export default function TaskSubtasksSection({
             >
               ＋
             </button>
-            {doneCount > 0 && (
+            {summary.completed > 0 && (
               <button
                 type="button"
                 onClick={() => setHideDone((value) => !value)}
@@ -70,7 +71,7 @@ export default function TaskSubtasksSection({
                 }`}
                 title="サブタスクの絞り込み"
               >
-                {hideDone ? `完了 ${doneCount} 件を表示` : "完了を隠す"}
+                {hideDone ? `完了 ${summary.completed} 件を表示` : "完了を隠す"}
               </button>
             )}
           </>
@@ -83,7 +84,7 @@ export default function TaskSubtasksSection({
           <div
             key={subtask.id}
             data-subtask-row={subtask.id}
-            className="group/sub flex min-h-8 items-center gap-2 border-b border-line-subtle py-1 text-[13px]"
+            className="group/sub flex min-h-[34px] items-center gap-2.5 rounded px-0.5 text-[13px] hover:bg-hover"
           >
             {subtask.approval ? <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}&approval=1`}
@@ -94,7 +95,7 @@ export default function TaskSubtasksSection({
             <Link
               href={`/projects/${projectId}?view=${view}&task=${subtask.id}`}
               className={`min-w-0 flex-1 truncate hover:text-accent-text hover:underline ${
-                subtask.completed ? "text-subtle line-through" : "text-text"
+                subtask.completed ? "text-muted line-through" : "text-text"
               }`}
               title={subtask.name}
             >
@@ -110,7 +111,7 @@ export default function TaskSubtasksSection({
               onClick={() => onDelete(subtask)}
               title="サブタスクを削除"
               aria-label={`${subtask.name} を削除`}
-              className="invisible shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-hover hover:text-danger group-hover/sub:visible"
+              className="invisible shrink-0 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-danger group-hover/sub:visible"
             >
               ×
             </button>
@@ -153,7 +154,7 @@ export default function TaskSubtasksSection({
           type="button"
           disabled={!canEdit}
           onClick={onStartAdd}
-          className="flex min-h-8 w-full items-center gap-2 rounded px-1 text-left text-[13px] text-subtle hover:bg-hover hover:text-secondary"
+          className="flex min-h-[34px] w-full items-center gap-2.5 rounded px-0.5 text-left text-[13px] text-muted hover:bg-hover hover:text-secondary"
         >
           <span className="text-base leading-none">＋</span>
           <span className="min-w-0 flex-1 truncate">サブタスクを追加</span>

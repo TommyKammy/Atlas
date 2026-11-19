@@ -123,15 +123,19 @@ export default function TaskCommentComposer({
     "flex h-6 w-6 items-center justify-center rounded text-[13px] text-muted hover:bg-hover hover:text-text";
 
   return (
-    <div className="shrink-0 border-t border-line bg-surface px-3 py-2.5" data-task-composer>
+    <div
+      className="shrink-0 px-5 pb-[22px] pt-2 md:px-[26px]"
+      data-task-composer
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+      }}
+    >
       <div
-        className={`rounded-lg border bg-surface transition-shadow ${
-          focused ? "border-accent shadow-[0_0_0_2px_rgba(64,117,207,0.12)]" : "border-line-strong"
+        data-comment-field
+        className={`rounded-lg border bg-bg transition-shadow ${
+          focused ? "border-accent ring-1 ring-accent" : "border-line"
         }`}
-        onFocusCapture={() => setFocused(true)}
-        onBlurCapture={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
-        }}
       >
         {draftReady ? (
           <RichTextEditor
@@ -141,10 +145,12 @@ export default function TaskCommentComposer({
             placeholder="コメントを追加するか、チームメイトを @メンションします"
             ariaLabel="コメント"
             dataAttributes={{ "data-comment-input": "true" }}
-            minHeightClass="min-h-[34px]"
+            minHeightClass="min-h-[42px]"
             compact
             toolbar
             borderless
+            surfaceClassName="bg-transparent"
+            className="atlas-comment-editor"
             onChange={(nextDoc, nextText) => {
               setDoc(nextDoc);
               setText(nextText);
@@ -153,7 +159,7 @@ export default function TaskCommentComposer({
             onReady={setEditor}
           />
         ) : (
-          <div className="min-h-[34px] animate-pulse rounded bg-surface-subtle" aria-hidden />
+          <div className="min-h-[42px] animate-pulse rounded-lg bg-surface-subtle" aria-hidden />
         )}
 
         {emojiOpen && (
@@ -174,8 +180,10 @@ export default function TaskCommentComposer({
             ))}
           </div>
         )}
+      </div>
 
-        <div className="flex items-center gap-0.5 px-2 py-1.5">
+      {(focused || text.trim() !== "" || emojiOpen) && (
+        <div className="mt-1 flex items-center gap-0.5 px-0.5">
           <button
             type="button"
             className={iconButton}
@@ -219,7 +227,7 @@ export default function TaskCommentComposer({
             </svg>
           </button>
 
-          <span className="ml-auto text-[10px] text-subtle">
+          <span className="ml-auto text-[10px] text-muted">
             {draftState === "saving"
               ? "下書きを保存中…"
               : draftState === "saved"
@@ -234,6 +242,7 @@ export default function TaskCommentComposer({
             aria-label="コメント"
             title="コメント"
             disabled={!text.trim() || sending}
+            onMouseDown={keepFocus}
             onClick={() => void submit()}
             className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover disabled:bg-surface-strong disabled:text-subtle"
           >
@@ -242,7 +251,7 @@ export default function TaskCommentComposer({
             </svg>
           </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -64,7 +64,7 @@ export default function TaskDueDateField({
           onClick={() => onPatch({ start_on: null, due_on: null })}
           aria-label="期日をクリアする"
           title="期日をクリアする"
-          className="ml-0.5 rounded p-0.5 text-[12px] text-subtle hover:bg-hover hover:text-secondary"
+          className="ml-0.5 rounded p-0.5 text-[12px] text-muted hover:bg-hover hover:text-secondary"
         >
           ×
         </button>

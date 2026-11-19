@@ -31,7 +31,7 @@ export default function TaskAttachmentsSection({
     <section className="mt-5" data-task-attachments>
       <TaskSectionHeading
         title="添付"
-        count={attachments.length}
+        countText={attachments.length > 0 ? String(attachments.length) : undefined}
         action={
           canEdit ? <label
             htmlFor={`${uploadId}-header`}
@@ -60,7 +60,7 @@ export default function TaskAttachmentsSection({
       />
 
       {attachments.length === 0 ? (
-        canEdit ? <label htmlFor={`${uploadId}-empty`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[13px] text-subtle hover:bg-hover hover:text-secondary">
+        canEdit ? <label htmlFor={`${uploadId}-empty`} className="flex min-h-[34px] cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2.5 rounded px-0.5 text-[13px] text-muted hover:bg-hover hover:text-secondary">
           <span className="text-base leading-none">＋</span>
           <span>{uploading ? "アップロード中…" : "添付を追加"}</span>
           <input
@@ -75,14 +75,14 @@ export default function TaskAttachmentsSection({
               event.target.value = "";
             }}
           />
-        </label> : <p className="px-1 text-[13px] text-muted">添付はありません</p>
+        </label> : <p className="px-0.5 text-[13px] text-muted">添付はありません</p>
       ) : (
         <div className="space-y-1">
           {attachments.map((attachment) => (
             <div
               key={attachment.id}
               data-attachment-id={attachment.id}
-              className="group/att rounded-md border border-line px-2.5 py-2"
+              className="group/att rounded px-0.5 py-2 hover:bg-hover"
             >
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-surface-muted text-muted">
@@ -101,14 +101,14 @@ export default function TaskAttachmentsSection({
                 {canEdit && <button
                   type="button"
                   onClick={() => onDelete(attachment.id)}
-                  className="opacity-0 shrink-0 rounded px-1 text-[12px] text-subtle hover:bg-hover hover:text-danger group-hover/att:opacity-100 group-focus-within/att:opacity-100 focus:opacity-100"
+                  className="opacity-0 shrink-0 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-danger group-hover/att:opacity-100 group-focus-within/att:opacity-100 focus:opacity-100"
                   title="添付を削除"
                   aria-label={`${attachment.file_name} を削除`}
                 >
                   ×
                 </button>}
               </div>
-              <div className="mt-0.5 flex items-center gap-2 pl-9 text-[10px] text-subtle">
+              <div className="mt-0.5 flex items-center gap-2 pl-9 text-[10px] text-muted">
                 <span>{formatSize(attachment.size_bytes)}</span>
                 {attachment.author_name && <span>{attachment.author_name}</span>}
                 <span>{attachment.created_at.slice(0, 16).replace("T", " ")}</span>
@@ -118,7 +118,7 @@ export default function TaskAttachmentsSection({
               </div>
             </div>
           ))}
-          {canEdit && <label htmlFor={`${uploadId}-footer`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-secondary">
+          {canEdit && <label htmlFor={`${uploadId}-footer`} className="flex min-h-[34px] cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2.5 rounded px-0.5 text-[12px] text-muted hover:bg-hover hover:text-secondary">
             <span className="text-sm leading-none">＋</span>
             {uploading ? "アップロード中…" : "ファイルを追加"}
             <input

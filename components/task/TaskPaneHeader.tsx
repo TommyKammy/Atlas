@@ -15,6 +15,9 @@ export default function TaskPaneHeader({
   showTitle,
   closeHref,
   maximized,
+  stateText,
+  overdueDays,
+  overdueText,
   onToggle,
   onRemove,
   onShare,
@@ -28,6 +31,9 @@ export default function TaskPaneHeader({
   showTitle: boolean;
   closeHref: string;
   maximized: boolean;
+  stateText: string;
+  overdueDays: number;
+  overdueText: string | null;
   onToggle: () => void;
   onRemove: () => void;
   onShare: () => void;
@@ -67,22 +73,59 @@ export default function TaskPaneHeader({
   };
 
   const iconButtonBase =
-    "flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover hover:text-text";
-  const iconButton = `${iconButtonBase} text-muted`;
+    "h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-hover hover:text-text";
+  const iconButton = `flex ${iconButtonBase} text-muted`;
   const collaboratorTitle = collaborators.map((person) => person.name).join("・");
+  const completionLabel = task.approval
+    ? TASK_APPROVAL_STATUS_LABELS[task.approval.status]
+    : task.completed
+      ? "完了"
+      : "完了にする";
 
   return (
-    <div className="flex h-12 shrink-0 items-center gap-1.5 border-b border-line px-2.5">
+    <div className="flex min-h-8 shrink-0 items-center gap-1 px-5 pt-4 md:px-[26px] md:pt-[18px]">
+      <span
+        data-task-state-summary
+        className="shrink-0 whitespace-nowrap text-[12px] text-muted"
+        title={stateText}
+      >
+        {stateText}
+      </span>
+
+      {overdueText && (
+        <span
+          data-task-overdue-badge
+          data-overdue-days={overdueDays}
+          className="ml-1 inline-flex shrink-0 items-center gap-1 rounded border border-danger-line px-1.5 py-0.5 text-[11px] font-medium leading-4 text-danger"
+          title={`期限超過: ${overdueDays}日`}
+        >
+          <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+            <path d="M8 2.5 14.5 13.5h-13L8 2.5Z" strokeLinejoin="round" />
+            <path d="M8 6v3.5" strokeLinecap="round" />
+            <circle cx="8" cy="11.4" r="0.65" fill="currentColor" stroke="none" />
+          </svg>
+          {overdueText}
+        </span>
+      )}
+
+      {showTitle ? (
+        <span className="ml-2 hidden min-w-0 flex-1 truncate text-[12px] text-muted @[400px]:block" title={task.name}>
+          {task.name}
+        </span>
+      ) : (
+        <span className="flex-1" />
+      )}
+
       <button
         type="button"
         onClick={task.approval ? onOpenApproval : onToggle}
         disabled={!task.approval && !canEdit}
-        title={!task.approval && !canEdit ? "変更には編集権限が必要です" : undefined}
-        aria-label={task.approval ? "承認の操作を開く" : undefined}
-        className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium ${
+        title={!task.approval && !canEdit ? "変更には編集権限が必要です" : completionLabel}
+        aria-label={task.approval ? "承認の操作を開く" : completionLabel}
+        className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-[12px] font-medium ${
           task.completed
-            ? "border-success-strong bg-success-strong text-on-strong hover:bg-success-strong-hover"
-            : "border-line-strong bg-surface text-secondary hover:bg-hover"
+            ? "bg-success-strong text-on-strong hover:bg-success-strong-hover"
+            : "text-secondary hover:bg-hover hover:text-text"
         }`}
       >
         {task.is_milestone ? (
@@ -92,22 +135,15 @@ export default function TaskPaneHeader({
             className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] ${
               task.completed ? "border-on-strong" : "border-line-strong"
             }`}
+            aria-hidden="true"
           >
             {task.completed ? "✓" : ""}
           </span>
         )}
-        {task.approval ? TASK_APPROVAL_STATUS_LABELS[task.approval.status] : task.completed ? "完了" : "完了にする"}
+        <span className="hidden @[600px]:inline">{completionLabel}</span>
       </button>
 
-      {showTitle ? (
-        <span className="ml-1 hidden min-w-0 flex-1 truncate text-[12px] text-secondary md:block" title={task.name}>
-          {task.name}
-        </span>
-      ) : (
-        <span className="flex-1" />
-      )}
-
-      <div className="hidden items-center pl-1 sm:flex" title={collaboratorTitle}>
+      <div className="hidden shrink-0 items-center pl-1 @[560px]:flex" title={collaboratorTitle}>
         {collaborators.slice(0, 3).map((person, index) => (
           <span key={person.id} className={index === 0 ? "" : "-ml-1.5"}>
             <UserAvatar
@@ -125,7 +161,7 @@ export default function TaskPaneHeader({
         onClick={onShare}
         title="共有"
         aria-label="共有"
-        className="flex h-7 items-center gap-1 rounded-md border border-line-strong bg-surface px-2 text-[11px] font-medium text-secondary hover:bg-hover"
+        className="flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium text-muted hover:bg-hover hover:text-text"
       >
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.3">
           <circle cx="6" cy="8" r="2.2" />
@@ -133,7 +169,7 @@ export default function TaskPaneHeader({
           <circle cx="12.5" cy="4.5" r="1.6" />
           <circle cx="12.5" cy="11.5" r="1.6" />
         </svg>
-        <span className="hidden lg:inline">共有</span>
+        <span className="hidden @[560px]:inline">共有</span>
       </button>
 
       <button
@@ -142,7 +178,7 @@ export default function TaskPaneHeader({
         aria-label={liked ? "いいねを取り消す" : "いいね"}
         aria-pressed={liked}
         title={liked ? "いいねを取り消す" : "いいね"}
-        className={`${iconButtonBase} ${liked ? "text-danger hover:text-danger" : "text-muted"}`}
+        className={`flex ${iconButtonBase} ${liked ? "text-danger hover:text-danger" : "text-muted"}`}
       >
         <svg viewBox="0 0 16 16" className="h-4 w-4" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.3">
           <path d="M8 13.2S2.5 10 2.5 6.1A2.8 2.8 0 0 1 8 4.4a2.8 2.8 0 0 1 5.5 1.7C13.5 10 8 13.2 8 13.2z" />
@@ -155,7 +191,7 @@ export default function TaskPaneHeader({
         onClick={onCopyLink}
         title="タスクのリンクをコピー"
         aria-label="タスクのリンクをコピー"
-        className={iconButton}
+        className={`hidden @[400px]:flex ${iconButtonBase} text-muted`}
       >
         <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.3">
           <path d="M6.4 9.6 9.6 6.4M6.9 4.4l1.2-1.2a2.4 2.4 0 0 1 3.4 3.4L10.3 7.8M9.1 11.6l-1.2 1.2a2.4 2.4 0 0 1-3.4-3.4L5.7 8.2" />
@@ -167,7 +203,7 @@ export default function TaskPaneHeader({
         onClick={onToggleFullscreen}
         title={maximized ? "全画面を終了" : "フルスクリーン"}
         aria-label={maximized ? "全画面を終了" : "フルスクリーン"}
-        className={iconButton}
+        className={`hidden @[420px]:flex ${iconButtonBase} text-muted`}
       >
         {maximized ? (
           <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.3">
@@ -180,7 +216,7 @@ export default function TaskPaneHeader({
         )}
       </button>
 
-      <details className="relative">
+      <details className="relative shrink-0">
         <summary
           aria-label="このタスクの他のアクション"
           title="このタスクの他のアクション"
@@ -230,7 +266,7 @@ export default function TaskPaneHeader({
 
       <Link
         href={closeHref}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-text"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-text"
         title="詳細を閉じる"
         aria-label="詳細を閉じる"
       >

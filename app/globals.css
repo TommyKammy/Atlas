@@ -517,6 +517,23 @@ html[data-theme="dark"] {
   color: var(--atlas-text-subtle);
   pointer-events: none;
 }
+/* The task-pane comment field keeps the mockup's 44px resting height even
+   when the long placeholder does not fit on one line. */
+.atlas-comment-editor .ProseMirror {
+  position: relative;
+}
+.atlas-comment-editor .ProseMirror p.is-editor-empty:first-child::before {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  display: block;
+  float: none;
+  height: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .atlas-rich-editor .ProseMirror {
   outline: none;
 }
