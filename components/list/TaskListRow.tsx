@@ -3,6 +3,7 @@ import { QuickTaskName } from "../task/QuickTaskContext";
 
 import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import { isImeComposing } from "@/lib/ime-keyboard";
+import { shouldIgnoreSingleKeyShortcut } from "@/lib/keyboard-shortcuts";
 import { isQuickTask } from "@/lib/quick-task";
 import { LIST_ROW_STATE_LABELS, listRowState } from "@/lib/list-row-state";
 
@@ -247,18 +248,19 @@ export default function TaskListRow({
       role="listitem"
       aria-label={`タスク: ${t.name}`}
       onKeyDown={(e) => {
-        if (isImeComposing(e)) return;
+        if (shouldIgnoreSingleKeyShortcut(e)) return;
         if ((e.target as HTMLElement).closest("input,select,textarea,button,a,summary")) return;
         if (e.key === "Enter") {
           e.preventDefault();
           openTask(t.id);
           return;
         }
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "j" || e.key === "k") {
           e.preventDefault();
           const rows = [...document.querySelectorAll<HTMLElement>("[data-list-row]")];
           const index = rows.indexOf(e.currentTarget);
-          const next = rows[index + (e.key === "ArrowDown" ? 1 : -1)];
+          const forward = e.key === "ArrowDown" || e.key === "j";
+          const next = rows[index + (forward ? 1 : -1)];
           next?.focus();
         }
       }}
