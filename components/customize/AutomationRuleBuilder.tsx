@@ -17,9 +17,20 @@ import { toast } from "@/lib/ui-feedback";
 import { useState, type SetStateAction } from "react";
 import Dialog from "../ui/Dialog";
 import AutomationActionEditor, { defaultParams } from "./AutomationActionEditor";
+import {
+  checkboxClass,
+  dialogCloseClass,
+  dialogTitleClass,
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  formSectionTitleClass,
+  primaryButtonClass,
+  quietButtonClass,
+  secondaryButtonClass,
+  SelectControl,
+} from "../ui/form-controls";
 
-const inputClass =
-  "mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[12px] outline-none focus:border-accent";
 type RuleSuggestion = { name: string; description: string; definition: RuleDefinition };
 
 export default function AutomationRuleBuilder({
@@ -206,12 +217,12 @@ export default function AutomationRuleBuilder({
       title={rule ? "ルールを編集" : "ルールを作成"}
       panelClassName="flex max-h-[92vh] w-[min(760px,96vw)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
     >
-      <div className="flex items-center justify-between border-b border-line-subtle px-5 py-4">
-        <div>
-          <h3 className="text-[17px] font-semibold text-text">
+      <div className="flex items-center justify-between gap-2 border-b border-line px-5 py-4">
+        <div className="min-w-0">
+          <h3 className={dialogTitleClass}>
             {rule ? "ルールを編集" : "ルールを作成"}
           </h3>
-          <p className="mt-0.5 text-[11px] text-muted">
+          <p className={`mt-0.5 ${fieldHintClass}`}>
             トリガー、条件、複数アクションを組み合わせます。
           </p>
         </div>
@@ -219,76 +230,76 @@ export default function AutomationRuleBuilder({
           type="button"
           onClick={onClose}
           aria-label="閉じる"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-xl text-muted hover:bg-hover"
+          className={dialogCloseClass}
         >
           ×
         </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
-        <div className="rounded-lg border border-accent-line bg-accent-soft/40 p-3">
-          <div className="text-[12px] font-semibold text-accent-text">AIアシスト</div>
+        <div className="rounded-lg bg-surface-subtle p-3">
+          <div className="text-[12px] font-semibold text-text">AIアシスト</div>
           <div className="mt-2 flex gap-2">
             <input
               value={aiPrompt}
               onChange={(event) => setAiPrompt(event.target.value)}
               placeholder="例: 新規タスクを進行中にして担当者を田中さんにする"
-              className="h-8 min-w-0 flex-1 rounded-md border border-line bg-field px-2 text-[12px] outline-none focus:border-accent"
+              className={`${fieldControlClass} min-w-0 flex-1`}
             />
             <button
               type="button"
               onClick={() => void suggest()}
               disabled={busy || aiPrompt.trim() === ""}
-              className="h-8 shrink-0 rounded-md bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
+              className={primaryButtonClass}
             >
               提案
             </button>
           </div>
           {suggestion && (
-            <div className="mt-3 rounded-md border border-accent-line bg-surface p-3 text-[12px]" role="status">
+            <div className="mt-3 rounded-md bg-surface p-3 text-[12px]" role="status">
               <p className="font-medium text-text">AIの提案: {suggestion.name}</p>
               <p className="mt-1 text-muted">{suggestion.description}</p>
-              <p className="mt-1 text-[11px] text-muted">適用すると、現在のトリガー・条件・アクション・分岐を提案全体で置き換えます。</p>
+              <p className={`mt-1 ${fieldHintClass}`}>適用すると、現在のトリガー・条件・アクション・分岐を提案全体で置き換えます。</p>
               <button type="button" disabled={busy} onClick={() => {
                 setDraft(ruleEditorDraft(suggestion));
                 setSuggestion(null);
                 toast("AIの提案を適用しました");
-              }} className="mt-2 text-accent-text hover:underline disabled:opacity-50">AIの提案を適用</button>
+              }} className="mt-2 text-[12px] text-accent-text hover:underline disabled:opacity-50">AIの提案を適用</button>
             </div>
           )}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block text-[11px] font-medium text-secondary">
+          <label className={fieldLabelClass}>
             ルール名
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="例: 新規タスクを進行中にする"
-              className={inputClass}
+              className={`${fieldControlClass} mt-1`}
             />
           </label>
-          <label className="block text-[11px] font-medium text-secondary">
+          <label className={fieldLabelClass}>
             説明（任意）
             <input
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="このルールの目的"
-              className={inputClass}
+              className={`${fieldControlClass} mt-1`}
             />
           </label>
         </div>
 
         <section className="mt-5">
-          <div className="flex items-center justify-between">
-            <h4 className="text-[12px] font-semibold text-text">
-              トリガー <span className="text-subtle">({triggers.length})</span>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={formSectionTitleClass}>
+              トリガー <span className="text-muted">({triggers.length})</span>
             </h4>
             <button
               type="button"
               onClick={addTrigger}
               disabled={triggers.length >= descriptors.limits.triggersPerRule}
-              className="text-[11px] text-accent-text hover:underline disabled:text-subtle"
+              className={quietButtonClass}
             >
               ＋ トリガーを追加
             </button>
@@ -301,11 +312,12 @@ export default function AutomationRuleBuilder({
               return (
                 <div
                   key={`trigger-${index}`}
-                  className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-surface p-2.5"
+                  className="flex flex-wrap items-end gap-2 rounded-lg bg-surface-subtle p-3"
                 >
-                  <label className="min-w-[220px] flex-1 text-[11px] text-secondary">
+                  <label className={`${fieldLabelClass} min-w-[220px] flex-1`}>
                     きっかけ
-                    <select
+                    <SelectControl
+                      containerClassName="mt-1"
                       value={trigger.event}
                       onChange={(event) => {
                         const next = event.target.value as RuleTrigger["event"];
@@ -315,17 +327,16 @@ export default function AutomationRuleBuilder({
                           ),
                         );
                       }}
-                      className={inputClass}
                     >
                       {descriptors.triggers.map((entry) => (
                         <option key={entry.id} value={entry.id}>
                           {entry.label}
                         </option>
                       ))}
-                    </select>
+                    </SelectControl>
                   </label>
                   {descriptor?.days && (
-                    <label className="w-32 text-[11px] text-secondary">
+                    <label className={`${fieldLabelClass} w-32`}>
                       {descriptor.days.label}
                       <input
                         type="number"
@@ -341,7 +352,7 @@ export default function AutomationRuleBuilder({
                             ),
                           )
                         }
-                        className={inputClass}
+                        className={`${fieldControlClass} mt-1`}
                       />
                     </label>
                   )}
@@ -351,7 +362,7 @@ export default function AutomationRuleBuilder({
                     onClick={() =>
                       setTriggers((current) => current.filter((_, entryIndex) => entryIndex !== index))
                     }
-                    className="mb-0.5 flex h-8 w-8 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
+                    className={`${quietButtonClass} mb-0.5 w-8 hover:text-danger`}
                   >
                     ×
                   </button>
@@ -362,20 +373,20 @@ export default function AutomationRuleBuilder({
         </section>
 
         <section className="mt-5">
-          <div className="flex items-center justify-between">
-            <h4 className="text-[12px] font-semibold text-text">
-              条件（すべて満たす） <span className="text-subtle">({conditions.length})</span>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={formSectionTitleClass}>
+              条件（すべて満たす） <span className="text-muted">({conditions.length})</span>
             </h4>
             <button
               type="button"
               onClick={addCondition}
-              className="text-[11px] text-accent-text hover:underline"
+              className={quietButtonClass}
             >
               ＋ 条件を追加
             </button>
           </div>
           {conditions.length === 0 ? (
-            <p className="mt-2 rounded-md border border-dashed border-line px-3 py-2 text-[11px] text-subtle">
+            <p className={`mt-2 rounded-md bg-surface-subtle px-3 py-2 ${fieldHintClass}`}>
               条件なしで、トリガー発生時に毎回実行します。
             </p>
           ) : (
@@ -388,11 +399,12 @@ export default function AutomationRuleBuilder({
                 return (
                   <div
                     key={`condition-${index}`}
-                    className="grid grid-cols-1 gap-2 rounded-lg border border-line bg-surface p-2.5 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
+                    className="grid grid-cols-1 gap-2 rounded-lg bg-surface-subtle p-3 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
                   >
-                    <label className="text-[11px] text-secondary">
+                    <label className={fieldLabelClass}>
                       フィールド
-                      <select
+                      <SelectControl
+                        containerClassName="mt-1"
                         value={condition.field}
                         onChange={(event) =>
                           setConditions((current) =>
@@ -403,18 +415,18 @@ export default function AutomationRuleBuilder({
                             ),
                           )
                         }
-                        className={inputClass}
                       >
                         {descriptors.conditionFields.map((entry) => (
                           <option key={entry.id} value={entry.id}>
                             {entry.label}
                           </option>
                         ))}
-                      </select>
+                      </SelectControl>
                     </label>
-                    <label className="text-[11px] text-secondary">
+                    <label className={fieldLabelClass}>
                       演算子
-                      <select
+                      <SelectControl
+                        containerClassName="mt-1"
                         value={condition.op}
                         onChange={(event) =>
                           setConditions((current) =>
@@ -428,23 +440,23 @@ export default function AutomationRuleBuilder({
                             ),
                           )
                         }
-                        className={inputClass}
                       >
                         {descriptors.operators.map((operator) => (
                           <option key={operator.value} value={operator.value}>
                             {operator.label}
                           </option>
                         ))}
-                      </select>
+                      </SelectControl>
                     </label>
-                    <div className="text-[11px] text-secondary">
-                      <span className="block font-medium">値</span>
+                    <div className={fieldLabelClass}>
+                      <span className="block">値</span>
                       {!needsValue ? (
-                        <span className="mt-1 flex h-8 items-center text-[11px] text-subtle">
+                        <span className={`${fieldHintClass} mt-1 flex h-8 items-center`}>
                           値は不要です
                         </span>
                       ) : field?.options ? (
-                        <select
+                        <SelectControl
+                          containerClassName="mt-1"
                           value={String(condition.value ?? "")}
                           onChange={(event) =>
                             setConditions((current) =>
@@ -455,7 +467,6 @@ export default function AutomationRuleBuilder({
                               ),
                             )
                           }
-                          className={inputClass}
                         >
                           <option value="">選択…</option>
                           {field.options.map((option) => (
@@ -463,7 +474,7 @@ export default function AutomationRuleBuilder({
                               {option.label}
                             </option>
                           ))}
-                        </select>
+                        </SelectControl>
                       ) : (
                         <input
                           type={
@@ -483,7 +494,7 @@ export default function AutomationRuleBuilder({
                               ),
                             )
                           }
-                          className={inputClass}
+                          className={`${fieldControlClass} mt-1`}
                         />
                       )}
                     </div>
@@ -495,7 +506,7 @@ export default function AutomationRuleBuilder({
                           current.filter((_, entryIndex) => entryIndex !== index),
                         )
                       }
-                      className="mt-5 flex h-8 w-8 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
+                      className={`${quietButtonClass} mt-5 w-8 hover:text-danger`}
                     >
                       ×
                     </button>
@@ -511,7 +522,7 @@ export default function AutomationRuleBuilder({
             type="checkbox"
             checked={useBranches}
             onChange={toggleBranches}
-            className="h-3.5 w-3.5"
+            className={checkboxClass}
           />
           条件分岐を使う（elseパス対応）
         </label>
@@ -521,10 +532,10 @@ export default function AutomationRuleBuilder({
             {branches.map((branch, branchIndex) => (
               <div
                 key={`branch-${branchIndex}`}
-                className="rounded-lg border border-line bg-surface p-3"
+                className="rounded-lg bg-surface-subtle p-3"
               >
                 <div className="flex flex-wrap items-end gap-2">
-                  <label className="min-w-[180px] flex-1 text-[11px] text-secondary">
+                  <label className={`${fieldLabelClass} min-w-[180px] flex-1`}>
                     パス名
                     <input
                       value={branch.name}
@@ -535,10 +546,10 @@ export default function AutomationRuleBuilder({
                           ),
                         )
                       }
-                      className={inputClass}
+                      className={`${fieldControlClass} mt-1`}
                     />
                   </label>
-                  <label className="mb-1 flex items-center gap-1 text-[11px] text-secondary">
+                  <label className="mb-1 flex items-center gap-1 text-[12px] text-secondary">
                     <input
                       type="checkbox"
                       checked={branch.else === true}
@@ -551,7 +562,7 @@ export default function AutomationRuleBuilder({
                           ),
                         )
                       }
-                      className="h-3.5 w-3.5"
+                      className={checkboxClass}
                     />
                     elseパス
                   </label>
@@ -561,7 +572,7 @@ export default function AutomationRuleBuilder({
                     onClick={() =>
                       setBranches((current) => current.filter((_, entryIndex) => entryIndex !== branchIndex))
                     }
-                    className="mb-0.5 flex h-8 w-8 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
+                    className={`${quietButtonClass} mb-0.5 w-8 hover:text-danger`}
                   >
                     ×
                   </button>
@@ -570,7 +581,7 @@ export default function AutomationRuleBuilder({
                 {branch.else !== true && (
                   <div className="mt-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-medium text-secondary">条件</span>
+                      <span className="text-[12px] font-medium text-secondary">条件</span>
                       <button
                         type="button"
                         onClick={() =>
@@ -588,7 +599,7 @@ export default function AutomationRuleBuilder({
                             }),
                           )
                         }
-                        className="text-[10px] text-accent-text hover:underline"
+                        className={quietButtonClass}
                       >
                         ＋ 条件
                       </button>
@@ -605,7 +616,7 @@ export default function AutomationRuleBuilder({
                             key={`branch-${branchIndex}-condition-${conditionIndex}`}
                             className="grid grid-cols-1 gap-1.5 rounded border border-line-subtle bg-surface-subtle p-2 sm:grid-cols-[1.2fr_0.9fr_1fr_auto]"
                           >
-                            <select
+                            <SelectControl
                               value={condition.field}
                               onChange={(event) =>
                                 setBranches((current) =>
@@ -623,15 +634,14 @@ export default function AutomationRuleBuilder({
                                   ),
                                 )
                               }
-                              className={inputClass}
                             >
                               {descriptors.conditionFields.map((entry) => (
                                 <option key={entry.id} value={entry.id}>
                                   {entry.label}
                                 </option>
                               ))}
-                            </select>
-                            <select
+                            </SelectControl>
+                            <SelectControl
                               value={condition.op}
                               onChange={(event) =>
                                 setBranches((current) =>
@@ -652,20 +662,19 @@ export default function AutomationRuleBuilder({
                                   ),
                                 )
                               }
-                              className={inputClass}
                             >
                               {descriptors.operators.map((operator) => (
                                 <option key={operator.value} value={operator.value}>
                                   {operator.label}
                                 </option>
                               ))}
-                            </select>
+                            </SelectControl>
                             {!needsValue ? (
-                              <span className="flex h-8 items-center text-[10px] text-subtle">
+                              <span className={`${fieldHintClass} flex h-8 items-center`}>
                                 値は不要
                               </span>
                             ) : field?.options ? (
-                              <select
+                              <SelectControl
                                 value={String(condition.value ?? "")}
                                 onChange={(event) =>
                                   setBranches((current) =>
@@ -683,7 +692,6 @@ export default function AutomationRuleBuilder({
                                     ),
                                   )
                                 }
-                                className={inputClass}
                               >
                                 <option value="">選択…</option>
                                 {field.options.map((option) => (
@@ -691,7 +699,7 @@ export default function AutomationRuleBuilder({
                                     {option.label}
                                   </option>
                                 ))}
-                              </select>
+                              </SelectControl>
                             ) : (
                               <input
                                 type={field?.type === "number" ? "number" : field?.type === "date" ? "date" : "text"}
@@ -712,7 +720,7 @@ export default function AutomationRuleBuilder({
                                     ),
                                   )
                                 }
-                                className={inputClass}
+                                className={fieldControlClass}
                               />
                             )}
                             <button
@@ -732,7 +740,7 @@ export default function AutomationRuleBuilder({
                                   ),
                                 )
                               }
-                              className="flex h-8 w-8 items-center justify-center rounded text-subtle hover:bg-danger-soft hover:text-danger"
+                              className={`${quietButtonClass} w-8 hover:text-danger`}
                             >
                               ×
                             </button>
@@ -744,8 +752,8 @@ export default function AutomationRuleBuilder({
                 )}
 
                 <div className="mt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-secondary">アクション</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-medium text-secondary">アクション</span>
                     <button
                       type="button"
                       onClick={() =>
@@ -757,7 +765,7 @@ export default function AutomationRuleBuilder({
                           ),
                         )
                       }
-                      className="text-[10px] text-accent-text hover:underline"
+                      className={quietButtonClass}
                     >
                       ＋ アクション
                     </button>
@@ -780,7 +788,7 @@ export default function AutomationRuleBuilder({
             <button
               type="button"
               onClick={addBranch}
-              className="h-8 rounded-md border border-dashed border-line-strong px-3 text-[11px] text-accent-text hover:bg-accent-soft/40"
+              className="h-8 rounded-md border border-dashed border-line-strong bg-transparent px-3 text-[12px] text-secondary hover:bg-hover"
             >
               ＋ パスを追加
             </button>
@@ -789,15 +797,15 @@ export default function AutomationRuleBuilder({
 
         {!useBranches && (
         <section className="mt-5">
-          <div className="flex items-center justify-between">
-            <h4 className="text-[12px] font-semibold text-text">
-              アクション <span className="text-subtle">({actions.length})</span>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={formSectionTitleClass}>
+              アクション <span className="text-muted">({actions.length})</span>
             </h4>
             <button
               type="button"
               onClick={addAction}
               disabled={actions.length >= descriptors.limits.actionsPerRule}
-              className="text-[11px] text-accent-text hover:underline disabled:text-subtle"
+              className={quietButtonClass}
             >
               ＋ アクションを追加
             </button>
@@ -813,7 +821,7 @@ export default function AutomationRuleBuilder({
         </section>
         )}
 
-        {error !== "" && <p className="mt-4 text-[12px] text-danger">{error}</p>}
+        {error !== "" && <p role="alert" className="mt-4 text-[12px] text-danger">{error}</p>}
         {conflict && (
           <div className="mt-2 text-[12px] text-secondary" role="alert">
             編集中の内容は保持しています。最新のルールを読み込んでから編集を続けてください。
@@ -824,17 +832,17 @@ export default function AutomationRuleBuilder({
           </div>
         )}
 
-        <div className="mt-5 rounded-md bg-surface-subtle px-3 py-2 text-[10px] text-muted">
+        <div className={`mt-5 rounded-md bg-surface-subtle px-3 py-2 ${fieldHintClass}`}>
           変数: <code>{"{{task.name}}"}</code>, <code>{"{{task.due_on}}"}</code>,{" "}
           <code>{"{{project.name}}"}</code> などがアクション内で使えます。
         </div>
       </div>
 
-      <div className="flex shrink-0 justify-end gap-2 border-t border-line-subtle px-5 py-3">
+      <div className="flex shrink-0 justify-end gap-2 border-t border-line px-5 py-3">
         <button
           type="button"
           onClick={onClose}
-          className="h-8 rounded-md border border-line px-3 text-[12px] text-secondary hover:bg-hover"
+          className={secondaryButtonClass}
         >
           キャンセル
         </button>
@@ -842,7 +850,7 @@ export default function AutomationRuleBuilder({
           type="button"
           onClick={() => void save()}
           disabled={busy || conflict}
-          className="h-8 rounded-md bg-accent px-4 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
+          className={primaryButtonClass}
         >
           {busy ? "保存中…" : rule ? "変更を保存" : "ルールを作成"}
         </button>

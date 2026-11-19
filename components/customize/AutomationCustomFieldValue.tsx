@@ -4,8 +4,13 @@ import { useState } from "react";
 import type { CustomField } from "@/lib/custom-fields";
 import type { DescriptorOption } from "@/lib/automation/descriptors";
 import ReferencePicker from "../fields/ReferencePicker";
-
-const inputClass = "mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[12px] outline-none focus:border-accent";
+import {
+  checkboxClass,
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  SelectControl,
+} from "../ui/form-controls";
 
 /** Use the same stored value shapes as the task's custom-field editors. */
 export default function AutomationCustomFieldValue({ field, users, value, onChange }: {
@@ -15,15 +20,15 @@ export default function AutomationCustomFieldValue({ field, users, value, onChan
   onChange: (value: unknown) => void;
 }) {
   const [referenceOpen, setReferenceOpen] = useState(false);
-  if (!field) return <p className="mt-1 text-[12px] text-muted">編集できるフィールドを選択してください。</p>;
-  const label = <span className="block text-[11px] font-medium text-secondary">値</span>;
+  if (!field) return <p className={`mt-1 ${fieldHintClass}`}>編集できるフィールドを選択してください。</p>;
+  const label = <span className={fieldLabelClass}>値</span>;
   const selectedIds = Array.isArray(value) ? value.map(Number) : [];
 
   if (field.field_type === "reference") {
     return (
       <div className="relative" data-automation-custom-value="reference">
         {label}
-        <button type="button" className={`${inputClass} text-left`} onClick={() => setReferenceOpen(true)}>
+        <button type="button" className={`${fieldControlClass} mt-1 text-left`} onClick={() => setReferenceOpen(true)}>
           参照タスクを選択（{selectedIds.length}件）
         </button>
         {referenceOpen && (
@@ -43,12 +48,12 @@ export default function AutomationCustomFieldValue({ field, users, value, onChan
       : typeof value === "string" ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
     return (
       <fieldset className="min-w-0" data-automation-custom-value={field.field_type}>
-        <legend className="text-[11px] font-medium text-secondary">値</legend>
-        <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-line bg-surface p-2">
-          {options.length === 0 && <p className="text-[12px] text-subtle">選択肢がありません</p>}
+        <legend className={`${fieldLabelClass} mb-1`}>値</legend>
+        <div className="max-h-40 space-y-1 overflow-y-auto rounded-md bg-surface-subtle p-2">
+          {options.length === 0 && <p className="text-[12px] text-muted">選択肢がありません</p>}
           {options.map((option) => (
             <label key={option.value} className="flex items-center gap-2 text-[12px] text-secondary">
-              <input type="checkbox" checked={selected.some((entry) => entry === option.value)}
+              <input type="checkbox" className={checkboxClass} checked={selected.some((entry) => entry === option.value)}
                 onChange={(event) => onChange(event.target.checked
                   ? [...selected, option.value] : selected.filter((entry) => entry !== option.value))} />
               {option.label}
@@ -63,14 +68,14 @@ export default function AutomationCustomFieldValue({ field, users, value, onChan
     <label className="block" data-automation-custom-value={field.field_type}>
       {label}
       {field.field_type === "select" ? (
-        <select className={inputClass} value={typeof value === "string" ? value : ""}
+        <SelectControl containerClassName="mt-1" value={typeof value === "string" ? value : ""}
           onChange={(event) => onChange(event.target.value)}>
           <option value="">値をクリア</option>
           {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
-        </select>
+        </SelectControl>
       ) : (
         <input type={field.field_type === "date" ? "date" : field.field_type === "number" ? "number" : "text"}
-          className={inputClass} step={field.field_type === "number" ? "any" : undefined}
+          className={`${fieldControlClass} mt-1`} step={field.field_type === "number" ? "any" : undefined}
           value={typeof value === "string" || typeof value === "number" ? value : ""}
           onChange={(event) => onChange(event.target.value)} />
       )}

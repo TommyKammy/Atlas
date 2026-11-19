@@ -7,7 +7,8 @@ import { configuredTaskId, hasTaskSubject } from "@/lib/automation/task-target";
 import RuleEntityPicker from "./RuleEntityPicker";
 import RuleMultiEntityPicker from "./RuleMultiEntityPicker";
 import RuleCollectionField from "./RuleCollectionField";
-import RuleValueField, { ruleInputClass } from "./RuleValueField";
+import RuleValueField from "./RuleValueField";
+import { fieldHintClass, fieldLabelClass, SelectControl } from "../ui/form-controls";
 
 export type RuleActionFieldsProps = {
   action: RuleAction;
@@ -40,23 +41,23 @@ export function RuleActionFields({ action, descriptors, projectId, onChange, tri
         options={field.field_type === "select" ? field.options.map((option) => ({ value: option, label: option })) : undefined} />;
     }
     return <div className="space-y-1">{editor}<button type="button" onClick={() => update(null)}
-      className="text-[11px] text-muted hover:text-text">値をクリア</button>
-      {value === null && <p className="text-[11px] text-muted">実行すると値をクリアします。</p>}</div>;
+      className="text-[12px] text-muted hover:text-text">値をクリア</button>
+      {value === null && <p className={`${fieldHintClass}`}>実行すると値をクリアします。</p>}</div>;
   }
   return (
     <div className="space-y-4" data-rule-action-fields>
-      <label className="block text-[12px] font-medium text-secondary">アクション
-        <select className={`${ruleInputClass} mt-1`} value={action.capability}
+      <label className={fieldLabelClass}>アクション
+        <SelectControl containerClassName="mt-1" value={action.capability}
           onChange={(event) => onChange(changeRuleActionCapability(action, event.target.value))}>
           {!descriptor && <option value={action.capability}>{action.capability ? "保存済みのアクション" : "アクションを選択"}</option>}
           {descriptors.actions.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
-        </select>
+        </SelectControl>
       </label>
       {descriptor?.description && <p className="text-[12px] leading-relaxed text-muted">{descriptor.description}</p>}
       {needsFixedTask && <div className="space-y-1">
         <RuleEntityPicker projectId={projectId} kind="task" value={configuredTaskId(action.params.task_id)} label="対象タスク" required
           onChange={(id) => change("task_id", id ?? undefined)} />
-        <p className="text-[11px] text-muted">タスクを持つトリガーでは、そのタスクに対して実行します。</p>
+        <p className={fieldHintClass}>タスクを持つトリガーでは、そのタスクに対して実行します。</p>
       </div>}
       {descriptor?.params.map((param) => {
         const value = action.params[param.name];
@@ -70,13 +71,13 @@ export function RuleActionFields({ action, descriptors, projectId, onChange, tri
         if (param.type === "password") return <div key={param.name} className="space-y-1">
           <RuleValueField label={param.label} value={value} onChange={(next) => change(param.name, next)} type="password"
             placeholder={action.webhookActionId && value === undefined ? "保存済みの署名キーを使用" : param.placeholder} />
-          {action.webhookActionId && <p className="text-[11px] text-muted">入力しなければ、同じURLの署名キーを保持します。</p>}
-          <div className="flex gap-3 text-[11px]">
+          {action.webhookActionId && <p className={fieldHintClass}>入力しなければ、同じURLの署名キーを保持します。</p>}
+          <div className="flex flex-wrap gap-3 text-[12px]">
             <button type="button" onClick={() => change(param.name, "")} className="text-muted hover:text-text">署名キーを削除</button>
             {value !== undefined && action.webhookActionId && <button type="button" onClick={() => change(param.name, undefined)}
               className="text-accent-text">保存済みのキーを使う</button>}
           </div>
-          {value === "" && <p className="text-[11px] text-warning">保存すると署名キーを削除します。</p>}
+          {value === "" && <p className="text-[12px] text-warning">保存すると署名キーを削除します。</p>}
         </div>;
         return <RuleValueField key={param.name} label={param.label} value={value} onChange={(next) => change(param.name, next)}
           type={param.type === "number" || param.type === "date" || param.type === "boolean" ? param.type : "text"}

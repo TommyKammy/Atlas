@@ -5,6 +5,7 @@ import type { DescriptorOption } from "@/lib/automation/descriptors";
 import { insertRuleVariable, ruleCollectionValues, type RuleVariable } from "@/lib/automation/no-code-inputs";
 import RuleValueField, { ruleInputClass } from "./RuleValueField";
 import RuleVariableMenu from "./RuleVariableMenu";
+import { checkboxClass, fieldLabelClass, quietButtonClass, secondaryButtonClass } from "../ui/form-controls";
 
 export default function RuleCollectionField({ label, value, onChange, options, type = "text", variables, commaSeparated = false, invalid, describedBy }: {
   label: string;
@@ -22,15 +23,15 @@ export default function RuleCollectionField({ label, value, onChange, options, t
   const selected = ruleCollectionValues(value, { scalar: true, commaSeparated });
   return (
     <fieldset aria-invalid={invalid || undefined} aria-describedby={describedBy} className="min-w-0 space-y-2">
-      <legend className="mb-1 text-[12px] font-medium text-secondary">{label}</legend>
+      <legend className={`${fieldLabelClass} mb-1`}>{label}</legend>
       {options ? (
-        <div className="rounded-md border border-line p-2">
+        <div className="rounded-md border border-line bg-surface-subtle p-2">
           <input aria-label={`${label}の選択肢を検索`} aria-invalid={invalid || undefined} aria-describedby={describedBy} value={query} onChange={(event) => setQuery(event.target.value)}
             placeholder="選択肢を検索" className={`${ruleInputClass} mb-2`} />
           <div className="max-h-40 space-y-1 overflow-auto">
             {options.filter((option) => option.label.toLowerCase().includes(query.toLowerCase())).map((option) => (
               <label key={String(option.value)} className="flex items-center gap-2 rounded px-1 py-1 text-[12px] hover:bg-hover">
-                <input type="checkbox" checked={selected.includes(option.value)} onChange={(event) => onChange(event.target.checked
+                <input type="checkbox" className={checkboxClass} checked={selected.includes(option.value)} onChange={(event) => onChange(event.target.checked
                   ? [...selected, option.value] : selected.filter((entry) => entry !== option.value))} />{option.label}
               </label>
             ))}
@@ -41,7 +42,7 @@ export default function RuleCollectionField({ label, value, onChange, options, t
           <div className="min-w-0 flex-1"><RuleValueField label="値を追加" value={draft} onChange={setDraft} type={type} invalid={invalid} describedBy={describedBy} /></div>
           <button type="button" disabled={draft === "" || draft == null} onClick={() => {
             onChange(selected.includes(draft) ? selected : [...selected, draft]); setDraft("");
-          }} className="h-9 rounded-md border border-line-strong px-3 text-[12px] hover:bg-hover disabled:opacity-40">追加</button>
+          }} className={secondaryButtonClass}>追加</button>
         </div>
       )}
       {selected.length > 0 && <ul className="flex flex-wrap gap-1.5" aria-label={`${label}の設定値`}>
@@ -53,7 +54,7 @@ export default function RuleCollectionField({ label, value, onChange, options, t
       </ul>}
       {variables && <RuleVariableMenu variables={variables} target="text_collection"
         onSelect={(variable) => onChange(insertRuleVariable(selected, variable, "text_collection") as unknown[])} />}
-      <button type="button" onClick={() => onChange([])} className="text-[11px] text-muted hover:text-text">選択をクリア</button>
+      <button type="button" onClick={() => onChange([])} className={`${quietButtonClass} w-fit`}>選択をクリア</button>
     </fieldset>
   );
 }

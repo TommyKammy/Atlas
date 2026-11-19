@@ -2,7 +2,8 @@ import type { SelectHTMLAttributes } from "react";
 
 /**
  * Shared form primitives for the C workbench forms. These are applied to the
- * project create screen, project settings and the custom field dialogs only.
+ * project create screen, project settings, the custom field dialogs and the
+ * rule editor (automation and rule workflow screens).
  *
  * Inputs and selects are 32px tall on the field surface with a hairline
  * border. Focus adds the accent border; the global keyboard focus ring is the

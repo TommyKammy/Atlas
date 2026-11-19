@@ -5,6 +5,7 @@ import type { RuleEditorOption, RuleOptionKind, RuleVariable } from "@/lib/autom
 import { insertRuleVariable, ruleCollectionValues } from "@/lib/automation/no-code-inputs";
 import RuleEntityPicker from "./RuleEntityPicker";
 import RuleVariableMenu from "./RuleVariableMenu";
+import { fieldHintClass, quietButtonClass } from "../ui/form-controls";
 
 export default function RuleMultiEntityPicker({ projectId, kind, fieldId, value, onChange, label, variables, allowScalar = false, invalid, describedBy }: {
   projectId: number;
@@ -51,8 +52,8 @@ export default function RuleMultiEntityPicker({ projectId, kind, fieldId, value,
       </ul>}
       {variables && <RuleVariableMenu variables={variables} target="id_collection"
         onSelect={(variable) => onChange(insertRuleVariable(selected, variable, "id_collection") as unknown[])} />}
-      {!allowScalar && !Array.isArray(value) && value != null && value !== "" && <p className="text-[11px] text-muted">保存済みの値を保持しています。項目を選ぶと置き換わります。</p>}
-      <button type="button" onClick={() => onChange([])} className="text-[11px] text-muted hover:text-text">選択をクリア</button>
+      {!allowScalar && !Array.isArray(value) && value != null && value !== "" && <p className={fieldHintClass}>保存済みの値を保持しています。項目を選ぶと置き換わります。</p>}
+      <button type="button" onClick={() => onChange([])} className={`${quietButtonClass} w-fit`}>選択をクリア</button>
     </div>
   );
 }
