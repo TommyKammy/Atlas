@@ -24,12 +24,12 @@ export type TimelineLaneTask = {
  * Approximate the external label footprint of a skinny task/milestone in day
  * units. Used to avoid label collisions at coarse zoom levels.
  */
-export function estimateTimelineLabelDays(name: string, dayWidth: number): number {
+export function estimateTimelineLabelDays(name: string, dayWidth: number, extraPx = 0): number {
   const textWidth = [...name].reduce(
     (width, char) => width + (char.charCodeAt(0) > 0x2e80 ? 12 : 7),
     0,
   );
-  const labelPx = Math.min(172, 16 + textWidth) + 8;
+  const labelPx = Math.min(172, 16 + textWidth + extraPx) + 8;
   return labelPx / Math.max(1, dayWidth);
 }
 

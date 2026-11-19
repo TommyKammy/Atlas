@@ -5,7 +5,6 @@ import { ProjectViewToolbar, viewToolbarControlClass } from "@/components/view/P
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
-import { TIMELINE_CRITICAL_BAR } from "@/lib/data-colors";
 import { toast, confirmAction } from "@/lib/ui-feedback";
 import type { User, Section } from "@/lib/data";
 import type { ListFilters } from "@/lib/list-view";
@@ -183,24 +182,28 @@ export default function TimelineToolbar({
           href={`/projects/${projectId}?view=timeline&from=${linkDay(min - navigationDays)}`}
           aria-label="前の期間"
           title="前の期間"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-secondary hover:bg-hover"
+          className={`${toolbarBtn} w-7 justify-center`}
         >
           ‹
         </a>
-        <a href={`/projects/${projectId}?view=timeline`} className="flex h-7 items-center rounded-md px-2 text-[13px] text-secondary hover:bg-hover">
+        <a href={`/projects/${projectId}?view=timeline`} className={toolbarBtn}>
           今日
         </a>
         <a
           href={`/projects/${projectId}?view=timeline&from=${linkDay(min + navigationDays)}`}
           aria-label="次の期間"
           title="次の期間"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-secondary hover:bg-hover"
+          className={`${toolbarBtn} w-7 justify-center`}
         >
           ›
         </a>
         {showCritical && (
-          <span className="ml-2 flex items-center gap-1 text-xs text-muted">
-            <span className={`inline-block h-2.5 w-4 rounded ${TIMELINE_CRITICAL_BAR}`} /> クリティカルパス
+          <span className="ml-2 flex items-center gap-1.5 text-[12px] text-muted">
+            <span
+              data-timeline-critical-legend
+              className="inline-block h-2.5 w-4 rounded-[2px] border-2 border-accent bg-surface"
+            />{" "}
+            クリティカルパス
           </span>
         )}
         <span className="ml-auto" />

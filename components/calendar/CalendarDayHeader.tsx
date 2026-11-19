@@ -26,14 +26,16 @@ export default function CalendarDayHeader({
   return (
     <div
       data-day-header={iso}
-      className={`group/day overflow-hidden border-r border-b border-line bg-surface ${
+      className={`group/day overflow-hidden border-r border-b border-line-subtle ${
+        compact ? "bg-surface-subtle" : "bg-surface"
+      } ${
         weekView ? "flex h-[70px] flex-col px-2 py-2" : "flex h-7 items-center px-1.5"
       } ${compact ? "items-center" : ""}`}
     >
       {weekView ? (
         <>
-          <div className={`flex items-center gap-1 ${compact ? "text-[10px]" : "text-xs"}`}>
-            <span className={compact ? "text-subtle" : "text-muted"}>{WEEKDAYS[idx]}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-[12px] text-muted">{WEEKDAYS[idx]}</span>
             <span
               className={`inline-flex items-center justify-center font-normal ${
                 isToday

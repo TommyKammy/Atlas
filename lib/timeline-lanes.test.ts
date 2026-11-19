@@ -118,6 +118,7 @@ test("estimateTimelineLabelDays grows with text and shrinks with zoom", () => {
   const long = estimateTimelineLabelDays("RFP社内レビュー・4社承認 Wava1", 12);
   assert.ok(long > short);
   assert.ok(estimateTimelineLabelDays("RFP", 40) < estimateTimelineLabelDays("RFP", 12));
+  assert.ok(estimateTimelineLabelDays("RFP", 12, 20) > estimateTimelineLabelDays("RFP", 12));
 });
 
 

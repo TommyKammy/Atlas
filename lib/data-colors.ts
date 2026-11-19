@@ -63,9 +63,10 @@ export const CALENDAR_BAR_COLORS = [
   "border-[#c9e3e7] bg-[#e8f6f8] text-[#1f4e56]",
 ];
 
-/** Timeline bars whose fill encodes completion or critical path state. These
- * use the theme's line tokens so the bar stays legible with text-text in both
- * themes; the bar text ("完了" / task name) carries the state too. */
+/** Legacy timeline fills retained for data compatibility. The C timeline now
+ * expresses completion with surface-subtle + muted strikethrough and the
+ * critical path with an accent ring, so these constants are no longer read by
+ * the timeline components. */
 export const TIMELINE_COMPLETED_BAR = "bg-line-strong";
 export const TIMELINE_CRITICAL_BAR = "bg-danger-line";
 export const TIMELINE_CRITICAL_LINE = "bg-[#46a75a]";

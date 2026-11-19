@@ -6,11 +6,17 @@ export default function TaskMilestoneIcon({
   sizeClassName = "h-3 w-3",
   completed = false,
   critical = false,
+  colorClassName,
+  criticalDecoration = true,
 }: {
   className?: string;
   sizeClassName?: string;
   completed?: boolean;
   critical?: boolean;
+  /** Override the default data color, e.g. the timeline's text/success/accent. */
+  colorClassName?: string;
+  /** Timeline keeps only the diamond hue, without the red status ring. */
+  criticalDecoration?: boolean;
 }) {
   const criticalState = critical && !completed;
   const label = criticalState ? "クリティカルパス上のマイルストーン" : "マイルストーン";
@@ -21,7 +27,11 @@ export default function TaskMilestoneIcon({
       data-task-milestone-critical={criticalState ? "true" : undefined}
       title={label}
       aria-label={label}
-      className={`inline-flex shrink-0 items-center ${MILESTONE_ICON_COLOR} ${criticalState ? `rounded-sm ${MILESTONE_CRITICAL_BACKGROUND} ring-2 ${MILESTONE_CRITICAL_RING}` : ""} ${sizeClassName} ${className}`}
+      className={`inline-flex shrink-0 items-center ${colorClassName ?? MILESTONE_ICON_COLOR} ${
+        criticalState && criticalDecoration
+          ? `rounded-sm ${MILESTONE_CRITICAL_BACKGROUND} ring-2 ${MILESTONE_CRITICAL_RING}`
+          : ""
+      } ${sizeClassName} ${className}`}
     >
       <svg viewBox="0 0 32 32" className="h-full w-full" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
         <path

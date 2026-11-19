@@ -28,7 +28,7 @@ export default function TimelineCanvas({
   return (
     <div ref={scrollRef} className="timeline-scroll min-w-0 flex-1 overflow-x-auto">
       <div
-        className="relative w-full cursor-copy bg-surface-muted"
+        className="relative w-full cursor-copy bg-bg"
         style={{
           minWidth: Math.max(700, span * dayWidth),
           minHeight: "max(520px, calc(100vh - 178px))",

@@ -3,10 +3,13 @@ import { QuickTaskName } from "../task/QuickTaskContext";
 
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { TaskRow } from "@/lib/data";
+import DueStateIcon from "../task/DueStateIcon";
 
 export default function CalendarSingleTask({
   task,
   colorKey,
+  colorDot,
+  overdue,
   taskFaceClass,
   completion,
   avatars,
@@ -22,6 +25,8 @@ export default function CalendarSingleTask({
 }: {
   task: TaskRow;
   colorKey: string;
+  colorDot?: ReactNode;
+  overdue: boolean;
   taskFaceClass: string;
   completion: ReactNode;
   avatars: ReactNode;
@@ -55,8 +60,15 @@ export default function CalendarSingleTask({
       onPointerCancel={onPointerCancel}
     >
       {completion}
+      {colorDot}
       {avatars}
-      <span title={task.name} dir="auto" className={`min-w-0 flex-1 truncate ${task.completed ? "line-through" : ""}`}>
+      {overdue && task.is_milestone && <DueStateIcon state="overdue" className="text-danger" />}
+      {overdue && <span className="sr-only">期限超過: </span>}
+      <span
+        title={task.name}
+        dir="auto"
+        className={`min-w-0 flex-1 truncate text-[12px] whitespace-nowrap ${task.completed ? "text-muted line-through" : ""}`}
+      >
         <QuickTaskName task={task}>{task.name || "タスク名を入力"}</QuickTaskName>
       </span>
       {meta}

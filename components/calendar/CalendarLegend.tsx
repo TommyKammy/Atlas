@@ -12,7 +12,7 @@ export default function CalendarLegend({
   return (
     <div
       data-calendar-legend
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line px-4 py-1.5 text-[12px] text-secondary"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line-subtle px-4 py-1.5 text-[12px] text-secondary"
     >
       <span className="font-medium text-secondary">凡例</span>
       {colorKeys.map((key) => (

@@ -50,7 +50,10 @@ export default function CalendarDayCell({
       data-calendar-day-count={taskCount}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`group relative border-r border-b border-line p-1 align-top ${
+      data-calendar-weekend={compact ? "true" : undefined}
+      className={`group relative border-r border-b border-line-subtle p-1 align-top ${
+        compact ? "bg-surface-subtle" : ""
+      } ${
         weekMode ? "min-h-[320px]" : "min-h-[120px] max-h-[240px] overflow-y-auto"
       }`}
     >
@@ -60,7 +63,7 @@ export default function CalendarDayCell({
           type="button"
           data-calendar-more={iso}
           onClick={onExpand}
-          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] font-medium text-accent-text hover:bg-hover"
+          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] font-medium text-muted hover:bg-hover hover:text-text"
         >
           +{hiddenCount} 件
         </button>
@@ -92,7 +95,7 @@ export default function CalendarDayCell({
           <button
             type="button"
             onClick={onStartAdd}
-            className="flex h-8 w-full items-center rounded px-1 text-left text-[12px] text-subtle opacity-0 hover:bg-hover hover:text-secondary group-hover:opacity-100 focus:opacity-100"
+            className="flex h-8 w-full items-center rounded px-1 text-left text-[12px] text-muted opacity-0 hover:bg-hover hover:text-secondary group-hover:opacity-100 focus:opacity-100"
           >
             ＋ タスクを追加
           </button>

@@ -53,7 +53,7 @@ html[data-theme="dark"] {
 7. ホバー面は `bg-hover` / `bg-hover-strong` を使い、`hover:` と組み合わせる。選択行や現在地など静止した面には使わない（`surface-muted` / `accent-soft` を使う）。
 8. `text-on-accent` は `bg-accent` の塗り面の上だけで使う。`danger-strong` / `success-strong` / `danger-action` の塗り、暗いクローム、データ色の面の上は `text-on-strong`（常に白）を使う。C 案の `on-accent` はライト `#FFFFFF`、ダーク `#10140A` なので、白文字を乗せる塗りに代用しない。
 9. 入力欄の面は `bg-field`。読み取り専用の入力欄は `bg-surface-subtle`。プレースホルダは `placeholder:text-subtle` / `placeholder:text-muted` を使う。
-10. データの色（グラフ系列、進捗バー、ステータスの色ドット、アバター、プロジェクト色、ラベル色）はテーマで変えない。`lib/data-colors.ts` から参照し、コンポーネントに直書きしない。このファイルだけが `check-color-literals` の除外対象。タイムラインの完了・クリティカルバーは状態を表すため、`line-strong` / `danger-line` のトークンへ移した（両テーマで `text-text` が読める）。
+10. データの色（グラフ系列、進捗バー、ステータスの色ドット、アバター、プロジェクト色、ラベル色）はテーマで変えない。`lib/data-colors.ts` から参照し、コンポーネントに直書きしない。このファイルだけが `check-color-literals` の除外対象。タイムラインとカレンダーの状態は塗りではなく形で表す。完了は `surface-subtle` と `text-muted` の取り消し線、クリティカルは `accent` のリング、期限超過は `danger-line` の枠と `DueStateIcon` を使う。
 11. サイドバーはテーマに追従する。面・文字・線・ホバー・選択面は `sidebar` / `sidebar-text` / `sidebar-text-strong` / `sidebar-muted` / `sidebar-line` / `sidebar-line-subtle` / `sidebar-hover` / `sidebar-active` / `sidebar-accent` / `sidebar-danger` / `sidebar-favorite` を使う。`inverse-*` はトースト・ツールチップ・一括操作バー・ドラッグ中のプレビューなど、両テーマで暗いままが自然な浮遊物だけに使う。データ色の上の白文字は `on-strong`、データ色の縁は `border-data-line`。
 9. ステータスの枠は `border-danger-line` / `border-warning-line` / `border-success-line`、面は `bg-*-soft`、文字は `text-*` を組み合わせる。枠だけを移さず、同じ要素の面・文字も同じ段で移す。
 
@@ -496,6 +496,8 @@ S3-2 で変えたデータ色は次の2点だけ。
 - `AVATAR_COLORS` の各チップに `text-[#171717]` を追加した。パステル面は両テーマで同じなので、イニシャルは常に暗い色で読む。これにより旧 `html[data-theme="dark"] .bg-violet-400 … { color: #171717 !important; }` を削除した。
 - タイムラインの完了バー `TIMELINE_COMPLETED_BAR` は `bg-line-strong`、クリティカルバー `TIMELINE_CRITICAL_BAR` とマイルストーンのクリティカル背景 `MILESTONE_CRITICAL_BACKGROUND` は `bg-danger-line` にした。いずれもバーの文字 `text-text` が両テーマで AA を満たすための変更で、状態（完了・クリティカル）はバーの色と文字・`data-*` 属性で示す。旧 `bg-[#aaaaaa]` / `bg-red-100` / `bg-red-200` のダーク上書きは削除した。
 
+R3-1（タイムライン・カレンダー）で、状態の表し方を塗りから形へ移した。`TIMELINE_COMPLETED_BAR` / `TIMELINE_CRITICAL_BAR` は使わなくなったが、定義は互換のため残している（4.8 のデータ色は削除しない）。タイムラインの完了は `surface-subtle` の面と `text-muted` の取り消し線、クリティカルは `accent` の 2px リング、期限超過は `danger-line` の枠と `DueStateIcon` で示す。カレンダーの `CALENDAR_BAR_COLORS` は色分けオプションの小さなドットと凡例だけに使い、バーの面は `surface` / `line` に統一した。
+
 `scripts/check-color-literals.mjs` の走査対象は `app/`・`components/`・`lib/` で、`lib/data-colors.ts` だけをパスで明示的に除外する。除外理由は「データ色はテーマに追従させず、値の変更を UI 配色の切替から分離するため」。新しいデータ色を追加するときは、コンポーネントではなくこのファイルに追加する。
 
 ### 4.9 S3-2 で解消した AA 待ちのステータス
@@ -888,7 +890,7 @@ S3-2 では構造を変えず、次の箇所を確認した。いずれも今回
 - `components/list/TaskListRow.tsx:455` — 期日が今日のとき `text-success` だけで示す（アイコン・「今日」ラベルなし）。
 - `components/list/TaskListRow.tsx:452` / `components/board/BoardCard.tsx:107` — 期限超過を `text-danger` / `bg-danger-soft` の色だけで示す（「期限超過」ラベルなし。日付自体は表示される）。
 - `components/task/TaskMilestoneIcon.tsx:22` — クリティカルなマイルストーンを赤いリング（`ring-danger`）と背景色だけで示す。`title` / `aria-label` は「マイルストーン」で、クリティカルであることを文字・アイコンで示していない。
-- `components/timeline/TimelineBar.tsx:93-94` — 完了・クリティカルバーは塗り色で示す。完了は取り消し線、クリティカルはツールバーの凡例「クリティカルパス」と `title` の「【クリティカルパス】」があるため、完全な色のみではない。
+- `components/timeline/TimelineBar.tsx` — 完了は `surface-subtle` の面と `text-muted` の取り消し線、クリティカルは `accent` のリング、期限超過は `danger-line` の枠と `DueStateIcon` で示す。状態語は `aria-label` / `title`、期限超過は sr-only の「期限超過: 」、クリティカルは凡例と「【クリティカルパス】」を伴う。
 - ダークでは `accent`（`#B9F227`）と `success`（`#7EE2A8`）が近い緑系になる。成功・完了を示すバッジの多くは「成功」「完了」「Done」「承認済み」などの文字を伴うが、上記の日付・マイルストーンは色だけに頼っている。
 
 ### 10.5 確認結果

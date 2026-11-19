@@ -152,8 +152,16 @@ test("assignee and completed filters do not recalculate critical paths from visi
   await criticalDisplay(page, true);
   await assertCritical(page, [a, b], true);
   await assertCritical(page, [c], false);
-  // Completed bars use the neutral line-strong fill, never the critical fill.
-  await expect(bar(page, a)).toHaveCSS("background-color", await tokenColor(page, "--atlas-line-strong"));
+  // Completed bars use the quiet surface-subtle / muted treatment, never the
+  // critical ring or a status fill. The accessible state carries completion.
+  await expect(bar(page, a)).toHaveCSS("background-color", await tokenColor(page, "--atlas-surface-subtle"));
+  await expect(bar(page, a)).toHaveCSS("border-top-color", await tokenColor(page, "--atlas-line"));
+  await expect(bar(page, a)).toHaveAttribute("data-timeline-bar-state", "complete");
+  await expect(
+    bar(page, a)
+      .locator(`[data-timeline-bar-name="${a}"], [data-timeline-bar-label="${a}"]`)
+      .first(),
+  ).toHaveCSS("text-decoration-line", "line-through");
   await expect(bar(page, a)).not.toHaveClass(/bg-danger-line|bg-red-/);
 
   await page.locator("[data-timeline-filter-open]").click();

@@ -2,6 +2,7 @@
 
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { TaskRow } from "@/lib/data";
+import DueStateIcon from "../task/DueStateIcon";
 
 export default function CalendarMultiDayBar({
   task,
@@ -11,6 +12,8 @@ export default function CalendarMultiDayBar({
   continuesLeft,
   continuesRight,
   colorKey,
+  colorDot,
+  overdue,
   taskFaceClass,
   completion,
   avatars,
@@ -33,6 +36,8 @@ export default function CalendarMultiDayBar({
   continuesLeft: boolean;
   continuesRight: boolean;
   colorKey: string;
+  colorDot?: ReactNode;
+  overdue: boolean;
   taskFaceClass: string;
   completion: ReactNode;
   avatars: ReactNode;
@@ -75,7 +80,7 @@ export default function CalendarMultiDayBar({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
-      className={`${taskFaceClass} relative touch-pan-y mx-1 rounded ${
+      className={`${taskFaceClass} relative touch-pan-y ${
         continuesLeft ? "rounded-l-none" : ""
       } ${continuesRight ? "rounded-r-none" : ""}`}
       style={{
@@ -83,18 +88,21 @@ export default function CalendarMultiDayBar({
         gridRow: gridRow + 1,
       }}
     >
-      {continuesLeft && <span className="shrink-0 text-subtle">‹</span>}
+      {continuesLeft && <span className="shrink-0 text-muted">‹</span>}
       {completion}
+      {colorDot}
       {avatars}
+      {overdue && task.is_milestone && <DueStateIcon state="overdue" className="text-danger" />}
+      {overdue && <span className="sr-only">期限超過: </span>}
       <span
         title={task.name}
         dir="auto"
-        className={`min-w-0 flex-1 truncate ${task.completed ? "line-through" : ""}`}
+        className={`min-w-0 flex-1 truncate ${task.completed ? "text-muted line-through" : ""}`}
       >
         {task.name}
       </span>
       {meta}
-      {continuesRight && <span className="shrink-0 text-subtle">›</span>}
+      {continuesRight && <span className="shrink-0 text-muted">›</span>}
       <span
         data-calendar-resize="start"
         title="開始日を変更"

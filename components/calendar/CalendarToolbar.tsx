@@ -206,28 +206,28 @@ export default function CalendarToolbar({
         <Link
           href={prevHref}
           aria-label={weekMode ? "前週" : "前月"}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-secondary hover:bg-hover"
+          className={`${toolbarBtn} w-7 justify-center`}
         >
           ‹
         </Link>
-        <Link href={todayHref} className="flex h-7 items-center rounded-md px-2 text-[13px] text-secondary hover:bg-hover">
+        <Link href={todayHref} className={toolbarBtn}>
           今日
         </Link>
         <Link
           href={nextHref}
           aria-label={weekMode ? "来週" : "来月"}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-secondary hover:bg-hover"
+          className={`${toolbarBtn} w-7 justify-center`}
         >
           ›
         </Link>
-        <span className="ml-1 text-[15px] font-medium text-text">{title}</span>
+        <span className="ml-1 text-[13px] font-medium text-text">{title}</span>
 
         <span className="ml-auto" />
         <details className="relative">
           <summary
             data-calendar-undated
-            className={`flex h-7 cursor-pointer list-none items-center rounded-md px-2 text-[13px] hover:bg-hover [&::-webkit-details-marker]:hidden ${
-              undated.length ? "text-secondary" : "text-subtle"
+            className={`flex h-7 cursor-pointer list-none items-center rounded-md px-2 text-[12px] font-medium hover:bg-hover [&::-webkit-details-marker]:hidden ${
+              undated.length ? "text-text" : "text-subtle"
             }`}
           >
             日付なしのタスク ({undated.length} 件)

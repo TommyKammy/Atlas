@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { isCriticalDependency } from "@/lib/timeline-display";
 
 export type TimelineDependencyShape = {
   key: string;
@@ -25,25 +26,30 @@ export type TimelineDependencyDraft = {
 const TimelineDependencyEdge = memo(function TimelineDependencyEdge({
   shape,
   selected,
+  critical,
   onHover,
   onLeave,
 }: {
   shape: TimelineDependencyShape;
   selected: boolean;
+  critical: boolean;
   onHover: (key: string) => void;
   onLeave: () => void;
 }) {
+  // Hover temporarily thickens the edge; otherwise it is a quiet 1px line
+  // whose arrow shares the same color. Critical-path edges use the accent.
+  const tone = selected || critical ? "var(--atlas-accent)" : "var(--atlas-line-strong)";
   return (
-    <g data-timeline-dependency={shape.key}>
+    <g data-timeline-dependency={shape.key} data-timeline-dependency-critical={critical ? "true" : undefined}>
       <path
         d={shape.d}
         fill="none"
-        stroke={selected ? "var(--atlas-accent)" : "var(--atlas-text-muted)"}
-        strokeWidth={selected ? 2 : 1.5}
+        stroke={tone}
+        strokeWidth={selected ? 2 : 1}
         strokeLinejoin="round"
       />
-      <circle cx={shape.from.x} cy={shape.y1} r="2.5" fill={selected ? "var(--atlas-accent)" : "var(--atlas-text-muted)"} />
-      <path d={shape.arrow} fill={selected ? "var(--atlas-accent)" : "var(--atlas-text-muted)"} />
+      <circle cx={shape.from.x} cy={shape.y1} r="2.5" fill={tone} />
+      <path d={shape.arrow} fill={tone} />
       <path
         data-timeline-dependency-hit={shape.key}
         d={shape.d}
@@ -68,11 +74,13 @@ const TimelineDependencyEdge = memo(function TimelineDependencyEdge({
 const TimelineDependencyShapes = memo(function TimelineDependencyShapes({
   shapes,
   hoveredKey,
+  critical,
   onHover,
   onLeave,
 }: {
   shapes: TimelineDependencyShape[];
   hoveredKey: string | null;
+  critical?: ReadonlySet<number>;
   onHover: (key: string) => void;
   onLeave: () => void;
 }) {
@@ -84,6 +92,7 @@ const TimelineDependencyShapes = memo(function TimelineDependencyShapes({
           key={shape.key}
           shape={shape}
           selected={hoveredKey === shape.key}
+          critical={critical ? isCriticalDependency(shape.e, critical) : false}
           onHover={onHover}
           onLeave={onLeave}
         />
@@ -96,6 +105,7 @@ function TimelineDependencyLayer({
   shapes,
   hoveredKey,
   draft,
+  critical,
   onHover,
   onLeave,
   onDelete,
@@ -103,6 +113,7 @@ function TimelineDependencyLayer({
   shapes: TimelineDependencyShape[];
   hoveredKey: string | null;
   draft: TimelineDependencyDraft | null;
+  critical?: ReadonlySet<number>;
   onHover: (key: string) => void;
   onLeave: () => void;
   onDelete: (dependency: { task_id: number; depends_on_id: number }) => void;
@@ -113,6 +124,7 @@ function TimelineDependencyLayer({
       <TimelineDependencyShapes
         shapes={shapes}
         hoveredKey={hoveredKey}
+        critical={critical}
         onHover={onHover}
         onLeave={onLeave}
       />

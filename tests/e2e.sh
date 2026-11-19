@@ -1215,7 +1215,7 @@ PYEOF
 [[ $? == 0 ]] && ok "timeline half plain labels" || bad "timeline half plain labels"
 purge_task "$COARSE_ID" >/dev/null
 api PUT /api/view-state '{"project_id":1,"view":"timeline","state":{}}' >/dev/null
-grep -q 'data-timeline-group-line' "$TMPD/tlui.html" && grep -q 'data-timeline-weekend' "$TMPD/tlui.html" && grep -q 'data-timeline-filter-open' "$TMPD/tlui.html" && grep -q 'data-timeline-sort-open' "$TMPD/tlui.html" && grep -q 'data-timeline-options-open' "$TMPD/tlui.html" && grep -q 'data-view-options-drawer="タイムライン"' "$TMPD/tlui.html" && grep -q 'line-clamp-2' "$TMPD/tlui.html" && grep -q 'aria-expanded="true"' "$TMPD/tlui.html" && ok "timeline parity chrome" || bad "timeline parity chrome"
+grep -q 'data-timeline-group-line' "$TMPD/tlui.html" && grep -q 'data-timeline-weekend' "$TMPD/tlui.html" && grep -q 'data-timeline-filter-open' "$TMPD/tlui.html" && grep -q 'data-timeline-sort-open' "$TMPD/tlui.html" && grep -q 'data-timeline-options-open' "$TMPD/tlui.html" && grep -q 'data-view-options-drawer="タイムライン"' "$TMPD/tlui.html" && grep -q 'data-timeline-bar-state=' "$TMPD/tlui.html" && grep -q 'aria-expanded="true"' "$TMPD/tlui.html" && ok "timeline parity chrome" || bad "timeline parity chrome"
 grep -q 'data-timeline-section-row="1"' "$TMPD/tlui.html" && ok "timeline section header row" || bad "timeline section header row"
 T=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":2,"name":"E2E移動"}')
 TID=$(echo "$T" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
