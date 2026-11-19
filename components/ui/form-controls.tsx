@@ -35,6 +35,20 @@ export const smallSecondaryPillButtonClass =
   "inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-line bg-surface px-2.5 text-[12px] text-secondary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
 export const smallDangerButtonClass =
   "inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-line bg-surface px-2 text-[12px] text-danger hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
+/** A borderless 28px destructive row action: danger text on hover only. */
+export const smallQuietDangerButtonClass =
+  "inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md px-2 text-[12px] text-danger hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50";
+
+/** Admin and settings section headings: 16px semibold with a 13px muted line. */
+export const sectionTitleClass = "text-[16px] font-semibold leading-6 text-text";
+export const sectionDescriptionClass = "mt-1 text-[13px] leading-5 text-muted";
+/** Small 20px status pills shared by members, roles, teams and two-factor rows. */
+export const pillClass =
+  "inline-flex h-5 shrink-0 items-center rounded-full bg-surface-muted px-2 text-[11px] font-medium text-secondary";
+export const pillWarningClass =
+  "inline-flex h-5 shrink-0 items-center rounded-full bg-warning-soft px-2 text-[11px] font-medium text-warning";
+export const pillSuccessClass =
+  "inline-flex h-5 shrink-0 items-center rounded-full bg-success-soft px-2 text-[11px] font-medium text-success";
 
 export const dialogTitleClass = "text-[16px] font-semibold leading-6 text-text";
 export const dialogSubtitleClass = "mt-0.5 text-[12px] leading-5 text-muted";

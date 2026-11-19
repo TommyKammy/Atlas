@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  quietButtonClass,
+  sectionDescriptionClass,
+  sectionTitleClass,
+} from "./ui/form-controls";
 import type {
   AdminRole,
   AdminTeam,
@@ -112,45 +117,37 @@ export default function AdminConsole({
   }
 
   return (
-    <div data-admin-console className="mt-4 flex flex-col gap-5 md:flex-row">
+    <div data-admin-console className="mt-5 flex flex-col gap-5 md:flex-row md:gap-8">
       <aside className="shrink-0 md:w-56">
-        <div className="rounded-lg border border-line bg-surface p-2">
-          <div className="px-2 pb-1 pt-1 text-[11px] font-medium tracking-wide text-muted">
-            {initialWorkspace.name}
-          </div>
-          <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-            {visible.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => select(tab.key)}
-                data-admin-tab={tab.key}
-                aria-current={active === tab.key ? "page" : undefined}
-                className={`min-w-[110px] rounded-md px-2 py-2 text-left text-sm md:min-w-0 ${
-                  active === tab.key
-                    ? "bg-accent-soft font-medium text-accent-text"
-                    : "text-secondary hover:bg-hover"
-                }`}
-              >
-                <span className="block whitespace-nowrap">{tab.label}</span>
-                <span className="mt-0.5 hidden text-[10px] font-normal text-muted md:block">
-                  {tab.description}
-                </span>
-              </button>
-            ))}
-          </nav>
+        <div className="px-2 pb-1 text-[11px] font-medium tracking-wide text-muted">
+          {initialWorkspace.name}
         </div>
+        <nav className="flex flex-wrap gap-1 md:flex-col md:flex-nowrap" aria-label="管理セクション">
+          {visible.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => select(tab.key)}
+              data-admin-tab={tab.key}
+              aria-current={active === tab.key ? "page" : undefined}
+              className={`w-auto shrink-0 rounded-md px-2.5 py-1.5 text-left text-[13px] md:w-full ${
+                active === tab.key
+                  ? "bg-sidebar-active font-medium text-sidebar-text-strong"
+                  : "text-secondary hover:bg-hover"
+              }`}
+            >
+              <span className="block whitespace-nowrap">{tab.label}</span>
+              <span className="mt-0.5 hidden text-[12px] font-normal text-muted md:block">
+                {tab.description}
+              </span>
+            </button>
+          ))}
+        </nav>
         {permissions.includes("audit.view") && (
-          <div className="mt-2 hidden rounded-lg border border-line p-2 md:block">
-            <a
-              href="/audit"
-              className="block rounded px-2 py-1.5 text-xs text-secondary hover:bg-hover"
-            >
-              監査ログを開く →
+          <div className="mt-2 hidden flex-col items-start md:flex">
+            <a href="/audit" className={quietButtonClass}>
+              監査ログを開く <span aria-hidden="true">→</span>
             </a>
-            <a
-              href="/api/admin/audit/export?format=csv"
-              className="mt-1 block rounded px-2 py-1.5 text-xs text-secondary hover:bg-hover"
-            >
+            <a href="/api/admin/audit/export?format=csv" className={quietButtonClass}>
               CSV をエクスポート
             </a>
           </div>
@@ -160,8 +157,8 @@ export default function AdminConsole({
       <div className="min-w-0 flex-1">
         {active === "members" && permissions.includes("members.manage") && (
           <div data-admin-panel="members">
-            <h2 className="text-base font-semibold">メンバー</h2>
-            <p className="mt-0.5 text-xs text-muted">
+            <h2 className={sectionTitleClass}>メンバー</h2>
+            <p className={sectionDescriptionClass}>
               ユーザーの追加、編集、無効化、ロールの割り当て、招待を管理します。
             </p>
             <AdminPanel
@@ -192,8 +189,8 @@ export default function AdminConsole({
           )}
         {active === "insights" && permissions.includes("insights.view") && (
           <section data-admin-panel="insights">
-            <h2 className="text-base font-semibold">利用状況</h2>
-            <p className="mt-0.5 text-xs text-muted">
+            <h2 className={sectionTitleClass}>利用状況</h2>
+            <p className={sectionDescriptionClass}>
               直近 2 週間のタスク・コメントの作成数とアクティブユーザーを表示します。
             </p>
             <UsageStats />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { AdminRole, SecuritySettings, TotpUserRow } from "@/lib/admin-data";
+import { sectionDescriptionClass, sectionTitleClass } from "./ui/form-controls";
 import { RbacSection } from "./security/RbacSection";
 import { TwoFactorSection } from "./security/TwoFactorSection";
 import { SamlSection } from "./security/SamlSection";
@@ -48,27 +49,28 @@ export default function SecurityPanel({
 
   return (
     <section data-admin-panel="security">
-      <h2 className="text-base font-semibold">セキュリティ</h2>
-      <p className="mt-0.5 text-xs text-muted">
+      <h2 className={sectionTitleClass}>セキュリティ</h2>
+      <p className={sectionDescriptionClass}>
         認証、役割、パスワードのポリシーを管理します。設定はワークスペース全体に適用されます。
       </p>
 
-      <div className="mt-4 flex flex-wrap gap-1 border-b">
+      <nav aria-label="セキュリティ設定" className="mt-4 flex flex-wrap gap-1">
         {sections.map((key) => (
           <button
             key={key}
             onClick={() => setSection(key)}
             data-security-tab={key}
-            className={`-mb-px rounded-t px-3 py-2 text-sm ${
+            aria-current={section === key ? "page" : undefined}
+            className={`inline-flex h-8 items-center rounded-md px-3 text-[13px] ${
               section === key
-                ? "border-b-2 border-accent font-medium text-accent-text"
-                : "text-muted hover:bg-hover"
+                ? "bg-accent-soft font-medium text-accent-text"
+                : "text-secondary hover:bg-hover"
             }`}
           >
             {SECTION_LABEL[key]}
           </button>
         ))}
-      </div>
+      </nav>
 
       <div className="mt-4">
         {section === "rbac" && permissions.includes("roles.manage") && (

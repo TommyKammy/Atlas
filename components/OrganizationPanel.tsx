@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import type { AdminWorkspace } from "@/lib/admin-data";
+import {
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  formSectionTitleClass,
+  primaryButtonClass,
+} from "./ui/form-controls";
 
 export default function OrganizationPanel({ initial }: { initial: AdminWorkspace }) {
   const router = useRouter();
@@ -34,69 +41,65 @@ export default function OrganizationPanel({ initial }: { initial: AdminWorkspace
     }
   };
 
-  const field = "mt-1 w-full max-w-md rounded border border-line-strong px-3 py-2 text-sm outline-none focus:border-accent";
-
   return (
     <section data-admin-panel="workspace">
-      <h2 className="text-base font-semibold">組織設定</h2>
-      <p className="mt-0.5 text-xs text-muted">
+      <h2 className="text-[16px] font-semibold leading-6 text-text">組織設定</h2>
+      <p className="mt-1 text-[13px] leading-5 text-muted">
         組織の名前を変更して Atlas をカスタマイズします。サイドバーや招待メールに表示されます。
       </p>
 
-      <div className="mt-4 rounded-lg border border-line p-4">
-        <h3 className="text-sm font-semibold">会社のプロフィール</h3>
-        <div className="mt-3">
-          <label className="text-xs font-medium text-secondary">組織名</label>
+      <div className="mt-5 max-w-md">
+        <h3 className={formSectionTitleClass}>会社のプロフィール</h3>
+        <label className="mt-3 block">
+          <span className={fieldLabelClass}>組織名</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className={field}
+            className={`mt-1.5 ${fieldControlClass}`}
             data-admin-org-name-input
             maxLength={120}
           />
-          <p className="mt-1 text-[11px] text-subtle">
-            組織の名前を変更して Atlas をカスタマイズします。
-          </p>
-        </div>
-        <div className="mt-3 flex items-center gap-3">
+        </label>
+        <p className={`mt-1.5 ${fieldHintClass}`}>
+          組織の名前を変更して Atlas をカスタマイズします。
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             onClick={save}
             disabled={saving || !name.trim() || name.trim() === workspace.name}
             data-admin-org-save
-            className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
+            className={primaryButtonClass}
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
-          {msg && <span className="text-sm text-secondary">{msg}</span>}
+          {msg && <span className="text-[12px] text-secondary">{msg}</span>}
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-line p-4">
-          <div className="text-[11px] font-medium text-muted">組織 ID</div>
-          <div className="mt-1 font-mono text-sm">{workspace.id}</div>
-          <div className="mt-1 text-[11px] text-subtle">ワークスペースの識別子</div>
+      <div className="mt-6 grid max-w-2xl gap-3 sm:grid-cols-3">
+        <div className="rounded-lg bg-surface-subtle p-4">
+          <div className="text-[12px] font-medium text-muted">組織 ID</div>
+          <div className="mt-1 font-mono text-[13px] tabular-nums text-text">{workspace.id}</div>
+          <div className="mt-1 text-[12px] text-muted">ワークスペースの識別子</div>
         </div>
-        <div className="rounded-lg border border-line p-4">
-          <div className="text-[11px] font-medium text-muted">メンバー</div>
-          <div className="mt-1 text-xl font-semibold">{workspace.user_count}</div>
-          <div className="mt-1 text-[11px] text-subtle">有効なユーザー</div>
+        <div className="rounded-lg bg-surface-subtle p-4">
+          <div className="text-[12px] font-medium text-muted">メンバー</div>
+          <div className="mt-1 text-[16px] font-semibold tabular-nums text-text">{workspace.user_count}</div>
+          <div className="mt-1 text-[12px] text-muted">有効なユーザー</div>
         </div>
-        <div className="rounded-lg border border-line p-4">
-          <div className="text-[11px] font-medium text-muted">チーム</div>
-          <div className="mt-1 text-xl font-semibold">{workspace.team_count}</div>
-          <div className="mt-1 text-[11px] text-subtle">作成済みのチーム</div>
+        <div className="rounded-lg bg-surface-subtle p-4">
+          <div className="text-[12px] font-medium text-muted">チーム</div>
+          <div className="mt-1 text-[16px] font-semibold tabular-nums text-text">{workspace.team_count}</div>
+          <div className="mt-1 text-[12px] text-muted">作成済みのチーム</div>
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-line p-4">
-        <h3 className="text-sm font-semibold">プロジェクト</h3>
-        <p className="mt-1 text-sm text-secondary">
-          このワークスペースには <strong>{workspace.project_count}</strong> 件のプロジェクトがあります。
+      <div className="mt-6 max-w-2xl rounded-lg bg-surface-subtle p-4">
+        <h3 className={formSectionTitleClass}>プロジェクト</h3>
+        <p className="mt-1 text-[13px] text-secondary">
+          このワークスペースには <strong className="tabular-nums">{workspace.project_count}</strong> 件のプロジェクトがあります。
         </p>
-        <p className="mt-1 text-[11px] text-subtle">
-          組織名の変更は監査ログにも記録されます。
-        </p>
+        <p className="mt-1 text-[12px] text-muted">組織名の変更は監査ログにも記録されます。</p>
       </div>
     </section>
   );

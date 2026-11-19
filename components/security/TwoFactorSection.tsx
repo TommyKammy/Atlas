@@ -4,6 +4,14 @@ import { useState } from "react";
 import { api } from "@/lib/api-client";
 import { confirmAction } from "@/lib/ui-feedback";
 import type { SecuritySettings, TotpUserRow } from "@/lib/admin-data";
+import {
+  checkboxClass,
+  formSectionTitleClass,
+  pillClass,
+  pillSuccessClass,
+  primaryButtonClass,
+  smallQuietButtonClass,
+} from "../ui/form-controls";
 import UserAvatar from "../UserAvatar";
 import { SectionHeader } from "./SectionHeader";
 
@@ -57,9 +65,9 @@ export function TwoFactorSection({
         title="二要素認証"
         description="メンバーとゲストに 2 つ目の認証方法を使用してサインインすることを義務づけます。"
       />
-      <div className="mt-4 max-w-2xl rounded-lg border border-line p-4">
-        <div className="text-xs font-medium text-secondary">二要素認証のポリシー</div>
-        <div className="mt-2 space-y-2 text-sm">
+      <div className="mt-4 max-w-2xl">
+        <div className={formSectionTitleClass}>二要素認証のポリシー</div>
+        <div className="mt-2 space-y-2 text-[13px] text-secondary">
           <label className="flex items-start gap-2">
             <input
               type="radio"
@@ -67,10 +75,11 @@ export function TwoFactorSection({
               checked={policy === "optional"}
               onChange={() => setPolicy("optional")}
               data-two-factor-policy-optional
+              className={`mt-0.5 ${checkboxClass}`}
             />
             <span>
               任意
-              <span className="block text-[11px] text-subtle">
+              <span className="block text-[12px] leading-5 text-muted">
                 ユーザーが自分のプロフィールから二要素認証を有効化できます。
               </span>
             </span>
@@ -82,55 +91,57 @@ export function TwoFactorSection({
               checked={policy === "required"}
               onChange={() => setPolicy("required")}
               data-two-factor-policy-required
+              className={`mt-0.5 ${checkboxClass}`}
             />
             <span>
               すべてのメンバーとゲストに対して必須
-              <span className="block text-[11px] text-subtle">
+              <span className="block text-[12px] leading-5 text-muted">
                 次回サインイン時に、プロフィールから二要素認証の設定を促します。
               </span>
             </span>
           </label>
         </div>
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <button
             onClick={save}
             disabled={saving}
             data-two-factor-save
-            className="rounded bg-accent px-3 py-1.5 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
+            className={primaryButtonClass}
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
-          {msg && <span className="text-sm text-secondary">{msg}</span>}
+          {msg && <span className="text-[12px] text-secondary">{msg}</span>}
         </div>
       </div>
 
-      <div className="mt-4 max-w-2xl rounded-lg border border-line p-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold">メンバーの二要素認証</h4>
-          <a href="/profile#two-factor" className="text-xs text-accent-text hover:underline">
+      <div className="mt-6 max-w-2xl border-t border-line-subtle pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h4 className={formSectionTitleClass}>メンバーの二要素認証</h4>
+          <a href="/profile#two-factor" className="text-[12px] text-accent-text hover:underline">
             自分の設定を開く →
           </a>
         </div>
-        <div className="mt-2 divide-y">
+        <div className="mt-1">
           {users.map((user) => (
-            <div key={user.id} className="flex items-center gap-2 py-2 text-sm" data-totp-user={user.id}>
+            <div
+              key={user.id}
+              className="flex min-h-[40px] items-center gap-2 border-b border-line-subtle py-1.5 text-[13px]"
+              data-totp-user={user.id}
+            >
               <UserAvatar name={user.name} url={null} className="h-6 w-6" textClassName="text-[9px]" />
-              <span className="min-w-0 flex-1 truncate">
+              <span className="min-w-0 flex-1 truncate text-text">
                 {user.name}
-                {user.id === currentUserId && <span className="ml-1 text-[10px] text-subtle">(自分)</span>}
+                {user.id === currentUserId && <span className="ml-1 text-[11px] text-muted">(自分)</span>}
               </span>
-              <span className="w-24 text-[11px] text-muted">{user.role_name ?? "–"}</span>
-              <span
-                className={`w-20 rounded px-1.5 py-0.5 text-center text-[11px] ${
-                  user.totp_enabled ? "bg-success-soft text-success" : "bg-surface-muted text-muted"
-                }`}
-              >
+              <span className="w-24 text-[12px] text-muted">{user.role_name ?? "–"}</span>
+              <span className={user.totp_enabled ? pillSuccessClass : pillClass}>
                 {user.totp_enabled ? "有効" : "未設定"}
               </span>
               <button
                 onClick={() => resetUser(user)}
                 disabled={!user.totp_enabled || !user.can_manage}
-                className="rounded border px-1.5 py-0.5 text-xs hover:bg-hover disabled:opacity-40"
+                title={`${user.name}の二要素認証をリセット`}
+                className={smallQuietButtonClass}
               >
                 リセット
               </button>
@@ -141,4 +152,3 @@ export function TwoFactorSection({
     </div>
   );
 }
-
