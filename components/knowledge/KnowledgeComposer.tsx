@@ -10,6 +10,7 @@ import { knowledgeMarkdown, validateKnowledgeDoc } from "@/lib/knowledge-documen
 import { confirmAction } from "@/lib/ui-feedback";
 import RichTextEditor from "../rich-text/RichTextEditor";
 import KnowledgeTools from "./KnowledgeTools";
+import { fieldHintClass, primaryButtonClass, quietButtonClass, secondaryButtonClass } from "../ui/form-controls";
 
 export function downloadNote(title: string, body: string, extension = "md") {
   const url = URL.createObjectURL(new Blob([body], { type: "text/plain;charset=utf-8" }));
@@ -135,33 +136,33 @@ export default function KnowledgeComposer({ note, projectId, viewerId, template,
 
   const change = (next: Draft) => { latest.current = next; setDraft(next); persist(); if (!blocked.current) setStatus("dirty"); };
   return <div data-knowledge-composer className="min-w-0">
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
-      <p role="status" data-knowledge-save-status className={`text-xs ${status === "error" ? "text-danger" : "text-secondary"}`}>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-line-subtle pb-3">
+      <p role="status" data-knowledge-save-status className={`text-[12px] ${status === "error" ? "text-danger" : "text-muted"}`}>
         {status === "saving" ? "保存中…" : status === "dirty" ? "未保存の変更" : status === "error" ? "保存できていません" : hasRecord ? "すべての変更を保存しました" : "新しいノート"}
       </p>
       <div className="flex items-center gap-2">
-        <button type="button" onClick={async () => { if (await save()) { try { sessionStorage.removeItem(storageKey); } catch {} onClose(); } }} className="rounded px-3 py-2 text-xs hover:bg-hover">編集を終了</button>
-        <button type="button" data-knowledge-save disabled={status === "saving"} onClick={() => void save(!record.current)} className="rounded bg-accent px-3 py-2 text-xs font-medium text-on-accent disabled:opacity-50">{status === "saving" ? "保存中…" : "今すぐ保存"}</button>
+        <button type="button" onClick={async () => { if (await save()) { try { sessionStorage.removeItem(storageKey); } catch {} onClose(); } }} className={quietButtonClass}>編集を終了</button>
+        <button type="button" data-knowledge-save disabled={status === "saving"} onClick={() => void save(!record.current)} className={primaryButtonClass}>{status === "saving" ? "保存中…" : "今すぐ保存"}</button>
       </div>
     </div>
-    {error && <div role="alert" className="mb-4 rounded-md border border-danger-line bg-danger-soft p-3 text-sm text-danger">
+    {error && <div role="alert" className="mb-4 rounded-md border border-danger-line bg-danger-soft p-3 text-[13px] text-danger">
       <p>{error}</p><p className="mt-1">未保存の変更はこの画面に残っています。</p>
-      <div className="mt-2 flex flex-wrap gap-3">
-        <button onClick={() => void save(true)} className="underline">再試行</button>
-        <button onClick={() => downloadNote(draft.title, JSON.stringify(draft.doc, null, 2), "json")} className="underline">変更をファイルに退避</button>
-        <button onClick={async () => { if (await confirmAction("未保存の変更を破棄して編集を終了しますか？必要な変更は先にファイルへ退避してください。")) { try { sessionStorage.removeItem(storageKey); } catch {} onClose(); } }} className="underline">変更を破棄して終了</button>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button onClick={() => void save(true)} className={secondaryButtonClass}>再試行</button>
+        <button onClick={() => downloadNote(draft.title, JSON.stringify(draft.doc, null, 2), "json")} className={secondaryButtonClass}>変更をファイルに退避</button>
+        <button onClick={async () => { if (await confirmAction("未保存の変更を破棄して編集を終了しますか？必要な変更は先にファイルへ退避してください。")) { try { sessionStorage.removeItem(storageKey); } catch {} onClose(); } }} className={secondaryButtonClass}>変更を破棄して終了</button>
       </div>
     </div>}
-    {seed.recovered && <p className="mb-3 text-xs text-accent-text">このタブに残っていた未保存の下書きを復元しました。</p>}
-    {note && !note.body_doc && <p className="mb-4 text-xs text-secondary">本文を編集するとブロック形式で保存します。元のMarkdownは履歴から復元できます。</p>}
-    <input data-knowledge-title aria-label="ノートのタイトル" maxLength={300} value={draft.title} onChange={e => change({ ...latest.current, title: e.target.value })} placeholder="無題のノート" className="mb-4 w-full min-w-0 border-0 bg-transparent text-2xl font-semibold tracking-tight text-text outline-none placeholder:text-secondary" />
+    {seed.recovered && <p className="mb-3 text-[12px] text-accent-text">このタブに残っていた未保存の下書きを復元しました。</p>}
+    {note && !note.body_doc && <p className={`mb-4 ${fieldHintClass}`}>本文を編集するとブロック形式で保存します。元のMarkdownは履歴から復元できます。</p>}
+    <input data-knowledge-title aria-label="ノートのタイトル" maxLength={300} value={draft.title} onChange={e => change({ ...latest.current, title: e.target.value })} placeholder="無題のノート" className="mb-4 h-10 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1 text-2xl font-semibold tracking-tight text-text outline-none placeholder:text-subtle hover:border-line focus:border-accent" />
     {editor && <KnowledgeTools editor={editor} links={links} />}
     <RichTextEditor initialDoc={initial.doc} extraExtensions={knowledgeExtensions} borderless minHeightClass="min-h-[320px]"
       ariaLabel="ノートの本文" dataAttributes={{ "data-knowledge-body": "" }} placeholder="書き始めるか、/ でブロックを選択"
       onReady={setEditor} onChange={doc => change({ ...latest.current, doc })} onSubmit={() => save(true).then(() => undefined)} className="knowledge-document" />
-    <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-line-subtle pt-3 text-xs text-secondary">
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line-subtle pt-3 text-[12px] text-muted">
       <span>/ で挿入 · Alt+↑↓ でブロック移動 · ⌘/Ctrl+Enter で保存</span>
-      <button onClick={() => downloadNote(draft.title, knowledgeMarkdown(draft.doc))} className="underline">Markdownを書き出す</button>
+      <button onClick={() => downloadNote(draft.title, knowledgeMarkdown(draft.doc))} className={quietButtonClass}>Markdownを書き出す</button>
     </div>
   </div>;
 }

@@ -563,7 +563,7 @@ html[data-theme="dark"] {
 .knowledge-document [contenteditable=false] { cursor: default; }
 .knowledge-document p.is-editor-empty:first-child::before { color: var(--atlas-text-muted); }
 
-.knowledge-document .atlas-rich-text, .atlas-rich-text.knowledge-document { font-size: 15px; line-height: 1.8; }
+.knowledge-document .atlas-rich-text, .atlas-rich-text.knowledge-document { font-size: 14px; line-height: 1.8; }
 .knowledge-document .atlas-rich-text h1 { font-size: 1.6em; margin-top: 1.2em; }
 .knowledge-document .atlas-rich-text h2 { font-size: 1.3em; margin-top: 1em; }
 .knowledge-document .atlas-rich-text h3 { font-size: 1.1em; margin-top: 0.8em; }

@@ -6,10 +6,17 @@ const subscribeReady = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
+// Kept at 36px for the project partner trigger, which is outside the r3-4 scope.
 export const knowledgeActionBase = "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:opacity-50";
 export const knowledgeAction = `${knowledgeActionBase} border-line text-secondary hover:bg-hover`;
 export const knowledgePrimaryAction = `${knowledgeActionBase} border-accent bg-accent text-on-accent hover:bg-accent-hover`;
 export const knowledgeMenuItem = "flex min-h-10 w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-hover focus-visible:bg-surface-muted focus-visible:outline-none disabled:opacity-50";
+
+// The knowledge view's own header and panels use the 32px C toolbar scale.
+export const knowledgeToolbarActionBase = "inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:opacity-50";
+export const knowledgeToolbarAction = `${knowledgeToolbarActionBase} border-line bg-surface text-secondary hover:bg-hover`;
+export const knowledgeToolbarPrimaryAction = `${knowledgeToolbarActionBase} border-accent bg-accent text-on-accent hover:bg-accent-hover`;
+export const knowledgeToolbarMenuItem = "flex min-h-8 w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-hover focus-visible:bg-surface-muted focus-visible:outline-none disabled:opacity-50";
 
 export function KnowledgeIcon({ name }: { name: "ai" | "download" | "edit" | "more" | "close" | "copy" | "history" | "trash" | "summary" | "chevron" }) {
   const paths = {

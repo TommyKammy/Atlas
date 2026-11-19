@@ -20,14 +20,14 @@ export default function KnowledgeNoteList({ notes, selectedId, disabled, canReor
     <div ref={listRef} role="navigation" data-reorder-scroll className="flex max-h-64 flex-col gap-1 overflow-y-auto overscroll-contain px-0.5 py-1 lg:max-h-[65vh]" aria-label="ノートを選択">
       {notes.map((note) => {
         const target = drag?.active && drag.target?.id === note.id && drag.id !== note.id ? drag.target.placement : null;
-        return <div key={note.id} data-note-row={note.id} data-reorder-id={note.id} className={`group relative flex shrink-0 items-center rounded-md ${selectedId === note.id ? "bg-accent-soft text-accent-text" : "hover:bg-hover"} ${drag?.active && drag.id === note.id ? "opacity-40" : ""}`}>
+        return <div key={note.id} data-note-row={note.id} data-reorder-id={note.id} className={`group relative flex shrink-0 items-center rounded-md ${selectedId === note.id ? "bg-sidebar-active text-sidebar-text-strong" : "hover:bg-hover"} ${drag?.active && drag.id === note.id ? "opacity-40" : ""}`}>
           {target && <span data-note-drop={target} className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded bg-accent ${target === "before" ? "-top-0.5" : "-bottom-0.5"}`} />}
           <button {...(canReorder ? itemProps<HTMLButtonElement>(note.id, note.title) : {})}
             type="button" data-knowledge-note={note.id} data-note-reorder={canReorder ? note.id : undefined}
             aria-describedby={canReorder ? instructions : undefined} aria-current={selectedId === note.id ? "page" : undefined} aria-disabled={disabled}
             onClick={() => { if (!disabled) onSelect(note.id); }} className="min-w-0 flex-1 rounded-md px-2 py-2.5 text-left focus-visible:outline-2 focus-visible:outline-focus-ring">
-            <span data-reorder-label={canReorder ? true : undefined} className="block truncate text-sm font-medium" style={canReorder ? { touchAction: "none" } : undefined}>{note.title}</span>
-            <span className="mt-1 block text-xs text-secondary">{date(note.updated_at)}</span>
+            <span data-reorder-label={canReorder ? true : undefined} className="block truncate text-[13px] font-medium" style={canReorder ? { touchAction: "none" } : undefined}>{note.title}</span>
+            <span className="mt-1 block text-[12px] text-muted">{date(note.updated_at)}</span>
           </button>
         </div>;
       })}

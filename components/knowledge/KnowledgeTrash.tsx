@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ProjectKnowledge } from "@/lib/data";
 import type { TrashedKnowledge } from "@/lib/services/authorized-data";
-
-const button = "rounded-md border border-line px-3 py-2 text-sm text-secondary hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50";
+import { secondaryButtonClass } from "../ui/form-controls";
 
 export default function KnowledgeTrash({ projectId, onRestored, onBusyChange }: {
   projectId: number; onRestored: (note: ProjectKnowledge) => Promise<void>; onBusyChange: (busy: boolean) => void;
@@ -45,23 +44,23 @@ export default function KnowledgeTrash({ projectId, onRestored, onBusyChange }: 
     finally { setBusy(false); onBusyChange(false); }
   };
   return <section aria-label="ノートのゴミ箱" aria-busy={busy} className="max-w-4xl" data-knowledge-trash>
-    <h3 className="text-lg font-semibold">ノートのゴミ箱</h3>
-    <p className="mt-2 text-sm text-secondary">本文と保存履歴を保持しています。復元したノートは一覧の末尾に戻ります。</p>
-    {error && <div role="alert" className="mt-4 rounded-md bg-danger-soft p-3 text-sm text-danger">{error}
-      <button className={`${button} ml-3`} disabled={busy} onClick={() => { setError(""); setRetry(value => value + 1); }}>再読み込み</button>
+    <h3 className="text-[16px] font-semibold text-text">ノートのゴミ箱</h3>
+    <p className="mt-2 text-[13px] text-muted">本文と保存履歴を保持しています。復元したノートは一覧の末尾に戻ります。</p>
+    {error && <div role="alert" className="mt-4 flex flex-wrap items-center gap-3 rounded-md bg-danger-soft p-3 text-[13px] text-danger">{error}
+      <button className={secondaryButtonClass} disabled={busy} onClick={() => { setError(""); setRetry(value => value + 1); }}>再読み込み</button>
     </div>}
-    {!loaded && !error && <p role="status" className="py-8 text-sm text-secondary">ゴミ箱を読み込み中…</p>}
-    {loaded && notes.length === 0 && <p className="py-12 text-sm text-secondary">ゴミ箱は空です。削除したノートはここから復元できます。</p>}
-    <ul className="mt-5 divide-y divide-line">
+    {!loaded && !error && <p role="status" className="py-8 text-[13px] text-muted">ゴミ箱を読み込み中…</p>}
+    {loaded && notes.length === 0 && <p className="py-12 text-[13px] text-muted">ゴミ箱は空です。削除したノートはここから復元できます。</p>}
+    <ul className="mt-5 divide-y divide-line-subtle">
       {notes.map(note => <li key={note.id} className="flex items-center justify-between gap-4 py-4">
         <div className="min-w-0">
-          <p className="break-words text-sm font-medium">{note.title}</p>
-          <p className="mt-1 text-xs text-secondary">{new Date(note.deleted_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })} · {note.deleted_by_name ?? "メンバー"} が削除</p>
+          <p className="break-words text-[13px] font-medium text-text">{note.title}</p>
+          <p className="mt-1 text-[12px] text-muted">{new Date(note.deleted_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })} · {note.deleted_by_name ?? "メンバー"} が削除</p>
         </div>
-        <button className={`${button} shrink-0`} disabled={busy} aria-label={`「${note.title}」を復元`} onClick={() => void restore(note)}>復元</button>
+        <button className={`${secondaryButtonClass} shrink-0`} disabled={busy} aria-label={`「${note.title}」を復元`} onClick={() => void restore(note)}>復元</button>
       </li>)}
     </ul>
-    {more && <button className={`${button} mt-4`} disabled={busy} onClick={async () => {
+    {more && <button className={`${secondaryButtonClass} mt-4`} disabled={busy} onClick={async () => {
       setBusy(true); setError("");
       try { const items = await fetchPage(notes.length); setNotes(previous => [...previous, ...items]); setMore(items.length === 100); }
       catch (error) { setError(error instanceof Error ? error.message : "読み込めませんでした"); }

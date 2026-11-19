@@ -44,7 +44,7 @@ function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
   const [open, setOpen] = useState(false);
   if (!hrefFor || data.categories.length === 0) return null;
   return (
-    <details data-dashboard-chart-data onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-1 text-[11px] text-secondary">
+    <details data-dashboard-chart-data onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-1 text-[12px] text-secondary">
       <summary
         aria-label={`${title ?? "チャート"}のデータを表示`}
         className="w-fit cursor-pointer rounded px-1 py-1 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
@@ -119,7 +119,7 @@ function niceTicks(maxValue: number): { max: number; values: number[] } {
 
 function EmptyChart() {
   return (
-    <div className="flex h-[250px] items-center justify-center rounded-md border border-dashed border-line text-sm text-subtle">
+    <div className="flex h-[250px] items-center justify-center rounded-md bg-surface-subtle text-[12px] text-muted">
       データがありません
     </div>
   );
@@ -175,14 +175,14 @@ function GridAndAxes({
         const y = top + plotH - (v / max) * plotH;
         return (
           <g key={i}>
-            <line x1={left} x2={left + plotW} y1={y} y2={y} stroke="var(--atlas-line)" strokeWidth="1" />
-            <text x={left - 7} y={y + 3} textAnchor="end" fontSize="10" fill="var(--atlas-text-muted)">
+            <line x1={left} x2={left + plotW} y1={y} y2={y} stroke="var(--atlas-line-subtle)" strokeWidth="1" />
+            <text x={left - 7} y={y + 4} textAnchor="end" fontSize="11" fill="var(--atlas-text-muted)">
               {Number.isInteger(v) ? v : v.toFixed(1)}
             </text>
           </g>
         );
       })}
-      <line x1={left} x2={left} y1={top} y2={top + plotH} stroke="var(--atlas-line-strong)" strokeWidth="1" />
+      <line x1={left} x2={left} y1={top} y2={top + plotH} stroke="var(--atlas-line)" strokeWidth="1" />
     </>
   );
 }
@@ -287,7 +287,7 @@ function CategoricalChart({ data, chartType, title, hrefFor }: ChartProps & { ch
                       y={y}
                       width={barWidth}
                       height={Math.max(0, h)}
-                      rx={3}
+                      rx={2}
                       fill={COLORS[si % COLORS.length]}
                       opacity={0.9}
                     >
@@ -297,9 +297,9 @@ function CategoricalChart({ data, chartType, title, hrefFor }: ChartProps & { ch
                   {showLabels && value > 0 && (
                     <text
                       x={x + barWidth / 2}
-                      y={y - 5}
+                      y={y - 6}
                       textAnchor="middle"
-                      fontSize="9"
+                      fontSize="11"
                       fontWeight="600"
                       fill="var(--atlas-text-secondary)"
                     >
@@ -314,7 +314,7 @@ function CategoricalChart({ data, chartType, title, hrefFor }: ChartProps & { ch
               x={center}
               y={top + plotH + 18}
               textAnchor={rotateLabels ? "end" : "middle"}
-              fontSize="10"
+              fontSize="11"
               fill="var(--atlas-text-muted)"
               transform={rotateLabels ? `rotate(-32 ${center} ${top + plotH + 18})` : undefined}
             >
@@ -382,10 +382,10 @@ function DonutChart({ data, title, hrefFor }: ChartProps) {
           label={datumLabel(title, "合計", "", total)}
           kind="total"
         >
-        <text x="110" y="106" textAnchor="middle" fontSize="28" fontWeight="600" fill="var(--atlas-text)">
+        <text x="110" y="106" textAnchor="middle" fontSize="24" fontWeight="600" fill="var(--atlas-text)" className="tabular-nums">
           {total}
         </text>
-        <text x="110" y="126" textAnchor="middle" fontSize="11" fill="var(--atlas-text-muted)">
+        <text x="110" y="126" textAnchor="middle" fontSize="12" fill="var(--atlas-text-muted)">
           合計
         </text>
         </SvgDatumLink>
@@ -410,9 +410,9 @@ function DonutChart({ data, title, hrefFor }: ChartProps) {
               data-dashboard-chart-link="legend"
               data-dashboard-chart-category={slice.category.key}
               data-dashboard-chart-series={0}
-              className="flex items-center gap-2 rounded px-1 py-0.5 text-[12px] text-secondary hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+              className="flex items-center gap-2 rounded-md px-1.5 py-1 text-[13px] text-secondary hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >{content}</a>
-          ) : <div key={slice.category.key ?? slice.categoryIndex} className="flex items-center gap-2 text-[12px] text-secondary">{content}</div>;
+          ) : <div key={slice.category.key ?? slice.categoryIndex} className="flex items-center gap-2 px-1.5 py-1 text-[13px] text-secondary">{content}</div>;
         })}
       </div>
     </div>
@@ -497,7 +497,7 @@ function TimeChart({ data, title, hrefFor }: ChartProps) {
             x={xAt(i)}
             y={top + plotH + 18}
             textAnchor="middle"
-            fontSize="9.5"
+            fontSize="11"
             fill="var(--atlas-text-muted)"
           >
             {category.label}
@@ -508,7 +508,7 @@ function TimeChart({ data, title, hrefFor }: ChartProps) {
         {data.series.map((series, si) => (
           <g key={series} transform={`translate(${si * 92}, 0)`}>
             <rect width="8" height="8" y="-7" rx="2" fill={COLORS[si % COLORS.length]} />
-            <text x="12" y="0" fontSize="10" fill="var(--atlas-text-muted)">
+            <text x="12" y="0" fontSize="11" fill="var(--atlas-text-muted)">
               {series}
             </text>
           </g>
@@ -542,7 +542,7 @@ export default function ChartRenderer({
   if (data.kind === "number") {
     const href = hrefFor && data.drilldown ? hrefFor(data.drilldown) : undefined;
     const value = data.value ?? 0;
-    const valueClass = "text-[48px] font-semibold leading-none tracking-tight text-text";
+    const valueClass = "text-[34px] font-semibold leading-none tracking-tight text-text tabular-nums";
     return (
       <div className="flex min-h-[64px] flex-col items-center justify-center py-1">
         {href ? (
