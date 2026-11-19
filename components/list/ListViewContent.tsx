@@ -3,6 +3,7 @@
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import type { SavedView } from "@/lib/data";
 import type { ListGroupBy, ListSortKey } from "@/lib/list-view";
+import type { ListTaskSummary } from "@/lib/list-row-state";
 import ListBulkToolbar from "./ListBulkToolbar";
 import ListColumnHeaderRow from "./ListColumnHeaderRow";
 import ListColumnHeaders from "./ListColumnHeaders";
@@ -11,6 +12,7 @@ import ListGroups from "./ListGroups";
 import ListHiddenColumnsBar from "./ListHiddenColumnsBar";
 import ListOverlays from "./ListOverlays";
 import ListSectionAdd from "./ListSectionAdd";
+import ListSummaryLine from "./ListSummaryLine";
 import ListToolbar from "./ListToolbar";
 import SavedViewsBar from "./SavedViewsBar";
 
@@ -52,6 +54,7 @@ export type ListViewContentProps = {
   groups: ComponentProps<typeof ListGroups>;
   sectionAdd: ComponentProps<typeof ListSectionAdd>;
   overlays: ComponentProps<typeof ListOverlays>;
+  summary: ListTaskSummary;
   menuCol: string | null;
   onCloseMenu: () => void;
   editingDue: boolean;
@@ -70,6 +73,7 @@ export default function ListViewContent({
   groups,
   sectionAdd,
   overlays,
+  summary,
   menuCol,
   onCloseMenu,
   editingDue,
@@ -106,6 +110,7 @@ export default function ListViewContent({
         setAutoRefresh={toolbar.setAutoRefresh}
         lastRefresh={toolbar.lastRefresh}
       />
+      <ListSummaryLine summary={summary} />
       <div className="overflow-x-auto">
         <div className="min-w-[860px]">
           <SavedViewsBar

@@ -4,6 +4,7 @@ import { QuickTaskName } from "../task/QuickTaskContext";
 import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import { isImeComposing } from "@/lib/ime-keyboard";
 import { isQuickTask } from "@/lib/quick-task";
+import { LIST_ROW_STATE_LABELS, listRowState } from "@/lib/list-row-state";
 
 import { Fragment, useRef, useState } from "react";
 import type { CustomField, CustomValue } from "@/lib/custom-fields";
@@ -231,6 +232,12 @@ export default function TaskListRow({
 
     const overdue = !t.completed && t.due_on !== null && t.due_on < today;
     const isToday = !t.completed && t.due_on !== null && t.due_on === today;
+    const rowState = listRowState(t, today);
+    const rowStateLabel = LIST_ROW_STATE_LABELS[rowState];
+    const metaText = [
+      t.subtask_count > 0 ? `子タスク ${t.subtask_count}` : null,
+      t.comment_count > 0 ? `コメント ${t.comment_count}` : null,
+    ].filter((part): part is string => part !== null).join(" ・ ");
     return (
     <Fragment key={t.id}>
     <div
@@ -283,7 +290,7 @@ export default function TaskListRow({
         const dragId = Number(e.dataTransfer.getData("text/atlas-task"));
         if (dragId) moveTask(dragId, t, before);
       }}
-      className={`group grid min-h-[37px] cursor-pointer items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-line border-b border-line px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${compactCells} ${
+      className={`group grid h-[38px] cursor-pointer items-center border-b border-line-subtle px-2 text-sm whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${compactCells} ${
         isQuickTask(t)
           ? "bg-accent-soft"
           : selected.has(t.id)
@@ -309,7 +316,7 @@ export default function TaskListRow({
         </span>
       </span>
       <div
-        className={`flex min-w-0 flex-wrap items-center gap-1.5 ${depth > 0 ? "pl-7" : ""} ${
+        className={`flex min-w-0 items-center gap-1.5 ${isQuickTask(t) ? "" : "overflow-hidden"} ${depth > 0 ? "pl-7" : ""} ${
           editing?.id === t.id && editing.field === "name"
             ? "rounded-[2px] ring-1 ring-focus-ring"
             : ""
@@ -326,9 +333,9 @@ export default function TaskListRow({
         ) : (
           <span className="w-4 shrink-0" />
         )}
-        <TaskCompletionToggle completed={t.completed} milestone={t.is_milestone} onToggle={() => void toggle(t)}
-          disabled={Boolean(t.approval)} title={t.approval ? "承認の状態はタスク詳細から変更してください" : undefined}
-          {...(t.approval ? { "aria-label": "承認タスクの完了は承認操作から行います" } : {})} />
+        <TaskCompletionToggle completed={t.completed} milestone={t.is_milestone} state={rowState} onToggle={() => void toggle(t)}
+          disabled={Boolean(t.approval)} title={t.approval ? `${rowStateLabel}。承認の状態はタスク詳細から変更してください` : undefined}
+          {...(t.approval ? { "aria-label": `${rowStateLabel}。承認タスクの完了は承認操作から行います` } : {})} />
         <QuickTaskName task={t}>{editing?.id === t.id && editing.field === "name" ? (
           <input
             autoFocus
@@ -367,7 +374,8 @@ export default function TaskListRow({
             onClick={(e) => openEdit(e, t, "name", t.name)}
             title={`${t.name} — クリックで名前を編集`}
             dir="auto"
-            className="w-fit max-w-full min-w-0 flex-none cursor-text truncate rounded hover:bg-hover"
+            data-list-task-name={t.id}
+            className="min-w-[8ch] cursor-text truncate rounded hover:bg-hover"
           >
             {t.name || "タスク名を入力"}
           </span>
@@ -379,26 +387,16 @@ export default function TaskListRow({
             ↻
           </span>
         )}
-        <span className="ml-1 flex items-center gap-2 text-[11px] text-secondary">
-          {t.subtask_count > 0 && (
-            <span className="flex items-center gap-0.5" title="サブタスク">
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <path d="M4 3v4.5a2 2 0 0 0 2 2h6" />
-                <path d="M9.5 7.5 12 9.5 9.5 11.5" />
-              </svg>
-              {t.subtask_count}
-            </span>
-          )}
-          {t.comment_count > 0 && (
-            <span className="flex items-center gap-0.5" title="コメント">
-              <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <path d="M3 3.5h10v7H7.5L4.5 13v-2.5H3z" />
-              </svg>
-              {t.comment_count}
-            </span>
-          )}
-        </span>
-        <span className="flex w-full flex-wrap items-center gap-2 pl-6 text-[11px] text-muted lg:hidden">
+        {metaText && (
+          <span
+            data-list-task-meta
+            title={metaText}
+            className="shrink-0 truncate text-[11px] text-muted"
+          >
+            {metaText}
+          </span>
+        )}
+        <span className="flex min-w-0 shrink items-center gap-2 overflow-hidden text-[11px] whitespace-nowrap text-muted lg:hidden">
           {t.due_on && (
             <span
               className={overdue ? "font-semibold text-danger" : isToday ? "font-semibold text-accent-text" : ""}

@@ -152,3 +152,111 @@ test("due dates pair overdue and today colors with a shape cue and accessible st
     }
   }
 });
+
+test("list rows use a 38px line with inline counts and an ellipsized long name", async ({ page }) => {
+  const today = todayISO();
+  const createdIds: number[] = [];
+  const longName = `E2E 長い件名 ${Date.now()} ${"とても長いタスク名を一列に収めるための確認用文言".repeat(4)}`;
+
+  const created = await page.request.post("/api/tasks", {
+    data: { project_id: 1, section_id: 2, name: longName, due_on: shiftDate(today, 7) },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json() as { id: number };
+  createdIds.push(id);
+
+  const child = await page.request.post("/api/tasks", {
+    data: { project_id: 1, parent_task_id: id, name: "E2E long name child" },
+  });
+  expect(child.status()).toBe(201);
+  createdIds.push((await child.json() as { id: number }).id);
+  const comment = await page.request.post("/api/comments", {
+    data: { task_id: id, body: "E2E inline count comment" },
+  });
+  expect(comment.status()).toBe(201);
+
+  try {
+    await page.goto("/projects/1?view=list");
+    const row = page.locator(`[data-list-row="${id}"]`);
+    await expect(row).toBeVisible();
+
+    const height = await row.evaluate((element) => element.getBoundingClientRect().height);
+    expect(height).toBe(38);
+
+    const name = row.locator("[data-list-task-name]");
+    const nameStyle = await name.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { textOverflow: style.textOverflow, whiteSpace: style.whiteSpace };
+    });
+    expect(nameStyle).toEqual({ textOverflow: "ellipsis", whiteSpace: "nowrap" });
+    expect(await name.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+    expect(await name.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(24);
+    await expect(row.locator("[data-list-task-meta]")).toHaveText("子タスク 1 ・ コメント 1");
+
+    const summary = page.locator("[data-list-summary]");
+    await expect(summary).toContainText(/\d+件 ・ 完了 \d+/);
+    await expect(page.locator("[data-list-section-header]").first().locator("[data-list-section-count]")).toBeVisible();
+
+    const bodyCell = row.locator("> *").nth(2);
+    expect(await bodyCell.evaluate((element) => getComputedStyle(element).borderLeftWidth)).toBe("0px");
+  } finally {
+    for (const id of createdIds.reverse()) {
+      await page.request.delete(`/api/tasks/${id}`);
+      await page.request.delete(`/api/tasks/${id}?force=1`);
+    }
+  }
+});
+
+test("list completion control announces complete, overdue, in-progress and todo", async ({ page }) => {
+  const today = todayISO();
+  const yesterday = shiftDate(today, -1);
+  const nextWeek = shiftDate(today, 7);
+  const createdIds: number[] = [];
+  const createTask = async (name: string, data: Record<string, unknown> = {}) => {
+    const response = await page.request.post("/api/tasks", {
+      data: { project_id: 1, section_id: 2, name, ...data },
+    });
+    expect(response.status()).toBe(201);
+    const { id } = await response.json() as { id: number };
+    createdIds.push(id);
+    return id;
+  };
+
+  const completeId = await createTask(`E2E state complete ${Date.now()}`, { due_on: yesterday });
+  const overdueId = await createTask(`E2E state overdue ${Date.now()}`, { due_on: yesterday });
+  const progressId = await createTask(`E2E state progress ${Date.now()}`, { due_on: nextWeek });
+  const todoId = await createTask(`E2E state todo ${Date.now()}`, { due_on: nextWeek });
+  for (const [id, data] of [
+    [completeId, { completed: true }],
+    [progressId, { progress: 50 }],
+  ] as const) {
+    expect((await page.request.patch(`/api/tasks/${id}`, { data })).status()).toBe(200);
+  }
+
+  try {
+    await page.goto("/projects/1?view=list");
+    const expected = [
+      [completeId, "完了", "完了（未完了に戻す）"],
+      [overdueId, "遅延", "遅延（完了にする）"],
+      [progressId, "進行中", "進行中（完了にする）"],
+      [todoId, "未着手", "未着手（完了にする）"],
+    ] as const;
+    for (const [id, state, label] of expected) {
+      const button = page.locator(`[data-list-row="${id}"]`).getByRole("button", { name: label, exact: true });
+      await expect(button).toBeVisible();
+      await expect(button).toHaveAttribute("title", state);
+      await expect(button.locator("svg circle")).toHaveCount(1);
+    }
+
+    const todoRow = page.locator(`[data-list-row="${todoId}"]`);
+    await todoRow.getByRole("button", { name: "未着手（完了にする）", exact: true }).click();
+    await expect(todoRow.getByRole("button", { name: "完了（未完了に戻す）", exact: true })).toBeVisible();
+    await todoRow.getByRole("button", { name: "完了（未完了に戻す）", exact: true }).click();
+    await expect(todoRow.getByRole("button", { name: "未着手（完了にする）", exact: true })).toBeVisible();
+  } finally {
+    for (const id of createdIds) {
+      await page.request.delete(`/api/tasks/${id}`);
+      await page.request.delete(`/api/tasks/${id}?force=1`);
+    }
+  }
+});

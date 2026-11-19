@@ -17,6 +17,7 @@ import type { SavedView, Section, TaskRow, User } from "@/lib/data";
 import { groupTasks } from "@/lib/list-grouping";
 import type { ListGroupBy } from "@/lib/list-view";
 import { compareListTasks, filterListTasks, listFooterTotals } from "@/lib/list-view-model";
+import { listTaskSummary } from "@/lib/list-row-state";
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import { useLive } from "@/lib/use-live";
 import { useListBulkActions } from "@/lib/use-list-bulk-actions";
@@ -362,6 +363,8 @@ export function useListView({
     today,
   });
 
+  const summary = listTaskSummary(visible, today);
+
   const bySection = new Map<number | null, TaskRow[]>();
   for (const t of visible) {
     const k = taskSectionId(t);
@@ -520,7 +523,6 @@ export function useListView({
       sectionId={sectionId}
       collapsed={collapsedGroups.has(key)}
       groupBy={groupBy}
-      group2={group2}
       sectionDragging={sectionDragging}
       dropTargetId={sectionDrop?.id ?? null}
       editingSection={editingSection}
@@ -764,6 +766,7 @@ export function useListView({
         onCloseFieldDialog: () => setFieldDialog(null),
         onFieldSaved: refresh,
       },
+      summary,
       menuCol: menuCol,
       onCloseMenu: () => setMenuCol(null),
       editingDue: editing?.field === "due",

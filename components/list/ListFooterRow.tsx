@@ -48,8 +48,8 @@ export default function ListFooterRow({
 
   return (
     <div
-      className={`grid items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-line border-b border-line px-2 text-sm ${
-        variant === "add" ? "py-1.5" : ""
+      className={`grid items-center border-b border-line-subtle px-2 text-sm ${
+        variant === "add" ? "py-1.5" : "h-[38px]"
       }`}
       style={{ gridTemplateColumns: gridCols }}
     >

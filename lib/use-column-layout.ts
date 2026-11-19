@@ -50,9 +50,11 @@ export function useColumnLayout({
           : true,
   );
   const nameW = colWidths["name"];
+  // The default name width leaves room for one line of name, approval badge
+  // and the inline subtask/comment counts at 1440px. Users can resize it.
   const gridCols = isCompact
     ? "28px minmax(0,1fr)"
-    : `28px ${nameW ? `${nameW}px` : "minmax(220px,640px)"}${visibleCols.map((k) => ` ${colW(k)}px`).join("")} minmax(40px,1fr)`;
+    : `28px ${nameW ? `${nameW}px` : "minmax(340px,640px)"}${visibleCols.map((k) => ` ${colW(k)}px`).join("")} minmax(40px,1fr)`;
   const compactCells = isCompact ? "[&>*:nth-child(n+3)]:hidden" : "";
 
   useEffect(() => {

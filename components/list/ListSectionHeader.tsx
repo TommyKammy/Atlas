@@ -12,7 +12,6 @@ export type ListSectionHeaderProps = {
   sectionId?: number;
   collapsed: boolean;
   groupBy: ListGroupBy;
-  group2: ListGroupBy | null;
   sectionDragging: number | null;
   dropTargetId: number | null;
   editingSection: number | null;
@@ -39,7 +38,6 @@ export default function ListSectionHeader({
   sectionId,
   collapsed,
   groupBy,
-  group2,
   sectionDragging,
   dropTargetId,
   editingSection,
@@ -69,7 +67,7 @@ export default function ListSectionHeader({
       data-list-section-depth={depth}
       data-section-id={sectionId}
       data-section-dragging={sectionDragging === sectionId ? "true" : undefined}
-      className={`relative flex h-[37px] items-center gap-2 ${depth > 0 ? "pl-10" : "pl-6"} ${
+      className={`relative flex h-[38px] items-center gap-2 ${depth > 0 ? "pl-10" : "pl-6"} ${
         sectionDragging === sectionId
           ? "bg-surface-muted/70 [&>*]:invisible"
           : target
@@ -160,11 +158,9 @@ export default function ListSectionHeader({
       ) : (
         <span className="text-[14px] leading-6 font-semibold text-text">{name}</span>
       )}
-      {groupBy !== "section" || group2 !== null ? (
-        <span data-list-section-count={count} className="text-[13px] font-normal text-muted">
-          {count}
-        </span>
-      ) : null}
+      <span data-list-section-count={count} className="text-[12px] font-normal text-muted">
+        {count}
+      </span>
       {sectionDrag && (
         <div
           data-section-drag-handle={sectionId}
