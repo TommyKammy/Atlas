@@ -179,6 +179,11 @@ export async function getHomeProjects(workspaceId: number, userId: number): Prom
            AND t.due_on BETWEEN CURRENT_DATE AND CURRENT_DATE + 7
        )::int AS due_soon,
        COUNT(t.id) FILTER (WHERE t.parent_task_id IS NULL AND NOT t.completed)::int AS open_count,
+       COUNT(t.id) FILTER (WHERE t.parent_task_id IS NULL)::int AS parent_total,
+       COUNT(t.id) FILTER (WHERE t.parent_task_id IS NULL AND t.completed)::int AS parent_done,
+       COUNT(t.id) FILTER (
+         WHERE t.parent_task_id IS NULL AND NOT t.completed AND t.due_on < CURRENT_DATE
+       )::int AS parent_overdue,
        r.opened_at::text AS last_opened
      FROM projects p
      LEFT JOIN user_recent_projects r ON r.project_id = p.id AND r.user_id = $2

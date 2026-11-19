@@ -104,6 +104,9 @@ export type HomeProject = {
   icon: string | null;
   due_soon: number;
   open_count: number;
+  parent_total: number;
+  parent_done: number;
+  parent_overdue: number;
   last_opened: string | null;
 };
 export type HomeMember = {

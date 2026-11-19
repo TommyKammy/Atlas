@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import HomeDashboard from "@/components/home/HomeDashboard";
 import { getCurrentUserId } from "@/lib/current-user";
 import { todayISO } from "@/lib/dates";
-import { getUnreadCount, getUsers, getWorkspace } from "@/lib/data";
+import { getInboxPage, getUnreadCount, getUsers, getWorkspace } from "@/lib/data";
+import { getHomeWaitingProposals } from "@/lib/planning/home-waiting";
 import {
   getHomeAssignedTasks,
   getHomeCommentDrafts,
@@ -51,6 +52,8 @@ export default async function Home() {
     commentDrafts,
     notepad,
     unread,
+    inbox,
+    waitingProposals,
   ] = await Promise.all([
     getUsers(uid),
     getHomeWidgets(ws.id, uid),
@@ -66,13 +69,13 @@ export default async function Home() {
     getHomeCommentDrafts(uid),
     getUserNotepad(uid),
     getUnreadCount(uid, ws.id),
+    getInboxPage(uid, ws.id, { filter: "all", limit: 3 }),
+    getHomeWaitingProposals(ws.id, uid),
   ]);
 
   const me = users.find((user) => user.id === uid) ?? null;
   const today = todayISO();
   const now = new Date();
-  const hour = now.getHours();
-  const greet = hour < 11 ? "おはようございます" : hour < 18 ? "こんにちは" : "こんばんは";
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
   const dateLine = `${now.getMonth() + 1}月 ${now.getDate()}日 ${weekdays[now.getDay()]}曜日`;
 
@@ -81,9 +84,9 @@ export default async function Home() {
       <HomeDashboard
         canCreateProject={await hasPermission(uid, "projects.create")}
         userId={uid}
+        userName={me?.name ?? ""}
         today={today}
         dateLine={dateLine}
-        greeting={`${me?.name ?? ""} さん、${greet}`}
         myTaskCount={myTasks.filter((task) => !task.completed).length}
         unreadCount={unread}
         widgets={widgets}
@@ -99,6 +102,9 @@ export default async function Home() {
         commentDrafts={commentDrafts}
         notepad={notepad}
         users={users.map((user) => ({ id: user.id, name: user.name, avatar_url: user.avatar_url }))}
+        waitingProposals={waitingProposals}
+        inboxItems={inbox.items}
+        now={now.toISOString()}
       />
     </>
   );

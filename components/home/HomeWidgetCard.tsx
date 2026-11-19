@@ -86,7 +86,7 @@ export default function HomeWidgetCard({
         >
           ⠿
         </span>
-        <h2 className="min-w-0 truncate text-[14px] font-semibold text-text">{title}</h2>
+        <h3 className="min-w-0 truncate text-[14px] font-semibold text-text">{title}</h3>
         {locked && (
           <span title="非公開" className="text-[11px] text-subtle">
             🔒
