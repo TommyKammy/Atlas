@@ -463,7 +463,7 @@ test("assigned reviewer passes and assigned approver adopts the frozen B snapsho
 
   await page.goto("/audit");
   for (const action of ["proposal_submit", "proposal_review", "proposal_decide", "adopt"]) {
-    const entry = page.locator("div.grid").filter({ has: page.getByText("portfolio_plan." + action, { exact: true }) })
+    const entry = page.locator("[data-audit-row]").filter({ has: page.getByText("portfolio_plan." + action, { exact: true }) })
       .filter({ hasText: "ポートフォリオ #" + fixture.id + " / " });
     await expect(entry).toHaveCount(1);
   }
@@ -578,7 +578,7 @@ test("owner cannot bypass approval after withdrawal and changes remain auditable
   await expect(history).toContainText("申請者 #" + owner);
   await login(page, ADMIN);
   await page.goto("/audit");
-  const auditRow = page.locator("div.grid").filter({ has: page.getByText("portfolio_plan.approval_settings_update", { exact: true }) })
+  const auditRow = page.locator("[data-audit-row]").filter({ has: page.getByText("portfolio_plan.approval_settings_update", { exact: true }) })
     .filter({ hasText: "変更申請 #" + pendingId + "（申請者 #" + owner + "）" });
   await expect(auditRow).toContainText(directory.find(person => person.id === final)!.name);
   await expect(auditRow).toContainText("→ 無効");

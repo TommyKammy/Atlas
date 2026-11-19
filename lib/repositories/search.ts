@@ -70,6 +70,7 @@ export type AdvancedTaskHit = {
   id: number;
   name: string;
   completed: boolean;
+  progress: number;
   due_on: string | null;
   assignee_name: string | null;
   project_id: number;
@@ -175,7 +176,7 @@ export async function searchTasksAdvanced(
        END`
     : "0";
   return searchRows<AdvancedTaskHit>(
-    `SELECT DISTINCT ON (t.id) t.id, t.name, t.completed, t.due_on::text AS due_on,
+    `SELECT DISTINCT ON (t.id) t.id, t.name, t.completed, t.progress, t.due_on::text AS due_on,
        u.name AS assignee_name, p.id AS project_id, p.name AS project_name,
        ${rankSql} AS match_rank, t.updated_at
      FROM tasks t ${TASK_SEARCH_HOMES}

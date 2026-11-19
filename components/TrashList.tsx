@@ -4,6 +4,7 @@ import { confirmAction } from "@/lib/ui-feedback";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { smallDangerButtonClass, smallSecondaryButtonClass } from "./ui/form-controls";
 
 export default function TrashList({
   initial,
@@ -37,25 +38,25 @@ export default function TrashList({
   };
 
   if (initial.length === 0) {
-    return <p className="mt-4 text-sm text-muted">ゴミ箱は空です。</p>;
+    return <p className="mt-2 rounded-lg bg-surface-subtle px-3 py-2 text-[13px] text-muted">ゴミ箱は空です。</p>;
   }
   return (
-    <div className="mt-4 max-w-4xl">
+    <div className="mt-2">
       {initial.map((t) => (
-        <div key={t.id} className="flex items-center gap-3 border-b py-2 text-sm">
-          <span className="min-w-0 flex-1 truncate text-muted line-through">{t.name}</span>
-          <span className="shrink-0 text-xs text-subtle">{t.project_name ?? "–"}</span>
+        <div key={t.id} className="flex min-h-[40px] flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-subtle px-1 py-1 hover:bg-hover">
+          <span className="min-w-0 w-full truncate text-[13px] text-muted line-through sm:w-auto sm:flex-1">{t.name}</span>
+          <span className="shrink-0 text-[12px] text-muted">{t.project_name ?? "–"}</span>
           <button
             onClick={() => restore(t.id)}
             disabled={!t.can_edit || busy === t.id}
-            className="shrink-0 rounded border px-2 py-0.5 hover:bg-hover disabled:opacity-50"
+            className={smallSecondaryButtonClass}
           >
             復元
           </button>
           <button
             onClick={() => purge(t.id, t.name)}
             disabled={!t.can_edit || busy === t.id}
-            className="shrink-0 rounded border border-danger-line px-2 py-0.5 text-danger hover:bg-danger-soft disabled:opacity-50"
+            className={smallDangerButtonClass}
           >
             完全削除
           </button>

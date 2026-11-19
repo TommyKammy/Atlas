@@ -2,8 +2,8 @@ import type { SelectHTMLAttributes } from "react";
 
 /**
  * Shared form primitives for the C workbench forms. These are applied to the
- * project create screen, project settings, the custom field dialogs and the
- * rule editor (automation and rule workflow screens).
+ * project create screen, project settings, the custom field dialogs, the rule
+ * editor, and the standalone inbox, search and trash screens.
  *
  * Inputs and selects are 32px tall on the field surface with a hairline
  * border. Focus adds the accent border; the global keyboard focus ring is the
@@ -26,6 +26,15 @@ export const secondaryButtonClass =
   "inline-flex h-8 items-center justify-center rounded-md border border-line bg-surface px-3 text-[13px] text-secondary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
 export const quietButtonClass =
   "inline-flex h-8 items-center justify-center gap-1 rounded-md px-2 text-[12px] text-secondary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
+/** The 28px row action used by inbox rows. */
+export const smallQuietButtonClass =
+  "inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md px-2 text-[12px] text-secondary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
+export const smallSecondaryButtonClass =
+  "inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-line bg-surface px-2 text-[12px] text-secondary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
+export const smallSecondaryPillButtonClass =
+  "inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-line bg-surface px-2.5 text-[12px] text-secondary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
+export const smallDangerButtonClass =
+  "inline-flex h-7 shrink-0 items-center justify-center rounded-md border border-line bg-surface px-2 text-[12px] text-danger hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
 
 export const dialogTitleClass = "text-[16px] font-semibold leading-6 text-text";
 export const dialogSubtitleClass = "mt-0.5 text-[12px] leading-5 text-muted";

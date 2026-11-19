@@ -6,6 +6,7 @@ import { confirmAction } from "@/lib/ui-feedback";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { smallSecondaryPillButtonClass } from "./ui/form-controls";
 
 type SavedSearch = { id: number; name: string; params: Record<string, string> };
 
@@ -50,16 +51,16 @@ export default function SavedSearchBar({
   };
 
   return (
-    <div data-saved-searches className="mt-3 flex max-w-5xl flex-wrap items-center gap-2 text-[12px]">
-      <span className="font-medium text-secondary">保存検索</span>
+    <div data-saved-searches className="mt-4 flex flex-wrap items-center gap-1.5 text-[12px]">
+      <span className="mr-1 font-medium text-secondary">保存検索</span>
       {saved.length === 0 && <span className="text-muted">まだありません</span>}
       {saved.map((item) => (
-        <span key={item.id} className="flex items-center gap-0.5 rounded-full border border-line bg-surface pl-2">
+        <span key={item.id} className="flex h-7 items-center gap-0.5 rounded-full border border-line bg-surface pl-2.5 pr-1">
           <button
             type="button"
             data-saved-search-apply={item.id}
             onClick={() => router.push(`/search?${queryFrom(item.params)}`)}
-            className="py-0.5 text-secondary hover:text-accent-text"
+            className="text-[12px] text-secondary hover:text-text"
           >
             {item.name}
           </button>
@@ -68,7 +69,7 @@ export default function SavedSearchBar({
             data-saved-search-delete={item.id}
             aria-label={`${item.name}を削除`}
             onClick={() => void remove(item.id)}
-            className="px-1 text-subtle hover:text-danger"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-subtle hover:bg-hover hover:text-danger"
           >
             ×
           </button>
@@ -79,7 +80,7 @@ export default function SavedSearchBar({
         data-saved-search-save
         disabled={busy}
         onClick={() => void save()}
-        className="rounded-full border border-accent px-2 py-0.5 text-accent-text hover:bg-accent-soft disabled:opacity-50"
+        className={smallSecondaryPillButtonClass}
       >
         ＋ 現在の条件を保存
       </button>
