@@ -1,33 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-
-const SHORTCUTS: [string, string][] = [
-  ["?", "ショートカット一覧の表示/非表示"],
-  ["n", "タスク追加欄にフォーカス"],
-  ["g → o/d/l/b/t/c/m/f", "各ビューへ移動"],
-  ["Esc", "ヘルプを閉じる"],
-];
+import {
+  KEYBOARD_SHORTCUT_SCOPES,
+  SHORTCUT_SCOPE_DESCRIPTIONS,
+  SHORTCUT_SCOPE_LABELS,
+  shortcutsForScope,
+} from "@/lib/keyboard-shortcuts";
 
 export default function SidebarHelpButton() {
   const [open, setOpen] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
   const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
   const ref = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const openMenu = () => {
+  // The menu is fixed to the viewport next to the button. Keep it fully on
+  // screen and follow the button if the layout settles after opening.
+  const placeMenu = useCallback(() => {
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
-    setPos({ left: rect.right + 8, bottom: window.innerHeight - rect.bottom });
+    const margin = 8;
+    const height = menuRef.current?.offsetHeight ?? 0;
+    const maxBottom = Math.max(margin, window.innerHeight - margin - height);
+    const bottom = Math.min(Math.max(margin, window.innerHeight - rect.bottom), maxBottom);
+    setPos((current) =>
+      current && current.left === rect.right + 8 && current.bottom === bottom
+        ? current
+        : { left: rect.right + 8, bottom },
+    );
+  }, []);
+
+  const openMenu = () => {
+    placeMenu();
     setOpen(true);
   };
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    placeMenu();
+    window.addEventListener("resize", placeMenu);
+    window.addEventListener("scroll", placeMenu, true);
+    return () => {
+      window.removeEventListener("resize", placeMenu);
+      window.removeEventListener("scroll", placeMenu, true);
+    };
+  }, [open, placeMenu]);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -63,6 +90,7 @@ export default function SidebarHelpButton() {
         typeof document !== "undefined" &&
         createPortal(
           <div
+            ref={menuRef}
             role="menu"
             data-sidebar-help-menu
             className="fixed z-[130] w-64 rounded-lg border border-line bg-surface p-1 text-sm text-text shadow-xl"
@@ -73,6 +101,9 @@ export default function SidebarHelpButton() {
             </div>
             <Link href="/help" data-help-features onClick={() => setOpen(false)} className="mt-1 block rounded px-3 py-2 hover:bg-hover">
               機能に関するヘルプ
+            </Link>
+            <Link href="/help#new-ui" data-help-new-ui onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-hover">
+              新しい画面について
             </Link>
             <a href="mailto:support@atlas.example" data-help-support onClick={() => setOpen(false)} className="block rounded px-3 py-2 hover:bg-hover">
               サポートに問い合わせる
@@ -113,11 +144,19 @@ export default function SidebarHelpButton() {
           <div className="fixed inset-0 z-[140] flex items-center justify-center bg-scrim p-4" onClick={() => setShortcuts(false)}>
             <div data-shortcuts-dialog className="w-[28rem] max-w-[90vw] rounded-lg bg-surface p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
               <h2 className="font-bold">キーボードショートカット</h2>
-              <div className="mt-3 space-y-2 text-sm">
-                {SHORTCUTS.map(([k, desc]) => (
-                  <div key={k} className="flex gap-3">
-                    <kbd className="shrink-0 rounded border bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{k}</kbd>
-                    <span className="text-secondary">{desc}</span>
+              <div className="mt-3 space-y-4 text-sm">
+                {KEYBOARD_SHORTCUT_SCOPES.map((scope) => (
+                  <div key={scope} data-shortcut-group={scope}>
+                    <h3 className="text-[12px] font-semibold text-text">{SHORTCUT_SCOPE_LABELS[scope]}</h3>
+                    <p className="mt-0.5 text-[11px] text-muted">{SHORTCUT_SCOPE_DESCRIPTIONS[scope]}</p>
+                    <div className="mt-2 space-y-2">
+                      {shortcutsForScope(scope).map((shortcut) => (
+                        <div key={shortcut.id} className="flex gap-3">
+                          <kbd className="shrink-0 rounded border border-line bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{shortcut.keys}</kbd>
+                          <span className="text-secondary">{shortcut.description}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>

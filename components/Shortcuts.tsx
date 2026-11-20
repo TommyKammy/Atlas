@@ -6,7 +6,13 @@ import {
   secondaryButtonClass,
 } from "@/components/ui/form-controls";
 import { isImeComposing } from "@/lib/ime-keyboard";
-import { shouldIgnoreSingleKeyShortcut } from "@/lib/keyboard-shortcuts";
+import {
+  KEYBOARD_SHORTCUT_SCOPES,
+  SHORTCUT_SCOPE_DESCRIPTIONS,
+  SHORTCUT_SCOPE_LABELS,
+  shortcutsForScope,
+  shouldIgnoreSingleKeyShortcut,
+} from "@/lib/keyboard-shortcuts";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
 import { useRouter } from "next/navigation";
@@ -22,16 +28,6 @@ const VIEW_KEYS: Record<string, string> = {
   m: "messages",
   f: "files",
 };
-
-const HELP: [string, string][] = [
-  ["?", "ショートカット一覧の表示/非表示"],
-  ["n", "タスク追加欄にフォーカス"],
-  ["g → o/d/l/b/t/c/m/f", "概要/ダッシュボード/リスト/ボード/タイムライン/カレンダー/メッセージ/ファイルへ移動"],
-  ["↑ / ↓", "リスト内のタスク行を移動"],
-  ["j / k", "リスト内のタスク行を移動（次 / 前）"],
-  ["Enter", "選択中のタスクを開く"],
-  ["Esc", "タスクペイン / ヘルプを閉じる"],
-];
 
 export default function Shortcuts({ projectId }: { projectId: number }) {
   const router = useRouter();
@@ -140,13 +136,24 @@ export default function Shortcuts({ projectId }: { projectId: number }) {
             ×
           </button>
         </div>
-        <div className="space-y-2 px-5 py-4 text-sm">
-          {HELP.map(([k, desc]) => (
-            <div key={k} className="flex gap-3">
-              <kbd className="shrink-0 rounded border border-line bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{k}</kbd>
-              <span className="text-secondary">{desc}</span>
+        <div className="max-h-[70vh] space-y-5 overflow-y-auto px-5 py-4 text-sm">
+          {KEYBOARD_SHORTCUT_SCOPES.map((scope) => (
+            <div key={scope} data-shortcut-group={scope}>
+              <h3 className="text-[12px] font-semibold text-text">{SHORTCUT_SCOPE_LABELS[scope]}</h3>
+              <p className="mt-0.5 text-[11px] text-muted">{SHORTCUT_SCOPE_DESCRIPTIONS[scope]}</p>
+              <div className="mt-2 space-y-2">
+                {shortcutsForScope(scope).map((shortcut) => (
+                  <div key={shortcut.id} className="flex gap-3">
+                    <kbd className="shrink-0 rounded border border-line bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{shortcut.keys}</kbd>
+                    <span className="text-secondary">{shortcut.description}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
+          <p className="text-[11px] leading-5 text-muted">
+            入力欄の編集中や日本語変換中は、1文字のショートカットは動きません。
+          </p>
         </div>
         <div className="flex justify-end border-t border-line-subtle px-5 py-3">
           <button type="button" onClick={() => setHelp(false)} className={secondaryButtonClass}>

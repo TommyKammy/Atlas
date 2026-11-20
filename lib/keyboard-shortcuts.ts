@@ -1,5 +1,98 @@
 import { isImeComposing } from "./ime-keyboard";
 
+export type KeyboardShortcutScope = "global" | "project";
+
+export type KeyboardShortcut = {
+  /** Stable identifier used by tests and React keys. */
+  id: string;
+  /** Where the shortcut works. Project shortcuts are mounted by the project screen. */
+  scope: KeyboardShortcutScope;
+  /** Display label. Platform differences are written as "Mac / Windows". */
+  keys: string;
+  description: string;
+};
+
+export const KEYBOARD_SHORTCUT_SCOPES = ["global", "project"] as const;
+
+export const SHORTCUT_SCOPE_LABELS: Record<KeyboardShortcutScope, string> = {
+  global: "すべての画面",
+  project: "プロジェクト画面",
+};
+
+export const SHORTCUT_SCOPE_DESCRIPTIONS: Record<KeyboardShortcutScope, string> = {
+  global: "どの画面でも使えます。",
+  project: "プロジェクト画面でのみ使えます。",
+};
+
+/**
+ * The one display list shared by the help page, the project shortcut dialog
+ * and the sidebar help dialog. Keep it in sync with the handlers in
+ * components/Shortcuts.tsx, components/CommandPalette.tsx and
+ * components/ui/FeedbackHost.tsx.
+ */
+export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcut[] = [
+  {
+    id: "command-palette",
+    scope: "global",
+    keys: "⌘K / Ctrl+K",
+    description: "検索とコマンドパレットを開く / 閉じる",
+  },
+  {
+    id: "undo-task-delete",
+    scope: "global",
+    keys: "⌘Z / Ctrl+Z",
+    description: "最後に削除したタスクを元に戻す（取り消せる場合）",
+  },
+  {
+    id: "toggle-shortcuts",
+    scope: "project",
+    keys: "?",
+    description: "ショートカット一覧の表示/非表示",
+  },
+  {
+    id: "focus-add-task",
+    scope: "project",
+    keys: "n",
+    description: "タスク追加欄にフォーカス",
+  },
+  {
+    id: "go-to-view",
+    scope: "project",
+    keys: "g → o/d/l/b/t/c/m/f",
+    description:
+      "概要/ダッシュボード/リスト/ボード/タイムライン/カレンダー/メッセージ/ファイルへ移動",
+  },
+  {
+    id: "move-row-arrows",
+    scope: "project",
+    keys: "↑ / ↓",
+    description: "リスト内のタスク行を移動",
+  },
+  {
+    id: "move-row-jk",
+    scope: "project",
+    keys: "j / k",
+    description: "リスト内のタスク行を移動（次 / 前）",
+  },
+  {
+    id: "open-task",
+    scope: "project",
+    keys: "Enter",
+    description: "選択中のタスクを開く",
+  },
+  {
+    id: "close-pane-or-help",
+    scope: "project",
+    keys: "Esc",
+    description: "タスクペイン / ショートカット一覧を閉じる",
+  },
+];
+
+/** Project and global rows in display order. */
+export function shortcutsForScope(scope: KeyboardShortcutScope): readonly KeyboardShortcut[] {
+  return KEYBOARD_SHORTCUTS.filter((shortcut) => shortcut.scope === scope);
+}
+
 type CompositionKeyboardEvent = {
   isComposing?: boolean;
   keyCode?: number;

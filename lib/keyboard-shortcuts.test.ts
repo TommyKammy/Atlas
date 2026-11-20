@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { shouldIgnoreSingleKeyShortcut } from "./keyboard-shortcuts";
+import {
+  KEYBOARD_SHORTCUTS,
+  KEYBOARD_SHORTCUT_SCOPES,
+  shortcutsForScope,
+  shouldIgnoreSingleKeyShortcut,
+} from "./keyboard-shortcuts";
 
 const body = { tagName: "BODY" };
 
@@ -112,4 +118,50 @@ test("non-editable surfaces such as body, buttons and list rows keep shortcuts e
     }),
     false,
   );
+});
+
+test("the shared display list is non-empty and covers both scopes", () => {
+  assert.ok(KEYBOARD_SHORTCUTS.length > 0);
+  for (const scope of KEYBOARD_SHORTCUT_SCOPES) {
+    assert.ok(shortcutsForScope(scope).length > 0, `${scope} must have shortcuts`);
+    for (const shortcut of shortcutsForScope(scope)) {
+      assert.equal(shortcut.scope, scope);
+      assert.ok(shortcut.keys.trim() !== "", `${shortcut.id} must have a key label`);
+      assert.ok(shortcut.description.trim() !== "", `${shortcut.id} must have a description`);
+    }
+  }
+});
+
+test("displayed key labels and ids are unique", () => {
+  const keys = KEYBOARD_SHORTCUTS.map((shortcut) => shortcut.keys);
+  const ids = KEYBOARD_SHORTCUTS.map((shortcut) => shortcut.id);
+  assert.equal(new Set(keys).size, keys.length);
+  assert.equal(new Set(ids).size, ids.length);
+});
+
+test("the display list includes the implemented J/K rows and the platform command palette key", () => {
+  const projectKeys = shortcutsForScope("project").map((shortcut) => shortcut.keys);
+  assert.ok(projectKeys.includes("j / k"));
+  assert.ok(projectKeys.includes("↑ / ↓"));
+  const globalKeys = shortcutsForScope("global").map((shortcut) => shortcut.keys);
+  assert.ok(globalKeys.some((keys) => keys.includes("⌘K") && keys.includes("Ctrl+K")));
+  assert.ok(globalKeys.some((keys) => keys.includes("⌘Z") && keys.includes("Ctrl+Z")));
+});
+
+test("the project dialog, help page and sidebar help render the shared list", () => {
+  const files = [
+    "../components/Shortcuts.tsx",
+    "../app/help/page.tsx",
+    "../components/SidebarHelpButton.tsx",
+  ];
+  for (const file of files) {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.match(source, /from "@\/lib\/keyboard-shortcuts"/, `${file} must import the shared list`);
+    assert.match(
+      source,
+      /KEYBOARD_SHORTCUT_SCOPES|shortcutsForScope/,
+      `${file} must render the shared list`,
+    );
+    assert.doesNotMatch(source, /const (HELP|SHORTCUTS)\b/, `${file} must not keep a private list`);
+  }
 });

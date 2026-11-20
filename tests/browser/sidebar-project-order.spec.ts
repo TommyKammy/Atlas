@@ -56,7 +56,16 @@ test("dragging both ways persists personal order without navigation or changing 
   const f = await fixture(page);
   await page.goto(`/projects/${f.ids[1]}`); await page.goto(`/projects/${f.ids[2]}`); await page.goto("/");
   const recentLinks = page.locator("[data-sidebar-recents] a");
-  const recents = await recentLinks.evaluateAll(links => links.map(link => link.getAttribute("href")));
+  const recentHrefs = () => recentLinks.evaluateAll(links => links.map(link => link.getAttribute("href")));
+  // Visits are recorded in the background, so the first home render can still
+  // show the order from before the last visit. Wait until both visits are in
+  // place before taking the snapshot the drag must not change.
+  await expect.poll(async () => {
+    const hrefs = await recentHrefs();
+    if (hrefs[0] !== `/projects/${f.ids[2]}`) await page.reload();
+    return hrefs.slice(0, 2);
+  }).toEqual([`/projects/${f.ids[2]}`, `/projects/${f.ids[1]}`]);
+  const recents = await recentHrefs();
   await expect(page.locator("[data-sidebar-recents] [data-project-reorder]")).toHaveCount(0);
   const url = page.url();
   await expect(page.locator("[data-project-handle]")).toHaveCount(0);
@@ -66,7 +75,7 @@ test("dragging both ways persists personal order without navigation or changing 
   expect(page.url()).toBe(url);
   const expected = [...f.all.filter(id => !f.ids.includes(id)), f.ids[3], f.ids[1], f.ids[2], f.ids[0]];
   expect(await visibleOrder(page)).toEqual(expected);
-  expect(await recentLinks.evaluateAll(links => links.map(link => link.getAttribute("href")))).toEqual(recents);
+  expect(await recentHrefs()).toEqual(recents);
   await page.reload(); expect(await visibleOrder(page)).toEqual(expected);
   const ssr = await browser.newContext({ baseURL: test.info().project.use.baseURL, javaScriptEnabled: false, storageState: await page.context().storageState() });
   try {
