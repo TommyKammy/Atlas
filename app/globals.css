@@ -342,6 +342,13 @@ html[data-theme="dark"] {
     box-shadow: none !important;
   }
 
+  /* The command palette input spans its rounded panel; its search row shows
+     focus with an accent bottom line instead of the spilling outline ring. */
+  [data-command-palette-input]:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   :where(button, a, summary, [tabindex]):not(:disabled) {
     cursor: pointer;
   }
