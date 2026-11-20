@@ -312,6 +312,7 @@ export default function TaskListRow({
       <span className="flex items-center justify-self-center">
         <span
           title="ドラッグで並替え（ホバーで表示）"
+          data-drag-handle
           className="cursor-grab text-subtle opacity-0 group-hover:opacity-100 hover:text-muted active:cursor-grabbing"
         >
           ⋮⋮
@@ -741,6 +742,7 @@ export default function TaskListRow({
       })}
       <button
         style={{ order: 999 }}
+        data-list-row-delete
         onClick={() => remove(t)}
         className="invisible justify-self-end text-subtle hover:text-danger group-hover:visible group-focus-within:visible"
         title="削除"

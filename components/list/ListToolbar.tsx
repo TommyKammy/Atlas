@@ -239,7 +239,7 @@ export default function ListToolbar({
           )}
           {filterOpen && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
+              <div data-popover-backdrop className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
               <div className={`${popoverBase} right-0 w-[560px] max-w-[calc(100vw-2rem)]`}>
                 <ListFilterMenu
                   filters={filters}
@@ -273,7 +273,7 @@ export default function ListToolbar({
           )}
           {sortOpen && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setSortOpen(false)} />
+              <div data-popover-backdrop className="fixed inset-0 z-30" onClick={() => setSortOpen(false)} />
               <div className={`${popoverBase} right-0 w-60`}>
                 <ListSortMenu
                   sortKey={sortKey}
@@ -304,7 +304,7 @@ export default function ListToolbar({
           )}
           {groupOpen && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setGroupOpen(false)} />
+              <div data-popover-backdrop className="fixed inset-0 z-30" onClick={() => setGroupOpen(false)} />
               <div className={`${popoverBase} right-0 w-[440px] max-w-[calc(100vw-2rem)]`}>
                 <ListGroupMenu
                   groupBy={groupBy}

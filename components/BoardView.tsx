@@ -17,6 +17,7 @@ import { countOverdueTasks } from "@/lib/list-row-state";
 import { parseListDateFilter, parseListGroupBy, parseListSortKey, taskMatchesListFilters, type ListDateFilter, type ListFilters, type ListGroupBy, type ListSortKey } from "@/lib/list-view";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useApiRefresh } from "@/lib/use-api-refresh";
+import { useClosePaneOnEmptyClick } from "@/lib/use-close-pane-on-empty-click";
 import { useLive } from "@/lib/use-live";
 import { usePersistedViewState } from "@/lib/view-state-client";
 import { SectionDraftProvider } from "@/lib/section-draft-context";
@@ -89,6 +90,8 @@ function BoardViewContent({
   const quick = useQuickTask();
   const refresh = useApiRefresh();
   const router = useRouter();
+  const rootRef = useRef<HTMLDivElement>(null);
+  useClosePaneOnEmptyClick(rootRef, { projectId, view: "board" });
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [addingTask, setAddingTask] = useState(false);
@@ -579,6 +582,7 @@ function BoardViewContent({
       start={canConfigure && effectiveGroupBy === "section" ? () => sectionDraft.start(null) : null}
     >
     <div
+      ref={rootRef}
       className="flex h-full min-h-0 flex-col"
       data-board-view
       data-board-group={effectiveGroupBy}

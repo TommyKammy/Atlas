@@ -146,6 +146,7 @@ export default function ListColumnHeader({
           <span
             onMouseDown={(e) => gripMouseDown(e, columnKey)}
             title="ドラッグで列幅を変更"
+            data-column-resize-handle
             className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-accent-line"
           />
         )}
@@ -153,11 +154,12 @@ export default function ListColumnHeader({
           <span
             onMouseDown={(e) => gripMouseDown(e, columnKey)}
             title="ドラッグで列幅を変更"
+            data-column-resize-handle
             className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-accent-line"
           />
         )}
         {open && (
-          <div className="absolute top-full left-0 z-40 mt-1 w-60 rounded-lg border bg-surface py-1 text-sm shadow-lg">
+          <div data-popover-panel className="absolute top-full left-0 z-40 mt-1 w-60 rounded-lg border bg-surface py-1 text-sm shadow-lg">
             {columnKey !== "name" && (
               <>
                 <div className={menuLabel}>列を移動</div>

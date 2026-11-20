@@ -87,7 +87,7 @@ export default function AssigneePicker({
       />
       {position && (
         <>
-          <div className="fixed inset-0 z-[139]" onClick={onCancel} />
+          <div data-popover-backdrop className="fixed inset-0 z-[139]" onClick={onCancel} />
           <div
             data-assignee-menu
             onKeyDown={(event) => {

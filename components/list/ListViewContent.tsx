@@ -1,10 +1,11 @@
 "use client";
 
-import type { ComponentProps, Dispatch, ReactNode, SetStateAction } from "react";
+import { useRef, type ComponentProps, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { SavedView } from "@/lib/data";
 import type { ListGroupBy, ListSortKey } from "@/lib/list-view";
 import type { ListTaskSummary } from "@/lib/list-row-state";
 import { SectionDraftProvider } from "@/lib/section-draft-context";
+import { useClosePaneOnEmptyClick } from "@/lib/use-close-pane-on-empty-click";
 import ListBulkToolbar from "./ListBulkToolbar";
 import ListColumnHeaderRow from "./ListColumnHeaderRow";
 import ListColumnHeaders from "./ListColumnHeaders";
@@ -89,9 +90,13 @@ export default function ListViewContent({
   emptyState,
   focusAdd,
 }: ListViewContentProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  useClosePaneOnEmptyClick(rootRef, { projectId: toolbar.props.projectId, view: "list" });
+
   return (
     <SectionDraftProvider start={sectionDraft.onStartFromToolbar}>
     <div
+      ref={rootRef}
       className="flex h-full min-h-0 flex-col px-4"
       data-list-view
       data-list-hide-completed={view.hideCompleted}
@@ -128,8 +133,8 @@ export default function ListViewContent({
             onDelete={toolbar.deleteSavedView}
           />
           {bulk.selectedCount > 0 && <ListBulkToolbar {...bulk} />}
-          {menuCol !== null && <div className="fixed inset-0 z-30" onClick={onCloseMenu} />}
-          {editingDue && <div className="fixed inset-0 z-30" onClick={onCancelEdit} />}
+          {menuCol !== null && <div data-popover-backdrop className="fixed inset-0 z-30" onClick={onCloseMenu} />}
+          {editingDue && <div data-popover-backdrop className="fixed inset-0 z-30" onClick={onCancelEdit} />}
           {tasksEmpty && <ListEmptyState onAdd={focusAdd} mode={emptyState} />}
           <ListColumnHeaderRow
             {...columns.headerRow}

@@ -190,7 +190,7 @@ export default function DueDatePicker({
       </span>
       {position && (
         <>
-          <div className="fixed inset-0 z-[139]" onClick={close} />
+          <div data-popover-backdrop className="fixed inset-0 z-[139]" onClick={close} />
           <div
             data-due-menu
             data-due-active-field={activeField}
