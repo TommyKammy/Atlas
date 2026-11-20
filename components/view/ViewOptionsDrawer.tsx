@@ -110,6 +110,7 @@ export default function ViewOptionsDrawer({
       <button
         type="button"
         aria-label={`${title}のオプションを閉じる`}
+        data-popover-backdrop
         onClick={onClose}
         className="fixed inset-0 z-[70] cursor-default bg-transparent"
       />

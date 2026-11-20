@@ -180,6 +180,7 @@ export default function ListOptionsDrawer({
       <button
         type="button"
         aria-label="オプションを閉じる"
+        data-popover-backdrop
         onClick={onClose}
         className="fixed inset-0 z-[70] cursor-default bg-transparent"
       />

@@ -215,7 +215,7 @@ export default function BoardToolbar({
           )}
           {filterOpen && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
+              <div data-popover-backdrop className="fixed inset-0 z-30" onClick={() => setFilterOpen(false)} />
               <div data-board-filter-menu className={`${popoverBase} right-0 w-[560px] max-w-[calc(100vw-2rem)]`}>
                 <ListFilterMenu
                   filters={filters}
@@ -271,7 +271,7 @@ export default function BoardToolbar({
           )}
           {sortOpen && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setSortOpen(false)} />
+              <div data-popover-backdrop className="fixed inset-0 z-30" onClick={() => setSortOpen(false)} />
               <div data-board-sort-menu className={`${popoverBase} right-0 w-60`}>
                 <ListSortMenu
                   sortKey={sortKey}
@@ -325,7 +325,7 @@ export default function BoardToolbar({
           )}
           {groupOpen && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setGroupOpen(false)} />
+              <div data-popover-backdrop className="fixed inset-0 z-30" onClick={() => setGroupOpen(false)} />
               <div data-board-group-menu className={`${popoverBase} right-0 w-[440px] max-w-[calc(100vw-2rem)]`}>
                 <ListGroupMenu
                   groupBy={groupBy}

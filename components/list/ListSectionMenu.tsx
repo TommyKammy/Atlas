@@ -37,7 +37,7 @@ export default function ListSectionMenu({
 
   return (
     <>
-      <div className="fixed inset-0 z-[60]" onClick={onClose} />
+      <div data-popover-backdrop className="fixed inset-0 z-[60]" onClick={onClose} />
       <div
         ref={menuRef}
         role="menu"
