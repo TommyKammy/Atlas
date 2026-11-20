@@ -49,6 +49,8 @@ then run `bash tests/run-e2e.sh browser`. Each command seeds a new PostgreSQL in
 removes its test stack when it exits. The suites and the backup and restore scripts require
 that stack's identity and verify that HTTP and SQL use the same database before proceeding.
 
+Run `bash tests/run-e2e.sh ui-contrast` for the contrast audit on a fresh seed-only stack (set `ATLAS_UI_CONTRAST_WRITE_BASELINE=1` on that command to regenerate `tests/fixtures/contrast-baseline.json`); it is excluded from the full browser suite because the audit keys depend on displayed data.
+
 To repeat the membership lookup race cases in an isolated environment, use:
 
 ```bash

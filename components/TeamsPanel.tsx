@@ -5,6 +5,21 @@ import { confirmAction } from "@/lib/ui-feedback";
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import type { AdminTeam, AdminUser, TeamMember } from "@/lib/admin-data";
+import {
+  checkboxClass,
+  dialogCloseClass,
+  dialogSubtitleClass,
+  dialogTitleClass,
+  fieldControlClass,
+  fieldLabelClass,
+  fieldTextareaClass,
+  pillWarningClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  SelectControl,
+  smallQuietButtonClass,
+  smallQuietDangerButtonClass,
+} from "./ui/form-controls";
 import UserAvatar from "./UserAvatar";
 
 const PRIVACY_LABEL: Record<AdminTeam["privacy"], string> = {
@@ -18,6 +33,9 @@ const PRIVACY_HINT: Record<AdminTeam["privacy"], string> = {
   private: "招待されたメンバーだけが参加できます",
   approval: "参加には承認が必要です",
 };
+
+const TEAM_GRID =
+  "grid grid-cols-[minmax(200px,1.4fr)_140px_120px_150px_140px] items-center gap-3";
 
 type MemberState = Record<number, "manager" | "member">;
 
@@ -46,7 +64,6 @@ export default function TeamsPanel({
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const field = "w-full rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500";
   const activeUsers = users.filter((u) => !u.deactivated_at);
 
   const resetForm = () => {
@@ -132,25 +149,21 @@ export default function TeamsPanel({
 
   return (
     <section data-admin-panel="teams">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold">チーム</h2>
-          <p className="mt-0.5 text-xs text-neutral-500">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[16px] font-semibold leading-6 text-text">チーム</h2>
+          <p className="mt-1 text-[13px] leading-5 text-muted">
             チームを作成して、メンバーと仕事を整理します。チーム管理者はメンバーを追加・削除できます。
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          data-admin-team-create
-          className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8]"
-        >
+        <button onClick={openCreate} data-admin-team-create className={primaryButtonClass}>
           チームを作成
         </button>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200">
-        <div className="min-w-[720px]">
-          <div className="grid grid-cols-[minmax(200px,1.4fr)_140px_120px_150px_120px] gap-3 border-b bg-neutral-50 px-4 py-2 text-xs font-semibold text-neutral-500">
+      <div className="mt-4 overflow-x-auto">
+        <div className="min-w-[760px]">
+          <div className={`${TEAM_GRID} border-b border-line px-2 py-2 text-[12px] font-medium text-muted`}>
             <span>チーム</span>
             <span>メンバー</span>
             <span>プライバシー</span>
@@ -158,7 +171,7 @@ export default function TeamsPanel({
             <span>操作</span>
           </div>
           {teams.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-neutral-500">
+            <p className="px-2 py-8 text-center text-[13px] text-muted">
               チームはまだありません。「チームを作成」から追加できます。
             </p>
           )}
@@ -167,17 +180,15 @@ export default function TeamsPanel({
               key={team.id}
               data-team={team.id}
               data-team-name={team.name}
-              className="grid grid-cols-[minmax(200px,1.4fr)_140px_120px_150px_120px] items-center gap-3 border-b px-4 py-2.5 text-sm last:border-b-0"
+              className={`${TEAM_GRID} min-h-[44px] border-b border-line-subtle px-2 py-2 text-[13px] hover:bg-hover`}
             >
               <span className="min-w-0">
-                <span className="flex items-center gap-1.5">
-                  <span className="truncate font-medium">{team.name}</span>
-                  {team.status === "approved" && (
-                    <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-800">認定済み</span>
-                  )}
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <span className="truncate font-medium text-text">{team.name}</span>
+                  {team.status === "approved" && <span className={pillWarningClass}>認定済み</span>}
                 </span>
                 {team.description && (
-                  <span className="block truncate text-[11px] text-neutral-500">{team.description}</span>
+                  <span className="block truncate text-[12px] text-muted">{team.description}</span>
                 )}
               </span>
               <span className="flex items-center gap-1">
@@ -187,24 +198,29 @@ export default function TeamsPanel({
                       key={member.id}
                       name={member.name}
                       url={member.avatar_url}
-                      className="h-6 w-6 ring-2 ring-white"
+                      className="h-6 w-6 ring-2 ring-on-strong"
                       textClassName="text-[9px]"
                     />
                   ))}
                 </span>
-                <span className="ml-1 text-xs text-neutral-500">{team.members.length}</span>
+                <span className="ml-1 text-[12px] tabular-nums text-muted">{team.members.length}</span>
               </span>
-              <span className="text-xs text-neutral-600" title={PRIVACY_HINT[team.privacy]}>
+              <span className="text-[12px] text-secondary" title={PRIVACY_HINT[team.privacy]}>
                 {PRIVACY_LABEL[team.privacy]}
               </span>
-              <span className="truncate text-xs text-neutral-500">{team.created_by_name ?? "–"}</span>
-              <span className="flex gap-1 text-xs">
-                <button onClick={() => openEdit(team)} className="rounded border px-1.5 py-0.5 hover:bg-neutral-100">
+              <span className="truncate text-[12px] text-muted">{team.created_by_name ?? "–"}</span>
+              <span className="flex flex-wrap items-center gap-1">
+                <button
+                  onClick={() => openEdit(team)}
+                  title={`${team.name}を編集`}
+                  className={smallQuietButtonClass}
+                >
                   編集
                 </button>
                 <button
                   onClick={() => remove(team)}
-                  className="rounded border border-red-300 px-1.5 py-0.5 text-red-600 hover:bg-red-50"
+                  title={`${team.name}を削除`}
+                  className={smallQuietDangerButtonClass}
                 >
                   削除
                 </button>
@@ -214,143 +230,163 @@ export default function TeamsPanel({
         </div>
       </div>
 
-      {msg && <p className="mt-3 text-sm text-red-600">{msg}</p>}
+      {msg && <p className="mt-3 text-[12px] text-danger">{msg}</p>}
 
       {open && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-scrim p-4" onClick={() => setOpen(false)}>
           <div
-            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-5 shadow-2xl"
+            className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl bg-surface shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label="チームを作成"
             data-team-dialog
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">{editingId ? "チームを編集" : "チームを新規作成"}</h2>
-                <p className="mt-0.5 text-xs text-neutral-500">チームの情報とメンバーを設定します。</p>
+            <div className="flex items-start justify-between gap-3 border-b border-line-subtle px-5 py-4">
+              <div className="min-w-0">
+                <h2 className={dialogTitleClass}>{editingId ? "チームを編集" : "チームを新規作成"}</h2>
+                <p className={dialogSubtitleClass}>チームの情報とメンバーを設定します。</p>
               </div>
-              <button onClick={() => setOpen(false)} aria-label="閉じる" className="rounded p-1 text-neutral-500 hover:bg-neutral-100">
+              <button onClick={() => setOpen(false)} aria-label="閉じる" className={dialogCloseClass}>
                 ×
               </button>
             </div>
 
-            <div className="mt-4 grid gap-3">
-              <label className="text-xs text-neutral-600">
-                チーム名
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="例:「マーケティング」または「デザイン」"
-                  className={`${field} mt-1`}
-                  data-team-name-input
-                />
-              </label>
-              <label className="text-xs text-neutral-600">
-                説明
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="チームに関する情報を追加してください"
-                  rows={2}
-                  className={`${field} mt-1 resize-y`}
-                />
-              </label>
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <div className="grid gap-3">
+                <label className="block">
+                  <span className={fieldLabelClass}>チーム名</span>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="例:「マーケティング」または「デザイン」"
+                    className={`mt-1.5 ${fieldControlClass}`}
+                    data-team-name-input
+                  />
+                </label>
+                <label className="block">
+                  <span className={fieldLabelClass}>説明</span>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="チームに関する情報を追加してください"
+                    rows={2}
+                    className={`mt-1.5 ${fieldTextareaClass}`}
+                  />
+                </label>
 
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-neutral-600">メンバー</span>
-                  <span className="text-[11px] text-neutral-400">選択中 {selectedCount} 人</span>
-                </div>
-                <input
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  placeholder="名前またはメールアドレスで絞り込み…"
-                  className={`${field} mt-1`}
-                  data-team-member-filter
-                />
-                <div className="mt-2 max-h-48 overflow-y-auto rounded border">
-                  {visibleUsers.map((u) => {
-                    const selected = members[u.id];
-                    return (
-                      <div key={u.id} className="flex items-center gap-2 border-b px-2 py-1.5 text-sm last:border-b-0">
-                        <input
-                          type="checkbox"
-                          checked={selected !== undefined}
-                          onChange={() => toggleMember(u.id)}
-                          aria-label={`${u.name}をチームに追加`}
-                        />
-                        <UserAvatar name={u.name} url={u.avatar_url} className="h-6 w-6" textClassName="text-[9px]" />
-                        <span className="min-w-0 flex-1 truncate">{u.name}</span>
-                        <span className="truncate text-[11px] text-neutral-400">{u.email ?? ""}</span>
-                        {selected && (
-                          <select
-                            value={selected}
-                            onChange={(e) =>
-                              setMembers((prev) => ({
-                                ...prev,
-                                [u.id]: e.target.value as "manager" | "member",
-                              }))
-                            }
-                            className="rounded border px-1 py-0.5 text-[11px]"
-                          >
-                            <option value="member">メンバー</option>
-                            <option value="manager">チーム管理者</option>
-                          </select>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <span className="text-xs text-neutral-600">チームのステータス</span>
-                  <div className="mt-1 flex gap-3 text-sm">
-                    <label className="flex items-center gap-1.5">
-                      <input type="radio" checked={status === "active"} onChange={() => setStatus("active")} />
-                      通常
-                    </label>
-                    <label className="flex items-center gap-1.5">
-                      <input type="radio" checked={status === "approved"} onChange={() => setStatus("approved")} />
-                      認定済み
-                    </label>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={fieldLabelClass}>メンバー</span>
+                    <span className="text-[12px] tabular-nums text-muted">選択中 {selectedCount} 人</span>
+                  </div>
+                  <label className="mt-2 block">
+                    <span className={fieldLabelClass}>メンバーを絞り込む</span>
+                    <input
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      placeholder="名前またはメールアドレスで絞り込み…"
+                      className={`mt-1.5 ${fieldControlClass}`}
+                      data-team-member-filter
+                    />
+                  </label>
+                  <div className="mt-2 max-h-48 overflow-y-auto rounded-md bg-surface-subtle px-2">
+                    {visibleUsers.map((u) => {
+                      const selected = members[u.id];
+                      return (
+                        <div
+                          key={u.id}
+                          className="flex min-h-[36px] items-center gap-2 border-b border-line-subtle py-1 text-[13px] last:border-b-0"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected !== undefined}
+                            onChange={() => toggleMember(u.id)}
+                            aria-label={`${u.name}をチームに追加`}
+                            className={checkboxClass}
+                          />
+                          <UserAvatar name={u.name} url={u.avatar_url} className="h-6 w-6" textClassName="text-[9px]" />
+                          <span className="min-w-0 flex-1 truncate">{u.name}</span>
+                          <span className="hidden min-w-0 max-w-[40%] truncate text-[12px] text-muted sm:block">{u.email ?? ""}</span>
+                          {selected && (
+                            <SelectControl
+                              value={selected}
+                              onChange={(e) =>
+                                setMembers((prev) => ({
+                                  ...prev,
+                                  [u.id]: e.target.value as "manager" | "member",
+                                }))
+                              }
+                              aria-label={`${u.name}のチームでの役割`}
+                              className="w-32 shrink-0"
+                            >
+                              <option value="member">メンバー</option>
+                              <option value="manager">チーム管理者</option>
+                            </SelectControl>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                <div>
-                  <span className="text-xs text-neutral-600">チームプライバシー</span>
-                  <div className="mt-1 space-y-1 text-sm">
-                    {(["public", "private", "approval"] as const).map((value) => (
-                      <label key={value} className="flex items-start gap-1.5">
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <span className={fieldLabelClass}>チームのステータス</span>
+                    <div className="mt-1.5 flex gap-3 text-[13px] text-secondary">
+                      <label className="flex items-center gap-1.5">
                         <input
                           type="radio"
-                          className="mt-0.5"
-                          checked={privacy === value}
-                          onChange={() => setPrivacy(value)}
+                          checked={status === "active"}
+                          onChange={() => setStatus("active")}
+                          className={checkboxClass}
                         />
-                        <span>
-                          {PRIVACY_LABEL[value]}
-                          <span className="block text-[11px] text-neutral-400">{PRIVACY_HINT[value]}</span>
-                        </span>
+                        通常
                       </label>
-                    ))}
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          checked={status === "approved"}
+                          onChange={() => setStatus("approved")}
+                          className={checkboxClass}
+                        />
+                        認定済み
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <span className={fieldLabelClass}>チームプライバシー</span>
+                    <div className="mt-1.5 space-y-1 text-[13px] text-secondary">
+                      {(["public", "private", "approval"] as const).map((value) => (
+                        <label key={value} className="flex items-start gap-1.5">
+                          <input
+                            type="radio"
+                            className={`mt-0.5 ${checkboxClass}`}
+                            checked={privacy === value}
+                            onChange={() => setPrivacy(value)}
+                          />
+                          <span>
+                            {PRIVACY_LABEL[value]}
+                            <span className="block text-[12px] text-muted">{PRIVACY_HINT[value]}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {msg && <p className="mt-3 text-[12px] text-danger">{msg}</p>}
             </div>
 
-            {msg && <p className="mt-3 text-sm text-red-600">{msg}</p>}
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setOpen(false)} className="rounded px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100">
+            <div className="flex justify-end gap-2 border-t border-line-subtle px-5 py-3">
+              <button onClick={() => setOpen(false)} className={secondaryButtonClass}>
                 キャンセル
               </button>
               <button
                 onClick={save}
                 disabled={saving || !name.trim()}
                 data-team-save
-                className="rounded bg-[#4075cf] px-4 py-1.5 text-sm text-white hover:bg-[#3567b8] disabled:opacity-50"
+                className={primaryButtonClass}
               >
                 {saving ? "保存中…" : editingId ? "変更を保存" : "チームを作成"}
               </button>

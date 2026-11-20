@@ -206,7 +206,7 @@ export function QuickTaskName({ task, children }: { task: { id: number; name: st
     onKeyDown={event => event.stopPropagation()} draggable={false} onDragStart={event => { event.preventDefault(); event.stopPropagation(); }}>
     <input ref={input} autoFocus={isLatestDraft} aria-label="新しいタスク名" placeholder="タスク名を入力" maxLength={1000}
       readOnly={draft.saving} aria-busy={draft.saving} value={draft.text} onChange={event => context.change(draft, event.target.value)}
-      className="pointer-events-auto h-6 w-full min-w-0 rounded border-0 bg-transparent px-1 text-[13px] text-neutral-900 outline-none"
+      className="pointer-events-auto h-6 w-full min-w-0 rounded border-0 bg-transparent px-1 text-[13px] text-text outline-none"
       onFocus={event => event.target.scrollIntoView({ block: "nearest", inline: "nearest" })}
       onBlur={() => { void context.finish(draft); }}
       onKeyDown={event => {
@@ -214,6 +214,6 @@ export function QuickTaskName({ task, children }: { task: { id: number; name: st
         if (event.key === "Enter") { event.preventDefault(); void context.finish(draft); }
         if (event.key === "Escape") { event.preventDefault(); context.cancel(draft); }
       }} />
-    {draft.error && <span role="alert" className="absolute left-0 top-full z-50 mt-1 w-64 whitespace-normal rounded border border-red-200 bg-white p-2 text-xs text-red-700 shadow">{draft.error}</span>}
+    {draft.error && <span role="alert" className="absolute left-0 top-full z-50 mt-1 w-64 whitespace-normal rounded border border-danger-line bg-surface p-2 text-xs text-danger shadow">{draft.error}</span>}
   </span>;
 }

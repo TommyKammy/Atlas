@@ -2,6 +2,7 @@
 
 import ProjectIcon from "../ProjectIcon";
 import { PROJECT_COLORS, PROJECT_ICONS, projectColor, type ProjectIconKey } from "@/lib/project-appearance";
+import { PROJECT_COLOR_FALLBACK } from "@/lib/data-colors";
 
 /** Appearance panel: project color and icon picker. */
 export default function CustomizeAppearancePanel({
@@ -23,15 +24,15 @@ export default function CustomizeAppearancePanel({
 }) {
   return (
     <div className="p-5">
-      <p className="text-[13px] text-neutral-600">
+      <p className="text-[13px] text-secondary">
         プロジェクトのカラーとアイコンを変更します。変更はすぐに保存されます。
       </p>
       {!canAdmin && (
-        <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+        <p className="mt-2 rounded-md bg-warning-soft px-3 py-2 text-[12px] text-warning">
           色とアイコンの変更はプロジェクト管理者のみ可能です。
         </p>
       )}
-      <div className="mt-5 text-[12px] font-semibold text-neutral-700">カラー</div>
+      <div className="mt-5 text-[12px] font-semibold text-secondary">カラー</div>
       <div className="mt-2 grid grid-cols-8 gap-2">
         {PROJECT_COLORS.map((entry) => (
           <button
@@ -40,16 +41,16 @@ export default function CustomizeAppearancePanel({
             title={entry.name}
             disabled={!canAdmin || busy}
             onClick={() => onSave({ color: entry.value })}
-            className={`flex h-6 w-6 items-center justify-center rounded-[5px] border border-black/10 text-xs text-white [text-shadow:0_1px_1px_rgba(0,0,0,0.45)] disabled:cursor-not-allowed disabled:opacity-50 ${
-              color === entry.value ? "ring-2 ring-[#2c60b8] ring-offset-1" : ""
+            className={`flex h-6 w-6 items-center justify-center rounded-[5px] border border-data-line text-xs text-on-strong [text-shadow:0_1px_1px_rgba(0,0,0,0.45)] disabled:cursor-not-allowed disabled:opacity-50 ${
+              color === entry.value ? "ring-2 ring-accent ring-offset-1" : ""
             }`}
-            style={{ backgroundColor: entry.value ?? "#d9d9d9" }}
+            style={{ backgroundColor: entry.value ?? PROJECT_COLOR_FALLBACK }}
           >
             {color === entry.value ? "✓" : ""}
           </button>
         ))}
       </div>
-      <div className="mt-5 text-[12px] font-semibold text-neutral-700">アイコン</div>
+      <div className="mt-5 text-[12px] font-semibold text-secondary">アイコン</div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {PROJECT_ICONS.map((entry) => (
           <button
@@ -60,8 +61,8 @@ export default function CustomizeAppearancePanel({
             onClick={() => onSave({ icon: entry.key })}
             className={`flex h-9 w-9 items-center justify-center rounded-md border text-[10px] disabled:cursor-not-allowed disabled:opacity-50 ${
               icon === entry.key
-                ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]"
-                : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                ? "border-accent bg-accent-soft text-accent-text"
+                : "border-line text-muted hover:bg-hover"
             }`}
           >
             {entry.key ? (

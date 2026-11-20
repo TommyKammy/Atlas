@@ -6,9 +6,23 @@ import { confirmAction } from "@/lib/ui-feedback";
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormField, FormFieldType, ProjectForm } from "@/lib/forms";
 import { DEFAULT_FORM_FIELDS, FORM_FIELD_TYPES } from "@/lib/forms";
+import { formCardMeta, formStatusLabel } from "@/lib/forms-presentation";
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import Dialog from "./ui/Dialog";
-import EmptyState from "./EmptyState";
+import {
+  checkboxClass,
+  dialogCloseClass,
+  dialogSubtitleClass,
+  dialogTitleClass,
+  fieldControlClass,
+  fieldLabelClass,
+  fieldTextareaClass,
+  formSectionTitleClass,
+  primaryButtonClass,
+  quietButtonClass,
+  secondaryButtonClass,
+  SelectControl,
+} from "./ui/form-controls";
 
 type Builder = {
   id: number | null;
@@ -185,54 +199,61 @@ export default function FormsView({
       <ProjectViewToolbar>
         <ViewAddButton data-form-new disabled={!canConfigure} onClick={startCreate}>フォームを作成</ViewAddButton>
       </ProjectViewToolbar>
-      <p className="mt-4 text-[13px] text-neutral-500">
+      <p className="mt-4 text-[13px] text-muted">
         入力フォームから回答を受け取り、プロジェクトにタスクを自動で作成します。
       </p>
 
       {message && (
-        <p role="status" className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-[13px] text-green-800">
+        <p role="status" className="mt-3 rounded-md border border-success-line bg-success-soft px-3 py-2 text-[13px] text-success">
           {message}
         </p>
       )}
       {error && !builder && !answering && (
-        <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
+        <p role="alert" className="mt-3 rounded-md border border-danger-line bg-danger-soft px-3 py-2 text-[13px] text-danger">
           {error}
         </p>
       )}
 
       <div className="mt-4 space-y-3">
         {initial.length === 0 ? (
-          <EmptyState
-            scope="forms"
-            title="フォームで intake を自動化"
-            description="問い合わせや依頼の項目を定義し、回答からタスクを作成できます。"
-          />
+          <div data-empty-state="forms" className="mx-auto max-w-xl rounded-lg bg-surface-subtle px-5 py-8 text-center">
+            <h2 className="text-[14px] font-semibold text-text">フォームで受付を自動化</h2>
+            <p className="mx-auto mt-1.5 max-w-md text-[12px] leading-5 text-muted">
+              問い合わせや依頼の項目を定義し、回答からタスクを作成できます。
+            </p>
+            {canConfigure && (
+              <button type="button" data-form-empty-new onClick={startCreate} className={`${secondaryButtonClass} mt-4`}>
+                フォームを作成
+              </button>
+            )}
+          </div>
         ) : (
           initial.map((form) => (
             <article
               key={form.id}
               data-form-card={form.id}
-              className="rounded-lg border border-[#e1e1e1] bg-white p-4"
+              className="rounded-lg border border-line bg-surface p-4"
             >
-              <div className="flex items-start gap-2">
+              <div className="flex flex-wrap items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-[15px] font-semibold text-neutral-900">{form.name}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-[13px] font-semibold text-text">{form.name}</h3>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] ${
+                      className={`inline-flex h-5 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium ${
                         form.published
-                          ? "bg-green-100 text-green-800"
-                          : "bg-neutral-100 text-neutral-500"
+                          ? "bg-success-soft text-success"
+                          : "bg-surface-muted text-muted"
                       }`}
                     >
-                      {form.published ? "公開中" : "下書き"}
+                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+                      {formStatusLabel(form.published)}
                     </span>
                   </div>
                   {form.description && (
-                    <p className="mt-1 text-[13px] text-neutral-600">{form.description}</p>
+                    <p className="mt-1 text-[12px] leading-5 text-muted">{form.description}</p>
                   )}
-                  <div className="mt-1 text-[11px] text-neutral-500">
-                    {form.fields.length} 項目 ・ 回答 {form.response_count} 件
+                  <div className="mt-1 text-[12px] text-muted">
+                    {formCardMeta(form.fields.length, form.response_count)}
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
@@ -241,7 +262,7 @@ export default function FormsView({
                     data-form-publish={form.id}
                     disabled={!canConfigure}
                     onClick={() => void togglePublish(form)}
-                    className="h-7 rounded-md border border-[#e1e1e1] px-2 text-[12px] text-neutral-700 hover:bg-neutral-50"
+                    className={secondaryButtonClass}
                   >
                     {form.published ? "非公開" : "公開"}
                   </button>
@@ -250,7 +271,7 @@ export default function FormsView({
                     data-form-answer={form.id}
                     disabled={!form.published}
                     onClick={() => openAnswer(form)}
-                    className="h-7 rounded-md bg-[#eff4fd] px-2 text-[12px] font-medium text-[#2c60b8] hover:bg-[#e1ecfc] disabled:opacity-40"
+                    className={secondaryButtonClass}
                   >
                     回答
                   </button>
@@ -260,7 +281,7 @@ export default function FormsView({
                     disabled={!canConfigure}
                     aria-label={`${form.name}を編集`}
                     onClick={() => startEdit(form)}
-                    className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-text disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                       <path d="m10.5 2.5 3 3L6 13H3v-3z" />
@@ -272,7 +293,7 @@ export default function FormsView({
                     disabled={!canConfigure}
                     aria-label={`${form.name}を削除`}
                     onClick={() => void remove(form)}
-                    className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                       <path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.6 8h5.8l.6-8M6.5 7v3M9.5 7v3" />
@@ -286,163 +307,168 @@ export default function FormsView({
       </div>
 
       {builder && (
-        <Dialog open onClose={() => setBuilder(null)} titleId={`${formId}-builder-title`} panelClassName="w-[min(560px,94vw)] rounded-lg bg-white">
+        <Dialog open onClose={() => setBuilder(null)} titleId={`${formId}-builder-title`} panelClassName="w-[min(560px,94vw)] rounded-xl bg-surface">
           <form
             ref={builderRef}
             tabIndex={-1}
             onSubmit={save}
             onInput={clearError}
             data-form-builder
-            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
+            className="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-xl bg-surface"
           >
-            <div className="flex items-center justify-between">
-              <h2 id={`${formId}-builder-title`} className="text-[15px] font-semibold text-neutral-900">
-                {builder.id === null ? "フォームを作成" : "フォームを編集"}
-              </h2>
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line-subtle px-5 py-4">
+              <div className="min-w-0">
+                <h2 id={`${formId}-builder-title`} className={dialogTitleClass}>
+                  {builder.id === null ? "フォームを作成" : "フォームを編集"}
+                </h2>
+                <p className={dialogSubtitleClass}>回答からプロジェクトにタスクを作成します。</p>
+              </div>
               <button
                 type="button"
                 aria-label="閉じる"
                 onClick={() => setBuilder(null)}
-                className="text-lg leading-none text-neutral-400 hover:text-neutral-700"
+                className={dialogCloseClass}
               >
                 ×
               </button>
             </div>
-            <label className="mt-4 block text-[12px] font-medium text-neutral-600">
-              フォーム名
-              <input
-                name="form-name"
-                required
-                aria-invalid={invalidField === "form-name" || undefined}
-                aria-describedby={invalidField === "form-name" ? `${formId}-builder-error` : undefined}
-                value={builder.name}
-                onChange={(event) => setBuilder({ ...builder, name: event.target.value })}
-                data-form-name
-                placeholder="例: 問い合わせフォーム"
-                className="mt-1 h-8 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
-              />
-            </label>
-            <label className="mt-3 block text-[12px] font-medium text-neutral-600">
-              説明
-              <textarea
-                value={builder.description}
-                onChange={(event) => setBuilder({ ...builder, description: event.target.value })}
-                data-form-description
-                rows={2}
-                className="mt-1 w-full rounded-md border border-neutral-200 px-2 py-1.5 text-[13px] outline-none focus:border-[#2c60b8]"
-              />
-            </label>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <label className="block">
+                <span className={fieldLabelClass}>フォーム名</span>
+                <input
+                  name="form-name"
+                  required
+                  aria-invalid={invalidField === "form-name" || undefined}
+                  aria-describedby={invalidField === "form-name" ? `${formId}-builder-error` : undefined}
+                  value={builder.name}
+                  onChange={(event) => setBuilder({ ...builder, name: event.target.value })}
+                  data-form-name
+                  placeholder="例: 問い合わせフォーム"
+                  className={`mt-1.5 ${fieldControlClass}`}
+                />
+              </label>
+              <label className="mt-3 block">
+                <span className={fieldLabelClass}>説明</span>
+                <textarea
+                  value={builder.description}
+                  onChange={(event) => setBuilder({ ...builder, description: event.target.value })}
+                  data-form-description
+                  rows={2}
+                  className={`mt-1.5 ${fieldTextareaClass}`}
+                />
+              </label>
 
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[13px] font-semibold text-neutral-800">入力項目</h3>
-                <button
-                  type="button"
-                  data-form-add-field
-                  onClick={() =>
-                    setBuilder({
-                      ...builder,
-                      fields: [
-                        ...builder.fields,
-                        {
-                          key: `field_${Date.now()}_${builder.fields.length}`,
-                          label: "",
-                          type: "text",
-                          required: false,
-                          options: [],
-                        },
-                      ],
-                    })
-                  }
-                  className="text-[12px] text-[#2c60b8] hover:underline"
-                >
-                  ＋ 項目を追加
-                </button>
-              </div>
-              {builder.fields.map((field, index) => (
-                <div key={`${field.key}-${index}`} data-form-field={index} className="rounded-md border border-neutral-200 p-2.5">
-                  <div className="flex items-center gap-2">
-                    <input
-                      name={`field-${index}-label`}
-                      required
-                      aria-label={`項目${index + 1}の名前`}
-                      aria-invalid={invalidField === `field-${index}-label` || undefined}
-                      aria-describedby={invalidField === `field-${index}-label` ? `${formId}-builder-error` : undefined}
-                      value={field.label}
-                      onChange={(event) => updateField(index, { label: event.target.value })}
-                      data-form-field-label={index}
-                      placeholder={index === 0 ? "タスク名" : "項目名"}
-                      className="h-7 min-w-0 flex-1 rounded border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
-                    />
-                    <select
-                      value={field.type}
-                      disabled={index === 0}
-                      onChange={(event) =>
-                        updateField(index, {
-                          type: event.target.value as FormFieldType,
-                          options: event.target.value === "select" ? field.options : [],
-                        })
-                      }
-                      data-form-field-type={index}
-                      className="h-7 rounded border border-neutral-200 bg-white px-1 text-[12px] disabled:bg-neutral-100"
-                    >
-                      {FORM_FIELD_TYPES.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                    {index > 0 && (
-                      <label className="flex items-center gap-1 text-[11px] text-neutral-600">
-                        <input
-                          type="checkbox"
-                          checked={field.required}
-                          onChange={(event) => updateField(index, { required: event.target.checked })}
-                          data-form-field-required={index}
-                          className="h-3 w-3 accent-[#2c60b8]"
-                        />
-                        必須
-                      </label>
-                    )}
-                    {index > 0 && (
-                      <button
-                        type="button"
-                        aria-label="項目を削除"
-                        data-form-field-remove={index}
-                        onClick={() =>
-                          setBuilder({
-                            ...builder,
-                            fields: builder.fields.filter((_, i) => i !== index),
+              <div className="mt-5">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className={formSectionTitleClass}>入力項目</h3>
+                  <button
+                    type="button"
+                    data-form-add-field
+                    onClick={() =>
+                      setBuilder({
+                        ...builder,
+                        fields: [
+                          ...builder.fields,
+                          {
+                            key: `field_${Date.now()}_${builder.fields.length}`,
+                            label: "",
+                            type: "text",
+                            required: false,
+                            options: [],
+                          },
+                        ],
+                      })
+                    }
+                    className={quietButtonClass}
+                  >
+                    ＋ 項目を追加
+                  </button>
+                </div>
+                <div className="mt-1">
+                  {builder.fields.map((field, index) => (
+                    <div key={`${field.key}-${index}`} data-form-field={index} className="flex flex-wrap items-center gap-2 border-t border-line-subtle py-2.5 first:border-t-0">
+                      <input
+                        name={`field-${index}-label`}
+                        required
+                        aria-label={`項目${index + 1}の名前`}
+                        aria-invalid={invalidField === `field-${index}-label` || undefined}
+                        aria-describedby={invalidField === `field-${index}-label` ? `${formId}-builder-error` : undefined}
+                        value={field.label}
+                        onChange={(event) => updateField(index, { label: event.target.value })}
+                        data-form-field-label={index}
+                        placeholder={index === 0 ? "タスク名" : "項目名"}
+                        className={`${fieldControlClass} min-w-[140px] flex-1`}
+                      />
+                      <SelectControl
+                        containerClassName="w-[136px] shrink-0"
+                        value={field.type}
+                        disabled={index === 0}
+                        onChange={(event) =>
+                          updateField(index, {
+                            type: event.target.value as FormFieldType,
+                            options: event.target.value === "select" ? field.options : [],
                           })
                         }
-                        className="text-neutral-400 hover:text-red-600"
+                        data-form-field-type={index}
                       >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                  {field.type === "select" && index > 0 && (
-                    <input
-                      value={field.options.join(", ")}
-                      onChange={(event) =>
-                        updateField(index, {
-                          options: event.target.value.split(",").map((option) => option.trim()).filter(Boolean),
-                        })
-                      }
-                      data-form-field-options={index}
-                      placeholder="選択肢をカンマ区切り（例: 高, 中, 低）"
-                      className="mt-2 h-7 w-full rounded border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#2c60b8]"
-                    />
-                  )}
+                        {FORM_FIELD_TYPES.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </SelectControl>
+                      {index > 0 && (
+                        <label className="flex h-8 items-center gap-1.5 text-[12px] text-secondary">
+                          <input
+                            type="checkbox"
+                            checked={field.required}
+                            onChange={(event) => updateField(index, { required: event.target.checked })}
+                            data-form-field-required={index}
+                            className={checkboxClass}
+                          />
+                          必須
+                        </label>
+                      )}
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          aria-label="項目を削除"
+                          data-form-field-remove={index}
+                          onClick={() =>
+                            setBuilder({
+                              ...builder,
+                              fields: builder.fields.filter((_, i) => i !== index),
+                            })
+                          }
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-[16px] leading-none text-muted hover:bg-hover hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                        >
+                          ×
+                        </button>
+                      )}
+                      {field.type === "select" && index > 0 && (
+                        <input
+                          value={field.options.join(", ")}
+                          onChange={(event) =>
+                            updateField(index, {
+                              options: event.target.value.split(",").map((option) => option.trim()).filter(Boolean),
+                            })
+                          }
+                          data-form-field-options={index}
+                          placeholder="選択肢をカンマ区切り（例: 高, 中, 低）"
+                          className={`${fieldControlClass} w-full`}
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              {error && <p id={`${formId}-builder-error`} role="alert" tabIndex={-1} data-form-error className="mt-3 text-[12px] text-danger">{error}</p>}
             </div>
-            {error && <p id={`${formId}-builder-error`} role="alert" tabIndex={-1} data-form-error className="mt-3 text-[12px] text-red-600">{error}</p>}
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="flex shrink-0 justify-end gap-2 border-t border-line-subtle px-5 py-3">
               <button
                 type="button"
                 onClick={() => setBuilder(null)}
-                className="rounded px-3 py-1.5 text-[13px] text-neutral-500 hover:bg-neutral-100"
+                className={secondaryButtonClass}
               >
                 キャンセル
               </button>
@@ -450,7 +476,7 @@ export default function FormsView({
                 type="submit"
                 data-form-save
                 disabled={busy}
-                className="rounded bg-[#2c60b8] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className={primaryButtonClass}
               >
                 保存
               </button>
@@ -460,36 +486,38 @@ export default function FormsView({
       )}
 
       {answering && (
-        <Dialog open onClose={() => setAnswering(null)} titleId={`${formId}-answer-heading`} panelClassName="w-[min(520px,94vw)] rounded-lg bg-white">
+        <Dialog open onClose={() => setAnswering(null)} titleId={`${formId}-answer-heading`} panelClassName="w-[min(520px,94vw)] rounded-xl bg-surface">
           <form
             ref={answerRef}
             tabIndex={-1}
             onSubmit={submit}
             onInput={clearError}
             data-form-answer-form
-            className="max-h-[80vh] w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
+            className="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-xl bg-surface"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 id={`${formId}-answer-heading`} className="text-[15px] font-semibold text-neutral-900">{answering.name}</h2>
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line-subtle px-5 py-4">
+              <div className="min-w-0">
+                <h2 id={`${formId}-answer-heading`} className={dialogTitleClass}>{answering.name}</h2>
                 {answering.description && (
-                  <p className="mt-0.5 text-[12px] text-neutral-500">{answering.description}</p>
+                  <p className={dialogSubtitleClass}>{answering.description}</p>
                 )}
               </div>
               <button
                 type="button"
                 aria-label="閉じる"
                 onClick={() => setAnswering(null)}
-                className="text-lg leading-none text-neutral-400 hover:text-neutral-700"
+                className={dialogCloseClass}
               >
                 ×
               </button>
             </div>
-            <div className="mt-4 space-y-3">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
               {answering.fields.map((field) => (
-                <label key={field.key} htmlFor={`${formId}-answer-field-${field.key}`} className="block text-[12px] font-medium text-neutral-600">
-                  {field.label}
-                  {field.required && <span className="ml-1 text-red-500">*</span>}
+                <label key={field.key} htmlFor={`${formId}-answer-field-${field.key}`} className="block">
+                  <span className={fieldLabelClass}>
+                    {field.label}
+                    {field.required && <span className="ml-1 text-danger">*</span>}
+                  </span>
                   {field.type === "textarea" ? (
                     <textarea
                       id={`${formId}-answer-field-${field.key}`}
@@ -501,10 +529,11 @@ export default function FormsView({
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
                       rows={3}
-                      className="mt-1 w-full rounded-md border border-neutral-200 px-2 py-1.5 text-[13px] outline-none focus:border-[#2c60b8]"
+                      className={`mt-1.5 ${fieldTextareaClass}`}
                     />
                   ) : field.type === "select" ? (
-                    <select
+                    <SelectControl
+                      containerClassName="mt-1.5"
                       id={`${formId}-answer-field-${field.key}`}
                       name={field.key}
                       required={field.required}
@@ -513,7 +542,6 @@ export default function FormsView({
                       value={answers[field.key] ?? ""}
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
-                      className="mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
                     >
                       <option value="">選択してください</option>
                       {field.options.map((option) => (
@@ -521,7 +549,7 @@ export default function FormsView({
                           {option}
                         </option>
                       ))}
-                    </select>
+                    </SelectControl>
                   ) : (
                     <input
                       type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"}
@@ -533,18 +561,18 @@ export default function FormsView({
                       value={answers[field.key] ?? ""}
                       onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })}
                       data-form-answer-input={field.key}
-                      className="mt-1 h-8 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+                      className={`mt-1.5 ${fieldControlClass}`}
                     />
                   )}
                 </label>
               ))}
+              {error && <p id={`${formId}-answer-error`} role="alert" tabIndex={-1} data-form-error className="text-[12px] text-danger">{error}</p>}
             </div>
-            {error && <p id={`${formId}-answer-error`} role="alert" tabIndex={-1} data-form-error className="mt-3 text-[12px] text-red-600">{error}</p>}
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="flex shrink-0 justify-end gap-2 border-t border-line-subtle px-5 py-3">
               <button
                 type="button"
                 onClick={() => setAnswering(null)}
-                className="rounded px-3 py-1.5 text-[13px] text-neutral-500 hover:bg-neutral-100"
+                className={secondaryButtonClass}
               >
                 キャンセル
               </button>
@@ -552,7 +580,7 @@ export default function FormsView({
                 type="submit"
                 data-form-submit
                 disabled={busy}
-                className="rounded bg-[#2c60b8] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+                className={primaryButtonClass}
               >
                 送信
               </button>

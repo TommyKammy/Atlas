@@ -43,8 +43,8 @@ export default function PlanningHeader({
 }) {
   return (
     <header className="space-y-3">
-      <nav aria-label="パンくず" className="text-[12px] text-neutral-500">
-        <Link href={backHref} className="text-[#24529c] hover:underline">
+      <nav aria-label="パンくず" className="text-[12px] text-muted">
+        <Link href={backHref} className="text-accent-text hover:underline">
           ポートフォリオ
         </Link>
         <span className="mx-1.5" aria-hidden>›</span>
@@ -57,7 +57,7 @@ export default function PlanningHeader({
         <div className="flex min-w-0 items-start gap-3">
           <span
             aria-hidden
-            className="mt-0.5 hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#edf3fd] text-[#2c60b8] sm:flex"
+            className="mt-0.5 hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-text sm:flex"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5">
               <path d="M3 7h18v13H3z" />
@@ -66,23 +66,23 @@ export default function PlanningHeader({
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-[22px] leading-tight font-semibold text-neutral-900">{portfolioName}</h1>
+              <h1 className="truncate text-[22px] leading-tight font-semibold text-text">{portfolioName}</h1>
               <Tag tone={restricted ? "warn" : canEdit ? "blue" : "neutral"}>
                 {restricted ? "閲覧制限" : canEdit ? "編集可能" : "閲覧のみ"}
               </Tag>
               {approvalEnabled && <Tag tone="blue">承認フロー有効</Tag>}
             </div>
-            <p className="mt-0.5 text-[12px] text-neutral-500">共有ポートフォリオの投資計画</p>
-            <Link href={backHref} className="mt-1 inline-block text-[11px] text-[#24529c] hover:underline">
+            <p className="mt-0.5 text-[12px] text-muted">共有ポートフォリオの投資計画</p>
+            <Link href={backHref} className="mt-1 inline-block text-[11px] text-accent-text hover:underline">
               ← 選択中のポートフォリオに戻る
             </Link>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {periods.length > 0 && (
-            <label className="flex items-center gap-2 text-[11px] font-medium text-neutral-600">
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2 py-1.5">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4 text-neutral-500" aria-hidden>
+            <label className="flex items-center gap-2 text-[11px] font-medium text-secondary">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4 text-muted" aria-hidden>
                   <path d="M3 6h18v15H3zM7 3v6M17 3v6M3 11h18" />
                 </svg>
                 <span className="sr-only">対象四半期</span>
@@ -92,7 +92,7 @@ export default function PlanningHeader({
                     const period = periods.find((entry) => entry.id === Number(event.target.value));
                     if (period) onPeriod(period);
                   }}
-                  className="bg-transparent text-[12px] font-semibold text-neutral-800 outline-none"
+                  className="bg-transparent text-[12px] font-semibold text-text outline-none"
                   aria-label="対象四半期"
                 >
                   {periods.map((period) => (
@@ -122,7 +122,7 @@ export default function PlanningHeader({
         </div>
       </div>
 
-      <nav aria-label="投資計画" className="flex gap-4 overflow-x-auto border-b border-neutral-200 text-[13px] whitespace-nowrap">
+      <nav aria-label="投資計画" className="flex gap-1 overflow-x-auto text-[13px] whitespace-nowrap">
         {VIEWS.map((item) => {
           const current = view === item.value;
           return (
@@ -131,10 +131,10 @@ export default function PlanningHeader({
               type="button"
               onClick={() => onView(item.value)}
               aria-current={current ? "page" : undefined}
-              className={`-mb-px border-b-2 px-0.5 py-2 font-medium ${
+              className={`rounded-md px-2.5 py-1.5 font-medium ${
                 current
-                  ? "border-[#2c60b8] text-[#24529c]"
-                  : "border-transparent text-neutral-600 hover:border-neutral-300 hover:text-neutral-900"
+                  ? "bg-surface-muted text-text"
+                  : "text-muted hover:bg-hover hover:text-text"
               }`}
             >
               {item.label}

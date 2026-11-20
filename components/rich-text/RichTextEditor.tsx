@@ -27,6 +27,7 @@ export default function RichTextEditor({
   minHeightClass = "min-h-[120px]",
   toolbar = true,
   borderless = false,
+  surfaceClassName = "bg-surface",
   onChange,
   onSubmit,
   onReady,
@@ -46,6 +47,9 @@ export default function RichTextEditor({
   minHeightClass?: string;
   toolbar?: boolean;
   borderless?: boolean;
+  /** Background used by the editor frame. Borderless embeds can pass
+   * "bg-transparent" so their own field provides the surface. */
+  surfaceClassName?: string;
   onChange?: (doc: RichTextDoc, text: string) => void;
   onSubmit?: () => void | Promise<void>;
   onReady?: (editor: Editor) => void;
@@ -133,20 +137,20 @@ export default function RichTextEditor({
 
   if (!editor) {
     return (
-      <div className={`rounded-lg border border-neutral-300 bg-white ${className}`}>
-        <div className={`${minHeightClass} animate-pulse bg-neutral-50`} />
+      <div className={`rounded-lg border border-field-line ${surfaceClassName} ${className}`}>
+        <div className={`${minHeightClass} animate-pulse bg-surface-subtle`} />
       </div>
     );
   }
 
   return (
     <div
-      className={`atlas-rich-editor rounded-lg bg-white transition-shadow ${
+      className={`atlas-rich-editor rounded-lg ${surfaceClassName} transition-shadow ${
         borderless
           ? "border-0"
           : focused
-            ? "border border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]"
-            : "border border-neutral-300"
+            ? "border border-accent shadow-[0_0_0_2px_rgba(64,117,207,0.12)]"
+            : "border border-field-line"
       } ${className}`}
       aria-busy={!ready}
       style={!ready ? { pointerEvents: "none" } : undefined}

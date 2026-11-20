@@ -34,14 +34,14 @@ export default function ListHiddenColumnsBar({
   if (coreKeys.length === 0 && hiddenFields.length === 0 && !showStatus) return null;
 
   return (
-    <div className="flex items-center gap-1 py-1 text-[11px] font-normal text-neutral-500">
+    <div className="flex items-center gap-1 py-1 text-[11px] font-normal text-muted">
       非表示:
       {coreKeys.map((key) => (
         <button
           key={key}
           onClick={() => onShowCore(key)}
           title={`${CORE_LABELS[key]}列を再表示`}
-          className="rounded-full border px-2 py-0.5 hover:bg-neutral-100 hover:text-neutral-600"
+          className="rounded-full border px-2 py-0.5 hover:bg-hover hover:text-secondary"
         >
           {CORE_LABELS[key]}を再表示
         </button>
@@ -50,7 +50,7 @@ export default function ListHiddenColumnsBar({
         <button
           onClick={onShowStatus}
           title={`${statusFieldName}列を再表示`}
-          className="rounded-full border px-2 py-0.5 hover:bg-neutral-100 hover:text-neutral-600"
+          className="rounded-full border px-2 py-0.5 hover:bg-hover hover:text-secondary"
         >
           {statusFieldName}を再表示
         </button>
@@ -60,7 +60,7 @@ export default function ListHiddenColumnsBar({
           key={field.id}
           onClick={() => onShowField(field.id)}
           title={`${field.name}列を再表示`}
-          className="rounded-full border px-2 py-0.5 hover:bg-neutral-100 hover:text-neutral-600"
+          className="rounded-full border px-2 py-0.5 hover:bg-hover hover:text-secondary"
         >
           {field.name}を再表示
         </button>

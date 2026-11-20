@@ -3,9 +3,17 @@
 import { useId, useRef } from "react";
 import type { DescriptorOption } from "@/lib/automation/descriptors";
 import { insertRuleVariable, type RuleVariable } from "@/lib/automation/no-code-inputs";
+import {
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  fieldTextareaClass,
+  SelectControl,
+} from "../ui/form-controls";
 import RuleVariableMenu from "./RuleVariableMenu";
 
-export const ruleInputClass = "h-9 w-full min-w-0 rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] outline-none focus:border-[#4573d2] focus:ring-2 focus:ring-[#4573d2]/15";
+/** Rule fields share the C workbench form control; min-w-0 keeps flex rows shrinkable. */
+export const ruleInputClass = `${fieldControlClass} min-w-0`;
 
 export default function RuleValueField({ label, value, onChange, type = "text", multiline, options, variables, placeholder, help, invalid, describedBy }: {
   label: string;
@@ -39,18 +47,18 @@ export default function RuleValueField({ label, value, onChange, type = "text", 
   }
   return (
     <div className="min-w-0">
-      <label htmlFor={id} className="mb-1 block text-[12px] font-medium text-neutral-700">{label}</label>
+      <label htmlFor={id} className={`${fieldLabelClass} mb-1`}>{label}</label>
       {selectOptions && !template ? (
-        <select id={id} aria-invalid={invalid || undefined} aria-describedby={describedBy} className={ruleInputClass} value={value === true ? "true" : value === false ? "false" : scalar}
+        <SelectControl id={id} aria-invalid={invalid || undefined} aria-describedby={describedBy} value={value === true ? "true" : value === false ? "false" : scalar}
           onChange={(event) => onChange(type === "boolean" && event.target.value !== "" ? event.target.value === "true" : selectOptions.find((option) => String(option.value) === event.target.value)?.value ?? event.target.value)}>
           <option value="">選択してください</option>
           {selectOptions.map((option) => <option key={String(option.value)} value={String(option.value)}>{option.label}</option>)}
           {scalar && !selectOptions.some((option) => String(option.value) === scalar) && <option value={scalar}>保存済みの値</option>}
-        </select>
+        </SelectControl>
       ) : multiline ? (
         <textarea id={id} aria-invalid={invalid || undefined} aria-describedby={describedBy} ref={(element) => { input.current = element; }} value={scalar} placeholder={placeholder}
           onSelect={(event) => { selection.current = { start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd }; }}
-          onChange={(event) => edit(event.target.value)} className={`${ruleInputClass} min-h-24 py-2`} />
+          onChange={(event) => edit(event.target.value)} className={`${fieldTextareaClass} min-h-24`} />
       ) : (
         <input id={id} aria-invalid={invalid || undefined} aria-describedby={describedBy} ref={(element) => { input.current = element; }} type={inputType} value={displayed} placeholder={placeholder}
           step={type === "number" ? "any" : undefined} autoComplete={type === "password" ? "new-password" : "off"}
@@ -64,8 +72,8 @@ export default function RuleValueField({ label, value, onChange, type = "text", 
             requestAnimationFrame(() => input.current?.focus());
           }} />
       )}
-      {help && <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">{help}</p>}
-      {value !== null && typeof value === "object" && <p className="mt-1 text-[11px] text-neutral-500">保存済みの値を保持しています。入力すると置き換わります。</p>}
+      {help && <p className={`mt-1 ${fieldHintClass}`}>{help}</p>}
+      {value !== null && typeof value === "object" && <p className={`mt-1 ${fieldHintClass}`}>保存済みの値を保持しています。入力すると置き換わります。</p>}
     </div>
   );
 }

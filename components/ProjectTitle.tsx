@@ -67,7 +67,7 @@ export default function ProjectTitle({
             setEditing(false);
           }
         }}
-        className="min-w-0 w-[min(60vw,520px)] rounded-md border border-blue-500 bg-white px-1 text-[18px] leading-7 font-medium outline-none sm:text-[20px]"
+        className="min-w-0 w-[min(60vw,520px)] max-w-full rounded-md border border-accent bg-field px-1 text-[18px] leading-7 font-medium outline-none md:max-w-[420px] sm:text-[20px]"
       />
     );
   }
@@ -75,10 +75,10 @@ export default function ProjectTitle({
   return (
     <h1
       data-project-title={name}
-      className={`min-w-0 truncate text-[18px] leading-7 font-medium sm:text-[20px] ${
-        canEdit ? "cursor-text rounded px-1 -mx-1 hover:bg-neutral-100" : ""
+      className={`min-w-0 truncate text-[18px] leading-7 font-medium md:max-w-[420px] sm:text-[20px] md:@max-[700px]:min-w-[3.75rem] ${
+        canEdit ? "cursor-text rounded px-1 -mx-1 hover:bg-hover" : ""
       }`}
-      title={canEdit ? "クリックでプロジェクト名を変更" : undefined}
+      title={name}
       onClick={() => {
         if (!canEdit) return;
         setValue(name);

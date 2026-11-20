@@ -97,8 +97,8 @@ function renderItem(item: SlashItem, selected: boolean): HTMLButtonElement {
   button.style.gap = "9px";
   button.style.border = "0";
   button.style.borderRadius = "7px";
-  button.style.background = selected ? "#eef4ff" : "transparent";
-  button.style.color = selected ? "#1d4f91" : "#333";
+  button.style.background = selected ? "var(--atlas-accent-soft)" : "transparent";
+  button.style.color = selected ? "var(--atlas-accent-text)" : "var(--atlas-text)";
   button.style.padding = "7px 8px";
   button.style.textAlign = "left";
   button.style.cursor = "pointer";
@@ -111,12 +111,12 @@ function renderItem(item: SlashItem, selected: boolean): HTMLButtonElement {
   icon.style.width = "26px";
   icon.style.height = "26px";
   icon.style.flex = "0 0 26px";
-  icon.style.border = "1px solid #e5e5e5";
+  icon.style.border = "1px solid var(--atlas-line)";
   icon.style.borderRadius = "6px";
-  icon.style.background = "#fff";
+  icon.style.background = "var(--atlas-surface)";
   icon.style.fontSize = "11px";
   icon.style.fontWeight = "600";
-  icon.style.color = "#555";
+  icon.style.color = "var(--atlas-text-secondary)";
 
   const copy = document.createElement("span");
   copy.style.display = "flex";
@@ -131,7 +131,7 @@ function renderItem(item: SlashItem, selected: boolean): HTMLButtonElement {
   description.textContent = item.description;
   description.style.fontSize = "10px";
   description.style.lineHeight = "14px";
-  description.style.color = selected ? "#416da8" : "#888";
+  description.style.color = selected ? "var(--atlas-accent-text)" : "var(--atlas-text-muted)";
   description.style.whiteSpace = "nowrap";
   description.style.overflow = "hidden";
   description.style.textOverflow = "ellipsis";
@@ -189,7 +189,7 @@ export const SlashCommand = Extension.create({
             header.style.padding = "4px 8px 5px";
             header.style.fontSize = "10px";
             header.style.fontWeight = "600";
-            header.style.color = "#999";
+            header.style.color = "var(--atlas-text-subtle)";
             element.appendChild(header);
 
             if (props.items.length === 0) {
@@ -197,7 +197,7 @@ export const SlashCommand = Extension.create({
               empty.textContent = "該当するコマンドがありません";
               empty.style.padding = "8px";
               empty.style.fontSize = "11px";
-              empty.style.color = "#999";
+              empty.style.color = "var(--atlas-text-subtle)";
               element.appendChild(empty);
               return;
             }
@@ -218,8 +218,8 @@ export const SlashCommand = Extension.create({
                 selected = index;
                 // Keep the hovered button mounted until pointerdown/click completes.
                 element?.querySelectorAll("button").forEach((button, buttonIndex) => {
-                  button.style.background = buttonIndex === selected ? "#eef4ff" : "transparent";
-                  button.style.color = buttonIndex === selected ? "#1d4f91" : "#333";
+                  button.style.background = buttonIndex === selected ? "var(--atlas-accent-soft)" : "transparent";
+                  button.style.color = buttonIndex === selected ? "var(--atlas-accent-text)" : "var(--atlas-text)";
                 });
               });
               element?.appendChild(button);
@@ -238,9 +238,9 @@ export const SlashCommand = Extension.create({
               element.style.maxHeight = "340px";
               element.style.overflowY = "auto";
               element.style.padding = "4px";
-              element.style.border = "1px solid #e5e5e5";
+              element.style.border = "1px solid var(--atlas-line)";
               element.style.borderRadius = "10px";
-              element.style.background = "#fff";
+              element.style.background = "var(--atlas-surface)";
               element.style.boxShadow = "0 10px 30px rgba(0,0,0,0.16)";
               unmount = nextProps.mount(element);
               draw();

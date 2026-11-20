@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import ProfileForm from "@/components/ProfileForm";
 import { getSecuritySettings } from "@/lib/admin-data";
 import { passwordPolicySummary } from "@/lib/password-policy";
+import { pageDescriptionClass, pageShellClass, pageTitleClass } from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -13,35 +14,41 @@ export default async function ProfilePage() {
   const me = access.mfaPending ? null : (await getUsers(access.user.id)).find((u) => u.id === access.user.id);
   if (!me && !access.mfaPending) {
     return (
-      <div className="p-8">
-        <p className="text-sm text-neutral-500">ユーザーがありません。</p>
+      <div className={pageShellClass}>
+        <div className="max-w-xl">
+          <h1 className={pageTitleClass}>プロフィール</h1>
+          <p className={pageDescriptionClass}>ユーザーがありません。</p>
+        </div>
       </div>
     );
   }
   const security = await getSecuritySettings();
   return (
-    <div className="max-w-xl p-6">
-      <h1 className="text-lg font-bold">プロフィール</h1>
-      <div id="settings">
-      <ProfileForm
-        userId={access.user.id}
-        initialName={me?.name ?? ""}
-        initialEmail={me?.email ?? ""}
-        initialTitle={me?.title ?? ""}
-        initialAvatarUrl={me?.avatar_url ?? ""}
-        isGuest={access.user.isGuest}
-        initialTotpEnabled={access.mfaEnabled}
-        mfaPending={access.mfaPending}
-        twoFactorPolicy={security.two_factor_policy}
-        passwordMinLength={security.password_min_length}
-        passwordPolicyText={passwordPolicySummary({
-          min_length: security.password_min_length,
-          require_upper: security.password_require_upper,
-          require_lower: security.password_require_lower,
-          require_number: security.password_require_number,
-          require_symbol: security.password_require_symbol,
-        })}
-      />
+    <div className={pageShellClass}>
+      <div className="max-w-xl">
+        <h1 className={pageTitleClass}>プロフィール</h1>
+        <p className={pageDescriptionClass}>アカウント情報とサインインの設定を管理します。</p>
+        <div id="settings">
+          <ProfileForm
+            userId={access.user.id}
+            initialName={me?.name ?? ""}
+            initialEmail={me?.email ?? ""}
+            initialTitle={me?.title ?? ""}
+            initialAvatarUrl={me?.avatar_url ?? ""}
+            isGuest={access.user.isGuest}
+            initialTotpEnabled={access.mfaEnabled}
+            mfaPending={access.mfaPending}
+            twoFactorPolicy={security.two_factor_policy}
+            passwordMinLength={security.password_min_length}
+            passwordPolicyText={passwordPolicySummary({
+              min_length: security.password_min_length,
+              require_upper: security.password_require_upper,
+              require_lower: security.password_require_lower,
+              require_number: security.password_require_number,
+              require_symbol: security.password_require_symbol,
+            })}
+          />
+        </div>
       </div>
     </div>
   );

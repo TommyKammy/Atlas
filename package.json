@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsx --test lib/*.test.ts lib/services/*.test.ts lib/planning/*.test.ts",
+    "test": "tsx --test lib/*.test.ts lib/services/*.test.ts lib/planning/*.test.ts scripts/check-color-literals.test.mjs scripts/check-token-variants.test.mjs",
     "test:p0": "bash tests/p0-regressions.sh",
     "test:p1": "bash tests/p0-regressions.sh p1",
     "test:integrity": "bash tests/p0-regressions.sh integrity",
@@ -16,7 +16,12 @@
     "bench:timeline": "tsx scripts/bench-timeline.ts",
     "bench:browser": "node scripts/bench-browser-timeline.mjs",
     "test:browser": "playwright test",
-    "backfill:rich-text": "tsx scripts/backfill-rich-text.ts"
+    "backfill:rich-text": "tsx scripts/backfill-rich-text.ts",
+    "ui:capture": "node scripts/ui-visual-capture.mjs",
+    "ui:compare": "node scripts/ui-visual-compare.mjs",
+    "ui:contrast": "node scripts/ui-contrast.mjs",
+    "check:colors": "node scripts/check-color-literals.mjs",
+    "check:token-variants": "node scripts/check-token-variants.mjs"
   },
   "dependencies": {
     "@node-saml/node-saml": "^5.2.0",

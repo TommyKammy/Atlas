@@ -180,12 +180,13 @@ for (const role of ["guest", "member", "admin"] as const) {
     await page.goto("/admin");
     if (admin) {
       const target = page.getByText(accounts.super.email, { exact: true }).locator("..");
-      for (const name of ["編集", "PW", "無効化", "削除"]) {
+      const targetName = `${accounts.super.role}-${run}`;
+      for (const name of [`${targetName} を編集`, `${targetName} のパスワードを再設定`, `${targetName} を無効化`, `${targetName} を削除`]) {
         await expect(target.getByRole("button", { name, exact: true })).toBeDisabled();
       }
       await expect(target.getByRole("combobox")).toBeDisabled();
       const member = page.getByText(accounts.member.email, { exact: true }).locator("..");
-      await expect(member.getByRole("button", { name: "編集", exact: true })).toBeEnabled();
+      await expect(member.getByRole("button", { name: `${accounts.member.role}-${run} を編集`, exact: true })).toBeEnabled();
       await expect(member.locator('option[value="super_admin"]')).toBeDisabled();
       await page.locator('[data-admin-tab="security"]').click();
       await expect(page.locator(`[data-totp-user="${accounts.super.id}"] button`)).toBeDisabled();
@@ -218,6 +219,63 @@ test("saved projects and directory follow live membership", async ({ page, reque
   expect(await (await page.request.get("/api/users")).text()).not.toContain(accounts.admin.email);
   const response = await page.goto("/portfolio");
   expect(await response!.text()).not.toContain("Revoked-" + run);
+});
+
+test("portfolio entry points follow portfolio visibility", async ({ page, request }) => {
+  await login(request, seedAdmin.email, seedAdmin.password);
+  const created = await request.post("/api/portfolios", { data: { name: "Nav-" + run } });
+  await status(created, 201);
+  const portfolioId = (await created.json()).id as number;
+  const sidebar = page.locator("[data-sidebar]");
+  const sidebarToggle = page.locator("[data-sidebar-toggle]");
+  const sidebarNavigation = page.locator("[data-sidebar-navigation]");
+  const sidebarLink = sidebarNavigation.locator('a[href="/portfolio"]');
+  const rail = page.locator("[data-sidebar-rail]");
+  const railLink = rail.locator('a[href="/portfolio"]:not([data-sidebar-flyout-link])');
+  const railFlyoutLink = page.locator('[data-sidebar-flyout="/portfolio"] a[href="/portfolio"]');
+  const expectPortfolioEntryPoints = async (count: number) => {
+    await expect(sidebar).toHaveAttribute("data-sidebar-collapsed", "false");
+    await expect(sidebarNavigation).toBeVisible();
+    await expect(sidebarLink).toHaveCount(count);
+    await expect(rail).toHaveCount(0);
+
+    await sidebarToggle.click();
+    try {
+      await expect(sidebar).toHaveAttribute("data-sidebar-collapsed", "true");
+      await expect(sidebarNavigation).toHaveCount(0);
+      await expect(rail).toBeVisible();
+      await expect(railLink).toHaveCount(count);
+      await expect(railFlyoutLink).toHaveCount(count);
+      if (count > 0) {
+        await railLink.hover();
+        await expect(railFlyoutLink).toBeVisible();
+      }
+    } finally {
+      await sidebarToggle.click();
+    }
+    await expect(sidebar).toHaveAttribute("data-sidebar-collapsed", "false");
+    await expect(sidebarNavigation).toBeVisible();
+    await expect(sidebarLink).toHaveCount(count);
+    await expect(rail).toHaveCount(0);
+  };
+  try {
+    await login(page.request, accounts.member.email);
+    await page.goto("/");
+    await expectPortfolioEntryPoints(0);
+
+    await login(page.request, accounts.admin.email);
+    await page.goto("/");
+    await expectPortfolioEntryPoints(1);
+
+    await status(await request.post(`/api/portfolios/${portfolioId}/planning/viewers`, { data: { userId: accounts.member.id } }), 200);
+    await login(page.request, accounts.member.email);
+    await page.goto("/");
+    await expectPortfolioEntryPoints(1);
+  } finally {
+    await login(request, seedAdmin.email, seedAdmin.password);
+    await status(await request.delete(`/api/portfolios/${portfolioId}/planning/viewers/${accounts.member.id}`), 200);
+    await status(await request.delete(`/api/portfolios/${portfolioId}`), 200);
+  }
 });
 
 test("admin can reset a member password and revoked sessions cannot return", async ({ page, request }) => {
@@ -289,7 +347,7 @@ test("super administrator can recover a protected account", async ({ page }) => 
   await login(page.request, seedAdmin.email, seedAdmin.password);
   await page.goto("/admin");
   const user = page.getByText(accounts.super.email, { exact: true }).locator("..");
-  await expect(user.getByRole("button", { name: "編集", exact: true })).toBeEnabled();
+  await expect(user.getByRole("button", { name: `${accounts.super.role}-${run} を編集`, exact: true })).toBeEnabled();
   await page.locator('[data-admin-tab="security"]').click();
   await page.locator('[data-security-tab="two-factor"]').click();
   const row = page.locator(`[data-totp-user="${accounts.super.id}"]`);

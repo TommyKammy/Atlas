@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import { useState } from "react";
 import type { HomePortfolioProject } from "@/lib/home-widgets";
 import ProjectIcon from "../../ProjectIcon";
@@ -25,7 +26,7 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
 
   return (
     <>
-      <div className="flex items-center gap-1 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex items-center gap-1 border-b border-line-subtle px-4 py-1.5">
         <button
           type="button"
           onClick={() => setTab("saved")}
@@ -33,8 +34,8 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
           aria-pressed={active === "saved"}
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             active === "saved"
-              ? "bg-[#eff4fd] font-medium text-[#2c60b8]"
-              : "text-neutral-500 hover:bg-neutral-100"
+              ? "bg-accent-soft font-medium text-accent-text"
+              : "text-muted hover:bg-hover"
           }`}
         >
           マイポートフォリオ ({savedCount})
@@ -46,44 +47,44 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
           aria-pressed={active === "all"}
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             active === "all"
-              ? "bg-[#eff4fd] font-medium text-[#2c60b8]"
-              : "text-neutral-500 hover:bg-neutral-100"
+              ? "bg-accent-soft font-medium text-accent-text"
+              : "text-muted hover:bg-hover"
           }`}
         >
           すべて ({projects.length})
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 border-b border-neutral-100 px-4 py-2 text-center">
+      <div className="grid grid-cols-3 gap-2 border-b border-line-subtle px-4 py-2 text-center">
         <div>
-          <div className="text-[16px] font-semibold text-neutral-800">{scoped.length}</div>
-          <div className="text-[10px] text-neutral-400">プロジェクト</div>
+          <div className="text-[16px] font-semibold text-text">{scoped.length}</div>
+          <div className="text-[10px] text-subtle">プロジェクト</div>
         </div>
         <div>
-          <div className="text-[16px] font-semibold text-neutral-800">{pct}%</div>
-          <div className="text-[10px] text-neutral-400">完了率</div>
+          <div className="text-[16px] font-semibold text-text">{pct}%</div>
+          <div className="text-[10px] text-subtle">完了率</div>
         </div>
         <div>
           <div
             className={`text-[16px] font-semibold ${
-              totals.overdue > 0 ? "text-red-600" : "text-neutral-800"
+              totals.overdue > 0 ? "text-danger" : "text-text"
             }`}
           >
             {totals.overdue}
           </div>
-          <div className="text-[10px] text-neutral-400">期限超過</div>
+          <div className="text-[10px] text-subtle">期限超過</div>
         </div>
       </div>
 
       <div className="min-h-[170px] flex-1 p-2">
         {scoped.length === 0 ? (
           <div className="flex h-full min-h-[150px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-            <p className="text-[12px] text-neutral-400">
+            <p className="text-[12px] text-muted">
               {active === "saved"
                 ? "マイポートフォリオにプロジェクトがありません。"
                 : "表示するプロジェクトがありません。"}
             </p>
-            <Link href="/portfolio" className="text-[12px] text-[#2c60b8] hover:underline">
+            <Link href="/portfolio" className="text-[12px] text-accent-text hover:underline">
               ポートフォリオを開く
             </Link>
           </div>
@@ -95,7 +96,7 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
                 key={project.id}
                 href={`/projects/${project.id}?view=list`}
                 data-home-portfolio-row={project.id}
-                className="grid grid-cols-[minmax(0,1fr)_110px_58px] items-center gap-2 rounded-md px-2 py-2 hover:bg-neutral-50"
+                className="grid grid-cols-[minmax(0,1fr)_110px_58px] items-center gap-2 rounded-md px-2 py-2 hover:bg-hover"
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <ProjectIcon
@@ -106,26 +107,26 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
                     className="h-6 w-6 text-[10px]"
                   />
                   <span className="min-w-0">
-                    <span className="block truncate text-[13px] font-medium text-neutral-800">
+                    <span className="block truncate text-[13px] font-medium text-text">
                       {project.name}
                     </span>
-                    <span className="block truncate text-[10px] text-neutral-400">
+                    <span className="block truncate text-[10px] text-subtle">
                       {project.members}人
                       {project.min_due ? ` ・ ${project.min_due}〜${project.max_due ?? ""}` : ""}
                     </span>
                   </span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded bg-neutral-200">
-                    <span className="block h-full bg-green-500" style={{ width: `${progress}%` }} />
+                  <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded bg-surface-strong">
+                    <span className={`block h-full ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${progress}%` }} />
                   </span>
-                  <span className="shrink-0 text-[10px] text-neutral-500">
+                  <span className="shrink-0 text-[10px] text-muted">
                     {project.done}/{project.total}
                   </span>
                 </span>
                 <span
                   className={`text-right text-[11px] ${
-                    project.overdue > 0 ? "font-semibold text-red-600" : "text-neutral-400"
+                    project.overdue > 0 ? "font-semibold text-danger" : "text-subtle"
                   }`}
                 >
                   {project.overdue > 0 ? `${project.overdue}件遅延` : "順調"}
@@ -136,8 +137,8 @@ export default function PortfolioWidget({ projects }: { projects: HomePortfolioP
         )}
       </div>
 
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/portfolio" className="text-[12px] text-neutral-500 hover:text-neutral-800">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right">
+        <Link href="/portfolio" className="text-[12px] text-muted hover:text-text">
           ポートフォリオをすべて表示
         </Link>
       </div>

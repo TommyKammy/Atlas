@@ -79,7 +79,7 @@ export function AutomationGlyph() {
 
 export function Chevron() {
   return (
-    <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0 text-subtle" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="m4.5 2.5 3.5 3.5-3.5 3.5" />
     </svg>
   );

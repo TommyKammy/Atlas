@@ -79,7 +79,7 @@ export default function OwnerPicker({
 
   return (
     <fieldset className="min-w-0" data-owner-picker>
-      <legend className="block text-[12px] font-medium text-neutral-600">起案責任者</legend>
+      <legend className="block text-[12px] font-medium text-secondary">起案責任者</legend>
 
       <div aria-live="polite">
         {value.type === "member" ? (
@@ -87,36 +87,36 @@ export default function OwnerPicker({
             data-owner-selected
             className={`mt-1 rounded-md border px-3 py-2 ${
               selectedIsInactive
-                ? "border-amber-300 bg-amber-50/70"
-                : "border-emerald-300 bg-emerald-50/70"
+                ? "border-warning-line bg-warning-soft/70"
+                : "border-success-line bg-success-soft/70"
             }`}
           >
             <p
               data-owner-selected-name
-              className="min-w-0 text-[13px] font-semibold break-words text-neutral-900"
+              className="min-w-0 text-[13px] font-semibold break-words text-text"
             >
               {value.name}
             </p>
             {selectedCandidate?.email ? (
-              <p className="mt-0.5 text-[11px] break-all text-neutral-600">{selectedCandidate.email}</p>
+              <p className="mt-0.5 text-[11px] break-all text-secondary">{selectedCandidate.email}</p>
             ) : selectedIsInactive ? (
-              <p className="mt-0.5 text-[11px] text-amber-800">無効なアカウント・このまま保持</p>
+              <p className="mt-0.5 text-[11px] text-warning">無効なアカウント・このまま保持</p>
             ) : (
-              <p className="mt-0.5 text-[11px] text-neutral-500">メールアドレス未登録</p>
+              <p className="mt-0.5 text-[11px] text-muted">メールアドレス未登録</p>
             )}
           </div>
         ) : value.type === "legacy" ? (
           <div
             data-owner-legacy
-            className="mt-1 rounded-md border border-amber-300 bg-amber-50/70 px-3 py-2"
+            className="mt-1 rounded-md border border-warning-line bg-warning-soft/70 px-3 py-2"
           >
             <p
               data-owner-legacy-name
-              className="min-w-0 text-[13px] font-semibold break-words text-neutral-900"
+              className="min-w-0 text-[13px] font-semibold break-words text-text"
             >
               {value.name}
             </p>
-            <p className="mt-0.5 text-[11px] text-amber-900">旧入力・このまま保持</p>
+            <p className="mt-0.5 text-[11px] text-warning">旧入力・このまま保持</p>
           </div>
         ) : null}
       </div>
@@ -125,7 +125,7 @@ export default function OwnerPicker({
         <div className="min-w-[220px] flex-1">
           <label
             htmlFor={inputId}
-            className={hasSelection ? "block text-[11px] font-medium text-neutral-600" : "sr-only"}
+            className={hasSelection ? "block text-[11px] font-medium text-secondary" : "sr-only"}
           >
             {searchLabel}
           </label>
@@ -188,10 +188,10 @@ export default function OwnerPicker({
                   setOpen(false);
                 }
               }}
-              className="h-9 w-full rounded-md border border-neutral-300 bg-white px-2.5 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
+              className="h-9 w-full rounded-md border border-field-line bg-field px-2.5 text-[13px] text-text outline-none focus:border-accent"
             />
             {open && (
-              <div className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-md border border-neutral-300 bg-white shadow-lg">
+              <div className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-md border border-line-strong bg-surface shadow-lg">
                 <div
                   id={listboxId}
                   ref={listboxRef}
@@ -200,7 +200,7 @@ export default function OwnerPicker({
                   className="max-h-56 overflow-y-auto py-1"
                 >
                   {filtered.length === 0 ? (
-                    <p className="px-3 py-2 text-[12px] text-neutral-500">
+                    <p className="px-3 py-2 text-[12px] text-muted">
                       該当するメンバーがいません。
                     </p>
                   ) : (
@@ -220,21 +220,21 @@ export default function OwnerPicker({
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => choose(candidate)}
                           className={`flex w-full items-start gap-2 px-3 py-2 text-left ${
-                            isSelected ? "bg-blue-50 hover:bg-blue-100" : "bg-white hover:bg-neutral-100"
-                          } ${isActive ? "ring-2 ring-[#2c60b8] ring-inset" : ""}`}
+                            isSelected ? "bg-accent-soft hover:bg-accent-soft" : "bg-surface hover:bg-hover"
+                          } ${isActive ? "ring-2 ring-accent ring-inset" : ""}`}
                         >
                           <span className="min-w-0 flex-1">
                             <span className="flex min-w-0 flex-wrap items-center gap-1">
-                              <span className="truncate text-[13px] font-medium text-neutral-900">
+                              <span className="truncate text-[13px] font-medium text-text">
                                 {candidate.name}
                               </span>
                               {isSelected && (
-                                <span aria-hidden="true" className="text-[11px] font-semibold text-[#24529c]">
+                                <span aria-hidden="true" className="text-[11px] font-semibold text-accent-text">
                                   ✓
                                 </span>
                               )}
                             </span>
-                            <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
+                            <span className="mt-0.5 block truncate text-[11px] text-muted">
                               {email || "メールアドレス未登録"}
                             </span>
                           </span>
@@ -252,7 +252,7 @@ export default function OwnerPicker({
           data-owner-self
           onClick={chooseSelf}
           disabled={!selfCandidate}
-          className="inline-flex min-h-9 items-center justify-center rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-9 items-center justify-center rounded-md border border-line-strong bg-surface px-3 py-1.5 text-[13px] font-medium text-secondary hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           自分を設定
         </button>

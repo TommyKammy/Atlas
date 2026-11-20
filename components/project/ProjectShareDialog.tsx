@@ -31,16 +31,16 @@ export default function ProjectShareDialog({
 
   const url = `${origin}/projects/${projectId}?view=list`;
   const primary =
-    "flex h-8 items-center rounded-md bg-[#4075cf] px-3 text-sm font-medium text-white hover:bg-[#3567b8] disabled:opacity-60";
+    "flex h-8 items-center rounded-md bg-accent px-3 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60";
   const secondary =
-    "flex h-8 items-center rounded-md border bg-white px-3 text-sm text-neutral-700 hover:bg-neutral-50";
+    "flex h-8 items-center rounded-md border bg-surface px-3 text-sm text-secondary hover:bg-hover";
   return (
     <Dialog
       open
       onClose={onClose}
       title={title ?? `${projectName}を共有`}
-      backdropClassName="backdrop:bg-black/25"
-      panelClassName="max-h-[90vh] w-[min(560px,90vw)] overflow-y-auto rounded-lg bg-white text-sm shadow-xl"
+      backdropClassName="backdrop:bg-scrim"
+      panelClassName="max-h-[90vh] w-[min(560px,90vw)] overflow-y-auto rounded-lg bg-surface text-sm shadow-xl"
     >
       <div className="p-5" data-project-share-dialog>
         <div className="flex items-center justify-between">
@@ -49,19 +49,19 @@ export default function ProjectShareDialog({
             type="button"
             onClick={onClose}
             aria-label="閉じる"
-            className="text-xl leading-none text-neutral-400 hover:text-neutral-700"
+            className="text-xl leading-none text-subtle hover:text-secondary"
           >
             ×
           </button>
         </div>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-muted">
           {subtitle ? `${projectName} ・ ${subtitle}` : projectName}
         </p>
         <div className="mt-4 flex items-center gap-2">
           <input
             readOnly
             value={url}
-            className="h-8 min-w-0 flex-1 rounded-md border bg-neutral-50 px-2 text-xs text-neutral-600"
+            className="h-8 min-w-0 flex-1 rounded-md border bg-surface-subtle px-2 text-xs text-secondary"
           />
           <button
             type="button"

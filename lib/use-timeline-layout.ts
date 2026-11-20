@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { Section } from "./data";
 import type { TaskTimelineRow } from "./timeline-task-payload";
 import { estimateTimelineLabelDays, assignTimelineLanes, timelineInterval } from "./timeline-lanes";
-import { usesTimelineExternalLabel } from "./timeline-marker";
+import { usesTimelineExternalLabel, timelineExternalLabelShowsState } from "./timeline-marker";
 import { dayOrNull } from "./task-dates";
 import { taskSectionId } from "./task-section";
 import { TIMELINE_AXIS_HEIGHT, TIMELINE_ROW_PITCH } from "./timeline-metrics";
@@ -113,8 +113,9 @@ export function useTimelineLayout({
           const barDays = interval.end - interval.start + 1;
           const barPx = barDays * dayWidth;
           const externalLabel = usesTimelineExternalLabel(task, barPx, dayWidth);
+          const labelExtra = externalLabel && timelineExternalLabelShowsState(task, barPx) ? 20 : 0;
           const visualEnd = externalLabel
-            ? interval.end + estimateTimelineLabelDays(task.name, dayWidth)
+            ? interval.end + estimateTimelineLabelDays(task.name, dayWidth, labelExtra)
             : undefined;
           return {
             id: task.id,

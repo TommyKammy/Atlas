@@ -48,7 +48,7 @@ const ALL_QUICK: QuickFilterKey[] = ["open", "done", "mine", "week", "nextweek"]
 const quickFilterCls =
   "flex h-7 items-center rounded-full border px-2.5 text-[12px] transition-colors";
 const rowSelect =
-  "h-8 min-w-0 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]";
+  "h-8 min-w-0 flex-1 rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent";
 
 function initialFields(
   filters: ListFilters,
@@ -164,12 +164,12 @@ export default function ListFilterMenu({
       onClick={onClick}
       className={`${quickFilterCls} ${
         active
-          ? "border-[#2c60b8] bg-[#eff4fd] text-[#2c60b8]"
-          : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
+          ? "border-accent bg-accent-soft text-accent-text"
+          : "border-line bg-surface text-secondary hover:bg-hover"
       }`}
     >
       {label}
-      {extra && <span className="ml-1 text-[11px] text-neutral-400">{extra}</span>}
+      {extra && <span className="ml-1 text-[11px] text-subtle">{extra}</span>}
     </button>
   );
 
@@ -265,13 +265,13 @@ export default function ListFilterMenu({
     }
     return (
       <div key={key} data-list-filter-row={key} className="flex items-center gap-2">
-        <span className="w-28 shrink-0 truncate text-[12px] text-neutral-600">{labelFor(key)}</span>
+        <span className="w-28 shrink-0 truncate text-[12px] text-secondary">{labelFor(key)}</span>
         {control}
         <button
           type="button"
           aria-label={`${labelFor(key)}フィルターを削除`}
           onClick={() => removeField(key)}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-hover hover:text-secondary"
         >
           ×
         </button>
@@ -282,20 +282,20 @@ export default function ListFilterMenu({
   return (
     <div data-list-filter-menu className="max-h-[70vh] overflow-y-auto p-3">
       <div className="flex items-center justify-between">
-        <span className="text-[13px] font-semibold text-neutral-800">
+        <span className="text-[13px] font-semibold text-text">
           フィルター{activeCount > 0 ? `: ${activeCount}` : ""}
         </span>
         <button
           type="button"
           onClick={onClear}
           disabled={activeCount === 0}
-          className="text-[12px] text-[#2c60b8] hover:underline disabled:text-neutral-300 disabled:no-underline"
+          className="text-[12px] text-accent-text hover:underline disabled:text-subtle disabled:no-underline"
         >
           クリア
         </button>
       </div>
 
-      <div className="mt-3 text-[11px] font-medium text-neutral-500">クイックフィルター</div>
+      <div className="mt-3 text-[11px] font-medium text-muted">クイックフィルター</div>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {quickFilters.includes("open") &&
           quick(
@@ -323,26 +323,26 @@ export default function ListFilterMenu({
       </div>
 
       {fields.length > 0 && (
-        <div className="mt-4 space-y-2 border-t border-neutral-100 pt-3">
+        <div className="mt-4 space-y-2 border-t border-line-subtle pt-3">
           {fields.map(row)}
         </div>
       )}
 
-      <div className="relative mt-3 border-t border-neutral-100 pt-2">
+      <div className="relative mt-3 border-t border-line-subtle pt-2">
         <button
           type="button"
           data-list-filter-add
           aria-expanded={addOpen}
           onClick={() => setAddOpen((open) => !open)}
-          className="flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-neutral-600 hover:bg-neutral-100"
+          className="flex h-7 items-center gap-1 rounded px-1.5 text-[12px] text-secondary hover:bg-hover"
         >
           <span className="text-[14px] leading-none">＋</span>
           フィルターを追加
         </button>
         {addOpen && (
-          <div data-list-filter-add-menu className="mt-1 rounded-md border border-neutral-200 bg-white py-1">
+          <div data-list-filter-add-menu className="mt-1 rounded-md border border-line bg-surface py-1">
             {available.length === 0 && (
-              <div className="px-3 py-1 text-[12px] text-neutral-400">追加できるフィルターはありません</div>
+              <div className="px-3 py-1 text-[12px] text-subtle">追加できるフィルターはありません</div>
             )}
             {available.map((key) => (
               <button
@@ -350,7 +350,7 @@ export default function ListFilterMenu({
                 type="button"
                 data-list-filter-add-option={key}
                 onClick={() => addField(key)}
-                className="flex h-8 w-full items-center px-3 text-left text-[13px] text-neutral-700 hover:bg-neutral-100"
+                className="flex h-8 w-full items-center px-3 text-left text-[13px] text-secondary hover:bg-hover"
               >
                 {labelFor(key)}
               </button>

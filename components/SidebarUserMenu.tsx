@@ -30,7 +30,7 @@ function MenuIcon({ name }: { name: string }) {
     strokeWidth: 1.4,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    className: "h-4 w-4 shrink-0 text-neutral-500",
+    className: "h-4 w-4 shrink-0 text-muted",
   };
   if (name === "clock")
     return (
@@ -151,7 +151,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
     }
   };
 
-  const item = "flex h-9 w-full items-center gap-2 rounded px-3 text-left text-[13px] text-neutral-800 hover:bg-neutral-100";
+  const item = "flex h-9 w-full items-center gap-2 rounded px-3 text-left text-[13px] text-text hover:bg-hover";
   const oooLabel = oooFrom ? `不在: ${oooFrom}${oooTo ? ` 〜 ${oooTo}` : ""}` : "";
 
   return (
@@ -164,7 +164,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
         onClick={openMenu}
         aria-label="ユーザー設定"
         title="ユーザー設定"
-        className="flex h-7 w-7 items-center justify-center rounded-full hover:ring-2 hover:ring-white/20"
+        className="flex h-7 w-7 items-center justify-center rounded-full hover:ring-2 hover:ring-sidebar-muted"
       >
         <UserAvatar name={user.name} url={user.avatar_url} className="h-7 w-7" />
       </button>
@@ -177,22 +177,22 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
             ref={menuRef}
             role="menu"
             data-user-menu
-            className="fixed z-[130] w-64 rounded-lg border border-neutral-200 bg-white py-1 text-neutral-900 shadow-xl"
+            className="fixed z-[130] w-64 rounded-lg border border-line bg-surface py-1 text-text shadow-xl"
             style={{ left: pos.left, bottom: pos.bottom }}
           >
-            <div className="flex items-center gap-2 border-b border-neutral-100 px-3 py-2.5">
+            <div className="flex items-center gap-2 border-b border-line-subtle px-3 py-2.5">
               <UserAvatar name={user.name} url={user.avatar_url} className="h-10 w-10" textClassName="text-sm" />
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
                   <span className="truncate text-sm font-semibold">{user.name}</span>
                   {user.is_guest && (
-                    <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-800">ゲスト</span>
+                    <span className="rounded bg-warning-soft px-1 text-[10px] text-warning">ゲスト</span>
                   )}
                 </div>
-                <div className="truncate text-[11px] text-neutral-500">{user.email ?? ""}</div>
-                {user.title && <div className="truncate text-[11px] text-neutral-500">{user.title}</div>}
+                <div className="truncate text-[11px] text-muted">{user.email ?? ""}</div>
+                {user.title && <div className="truncate text-[11px] text-muted">{user.title}</div>}
                 {oooLabel && (
-                  <div data-user-ooo-status className="mt-0.5 truncate text-[11px] text-blue-700">
+                  <div data-user-ooo-status className="mt-0.5 truncate text-[11px] text-accent-text">
                     {oooLabel}
                   </div>
                 )}
@@ -228,7 +228,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                   <MenuIcon name="user-plus" />
                   メンバーを招待
                 </button>
-                <div className="my-1 border-t border-neutral-100" />
+                <div className="my-1 border-t border-line-subtle" />
               </>
             )}
             <Link href="/profile" onClick={() => setOpen(false)} data-user-menu-profile className={item}>
@@ -239,7 +239,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
               <MenuIcon name="gear" />
               設定
             </Link>
-            <div className="my-1 border-t border-neutral-100" />
+            <div className="my-1 border-t border-line-subtle" />
             <button
               type="button"
               data-user-switch-account
@@ -261,48 +261,48 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="fixed inset-0 z-[150] flex items-center justify-center bg-black/40 p-4"
+            className="fixed inset-0 z-[150] flex items-center justify-center bg-scrim p-4"
             onClick={() => setOooOpen(false)}
           >
             <div
               data-user-ooo-dialog
-              className="w-[26rem] max-w-[92vw] rounded-lg bg-white p-5 text-neutral-900 shadow-xl"
+              className="w-[26rem] max-w-[92vw] rounded-lg bg-surface p-5 text-text shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className="font-bold">不在に設定</h2>
-              <p className="mt-1 text-[12px] text-neutral-500">
+              <p className="mt-1 text-[12px] text-muted">
                 不在の期間を設定します。期間中は担当者メニューに表示されます。
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <label className="text-[12px] text-neutral-600">
+                <label className="text-[12px] text-secondary">
                   開始日
                   <input
                     type="date"
                     data-user-ooo-from
                     value={oooFrom}
                     onChange={(e) => setOooFrom(e.target.value)}
-                    className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+                    className="mt-1 w-full rounded border border-field-line px-2 py-1 text-sm"
                   />
                 </label>
-                <label className="text-[12px] text-neutral-600">
+                <label className="text-[12px] text-secondary">
                   終了日
                   <input
                     type="date"
                     data-user-ooo-to
                     value={oooTo}
                     onChange={(e) => setOooTo(e.target.value)}
-                    className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+                    className="mt-1 w-full rounded border border-field-line px-2 py-1 text-sm"
                   />
                 </label>
               </div>
-              <label className="mt-2 block text-[12px] text-neutral-600">
+              <label className="mt-2 block text-[12px] text-secondary">
                 メモ
                 <textarea
                   data-user-ooo-note
                   value={oooNote}
                   onChange={(e) => setOooNote(e.target.value)}
                   rows={2}
-                  className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+                  className="mt-1 w-full rounded border border-field-line px-2 py-1 text-sm"
                   placeholder="例: 休暇のため返信が遅れます"
                 />
               </label>
@@ -310,7 +310,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                 <button
                   type="button"
                   onClick={() => setOooOpen(false)}
-                  className="rounded px-3 py-1 text-neutral-600 hover:bg-neutral-100"
+                  className="rounded px-3 py-1 text-secondary hover:bg-hover"
                 >
                   キャンセル
                 </button>
@@ -319,7 +319,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                   data-user-ooo-save
                   disabled={oooSaving || !oooFrom}
                   onClick={() => void saveOoo()}
-                  className="rounded bg-blue-600 px-4 py-1 text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded bg-accent px-4 py-1 text-on-accent hover:bg-accent-hover disabled:opacity-50"
                 >
                   保存
                 </button>

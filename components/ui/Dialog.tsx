@@ -9,8 +9,8 @@ export default function Dialog({
   title,
   titleId,
   children,
-  panelClassName = "w-[min(560px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl",
-  backdropClassName = "backdrop:bg-black/25",
+  panelClassName = "w-[min(560px,94vw)] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl",
+  backdropClassName = "backdrop:bg-scrim",
 }: {
   open: boolean;
   onClose: () => void;

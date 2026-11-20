@@ -45,8 +45,8 @@ export default function CustomizeHomePanel({
   return (
     <div className="p-5">
       <section>
-        <h3 className="text-[14px] font-semibold text-neutral-900">このプロジェクト</h3>
-        <p className="mt-0.5 text-[12px] text-neutral-500">このプロジェクトの機能を表示、編集する</p>
+        <h3 className="text-[14px] font-semibold text-text">このプロジェクト</h3>
+        <p className="mt-0.5 text-[12px] text-muted">このプロジェクトの機能を表示、編集する</p>
         <div className="mt-3 space-y-2">
           <CustomizeRow
             icon={
@@ -75,8 +75,8 @@ export default function CustomizeHomePanel({
       </section>
 
       <section className="mt-6">
-        <h3 className="text-[14px] font-semibold text-neutral-900">ワークフロー機能</h3>
-        <p className="mt-0.5 text-[12px] text-neutral-500">タスクの入力項目と作成テンプレートを管理する</p>
+        <h3 className="text-[14px] font-semibold text-text">ワークフロー機能</h3>
+        <p className="mt-0.5 text-[12px] text-muted">タスクの入力項目と作成テンプレートを管理する</p>
         <div className="mt-3 space-y-2">
           <CustomizeRow
             icon={<FieldGlyph />}
@@ -122,7 +122,7 @@ export default function CustomizeHomePanel({
         </div>
       </section>
 
-      <p className="mt-6 rounded-md bg-neutral-50 px-3 py-2 text-[11px] leading-4 text-neutral-500">
+      <p className="mt-6 rounded-md bg-surface-subtle px-3 py-2 text-[11px] leading-4 text-muted">
         カスタマイズはこのプロジェクトに保存され、リスト・ボード・タイムラインなどの各ビューに反映されます。
       </p>
     </div>

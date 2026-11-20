@@ -1,4 +1,4 @@
-const COLORS = ["bg-violet-400", "bg-amber-400", "bg-emerald-500", "bg-sky-500", "bg-rose-400"];
+import { AVATAR_COLORS } from "@/lib/data-colors";
 
 export default function UserAvatar({
   name,
@@ -19,7 +19,7 @@ export default function UserAvatar({
         src={url}
         alt={label}
         title={label}
-        className={`${className} shrink-0 rounded-full border border-black/10 object-cover`}
+        className={`${className} shrink-0 rounded-full border border-data-line object-cover`}
       />
     );
   }
@@ -27,7 +27,7 @@ export default function UserAvatar({
   return (
     <span
       title={label}
-      className={`${className} ${textClassName} flex shrink-0 items-center justify-center rounded-full font-bold text-neutral-900 ${COLORS[code % COLORS.length]}`}
+      className={`${className} ${textClassName} flex shrink-0 items-center justify-center rounded-full font-bold ${AVATAR_COLORS[code % AVATAR_COLORS.length]}`}
     >
       {label.slice(0, 1)}
     </span>

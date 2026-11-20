@@ -126,7 +126,7 @@ export default function ApprovalSettingsDialog({
       }
     >
       <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-4">
-        <p className="text-[12px] leading-5 text-neutral-600">
+        <p className="text-[12px] leading-5 text-secondary">
           承認を有効にすると、比較画面でA案・B案を直接採用せず、選んだ案と理由を投資提案として提出します。提出時点の両案は固定され、最終承認者が決定します。レビュー担当を設定した提案は、その担当者の確認後に最終決裁へ進みます。
         </p>
 
@@ -137,8 +137,8 @@ export default function ApprovalSettingsDialog({
           </Notice>
         )}
 
-        <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-          <label className="flex min-h-7 items-start gap-2 text-[13px] font-medium text-neutral-800">
+        <div className="rounded-md border border-line bg-surface-subtle px-3 py-2.5">
+          <label className="flex min-h-7 items-start gap-2 text-[13px] font-medium text-text">
             <input
               id={enabledId}
               type="checkbox"
@@ -147,11 +147,11 @@ export default function ApprovalSettingsDialog({
               onChange={(event) => setEnabled(event.target.checked)}
               disabled={busy || locked}
               aria-describedby={helpId}
-              className="mt-0.5 h-4 w-4 rounded border-neutral-300"
+              className="mt-0.5 h-4 w-4 rounded border-line-strong"
             />
             <span>承認フローを有効にする</span>
           </label>
-          <p id={helpId} className="mt-1 pl-6 text-[11px] text-neutral-500">
+          <p id={helpId} className="mt-1 pl-6 text-[11px] text-muted">
             無効の場合は、これまでどおり比較画面から直接採用できます。
           </p>
         </div>
@@ -160,7 +160,7 @@ export default function ApprovalSettingsDialog({
           <div className="space-y-3">
             <label className={labelClass}>
               最終承認者
-              <span className="ml-1 text-red-700" aria-hidden>
+              <span className="ml-1 text-danger" aria-hidden>
                 *
               </span>
               <select

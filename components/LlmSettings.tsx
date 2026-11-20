@@ -1,10 +1,18 @@
 "use client";
 import { useEffect, useState } from "react";
+import {
+  checkboxClass,
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  formSectionTitleClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  SelectControl,
+} from "./ui/form-controls";
 type Config = { id?: string; revision?: number; name: string; provider: "openai" | "compatible"; base_url: string; model: string; enabled: boolean; external_allowed: boolean; project_ids: number[]; max_input_chars: number; max_output_tokens: number; timeout_seconds: number; daily_limit: number; key_configured?: boolean };
 type Settings = { connections: Config[]; projects: { id: number; name: string }[]; key_ready: boolean; local_origins: string[] };
 const empty: Config = { name: "", provider: "compatible", base_url: "", model: "", enabled: false, external_allowed: false, project_ids: [], max_input_chars: 20000, max_output_tokens: 2048, timeout_seconds: 120, daily_limit: 50 };
-const button = "rounded border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50";
-const field = "mt-1 block w-full rounded border border-neutral-300 px-3 py-2 text-sm";
 async function api(path: string, body?: unknown) {
   const response = await fetch(path, body === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const value = await response.json(); if (!response.ok) throw new Error(value.error ?? "操作できませんでした"); return value;
@@ -29,35 +37,63 @@ export default function LlmSettings() {
     } catch (e) { setError(e instanceof Error ? e.message : "操作できませんでした"); }
     finally { setBusy(false); }
   };
-  return <div className="space-y-5" data-llm-settings>
-    <div><h2 className="text-lg font-semibold">AI接続</h2><p className="mt-1 text-sm text-neutral-600">プロジェクトで使用する接続・モデルを管理者が指定します。利用者はモデルを変更できません。</p></div>
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    {notice && <p role="status" className="whitespace-pre-wrap text-sm text-neutral-700">{notice}</p>}
+  return <div className="space-y-4" data-llm-settings>
+    <div>
+      <h2 className="text-[16px] font-semibold leading-6 text-text">AI接続</h2>
+      <p className="mt-1 text-[13px] leading-5 text-muted">プロジェクトで使用する接続・モデルを管理者が指定します。利用者はモデルを変更できません。</p>
+    </div>
+    {error && <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-[12px] text-danger">{error}</p>}
+    {notice && <p role="status" className="whitespace-pre-wrap text-[12px] text-secondary">{notice}</p>}
     {data && <>
-      {!data.key_ready && <p role="alert" className="text-sm text-amber-800">サーバーに LLM_ENCRYPTION_KEY が必要です。設定手順は docs/llm.md を確認してください。</p>}
-      <div className="flex flex-wrap gap-2">{data.connections.map(c => <button key={c.id} disabled={busy} className={button} aria-pressed={form.id === c.id} onClick={() => pick(c)}>{c.name} · {c.enabled ? "有効" : "無効"}</button>)}<button disabled={busy} className={button} onClick={() => pick({ ...empty })}>接続を追加</button></div>
+      {!data.key_ready && <p role="alert" className={`rounded-md bg-warning-soft px-3 py-2 text-[12px] text-warning`}>サーバーに LLM_ENCRYPTION_KEY が必要です。設定手順は docs/llm.md を確認してください。</p>}
+      <div className="flex flex-wrap gap-2">{data.connections.map(c => <button key={c.id} disabled={busy} className={`${secondaryButtonClass} aria-pressed:border-accent-line aria-pressed:bg-accent-soft aria-pressed:text-accent-text`} aria-pressed={form.id === c.id} onClick={() => pick(c)}>{c.name} · {c.enabled ? "有効" : "無効"}</button>)}<button disabled={busy} className={secondaryButtonClass} onClick={() => pick({ ...empty })}>接続を追加</button></div>
       <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
         <legend className="sr-only">接続設定</legend>
-        <button className={button} onClick={() => pick({ ...empty, name: "Local Qwen / MTPLX", base_url: data.local_origins.some(v => v.includes("host.docker.internal:8002")) ? "http://host.docker.internal:8002/v1" : "http://127.0.0.1:8002/v1", model: "mtplx-flash-next-optimized-speed" })}>MTPLXの設定例を入力</button>
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="text-sm">接続名<input className={field} value={form.name} maxLength={100} onChange={e => update({ name: e.target.value })} /></label>
-          <label className="text-sm">接続方式<select className={field} value={form.provider} onChange={e => { update({ provider: e.target.value as Config["provider"], base_url: e.target.value === "openai" ? "https://api.openai.com/v1" : "", enabled: false }); setKey(""); }}><option value="compatible">OpenAI互換（MTPLXなど）</option><option value="openai">OpenAI公式</option></select></label>
+        <button type="button" className={secondaryButtonClass} onClick={() => pick({ ...empty, name: "Local Qwen / MTPLX", base_url: data.local_origins.some(v => v.includes("host.docker.internal:8002")) ? "http://host.docker.internal:8002/v1" : "http://127.0.0.1:8002/v1", model: "mtplx-flash-next-optimized-speed" })}>MTPLXの設定例を入力</button>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="block">
+            <span className={fieldLabelClass}>接続名</span>
+            <input className={`mt-1.5 ${fieldControlClass}`} value={form.name} maxLength={100} onChange={e => update({ name: e.target.value })} />
+          </label>
+          <label className="block">
+            <span className={fieldLabelClass}>接続方式</span>
+            <SelectControl containerClassName="mt-1.5" value={form.provider} onChange={e => { update({ provider: e.target.value as Config["provider"], base_url: e.target.value === "openai" ? "https://api.openai.com/v1" : "", enabled: false }); setKey(""); }}>
+              <option value="compatible">OpenAI互換（MTPLXなど）</option>
+              <option value="openai">OpenAI公式</option>
+            </SelectControl>
+          </label>
         </div>
-        <label className="block text-sm">Base URL<input className={field} value={form.base_url} disabled={form.provider === "openai"} onChange={e => update({ base_url: e.target.value })} placeholder="http://host.docker.internal:8002/v1" /></label>
-        <p className="text-xs leading-relaxed text-neutral-600">Docker内からホストのMTPLXへは host.docker.internal:8002 を使います。ローカル接続はサーバーの許可リストへの登録が必要です。登録済み：{data.local_origins.join(", ") || "なし"}</p>
-        <label className="block text-sm">モデルID<input className={field} list="llm-models" value={form.model} maxLength={200} onChange={e => update({ model: e.target.value })} /><datalist id="llm-models">{models.map(m => <option key={m} value={m} />)}</datalist></label>
-        <label className="block text-sm">APIキー {form.key_configured ? "（設定済み・空欄で維持）" : "（未設定・MTPLXでは省略可）"}<input type="password" autoComplete="new-password" className={field} value={key} onChange={e => setKey(e.target.value)} /></label>
-        <label className="flex gap-2 text-sm"><input type="checkbox" checked={clear} onChange={e => setClear(e.target.checked)} />保存済みのAPIキーを削除する</label>
-        <p className="text-xs text-neutral-600">接続方式やURLを変更すると、保存済みのAPIキーは削除されます。</p>
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">{([
+        <label className="block">
+          <span className={fieldLabelClass}>Base URL</span>
+          <input className={`mt-1.5 ${fieldControlClass}`} value={form.base_url} disabled={form.provider === "openai"} onChange={e => update({ base_url: e.target.value })} placeholder="http://host.docker.internal:8002/v1" />
+        </label>
+        <p className={fieldHintClass}>Docker内からホストのMTPLXへは host.docker.internal:8002 を使います。ローカル接続はサーバーの許可リストへの登録が必要です。登録済み：{data.local_origins.join(", ") || "なし"}</p>
+        <label className="block">
+          <span className={fieldLabelClass}>モデルID</span>
+          <input className={`mt-1.5 ${fieldControlClass}`} list="llm-models" value={form.model} maxLength={200} onChange={e => update({ model: e.target.value })} />
+          <datalist id="llm-models">{models.map(m => <option key={m} value={m} />)}</datalist>
+        </label>
+        <label className="block">
+          <span className={fieldLabelClass}>APIキー {form.key_configured ? "（設定済み・空欄で維持）" : "（未設定・MTPLXでは省略可）"}</span>
+          <input type="password" autoComplete="new-password" className={`mt-1.5 ${fieldControlClass}`} value={key} onChange={e => setKey(e.target.value)} />
+        </label>
+        <label className="flex items-center gap-2 text-[13px] text-secondary">
+          <input type="checkbox" className={checkboxClass} checked={clear} onChange={e => setClear(e.target.checked)} />
+          保存済みのAPIキーを削除する
+        </label>
+        <p className={fieldHintClass}>接続方式やURLを変更すると、保存済みのAPIキーは削除されます。</p>
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{([
           ["max_input_chars", "入力上限（文字）", 100, 100000], ["max_output_tokens", "出力上限（トークン）", 128, 8192], ["timeout_seconds", "待機時間（秒）", 5, 180], ["daily_limit", "利用者ごとの24時間上限", 1, 1000],
-        ] as const).map(([k, label, min, max]) => <label key={k} className="text-sm">{label}<input type="number" className={field} min={min} max={max} value={form[k]} onChange={e => update({ [k]: Number(e.target.value) })} /></label>)}</div>
-        <fieldset className="rounded border border-neutral-200 p-3"><legend className="px-1 text-sm">この接続・モデルを使用するプロジェクト</legend><div className="max-h-48 space-y-2 overflow-auto">{data.projects.map(p => <label key={p.id} className="flex gap-2 text-sm"><input type="checkbox" checked={form.project_ids.includes(p.id)} onChange={e => update({ project_ids: e.target.checked ? [...form.project_ids, p.id] : form.project_ids.filter(id => id !== p.id) })} />{p.name}</label>)}</div></fieldset>
-        <p className="text-xs leading-relaxed text-neutral-600">有効な接続を保存すると、選択したプロジェクトはこの接続・モデルを使用します。別の接続が指定されている場合は切り替わります。</p>
-        <label className="flex gap-2 text-sm"><input type="checkbox" checked={form.external_allowed} onChange={e => update({ external_allowed: e.target.checked })} />外部サービスへのノート送信を許可する（ローカル接続には不要）</label>
-        <label className="flex gap-2 text-sm"><input type="checkbox" checked={form.enabled} onChange={e => update({ enabled: e.target.checked })} />この接続を有効にする</label>
-        <p className="text-xs leading-relaxed text-neutral-600">接続テストは固定の挨拶文を送信し、モデル一覧と応答を確認します。外部サービスでは料金が発生する場合があります。OpenAI公式には保存無効で送信しますが、サービス側の保持ポリシーは別途適用されます。</p>
-        <div className="flex gap-2"><button disabled={!data.key_ready} className={button} onClick={() => void save()}>設定を保存</button><button disabled={!data.key_ready} className={button} onClick={() => void save(true)}>保存して接続テスト</button></div>
+        ] as const).map(([k, label, min, max]) => <label key={k} className="block"><span className={fieldLabelClass}>{label}</span><input type="number" className={`mt-1.5 tabular-nums ${fieldControlClass}`} min={min} max={max} value={form[k]} onChange={e => update({ [k]: Number(e.target.value) })} /></label>)}</div>
+        <fieldset className="rounded-lg bg-surface-subtle p-3">
+          <legend className={`px-1 ${formSectionTitleClass}`}>この接続・モデルを使用するプロジェクト</legend>
+          <div className="mt-2 max-h-48 space-y-2 overflow-auto">{data.projects.map(p => <label key={p.id} className="flex items-center gap-2 text-[13px] text-secondary"><input type="checkbox" className={checkboxClass} checked={form.project_ids.includes(p.id)} onChange={e => update({ project_ids: e.target.checked ? [...form.project_ids, p.id] : form.project_ids.filter(id => id !== p.id) })} />{p.name}</label>)}</div>
+        </fieldset>
+        <p className={fieldHintClass}>有効な接続を保存すると、選択したプロジェクトはこの接続・モデルを使用します。別の接続が指定されている場合は切り替わります。</p>
+        <label className="flex items-start gap-2 text-[13px] text-secondary"><input type="checkbox" className={`mt-0.5 ${checkboxClass}`} checked={form.external_allowed} onChange={e => update({ external_allowed: e.target.checked })} />外部サービスへのノート送信を許可する（ローカル接続には不要）</label>
+        <label className="flex items-start gap-2 text-[13px] text-secondary"><input type="checkbox" className={`mt-0.5 ${checkboxClass}`} checked={form.enabled} onChange={e => update({ enabled: e.target.checked })} />この接続を有効にする</label>
+        <p className={fieldHintClass}>接続テストは固定の挨拶文を送信し、モデル一覧と応答を確認します。外部サービスでは料金が発生する場合があります。OpenAI公式には保存無効で送信しますが、サービス側の保持ポリシーは別途適用されます。</p>
+        <div className="flex flex-wrap gap-2"><button type="button" disabled={!data.key_ready} className={primaryButtonClass} onClick={() => void save()}>設定を保存</button><button type="button" disabled={!data.key_ready} className={secondaryButtonClass} onClick={() => void save(true)}>保存して接続テスト</button></div>
       </fieldset>
     </>}
   </div>;

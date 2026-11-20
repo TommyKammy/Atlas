@@ -212,7 +212,7 @@ export default function InitiativeDialog({
               type="button"
               onClick={() => void remove()}
               disabled={busy}
-              className="mr-auto min-h-9 rounded-md px-2 text-[12px] font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+              className="mr-auto min-h-9 rounded-md px-2 text-[12px] font-medium text-danger hover:bg-danger-soft disabled:opacity-50"
             >
               この四半期から外す
             </button>
@@ -227,7 +227,7 @@ export default function InitiativeDialog({
       }
     >
       <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-4">
-        <p className="text-[11px] text-neutral-500">{periodLabel(period.year, period.quarter)} の案件と見積もり</p>
+        <p className="text-[11px] text-muted">{periodLabel(period.year, period.quarter)} の案件と見積もり</p>
         <label className={labelClass}>
           案件名
           <input
@@ -305,13 +305,13 @@ export default function InitiativeDialog({
             </select>
           </label>
         </div>
-        <p className="text-[11px] text-neutral-500">
+        <p className="text-[11px] text-muted">
           紐付けできるのは、この共有ポートフォリオに所属し、あなたが閲覧できるプロジェクトだけです。プロジェクトやタスク、開始日、担当者は複製しません。
         </p>
 
         <section>
-          <h3 className="text-[13px] font-semibold text-neutral-900">職種別・月別の需要</h3>
-          <p className="mt-1 text-[11px] text-neutral-500">
+          <h3 className="text-[13px] font-semibold text-text">職種別・月別の需要</h3>
+          <p className="mt-1 text-[11px] text-muted">
             人日は0.1刻み。空欄は未見積もりで、0は需要なしとして明示的に保存します。費用の空欄も未設定として扱います。
           </p>
           {roles.length === 0 ? (
@@ -322,18 +322,18 @@ export default function InitiativeDialog({
             <PlanningTable
               label="職種別・月別の需要入力"
               caption="職種別・月別の需要入力"
-              className="mt-2 rounded-lg border border-neutral-200"
+              className="mt-2 rounded-lg border border-line"
             >
-              <thead className="bg-neutral-50">
+              <thead className="bg-surface-subtle">
                 <tr>
-                  <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">
+                  <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">
                     職種 / 人日
                   </th>
                   {PLANNING_MONTHS.map((monthIndex) => (
                     <th
                       key={monthIndex}
                       scope="col"
-                      className="border-b border-neutral-200 px-2 py-2 text-left text-[11px] font-semibold text-neutral-600"
+                      className="border-b border-line px-2 py-2 text-left text-[11px] font-semibold text-secondary"
                     >
                       {monthLabelFromStart(period.startMonth, monthIndex)}
                     </th>
@@ -342,8 +342,8 @@ export default function InitiativeDialog({
               </thead>
               <tbody>
                 {roles.map((role) => (
-                  <tr key={role.id} className="border-b border-neutral-100 last:border-b-0">
-                    <th scope="row" className="bg-white px-3 py-2 text-left text-[12px] font-medium text-neutral-800">
+                  <tr key={role.id} className="border-b border-line-subtle last:border-b-0">
+                    <th scope="row" className="bg-surface px-3 py-2 text-left text-[12px] font-medium text-text">
                       {role.name}
                     </th>
                     {PLANNING_MONTHS.map((monthIndex) => (

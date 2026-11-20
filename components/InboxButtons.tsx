@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { pingInbox } from "./InboxLive";
+import { secondaryButtonClass, smallQuietButtonClass } from "./ui/form-controls";
 
 export function MarkReadButton({
   commentId,
@@ -24,7 +25,7 @@ export function MarkReadButton({
     pingInbox();
   };
   return (
-    <button onClick={mark} className="shrink-0 rounded border px-2 py-0.5 text-xs hover:bg-neutral-100">
+    <button onClick={mark} className={smallQuietButtonClass}>
       既読にする
     </button>
   );
@@ -46,10 +47,7 @@ export function MarkAllReadButton({ workspaceId }: { workspaceId: number }) {
     }
   };
   return (
-    <button
-      onClick={mark}
-      className="rounded bg-neutral-800 px-3 py-1 text-sm text-white hover:bg-black"
-    >
+    <button onClick={mark} className={`${secondaryButtonClass} whitespace-nowrap`}>
       {done ? "既読にしました" : "すべて既読にする"}
     </button>
   );

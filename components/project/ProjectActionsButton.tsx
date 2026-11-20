@@ -186,8 +186,8 @@ export default function ProjectActionsButton({
         aria-expanded={menuPos !== null}
         title="プロジェクトのアクション"
         onClick={() => (menuPos ? setMenuPos(null) : openMenu())}
-        className={`-ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2c60b8] ${
-          menuPos ? "bg-neutral-100 text-neutral-700" : ""
+        className={`-ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition hover:bg-hover hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          menuPos ? "bg-surface-muted text-secondary" : "text-muted"
         }`}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">

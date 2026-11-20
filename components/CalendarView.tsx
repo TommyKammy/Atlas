@@ -21,6 +21,7 @@ import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { taskSectionId } from "@/lib/task-section";
 import { useCalendarFilters, type CalendarFilter } from "@/lib/use-calendar-filters";
 import { useCalendarInteractions } from "@/lib/use-calendar-interactions";
+import { listRowState } from "@/lib/list-row-state";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import CalendarDayCell from "./calendar/CalendarDayCell";
@@ -30,25 +31,19 @@ import CalendarLegend from "./calendar/CalendarLegend";
 import CalendarMultiDayBar from "./calendar/CalendarMultiDayBar";
 import CalendarSingleTask from "./calendar/CalendarSingleTask";
 import CalendarToolbar from "./calendar/CalendarToolbar";
+import { CALENDAR_BAR_COLORS } from "@/lib/data-colors";
 import TaskAvatar from "./task/TaskAvatar";
 import TaskCompletionToggle from "./task/TaskCompletionToggle";
 import TaskMetaBadges from "./task/TaskMetaBadges";
 
 // Asana calendar metrics measured 2026-11-06 (read-only, 1920×839):
 // compact weekend columns 44px, weekday columns share the rest; week header
-// 70px, range bar 36px / 4px radius / 1px #eaeaea, day row 36px.
+// 70px, range bar 36px / 4px radius / 1px line, day row 36px.
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const WEEKDAYS_ONLY = [1, 2, 3, 4, 5];
 const MONTH_SINGLE_LIMIT = 3;
-const UNSET_COLOR = "border-neutral-300 bg-neutral-100 text-neutral-600";
-const BAR_COLORS = [
-  "border-[#c7d8f5] bg-[#e8f0fe] text-[#1f3a6e]",
-  "border-[#c9e7d2] bg-[#e6f6ec] text-[#1f5134]",
-  "border-[#f3d9b1] bg-[#fdf2e2] text-[#6b4a1d]",
-  "border-[#e6cdea] bg-[#f6e8f8] text-[#5b2a63]",
-  "border-[#f1c9c9] bg-[#fdecec] text-[#6b2727]",
-  "border-[#c9e3e7] bg-[#e8f6f8] text-[#1f4e56]",
-];
+const UNSET_COLOR = "border-line-strong bg-surface-muted text-secondary";
+const BAR_COLORS = CALENDAR_BAR_COLORS;
 
 function monthLabel(month: string): string {
   const [y, m] = month.split("-").map(Number);
@@ -486,21 +481,21 @@ function CalendarViewContent({
   const title = monthLabel(`${anchorY}-${String(anchorM).padStart(2, "0")}`);
 
   const completion = (task: TaskRow, size = "h-4 w-4") => (
-    <TaskCompletionToggle completed={task.completed} milestone={task.is_milestone} onToggle={() => toggleComplete(task)} size={size}
+    <TaskCompletionToggle completed={task.completed} milestone={task.is_milestone} state={listRowState(task, today)}
+      onToggle={() => toggleComplete(task)} size={size}
       {...(task.approval ? { "aria-label": "承認の詳細を開く", title: "承認の詳細を開く" } : {})} />
   );
 
   const taskFace = (task: TaskRow, bar: boolean) => {
-    const colored = colorBy !== "none";
-    const color = colored ? colorFor(colorKeyFor(task)) : "";
-    const base = bar
-      ? `flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden border px-1.5 text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:brightness-[0.98] ${
-          colored ? color : "border-neutral-200 bg-white text-neutral-900"
-        }`
-      : `flex h-9 cursor-pointer items-center gap-1.5 overflow-hidden rounded px-1 text-[13px] ${
-          colored ? `border ${color}` : "text-neutral-900 hover:bg-neutral-100"
-        }`;
-    return `${base} ${task.completed ? "opacity-70" : ""}`;
+    const rowState = listRowState(task, today);
+    const tone = rowState === "overdue"
+      ? "border-danger-line bg-surface text-text"
+      : task.completed
+        ? "border-line bg-surface-subtle text-muted"
+        : "border-line bg-surface text-text";
+    return `flex h-[26px] min-w-0 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md border px-1.5 text-[12px] ${
+      bar ? "mx-1 my-[5px]" : "mb-0.5"
+    } ${tone}`;
   };
 
   const taskAvatars = (task: TaskRow) => (
@@ -508,7 +503,7 @@ function CalendarViewContent({
   );
 
   const taskMeta = (task: TaskRow) => (
-    <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] text-neutral-400">
+    <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] text-muted">
       <TaskMetaBadges
         subtaskCount={task.subtask_count}
         commentCount={task.comment_count}
@@ -516,6 +511,15 @@ function CalendarViewContent({
       />
     </span>
   );
+
+  const colorDot = (task: TaskRow) =>
+    colorBy !== "none" ? (
+      <span
+        data-calendar-color-dot
+        aria-hidden="true"
+        className={`h-2 w-2 shrink-0 rounded-[2px] border ${colorFor(colorKeyFor(task))}`}
+      />
+    ) : null;
 
   return (
     <div
@@ -614,13 +618,20 @@ function CalendarViewContent({
                 </div>
                 {lanes.length > 0 && (
                   <div
-                    className="relative border-b border-neutral-200"
+                    className="relative border-b border-line-subtle"
                     style={{ minHeight: lanes.length * 36 + 8 }}
                   >
                     <div className="pointer-events-none absolute inset-0 grid" style={{ gridTemplateColumns: cols }}>
-                      {visibleWeekDays.map((day) => (
-                        <div key={day} className="border-r border-neutral-200" />
-                      ))}
+                      {visibleWeekDays.map((day) => {
+                        const weekday = new Date(day * 86_400_000).getUTCDay();
+                        const weekend = weekday === 0 || weekday === 6;
+                        return (
+                          <div
+                            key={day}
+                            className={`border-r border-line-subtle ${weekend ? "bg-surface-subtle" : ""}`}
+                          />
+                        );
+                      })}
                     </div>
                     <div
                       data-calendar-multi-grid
@@ -643,6 +654,8 @@ function CalendarViewContent({
                               continuesLeft={bar.continuesLeft}
                               continuesRight={bar.continuesRight}
                               colorKey={colorKeyFor(t)}
+                              colorDot={colorDot(t)}
+                              overdue={listRowState(t, today) === "overdue"}
                               taskFaceClass={taskFace(t, true)}
                               completion={completion(t)}
                               avatars={taskAvatars(t)}
@@ -718,6 +731,8 @@ function CalendarViewContent({
                             key={task.id}
                             task={task}
                             colorKey={colorKeyFor(task)}
+                            colorDot={colorDot(task)}
+                            overdue={listRowState(task, today) === "overdue"}
                             taskFaceClass={taskFace(task, false)}
                             completion={completion(task)}
                             avatars={taskAvatars(task)}

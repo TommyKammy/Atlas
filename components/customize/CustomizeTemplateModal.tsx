@@ -42,7 +42,7 @@ export default function CustomizeTemplateModal({
     <CustomizeModal title={draft.id === null ? "テンプレートを追加" : "テンプレートを編集"} onClose={onClose}>
       <form onSubmit={onSubmit} className="p-5">
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             テンプレート名
             <input
               data-customize-template-name
@@ -52,7 +52,7 @@ export default function CustomizeTemplateModal({
               className={fieldTypeClass}
             />
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             タスク名
             <input
               data-customize-template-title
@@ -62,7 +62,7 @@ export default function CustomizeTemplateModal({
               className={fieldTypeClass}
             />
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             担当者
             <select
               value={draft.assignee}
@@ -77,7 +77,7 @@ export default function CustomizeTemplateModal({
               ))}
             </select>
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             期日（今日からの日数）
             <input
               value={draft.offset}
@@ -87,7 +87,7 @@ export default function CustomizeTemplateModal({
               className={fieldTypeClass}
             />
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700">
+          <label className="block text-[12px] font-medium text-secondary">
             セクション
             <select
               value={draft.section}
@@ -102,16 +102,16 @@ export default function CustomizeTemplateModal({
               ))}
             </select>
           </label>
-          <label className="block text-[12px] font-medium text-neutral-700 sm:col-span-2">
+          <label className="block text-[12px] font-medium text-secondary sm:col-span-2">
             サブタスク
             <textarea
               value={draft.subtasks}
               onChange={(event) => onDraft({ ...draft, subtasks: event.target.value })}
               placeholder="資料を準備する, 関係者に共有する"
               rows={2}
-              className="mt-1 w-full rounded-md border border-neutral-200 px-2 py-1.5 text-[13px] outline-none focus:border-[#2c60b8]"
+              className="mt-1 w-full rounded-md border border-field-line px-2 py-1.5 text-[13px] outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-[11px] font-normal text-neutral-400">カンマまたは改行で区切ってください。</span>
+            <span className="mt-1 block text-[11px] font-normal text-subtle">カンマまたは改行で区切ってください。</span>
           </label>
         </div>
         <div className="mt-6 flex justify-end gap-2">

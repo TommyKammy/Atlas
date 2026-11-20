@@ -67,11 +67,11 @@ export default function HomeWidgetCard({
       data-home-widget-size={size}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`relative flex min-w-0 flex-col rounded-lg border border-[#e1e1e1] bg-white ${
+      className={`relative flex min-w-0 flex-col rounded-lg border border-line bg-surface ${
         dragging ? "opacity-50" : ""
       } ${className}`}
     >
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[#eeeeee] px-4">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-4">
         <span
           draggable
           data-home-widget-drag-handle
@@ -82,13 +82,13 @@ export default function HomeWidgetCard({
           }}
           onDragEnd={onDragEnd}
           title="ドラッグして並び替え"
-          className="cursor-grab select-none text-[13px] text-neutral-300 hover:text-neutral-500"
+          className="cursor-grab select-none text-[13px] text-subtle hover:text-muted"
         >
           ⠿
         </span>
-        <h2 className="min-w-0 truncate text-[14px] font-semibold text-neutral-800">{title}</h2>
+        <h3 className="min-w-0 truncate text-[14px] font-semibold text-text">{title}</h3>
         {locked && (
-          <span title="非公開" className="text-[11px] text-neutral-400">
+          <span title="非公開" className="text-[11px] text-subtle">
             🔒
           </span>
         )}
@@ -100,7 +100,7 @@ export default function HomeWidgetCard({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((value) => !value)}
-          className="flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-subtle hover:bg-hover hover:text-secondary"
         >
           …
         </button>
@@ -109,7 +109,7 @@ export default function HomeWidgetCard({
         <div
           role="menu"
           data-home-widget-menu
-          className="absolute right-2 top-11 z-30 w-56 rounded-lg border border-neutral-200 bg-white py-1 text-[13px] text-neutral-700 shadow-xl"
+          className="absolute right-2 top-11 z-30 w-56 rounded-lg border border-line bg-surface py-1 text-[13px] text-secondary shadow-xl"
         >
           {menuItems.map((item, index) => (
             <button
@@ -120,8 +120,8 @@ export default function HomeWidgetCard({
                 setMenuOpen(false);
                 item.onClick();
               }}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100 ${
-                item.danger ? "text-red-600 hover:bg-red-50" : ""
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover ${
+                item.danger ? "text-danger hover:bg-danger-soft" : ""
               }`}
             >
               <span className="w-4 shrink-0 text-center">

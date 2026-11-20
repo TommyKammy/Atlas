@@ -83,19 +83,19 @@ function ProposalStages({ proposal }: { proposal: PlanningProposal }) {
   return (
     <ol
       aria-label="提案の進行状況"
-      className="flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-600"
+      className="flex flex-wrap items-center gap-1.5 text-[11px] text-secondary"
     >
-      <li className="rounded-full border border-neutral-300 bg-neutral-50 px-2 py-0.5 font-semibold">
+      <li className="rounded-full border border-line-strong bg-surface-subtle px-2 py-0.5 font-semibold">
         申請済み
       </li>
       <li aria-hidden>→</li>
       <li
         className={`rounded-full border px-2 py-0.5 font-semibold ${
           review === "レビュー省略"
-            ? "border-neutral-300 bg-neutral-50 text-neutral-600"
+            ? "border-line-strong bg-surface-subtle text-secondary"
             : review === "レビューで差し戻し"
-              ? "border-amber-200 bg-amber-50 text-amber-800"
-              : "border-blue-200 bg-blue-50 text-blue-800"
+              ? "border-warning-line bg-warning-soft text-warning"
+              : "border-accent-line bg-accent-soft text-accent-text"
         }`}
       >
         {review}
@@ -104,10 +104,10 @@ function ProposalStages({ proposal }: { proposal: PlanningProposal }) {
       <li
         className={`rounded-full border px-2 py-0.5 font-semibold ${
           proposal.status === "approved"
-            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            ? "border-success-line bg-success-soft text-success"
             : proposal.status === "pending_decision"
-              ? "border-blue-200 bg-blue-50 text-blue-800"
-              : "border-neutral-300 bg-neutral-50 text-neutral-600"
+              ? "border-accent-line bg-accent-soft text-accent-text"
+              : "border-line-strong bg-surface-subtle text-secondary"
         }`}
       >
         {decision}
@@ -152,18 +152,18 @@ function ProposalDetail({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <Tag tone={statusTone(proposal.status)}>{proposalStatusLabel(proposal.status)}</Tag>
-        <span className="text-[12px] font-medium text-neutral-800">{proposalTitle(proposal)}</span>
+        <span className="text-[12px] font-medium text-text">{proposalTitle(proposal)}</span>
         {proposal.restricted && <Tag tone="warn">閲覧制限</Tag>}
       </div>
       <ProposalStages proposal={proposal} />
-      <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-[12px] font-medium text-neutral-800">
+      <p className="rounded-md border border-line bg-surface-subtle px-3 py-2 text-[12px] font-medium text-text">
         {actionNeeded(proposal, currentUserId)}
       </p>
 
-      <dl className="grid gap-x-4 gap-y-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-[11px] sm:grid-cols-2">
+      <dl className="grid gap-x-4 gap-y-2 rounded-md border border-line bg-surface-subtle px-3 py-2.5 text-[11px] sm:grid-cols-2">
         <div>
-          <dt className="text-neutral-500">対象期間</dt>
-          <dd className="font-medium text-neutral-800">
+          <dt className="text-muted">対象期間</dt>
+          <dd className="font-medium text-text">
             {proposal.restricted
               ? "閲覧制限のため非表示"
               : periodLabel(
@@ -173,41 +173,41 @@ function ProposalDetail({
           </dd>
         </div>
         <div>
-          <dt className="text-neutral-500">申請者 / 提出日時</dt>
-          <dd className="font-medium text-neutral-800">
+          <dt className="text-muted">申請者 / 提出日時</dt>
+          <dd className="font-medium text-text">
             {proposal.submitterName} ・ {formatDecisionDate(proposal.submittedAt)}
           </dd>
         </div>
         <div>
-          <dt className="text-neutral-500">最終承認者</dt>
-          <dd className="font-medium text-neutral-800">{proposal.finalApproverName}</dd>
+          <dt className="text-muted">最終承認者</dt>
+          <dd className="font-medium text-text">{proposal.finalApproverName}</dd>
         </div>
         <div>
-          <dt className="text-neutral-500">レビュー担当</dt>
-          <dd className="font-medium text-neutral-800">{proposal.reviewerName ?? "レビューなし"}</dd>
+          <dt className="text-muted">レビュー担当</dt>
+          <dd className="font-medium text-text">{proposal.reviewerName ?? "レビューなし"}</dd>
         </div>
         <div>
-          <dt className="text-neutral-500">レビュー結果</dt>
-          <dd className="font-medium text-neutral-800">
+          <dt className="text-muted">レビュー結果</dt>
+          <dd className="font-medium text-text">
             {proposalReviewStageLabel(proposal.reviewerUserId, proposal.reviewOutcome)}
           </dd>
         </div>
         <div>
-          <dt className="text-neutral-500">レビュー日時</dt>
-          <dd className="font-medium text-neutral-800">
+          <dt className="text-muted">レビュー日時</dt>
+          <dd className="font-medium text-text">
             {proposal.reviewedAt ? formatDecisionDate(proposal.reviewedAt) : "—"}
           </dd>
         </div>
         <div>
-          <dt className="text-neutral-500">最終決裁</dt>
-          <dd className="font-medium text-neutral-800">
+          <dt className="text-muted">最終決裁</dt>
+          <dd className="font-medium text-text">
             {proposalDecisionStageLabel(proposal.status)}
             {proposal.decisionAction ? `（${proposalDecisionActionLabel(proposal.decisionAction)}）` : ""}
           </dd>
         </div>
         <div>
-          <dt className="text-neutral-500">決裁者 / 決裁日時</dt>
-          <dd className="font-medium text-neutral-800">
+          <dt className="text-muted">決裁者 / 決裁日時</dt>
+          <dd className="font-medium text-text">
             {proposal.decidedByName
               ? `${proposal.decidedByName} ・ ${proposal.decidedAt ? formatDecisionDate(proposal.decidedAt) : "—"}`
               : "—"}
@@ -216,14 +216,14 @@ function ProposalDetail({
         {!proposal.restricted && (
           <>
             <div>
-              <dt className="text-neutral-500">提出時の計画の版 / 現在の版</dt>
-              <dd className="font-medium text-neutral-800">
+              <dt className="text-muted">提出時の計画の版 / 現在の版</dt>
+              <dd className="font-medium text-text">
                 {proposal.periodRevision} / {currentRevision}
               </dd>
             </div>
             <div>
-              <dt className="text-neutral-500">予算</dt>
-              <dd className="font-medium text-neutral-800">
+              <dt className="text-muted">予算</dt>
+              <dd className="font-medium text-text">
                 {formatManYen(proposal.budgetYen)} 万円
               </dd>
             </div>
@@ -240,11 +240,11 @@ function ProposalDetail({
           <Notice tone="info">
             以下は提出時点（版{proposal.version}）の内容です。現在の計画を編集しても、この提案のスナップショットは変わりません。
           </Notice>
-          <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] text-blue-900">
+          <div className="rounded-md border border-accent-line bg-accent-soft px-3 py-2 text-[12px] text-accent-text">
             <div className="font-semibold">
               推奨シナリオ: {proposal.recommendedScenarioName}
             </div>
-            <div className="mt-1 text-[11px] font-semibold text-blue-800">
+            <div className="mt-1 text-[11px] font-semibold text-accent-text">
               申請者の理由 ・ {proposal.submitterName} ・ {formatDecisionDate(proposal.submittedAt)}
             </div>
             <p className="mt-0.5 whitespace-pre-wrap">{proposal.reason}</p>
@@ -253,8 +253,8 @@ function ProposalDetail({
           {proposal.reviewOutcome === "not_required" ? (
             <Notice tone="info">レビューは省略されています（レビュー担当なし）。</Notice>
           ) : proposal.reviewOutcome ? (
-            <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-[12px] text-neutral-800">
-              <div className="text-[11px] font-semibold text-neutral-600">
+            <div className="rounded-md border border-line bg-surface px-3 py-2 text-[12px] text-text">
+              <div className="text-[11px] font-semibold text-secondary">
                 レビューの回答 ・ {proposal.reviewerName ?? "レビュー担当"} ・{" "}
                 {proposal.reviewedAt ? formatDecisionDate(proposal.reviewedAt) : "—"} ・{" "}
                 {proposalReviewOutcomeLabel(proposal.reviewOutcome)}
@@ -266,8 +266,8 @@ function ProposalDetail({
           ) : null}
 
           {proposal.decisionAction && proposal.decidedAt && (
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-950">
-              <div className="text-[11px] font-semibold text-emerald-900">
+            <div className="rounded-md border border-success-line bg-success-soft px-3 py-2 text-[12px] text-success">
+              <div className="text-[11px] font-semibold text-success">
                 最終決裁（{proposalDecisionActionLabel(proposal.decisionAction)}） ・{" "}
                 {proposal.decidedByName ?? proposal.finalApproverName} ・{" "}
                 {formatDecisionDate(proposal.decidedAt)}
@@ -284,8 +284,8 @@ function ProposalDetail({
           )}
 
           {proposal.status === "withdrawn" && proposal.withdrawReason && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-950">
-              <div className="text-[11px] font-semibold text-amber-900">
+            <div className="rounded-md border border-warning-line bg-warning-soft px-3 py-2 text-[12px] text-warning">
+              <div className="text-[11px] font-semibold text-warning">
                 取り下げ ・ {proposal.withdrawnByName ?? "申請者"} ・{" "}
                 {proposal.withdrawnAt ? formatDecisionDate(proposal.withdrawnAt) : "—"}
               </div>
@@ -323,6 +323,9 @@ function ProposalDetail({
       {canDecideThis && (
         <ProposalDecisionForm
           key={`decision-${proposal.id}`}
+          scenarioName={
+            proposal.restricted ? undefined : proposal.recommendedScenarioName
+          }
           onDecide={onDecide}
         />
       )}
@@ -394,12 +397,12 @@ export default function ProposalHistory({
     <section id="proposal-history" className="scroll-mt-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="text-[15px] font-semibold text-neutral-900">投資提案</h2>
-          <p className="mt-0.5 text-[11px] text-neutral-500">
+          <h2 className="text-[15px] font-semibold text-text">投資提案</h2>
+          <p className="mt-0.5 text-[11px] text-muted">
             提出時点のA案・B案と推奨シナリオを固定して保存しています。現在の計画とは別の内容です。
           </p>
         </div>
-        <span className="text-[11px] text-neutral-500">{proposals.length}件</span>
+        <span className="text-[11px] text-muted">{proposals.length}件</span>
       </div>
 
       {proposals.length === 0 ? (
@@ -416,12 +419,13 @@ export default function ProposalHistory({
             return (
               <li
                 key={proposal.id}
-                className="rounded-lg border border-neutral-200 bg-white p-4"
+                id={`proposal-${proposal.id}`}
+                className="scroll-mt-4 rounded-lg bg-surface-subtle p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-[14px] font-semibold text-neutral-900">
+                      <h3 className="text-[14px] font-semibold text-text">
                         {proposalTitle(proposal)}
                       </h3>
                       <Tag tone={statusTone(proposal.status)}>
@@ -429,7 +433,7 @@ export default function ProposalHistory({
                       </Tag>
                       {proposal.restricted && <Tag tone="warn">閲覧制限</Tag>}
                     </div>
-                    <p className="mt-1 text-[11px] text-neutral-500">
+                    <p className="mt-1 text-[11px] text-muted">
                       {proposal.submitterName} ・ {formatDecisionDate(proposal.submittedAt)} ・
                       最終承認者 {proposal.finalApproverName}
                       {proposal.reviewerName ? ` ・ レビュー ${proposal.reviewerName}` : ""}
@@ -457,11 +461,11 @@ export default function ProposalHistory({
                 </div>
 
                 {proposal.restricted ? (
-                  <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+                  <p className="mt-2 rounded-md border border-warning-line bg-warning-soft px-2.5 py-1.5 text-[11px] text-warning">
                     閲覧権限のない元プロジェクトを含むため、理由・合計・両案の内訳は非表示です。取り下げはこの詳細画面から行えます。
                   </p>
                 ) : (
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-700">
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-secondary">
                     <span>
                       推奨 <b>{proposal.recommendedScenarioName}</b>
                     </span>

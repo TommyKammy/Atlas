@@ -29,39 +29,51 @@ test("sidebar invite button centers its icon and label", async ({ page }) => {
   expect(style.textAlign).toBe("center");
 });
 
-test("header search shrinks while keeping create independently usable", async ({ page }) => {
+test("sidebar actions replace the global header and stay reachable at every width", async ({ page }) => {
   await page.goto("/");
-  const header = page.getByRole("banner");
-  const create = header.getByRole("button", { name: /作成/ });
-  const search = header.getByRole("combobox", { name: "グローバル検索", exact: true });
-  const theme = header.locator("[data-theme-toggle]");
-  const projectOption = header.getByRole("button", { name: "プロジェクト", exact: true });
+  const sidebar = page.locator("[data-sidebar]");
+  const sidebarActions = page.locator("[data-sidebar-actions]");
+  const mobileActions = page.locator("[data-mobile-actions]");
+  const theme = page.locator("[data-sidebar-footer] [data-theme-toggle]");
+  const projectOption = page.getByRole("button", { name: "プロジェクト", exact: true });
 
-  let previousSearchWidth = Infinity;
+  await expect(page.getByRole("banner")).toHaveCount(0);
+  await expect(page.locator("[data-global-search]")).toHaveCount(0);
+  await expect(page.locator("[data-sidebar-rail]")).toHaveCount(0);
+  await expect(page.locator("[data-sidebar-rail-footer]")).toHaveCount(0);
+  await expect(page.locator("[data-sidebar-footer]")).toBeVisible();
+  await expect(theme).toBeVisible();
+
   for (const width of [1440, 768, 375]) {
     await test.step(`${width}px viewport`, async () => {
       await page.setViewportSize({ width, height: 900 });
+      const actions = width >= 768 ? sidebarActions : mobileActions;
+      const create = actions.getByRole("button", { name: /作成/ });
+      const search = actions.getByRole("button", { name: /^検索/ });
+
       await expect(create).toBeVisible();
       await expect(search).toBeVisible();
-      await expect(theme).toBeVisible();
+      if (width >= 768) {
+        await expect(sidebar).toBeVisible();
+        await expect(theme).toBeVisible();
+        await expect(mobileActions).toBeHidden();
+      } else {
+        await expect(sidebar).toBeHidden();
+        await expect(sidebarActions).toBeHidden();
+      }
 
-      const [bannerBox, createBox, searchBox, themeBox] = await Promise.all([
-        header.boundingBox(), create.boundingBox(), search.boundingBox(), theme.boundingBox(),
-      ]);
-      if (!bannerBox || !createBox || !searchBox || !themeBox) {
-        throw new Error("header controls have no visible bounds");
+      const [createBox, searchBox] = await Promise.all([create.boundingBox(), search.boundingBox()]);
+      if (!createBox || !searchBox) {
+        throw new Error("sidebar action controls have no visible bounds");
       }
-      expect(searchBox.width).toBeLessThan(previousSearchWidth);
-      previousSearchWidth = searchBox.width;
-      expect(searchBox.x).toBeGreaterThanOrEqual(bannerBox.x);
-      expect(searchBox.y).toBeGreaterThanOrEqual(bannerBox.y);
-      expect(searchBox.x + searchBox.width).toBeLessThanOrEqual(bannerBox.x + bannerBox.width);
-      expect(searchBox.y + searchBox.height).toBeLessThanOrEqual(bannerBox.y + bannerBox.height);
-      for (const [label, box] of [["create", createBox], ["theme", themeBox]] as const) {
-        const overlapX = Math.min(box.x + box.width, searchBox.x + searchBox.width) - Math.max(box.x, searchBox.x);
-        const overlapY = Math.min(box.y + box.height, searchBox.y + searchBox.height) - Math.max(box.y, searchBox.y);
-        expect(Math.min(overlapX, overlapY), `${label} and search bounds must not overlap`).toBeLessThanOrEqual(0);
-      }
+      const overlapX = Math.min(createBox.x + createBox.width, searchBox.x + searchBox.width) - Math.max(createBox.x, searchBox.x);
+      const overlapY = Math.min(createBox.y + createBox.height, searchBox.y + searchBox.height) - Math.max(createBox.y, searchBox.y);
+      expect(overlapX, "create and search bounds must not overlap").toBeLessThanOrEqual(0);
+      expect(overlapY, "create and search must sit on the same row").toBeGreaterThan(0);
+      expect(createBox.x).toBeGreaterThanOrEqual(0);
+      expect(createBox.x + createBox.width).toBeLessThanOrEqual(width);
+      expect(searchBox.x).toBeGreaterThanOrEqual(0);
+      expect(searchBox.x + searchBox.width).toBeLessThanOrEqual(width);
 
       await create.click();
       await expect(projectOption).toBeVisible();
@@ -69,12 +81,69 @@ test("header search shrinks while keeping create independently usable", async ({
       await expect(projectOption).toBeHidden();
 
       await search.click();
+      const dialog = page.getByRole("dialog", { name: "コマンドパレット" });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole("combobox", { name: "コマンドを検索" })).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
       await expect(search).toBeFocused();
-      await search.fill(`Atlas ${width}`);
-      await expect(search).toHaveValue(`Atlas ${width}`);
-      await search.press("Escape");
     });
   }
+});
+
+test("collapsed rail keeps create and search without duplicating expanded controls", async ({ page }) => {
+  await page.goto("/");
+  const sidebar = page.locator("[data-sidebar]");
+  const sidebarActions = page.locator("[data-sidebar-actions]");
+  const rail = page.locator("[data-sidebar-rail]");
+  const railFooter = page.locator("[data-sidebar-rail-footer]");
+  const footer = page.locator("[data-sidebar-footer]");
+  const railActions = page.locator("[data-sidebar-rail-actions]");
+  const projectOption = page.getByRole("button", { name: "プロジェクト", exact: true });
+
+  await expect(sidebar).toHaveAttribute("data-sidebar-collapsed", "false");
+  await expect(sidebarActions).toBeVisible();
+  await expect(rail).toHaveCount(0);
+  await expect(railFooter).toHaveCount(0);
+  await expect(railActions).toHaveCount(0);
+  await expect(footer).toBeVisible();
+  await expect(footer.locator("[data-theme-toggle]")).toBeVisible();
+
+  await page.locator("[data-sidebar-toggle]").click();
+  await expect(sidebar).toHaveAttribute("data-sidebar-collapsed", "true");
+  await expect(sidebarActions).toHaveCount(0);
+  await expect(footer).toHaveCount(0);
+  await expect(rail).toBeVisible();
+  await expect(railFooter).toBeVisible();
+  await expect(railFooter.locator("[data-theme-toggle]")).toBeVisible();
+  await expect(railFooter.locator("[data-sidebar-help]")).toBeVisible();
+  await expect(railFooter.locator("[data-sidebar-user-menu]")).toBeVisible();
+
+  const create = railActions.getByRole("button", { name: "作成", exact: true });
+  const search = railActions.getByRole("button", { name: /^検索/ });
+  await expect(create).toBeVisible();
+  await expect(search).toBeVisible();
+
+  await create.click();
+  await expect(projectOption).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(projectOption).toBeHidden();
+
+  await search.click();
+  const dialog = page.getByRole("dialog", { name: "コマンドパレット" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("combobox", { name: "コマンドを検索" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(search).toBeFocused();
+
+  await page.locator("[data-sidebar-toggle]").click();
+  await expect(sidebar).toHaveAttribute("data-sidebar-collapsed", "false");
+  await expect(sidebarActions).toBeVisible();
+  await expect(rail).toHaveCount(0);
+  await expect(railFooter).toHaveCount(0);
+  await expect(footer).toBeVisible();
+  await expect(footer.locator("[data-theme-toggle]")).toBeVisible();
 });
 
 test.describe("resizable sidebar", () => {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import { getPortfolio, getPortfolioProjects, getWorkspace } from "@/lib/data";
 import { hasPermission } from "@/lib/permissions";
 import { requirePageUser } from "@/lib/current-user";
@@ -30,20 +31,20 @@ export default async function PortfolioPage({
     <div className="p-6">
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-bold">ポートフォリオ</h1>
-        {viewer.isAdmin && await hasPermission(viewerId, "audit.view") && <a href="/audit" className="text-sm text-blue-700 hover:underline">
+        {viewer.isAdmin && await hasPermission(viewerId, "audit.view") && <a href="/audit" className="text-sm text-accent-text hover:underline">
           監査ログ →
         </a>}
       </div>
-      <p className="mt-1 text-sm text-neutral-500">
+      <p className="mt-1 text-sm text-muted">
         {ws?.name} の全プロジェクト（{rows.length}件）
       </p>
       <div className="mt-4 max-w-5xl">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold">マイポートフォリオ</h2>
-          <span className="text-xs text-neutral-400">{saved.length}件</span>
+          <span className="text-xs text-muted">{saved.length}件</span>
         </div>
         {saved.length === 0 ? (
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-muted">
             サイドバーのプロジェクトを右クリック →「ポートフォリオに追加」でここに追加されます。
           </p>
         ) : (
@@ -52,7 +53,7 @@ export default async function PortfolioPage({
               <Link
                 key={p.id}
                 href={`/projects/${p.id}?view=list`}
-                className="rounded-full border bg-white px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
+                className="rounded-full border bg-surface px-2.5 py-1 text-xs text-secondary hover:bg-hover"
               >
                 {p.name}
               </Link>
@@ -61,41 +62,47 @@ export default async function PortfolioPage({
         )}
       </div>
       <div className="mt-6 max-w-5xl">
-        <div className="grid grid-cols-[minmax(0,1fr)_200px_120px_80px_220px] gap-2 border-b px-2 py-2 text-xs font-semibold text-neutral-500">
-          <span>プロジェクト</span>
-          <span>進捗</span>
-          <span>期間</span>
-          <span>メンバー</span>
-          <span>期限超過</span>
-        </div>
-        {rows.map((p) => {
-          const pct = p.total === 0 ? 0 : Math.round((p.done / p.total) * 100);
-          return (
-            <div
-              key={p.id}
-              className="grid grid-cols-[minmax(0,1fr)_200px_120px_80px_220px] items-center gap-2 border-b px-2 py-2 text-sm hover:bg-neutral-50"
-            >
-              <Link href={`/projects/${p.id}?view=list`} className="truncate font-medium hover:underline">
-                {p.name}
-              </Link>
-              <span className="flex items-center gap-2">
-                <span className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-neutral-200">
-                  <span className="block h-full bg-green-500" style={{ width: `${pct}%` }} />
-                </span>
-                <span className="shrink-0 text-xs text-neutral-500">
-                  {p.done}/{p.total}
-                </span>
-              </span>
-              <span className="truncate text-xs text-neutral-600">
-                {p.min_due ?? "–"} 〜 {p.max_due ?? "–"}
-              </span>
-              <span className="text-neutral-600">{p.members}人</span>
-              <span className={p.overdue > 0 ? "font-semibold text-red-600" : "text-neutral-400"}>
-                {p.overdue > 0 ? `${p.overdue}件` : "なし"}
-              </span>
+        {/* The project table keeps its five columns on narrow screens and
+            scrolls inside this region instead of widening the page. */}
+        <div className="overflow-x-auto" data-portfolio-projects-scroll>
+          <div className="min-w-[820px]">
+            <div className="grid grid-cols-[minmax(160px,1fr)_200px_120px_80px_220px] gap-2 border-b px-2 py-2 text-xs font-semibold text-muted">
+              <span>プロジェクト</span>
+              <span>進捗</span>
+              <span>期間</span>
+              <span>メンバー</span>
+              <span>期限超過</span>
             </div>
-          );
-        })}
+            {rows.map((p) => {
+              const pct = p.total === 0 ? 0 : Math.round((p.done / p.total) * 100);
+              return (
+                <div
+                  key={p.id}
+                  className="grid grid-cols-[minmax(160px,1fr)_200px_120px_80px_220px] items-center gap-2 border-b px-2 py-2 text-sm hover:bg-hover"
+                >
+                  <Link href={`/projects/${p.id}?view=list`} className="truncate font-medium hover:underline">
+                    {p.name}
+                  </Link>
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-surface-strong">
+                      <span className={`block h-full ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${pct}%` }} />
+                    </span>
+                    <span className="shrink-0 text-xs text-muted">
+                      {p.done}/{p.total}
+                    </span>
+                  </span>
+                  <span className="truncate text-xs text-secondary">
+                    {p.min_due ?? "–"} 〜 {p.max_due ?? "–"}
+                  </span>
+                  <span className="text-secondary">{p.members}人</span>
+                  <span className={p.overdue > 0 ? "font-semibold text-danger" : "text-muted"}>
+                    {p.overdue > 0 ? `${p.overdue}件` : "なし"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
       <PortfolioWorkspace
         initialPortfolios={portfolios}

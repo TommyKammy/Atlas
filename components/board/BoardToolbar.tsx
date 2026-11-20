@@ -21,10 +21,10 @@ import ViewOptionsDrawer from "../view/ViewOptionsDrawer";
 import { FilterIcon, GroupIcon, OptionsIcon, SortIcon } from "../view/ViewToolbarIcons";
 
 const toolbarBtn = viewToolbarControlClass;
-const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
-const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
-const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
-const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-white shadow-lg";
+const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
+const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-accent-soft-hover";
+const clearPill = "px-1.5 text-[12px] hover:bg-accent-soft-hover";
+const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-line bg-surface shadow-lg";
 
 export type BoardCardFields = {
   assignee: boolean;
@@ -42,6 +42,7 @@ export default function BoardToolbar({
   statusOptions,
   filters,
   activeFilterCount,
+  overdueCount,
   onFilterChange,
   clearFilters,
   sortKey,
@@ -73,6 +74,7 @@ export default function BoardToolbar({
   statusOptions: string[];
   filters: ListFilters;
   activeFilterCount: number;
+  overdueCount: number;
   onFilterChange: (key: keyof ListFilters, value: string | boolean) => void;
   clearFilters: () => void;
   sortKey: ListSortKey;
@@ -143,6 +145,7 @@ export default function BoardToolbar({
     }
   };
 
+  const overdueActive = filters.due === "overdue";
   const sortLabel = sortKey === "position" ? "" : LIST_SORT_LABELS[sortKey] ?? sortKey;
   const sortArrow = sortDir === "asc" ? "↑" : "↓";
   const groupLabel =
@@ -157,6 +160,21 @@ export default function BoardToolbar({
       <ProjectViewToolbar className="px-4">
         <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} data-board-add disabled={!canEdit} />
         <span className="ml-auto" />
+
+        <button
+          type="button"
+          data-board-overdue-toggle
+          data-board-overdue-count={overdueCount}
+          aria-pressed={overdueActive}
+          onClick={() => onFilterChange("due", overdueActive ? "" : "overdue")}
+          className={
+            overdueActive
+              ? "inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md bg-accent-soft px-2 text-[12px] font-medium text-accent-text transition-colors hover:bg-accent-soft-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+              : toolbarBtn
+          }
+        >
+          要対応 {overdueCount}
+        </button>
 
         <span className="relative">
           {activeFilterCount > 0 ? (
@@ -370,29 +388,29 @@ export default function BoardToolbar({
           setGroupOpen(true);
         }}
       >
-        <div className="mt-3 border-t border-neutral-100 pt-3">
-          <div className="px-2 text-[11px] font-medium text-neutral-500">レイアウトオプション</div>
-          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+        <div className="mt-3 border-t border-line-subtle pt-3">
+          <div className="px-2 text-[11px] font-medium text-muted">レイアウトオプション</div>
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover">
             <input
               type="checkbox"
               checked={showEmptyGroups}
               onChange={(event) => setShowEmptyGroups(event.target.checked)}
-              className="h-3.5 w-3.5 accent-[#2c60b8]"
+              className="h-3.5 w-3.5 accent-accent"
             />
             空のグループを表示
           </label>
-          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
+          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(event) => setAutoRefresh(event.target.checked)}
-              className="h-3.5 w-3.5 accent-[#2c60b8]"
+              className="h-3.5 w-3.5 accent-accent"
             />
             20秒ごとに自動更新
           </label>
         </div>
-        <div className="mt-2 border-t border-neutral-100 pt-3">
-          <div className="px-2 text-[11px] font-medium text-neutral-500">フィールドを表示 / 非表示</div>
+        <div className="mt-2 border-t border-line-subtle pt-3">
+          <div className="px-2 text-[11px] font-medium text-muted">フィールドを表示 / 非表示</div>
           {(
             [
               ["assignee", "担当者"],
@@ -403,13 +421,13 @@ export default function BoardToolbar({
           ).map(([key, label]) => (
             <label
               key={key}
-              className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50"
+              className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover"
             >
               <input
                 type="checkbox"
                 checked={cardFields[key]}
                 onChange={() => onToggleCardField(key)}
-                className="h-3.5 w-3.5 accent-[#2c60b8]"
+                className="h-3.5 w-3.5 accent-accent"
               />
               {label}
             </label>

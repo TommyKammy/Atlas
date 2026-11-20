@@ -50,38 +50,38 @@ export default function SaveProjectTemplateDialog({
       open
       onClose={onClose}
       title="テンプレートとして保存"
-      backdropClassName="backdrop:bg-black/25"
-      panelClassName="w-[min(540px,94vw)] rounded-xl bg-white text-sm shadow-2xl"
+      backdropClassName="backdrop:bg-scrim"
+      panelClassName="w-[min(540px,94vw)] rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-template-dialog className="p-6">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-semibold">テンプレートとして保存</h2>
-            <p className="mt-0.5 text-xs text-neutral-500">{projectName}</p>
+            <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-neutral-400 hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-secondary">
             ×
           </button>
         </div>
         <label className="mt-4 block">
-          <span className="mb-1 block text-xs font-medium text-neutral-600">テンプレートのタイトル</span>
+          <span className="mb-1 block text-xs font-medium text-secondary">テンプレートのタイトル</span>
           <input
             autoFocus
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={100}
-            className="h-9 w-full rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20"
+            className="h-9 w-full rounded-md border border-field-line px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
           />
         </label>
         <div className="mt-4 space-y-1.5">
-          <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-2.5">
+          <label className="flex items-start gap-2 rounded-md border border-line p-2.5">
             <input type="checkbox" checked={includeTasks} onChange={(event) => setIncludeTasks(event.target.checked)} className="mt-0.5" />
             <span>
               <span className="block font-medium">タスクとサブタスク</span>
-              <span className="block text-xs text-neutral-500">セクション、タスク名、説明、担当者、期日、Status を保存します。</span>
+              <span className="block text-xs text-muted">セクション、タスク名、説明、担当者、期日、Status を保存します。</span>
             </span>
           </label>
-          <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-2.5">
+          <label className="flex items-start gap-2 rounded-md border border-line p-2.5">
             <input
               type="checkbox"
               checked={includeCompleted}
@@ -91,21 +91,21 @@ export default function SaveProjectTemplateDialog({
             />
             <span>
               <span className="block font-medium">完了したタスクを含める</span>
-              <span className="block text-xs text-neutral-500">
+              <span className="block text-xs text-muted">
                 通常、完了済みタスクはテンプレートから除外されます。含める場合、作成時は未完了にリセットされます。
               </span>
             </span>
           </label>
-          <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-2.5">
+          <label className="flex items-start gap-2 rounded-md border border-line p-2.5">
             <input type="checkbox" checked={includeFields} onChange={(event) => setIncludeFields(event.target.checked)} className="mt-0.5" />
             <span>
               <span className="block font-medium">カスタムフィールドと値</span>
-              <span className="block text-xs text-neutral-500">フィールド定義、選択肢、編集権限、タスクの値を保存します。</span>
+              <span className="block text-xs text-muted">フィールド定義、選択肢、編集権限、タスクの値を保存します。</span>
             </span>
           </label>
         </div>
-        <p className="mt-3 text-xs text-neutral-400">アプリ、オートメーション、フォーム、ダッシュボードの内容は保存されません。</p>
-        {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+        <p className="mt-3 text-xs text-subtle">アプリ、オートメーション、フォーム、ダッシュボードの内容は保存されません。</p>
+        {error && <p className="mt-3 text-xs text-danger">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" className={PROJECT_DIALOG_SECONDARY} onClick={onClose} disabled={busy}>
             キャンセル

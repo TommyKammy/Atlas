@@ -26,19 +26,21 @@ export default function CalendarDayHeader({
   return (
     <div
       data-day-header={iso}
-      className={`group/day overflow-hidden border-r border-b border-neutral-200 bg-white ${
+      className={`group/day overflow-hidden border-r border-b border-line-subtle ${
+        compact ? "bg-surface-subtle" : "bg-surface"
+      } ${
         weekView ? "flex h-[70px] flex-col px-2 py-2" : "flex h-7 items-center px-1.5"
       } ${compact ? "items-center" : ""}`}
     >
       {weekView ? (
         <>
-          <div className={`flex items-center gap-1 ${compact ? "text-[10px]" : "text-xs"}`}>
-            <span className={compact ? "text-neutral-400" : "text-neutral-500"}>{WEEKDAYS[idx]}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-[12px] text-muted">{WEEKDAYS[idx]}</span>
             <span
               className={`inline-flex items-center justify-center font-normal ${
                 isToday
-                  ? "h-7 min-w-7 rounded-lg bg-[#4075cf] px-1 text-[14px] text-white"
-                  : `text-[14px] ${sameMonth ? "text-neutral-900" : "text-neutral-400"}`
+                  ? "h-7 min-w-7 rounded-lg bg-accent px-1 text-[14px] text-on-accent"
+                  : `text-[14px] ${sameMonth ? "text-text" : "text-subtle"}`
               }`}
             >
               {dt.getUTCDate()}
@@ -48,7 +50,7 @@ export default function CalendarDayHeader({
             <button
               type="button"
               onClick={() => onAdd(iso)}
-              className="mt-0.5 flex h-5 w-fit items-center rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+              className="mt-0.5 flex h-5 w-fit items-center rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-text"
             >
               ＋ タスクを追加
             </button>
@@ -58,10 +60,10 @@ export default function CalendarDayHeader({
         <span
           className={`inline-flex items-center justify-center text-xs ${
             isToday
-              ? "h-6 min-w-6 rounded-md bg-[#4075cf] px-1 font-medium text-white"
+              ? "h-6 min-w-6 rounded-md bg-accent px-1 font-medium text-on-accent"
               : sameMonth
-                ? "text-neutral-600"
-                : "text-neutral-400"
+                ? "text-secondary"
+                : "text-subtle"
           }`}
         >
           {sameMonth || compact ? dt.getUTCDate() : `${dt.getUTCMonth() + 1}月${dt.getUTCDate()}日`}

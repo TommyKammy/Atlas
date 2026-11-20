@@ -26,7 +26,7 @@ export default function ListColumnHeaderRow({
 }) {
   return (
     <div
-      className={`grid h-[37px] items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-[#eaeaea] border-b border-[#eaeaea] px-2 text-xs font-normal text-neutral-500 ${compactCells}`}
+      className={`grid h-[38px] items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-line border-b border-line px-2 text-xs font-normal text-muted ${compactCells}`}
       style={{ gridTemplateColumns: gridCols }}
       onDragOver={(event) => {
         if (!columnDragging) return;
@@ -58,7 +58,7 @@ export default function ListColumnHeaderRow({
         aria-label="フィールドを追加"
         onClick={onAddField}
         title="フィールドを追加"
-        className="flex h-6 w-6 items-center justify-center justify-self-end rounded text-[15px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+        className="flex h-6 w-6 items-center justify-center justify-self-end rounded text-[15px] text-muted hover:bg-hover hover:text-text"
       >
         ＋
       </button>

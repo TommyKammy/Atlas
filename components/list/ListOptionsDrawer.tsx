@@ -15,8 +15,8 @@ export type ListColumnOption = {
 };
 
 const row =
-  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50";
-const sectionTitle = "px-2 pt-3 pb-1 text-[11px] font-medium tracking-wide text-neutral-500";
+  "flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] text-secondary hover:bg-hover";
+const sectionTitle = "px-2 pt-3 pb-1 text-[11px] font-medium tracking-wide text-muted";
 
 const ICON_CHOICES = [
   "📋",
@@ -190,18 +190,18 @@ export default function ListOptionsDrawer({
         aria-label="リストのオプション"
         data-list-options-drawer
         style={{ top: panelTop, height: `calc(100vh - ${panelTop}px)` }}
-        className="project-drawer-enter project-drawer-enter-options fixed right-0 z-[80] flex w-[min(480px,100vw)] flex-col overflow-y-auto bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
+        className="project-drawer-enter project-drawer-enter-options fixed right-0 z-[80] flex w-[min(480px,100vw)] flex-col overflow-y-auto bg-surface shadow-[-8px_0_30px_rgba(0,0,0,0.16)]"
       >
-        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-neutral-100 bg-white px-4">
-          <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#2c60b8]" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-line-subtle bg-surface px-4">
+          <svg viewBox="0 0 24 24" className="h-4 w-4 text-accent-text" fill="none" stroke="currentColor" strokeWidth="1.6">
             <path d="M8 6h13M8 12h13M8 18h13M3 6h.2M3 12h.2M3 18h.2" />
           </svg>
-          <span className="flex-1 text-[15px] font-semibold text-neutral-900">リスト</span>
+          <span className="flex-1 text-[15px] font-semibold text-text">リスト</span>
           <button
             type="button"
             aria-label="閉じる"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none text-subtle hover:bg-hover hover:text-secondary"
           >
             ×
           </button>
@@ -210,7 +210,7 @@ export default function ListOptionsDrawer({
         <div className="p-3">
           <div className="flex items-end gap-2 px-2">
             <div className="relative shrink-0">
-              <label className="block text-[11px] font-medium text-neutral-500">アイコン</label>
+              <label className="block text-[11px] font-medium text-muted">アイコン</label>
               <button
                 type="button"
                 data-list-view-icon
@@ -218,14 +218,14 @@ export default function ListOptionsDrawer({
                 aria-expanded={iconOpen}
                 disabled={renameDisabled || iconBusy}
                 onClick={() => setIconOpen((value) => !value)}
-                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 text-lg hover:bg-neutral-50 disabled:bg-neutral-50"
+                className="mt-1 flex h-9 w-9 items-center justify-center rounded-md border border-line text-lg hover:bg-hover disabled:bg-surface-subtle"
               >
                 {iconDraft ?? "📋"}
               </button>
               {iconOpen && (
                 <div
                   data-list-icon-picker
-                  className="absolute top-full left-0 z-20 mt-1 w-[250px] rounded-lg border border-neutral-200 bg-white p-2 shadow-lg"
+                  className="absolute top-full left-0 z-20 mt-1 w-[250px] rounded-lg border border-line bg-surface p-2 shadow-lg"
                 >
                   <div className="grid grid-cols-8 gap-1">
                     {ICON_CHOICES.map((icon) => (
@@ -234,8 +234,8 @@ export default function ListOptionsDrawer({
                         type="button"
                         data-list-icon-choice={icon}
                         onClick={() => void chooseIcon(icon)}
-                        className={`flex h-7 w-7 items-center justify-center rounded text-base hover:bg-neutral-100 ${
-                          iconDraft === icon ? "bg-[#eff4fd]" : ""
+                        className={`flex h-7 w-7 items-center justify-center rounded text-base hover:bg-hover ${
+                          iconDraft === icon ? "bg-accent-soft" : ""
                         }`}
                       >
                         {icon}
@@ -245,7 +245,7 @@ export default function ListOptionsDrawer({
                   <button
                     type="button"
                     onClick={() => void chooseIcon(null)}
-                    className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-neutral-600 hover:bg-neutral-50"
+                    className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-secondary hover:bg-hover"
                   >
                     アイコンをクリア
                   </button>
@@ -253,7 +253,7 @@ export default function ListOptionsDrawer({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <label className="block text-[11px] font-medium text-neutral-500">ビューの名前</label>
+              <label className="block text-[11px] font-medium text-muted">ビューの名前</label>
               <input
                 value={nameDraft}
                 onChange={(event) => setNameDraft(event.target.value)}
@@ -268,7 +268,7 @@ export default function ListOptionsDrawer({
                 disabled={renameDisabled || renameBusy}
                 aria-label="ビューの名前"
                 data-list-view-name
-                className="mt-1 h-9 w-full rounded-md border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8] disabled:bg-neutral-50 disabled:text-neutral-500"
+                className="mt-1 h-9 w-full rounded-md border border-field-line px-2 text-[13px] outline-none focus:border-accent disabled:border-line disabled:bg-surface-subtle disabled:text-muted"
               />
             </div>
           </div>
@@ -281,29 +281,29 @@ export default function ListOptionsDrawer({
               onClick={() => setColumnsOpen((value) => !value)}
               className={row}
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <rect x="3" y="4" width="18" height="16" rx="1.5" />
                 <path d="M9 4v16M15 4v16" />
               </svg>
               <span className="flex-1">列を表示 / 非表示</span>
-              <span className="text-[11px] text-neutral-400">{hiddenCount} 件が非表示</span>
+              <span className="text-[11px] text-subtle">{hiddenCount} 件が非表示</span>
             </button>
             {columnsOpen && (
-              <div data-list-columns-panel className="mt-1 ml-2 border-l border-neutral-100 pl-3">
-                <p className="px-2 pb-1 text-[11px] text-neutral-500">
+              <div data-list-columns-panel className="mt-1 ml-2 border-l border-line-subtle pl-3">
+                <p className="px-2 pb-1 text-[11px] text-muted">
                   このビューの列の表示、非表示、並び替えができます
                 </p>
                 {columns.map((column) => (
                   <label
                     key={column.key}
-                    className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50"
+                    className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover"
                   >
                     <input
                       type="checkbox"
                       checked={column.visible}
                       data-list-column-toggle={column.key}
                       onChange={() => onToggleColumn(column.key)}
-                      className="h-3.5 w-3.5 accent-[#2c60b8]"
+                      className="h-3.5 w-3.5 accent-accent"
                     />
                     <span className="min-w-0 flex-1 truncate">{column.label}</span>
                   </label>
@@ -311,7 +311,7 @@ export default function ListOptionsDrawer({
                 <button
                   type="button"
                   onClick={onAddField}
-                  className="mt-1 flex h-8 items-center gap-1 rounded px-2 text-[12px] text-neutral-600 hover:bg-neutral-50"
+                  className="mt-1 flex h-8 items-center gap-1 rounded px-2 text-[12px] text-secondary hover:bg-hover"
                 >
                   <span className="text-[14px] leading-none">＋</span> フィールドを追加
                 </button>
@@ -321,25 +321,25 @@ export default function ListOptionsDrawer({
 
           <div className="mt-1">
             <button type="button" data-list-options-filter onClick={onOpenFilter} className={row}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M3 5h18l-7 8v6l-4 2v-8L3 5Z" />
               </svg>
               <span className="flex-1">フィルター</span>
-              <span className="text-[11px] text-neutral-400">{filterSummary}</span>
+              <span className="text-[11px] text-subtle">{filterSummary}</span>
             </button>
             <button type="button" data-list-options-sort onClick={onOpenSort} className={row}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M4 6h10M4 12h7M4 18h4M17 4v16M17 20l-3-3M17 20l3-3" />
               </svg>
               <span className="flex-1">ソート</span>
-              <span className="text-[11px] text-neutral-400">{sortSummary}</span>
+              <span className="text-[11px] text-subtle">{sortSummary}</span>
             </button>
             <button type="button" data-list-options-group onClick={onOpenGroup} className={row}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M4 5h16M4 12h16M4 19h16M7 3v4M7 10v4M7 17v4" />
               </svg>
               <span className="flex-1">グループ</span>
-              <span className="text-[11px] text-neutral-400">{groupSummary}</span>
+              <span className="text-[11px] text-subtle">{groupSummary}</span>
             </button>
             <button
               type="button"
@@ -348,11 +348,11 @@ export default function ListOptionsDrawer({
               onClick={() => onToggleSubtasks(!subtasksCollapsed)}
               className={row}
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M4 6h10M8 12h10M12 18h8" />
               </svg>
               <span className="flex-1">サブタスク</span>
-              <span className="text-[11px] text-neutral-400">
+              <span className="text-[11px] text-subtle">
                 {subtasksCollapsed ? "折り畳み済み" : "展開済み"}
               </span>
             </button>
@@ -372,12 +372,12 @@ export default function ListOptionsDrawer({
                   placeholder="ビュー名"
                   aria-label="保存するビュー名"
                   autoFocus
-                  className="h-8 w-32 rounded border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+                  className="h-8 w-32 rounded border border-field-line px-2 text-[13px] outline-none focus:border-accent"
                 />
-                <button onClick={saveView} aria-label="ビューを保存" className="h-8 rounded bg-[#2c60b8] px-2 text-[12px] text-white">
+                <button onClick={saveView} aria-label="ビューを保存" className="h-8 rounded bg-accent px-2 text-[12px] text-on-accent">
                   保存
                 </button>
-                <button onClick={() => setSaving(false)} aria-label="ビュー保存をキャンセル" className="text-sm text-neutral-500">
+                <button onClick={() => setSaving(false)} aria-label="ビュー保存をキャンセル" className="text-sm text-muted">
                   ×
                 </button>
               </div>
@@ -387,13 +387,13 @@ export default function ListOptionsDrawer({
                 aria-label="現在のビューを保存"
                 disabled={!canSaveView}
                 title={!canSaveView ? "この集計条件から開いたリストは保存できません。通常のリストに戻って保存してください。" : undefined}
-                className="text-[13px] text-neutral-600 hover:text-black disabled:cursor-not-allowed disabled:text-neutral-400"
+                className="text-[13px] text-secondary hover:text-text disabled:cursor-not-allowed disabled:text-subtle"
               >
                 ビューを保存
               </button>
             )}
-            {!canSaveView && <p className="mt-1 text-[11px] leading-4 text-neutral-500">この集計条件から開いたリストは保存できません。通常のリストに戻って保存してください。</p>}
-            <label className="mt-2 flex items-center gap-2 text-[13px] text-neutral-600" title="20秒ごとに自動更新（表示中のみ）">
+            {!canSaveView && <p className="mt-1 text-[11px] leading-4 text-muted">この集計条件から開いたリストは保存できません。通常のリストに戻って保存してください。</p>}
+            <label className="mt-2 flex items-center gap-2 text-[13px] text-secondary" title="20秒ごとに自動更新（表示中のみ）">
               <input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} />
               自動更新{lastRefresh ? `（${lastRefresh}）` : ""}
             </label>
@@ -403,8 +403,8 @@ export default function ListOptionsDrawer({
             <TemplateBar projectId={projectId} sections={sections} users={users} />
           </div>
 
-          <div className="mt-4 border-t border-neutral-100 px-2 pt-3">
-            <a href="/help" className="text-[12px] text-[#6d5bd0] hover:underline">
+          <div className="mt-4 border-t border-line-subtle px-2 pt-3">
+            <a href="/help" className="text-[12px] text-accent-text hover:underline">
               フィードバックを送る
             </a>
           </div>

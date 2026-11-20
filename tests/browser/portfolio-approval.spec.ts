@@ -363,12 +363,12 @@ test("assigned reviewer passes and assigned approver adopts the frozen B snapsho
   await decideButton.click();
   const decisionDialog = page.getByRole("dialog", { name: "投資提案（版1）", exact: true });
   await expect(decisionDialog).toBeVisible();
-  await expect(decisionDialog.getByRole("button", { name: "承認して採用", exact: true })).toBeVisible();
+  await expect(decisionDialog.getByRole("button", { name: /^承認して(?: .+を)?採用$/ })).toBeVisible();
   await expect(decisionDialog.getByRole("button", { name: "差し戻す", exact: true })).toBeVisible();
   await expect(decisionDialog.getByRole("button", { name: "今期は見送る", exact: true })).toBeVisible();
 
   // A decision always needs its own recorded reason.
-  await decisionDialog.getByRole("button", { name: "承認して採用", exact: true }).click();
+  await decisionDialog.getByRole("button", { name: /^承認して(?: .+を)?採用$/ }).click();
   await expect(decisionDialog.getByRole("alert")).toHaveCount(1);
   await expect(decisionDialog.getByRole("alert")).toContainText("決定理由");
   const decisionField = decisionDialog.getByLabel("決定理由");
@@ -376,7 +376,7 @@ test("assigned reviewer passes and assigned approver adopts the frozen B snapsho
 
   await decisionField.fill(DECISION_REASON);
   const decisionResponse = await runWithApiWait(page, "POST", "/decision", () =>
-    decisionDialog.getByRole("button", { name: "承認して採用", exact: true }).click(),
+    decisionDialog.getByRole("button", { name: /^承認して(?: .+を)?採用$/ }).click(),
   );
   expect(decisionResponse.status(), await decisionResponse.text()).toBe(200);
   await expect(decisionDialog.getByText("承認済み").first()).toBeVisible();
@@ -463,7 +463,7 @@ test("assigned reviewer passes and assigned approver adopts the frozen B snapsho
 
   await page.goto("/audit");
   for (const action of ["proposal_submit", "proposal_review", "proposal_decide", "adopt"]) {
-    const entry = page.locator("div.grid").filter({ has: page.getByText("portfolio_plan." + action, { exact: true }) })
+    const entry = page.locator("[data-audit-row]").filter({ has: page.getByText("portfolio_plan." + action, { exact: true }) })
       .filter({ hasText: "ポートフォリオ #" + fixture.id + " / " });
     await expect(entry).toHaveCount(1);
   }
@@ -578,7 +578,7 @@ test("owner cannot bypass approval after withdrawal and changes remain auditable
   await expect(history).toContainText("申請者 #" + owner);
   await login(page, ADMIN);
   await page.goto("/audit");
-  const auditRow = page.locator("div.grid").filter({ has: page.getByText("portfolio_plan.approval_settings_update", { exact: true }) })
+  const auditRow = page.locator("[data-audit-row]").filter({ has: page.getByText("portfolio_plan.approval_settings_update", { exact: true }) })
     .filter({ hasText: "変更申請 #" + pendingId + "（申請者 #" + owner + "）" });
   await expect(auditRow).toContainText(directory.find(person => person.id === final)!.name);
   await expect(auditRow).toContainText("→ 無効");

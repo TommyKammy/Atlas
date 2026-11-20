@@ -192,7 +192,7 @@ export default function RichTextToolbar({
     <div
       role="toolbar"
       aria-label={ariaLabel}
-      className={`flex flex-wrap items-center gap-0.5 border-b border-neutral-100 px-1.5 py-1 ${
+      className={`flex flex-wrap items-center gap-0.5 border-b border-line-subtle px-1.5 py-1 ${
         compact ? "atlas-toolbar-compact" : ""
       }`}
     >
@@ -201,7 +201,7 @@ export default function RichTextToolbar({
         title="段落スタイル"
         value={block}
         onChange={(event) => setBlock(event.target.value)}
-        className="mr-1 h-8 rounded-md border border-transparent bg-transparent px-1.5 text-[12px] text-neutral-600 outline-none hover:border-neutral-200 hover:bg-neutral-50 focus:border-[#4075cf]"
+        className="mr-1 h-8 rounded-md border border-transparent bg-transparent px-1.5 text-[12px] text-secondary outline-none hover:border-field-line-hover hover:bg-hover focus:border-accent"
       >
         <option value="p">ノーマルテキスト</option>
         <option value="h1">見出し1</option>
@@ -238,7 +238,7 @@ export default function RichTextToolbar({
         <ToolbarIcon name="highlight" />
       </ToolbarButton>
 
-      <span className="mx-0.5 h-5 w-px bg-neutral-200" />
+      <span className="mx-0.5 h-5 w-px bg-surface-strong" />
 
       <ToolbarButton
         label="箇条書き"
@@ -269,7 +269,7 @@ export default function RichTextToolbar({
         <ToolbarIcon name="quote" />
       </ToolbarButton>
 
-      <span className="mx-0.5 h-5 w-px bg-neutral-200" />
+      <span className="mx-0.5 h-5 w-px bg-surface-strong" />
 
       <ToolbarButton label="リンク" active={state.link} onClick={setLink}>
         <ToolbarIcon name="link" />

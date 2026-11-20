@@ -58,10 +58,10 @@ export default function HomeTaskComposer({
       onClose={onClose}
       title={mode === "my_tasks" ? "タスクを作成" : "タスクを割り当てる"}
       titleId="home-task-composer-title"
-      panelClassName="w-[min(460px,94vw)] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
+      panelClassName="w-[min(460px,94vw)] overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"
     >
       <div className="p-5">
-        <h2 id="home-task-composer-title" className="text-[15px] font-semibold text-neutral-800">
+        <h2 id="home-task-composer-title" className="text-[15px] font-semibold text-text">
           {mode === "my_tasks" ? "タスクを作成" : "タスクを割り当てる"}
         </h2>
         <div className="mt-3 space-y-2">
@@ -72,13 +72,13 @@ export default function HomeTaskComposer({
             onKeyDown={(event) => !isImeComposing(event) && event.key === "Enter" && void create()}
             placeholder="タスク名"
             autoFocus
-            className="w-full rounded border border-neutral-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded border border-field-line px-2 py-1.5 text-sm outline-none focus:border-accent"
           />
           <select
             data-home-composer-project
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
-            className="w-full rounded border border-neutral-200 px-2 py-1.5 text-sm"
+            className="w-full rounded border border-field-line px-2 py-1.5 text-sm"
           >
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
@@ -91,7 +91,7 @@ export default function HomeTaskComposer({
               data-home-composer-assignee
               value={assigneeId}
               onChange={(event) => setAssigneeId(event.target.value)}
-              className="w-full rounded border border-neutral-200 px-2 py-1.5 text-sm"
+              className="w-full rounded border border-field-line px-2 py-1.5 text-sm"
             >
               {users
                 .filter((user) => user.id !== viewerId)
@@ -102,13 +102,13 @@ export default function HomeTaskComposer({
                 ))}
             </select>
           )}
-          {error !== "" && <p className="text-[12px] text-red-600">{error}</p>}
+          {error !== "" && <p className="text-[12px] text-danger">{error}</p>}
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+            className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-hover"
           >
             キャンセル
           </button>
@@ -117,7 +117,7 @@ export default function HomeTaskComposer({
             data-home-composer-submit
             disabled={busy || name.trim() === "" || projectId === ""}
             onClick={() => void create()}
-            className="rounded-md bg-[#2c60b8] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {busy ? "作成中…" : "作成"}
           </button>

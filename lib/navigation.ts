@@ -7,7 +7,12 @@ export type SidebarIconName =
   | "shield"
   | "search";
 
-export type NavItem = {
+type NavVisibility = {
+  /** Entry is only shown to users who can use portfolios. */
+  portfolioOnly?: boolean;
+};
+
+export type NavItem = NavVisibility & {
   key: string;
   href: string;
   label: string;
@@ -15,12 +20,27 @@ export type NavItem = {
   adminOnly?: boolean;
 };
 
+export type CompactNavItem = NavVisibility & { href: string; label: string };
+
+export type RailItem = NavVisibility & {
+  href: string;
+  label: string;
+  icon: SidebarIconName;
+};
+
+export type RailFlyoutLink = NavVisibility & { label: string; href: string };
+
+/** Drop entries the viewer must not see without matching on labels or hrefs. */
+export function visibleNavItems<T extends NavVisibility>(items: T[], showPortfolio: boolean): T[] {
+  return showPortfolio ? items : items.filter((item) => !item.portfolioOnly);
+}
+
 /** Sidebar navigation in display order (admin/trash are rendered explicitly). */
 export const MAIN_NAV: NavItem[] = [
   { key: "home", href: "/", label: "ホーム", icon: "home" },
   { key: "inbox", href: "/inbox", label: "受信トレイ", icon: "inbox" },
   { key: "my-tasks", href: "/my-tasks", label: "マイタスク", icon: "check" },
-  { key: "portfolio", href: "/portfolio", label: "ポートフォリオ", icon: "portfolio" },
+  { key: "portfolio", href: "/portfolio", label: "ポートフォリオ", icon: "portfolio", portfolioOnly: true },
 ];
 
 export const ADMIN_NAV: NavItem = {
@@ -39,24 +59,22 @@ export const TRASH_NAV: NavItem = {
 };
 
 /** Compact navigation used below the md breakpoint. */
-export const MOBILE_NAV: Array<{ href: string; label: string }> = [
+export const MOBILE_NAV: CompactNavItem[] = [
   { href: "/", label: "ホーム" },
   { href: "/my-tasks", label: "マイタスク" },
   { href: "/inbox", label: "受信トレイ" },
-  { href: "/portfolio", label: "ポートフォリオ" },
-  { href: "/search", label: "検索" },
+  { href: "/portfolio", label: "ポートフォリオ", portfolioOnly: true },
 ];
 
 /** Icon rail items (collapsed sidebar). */
-export const RAIL_ITEMS: Array<{ href: string; label: string; icon: SidebarIconName }> = [
+export const RAIL_ITEMS: RailItem[] = [
   { href: "/", label: "ホーム", icon: "home" },
   { href: "/my-tasks", label: "マイタスク", icon: "check" },
   { href: "/inbox", label: "受信トレイ", icon: "inbox" },
-  { href: "/search", label: "検索", icon: "search" },
-  { href: "/portfolio", label: "ポートフォリオ", icon: "portfolio" },
+  { href: "/portfolio", label: "ポートフォリオ", icon: "portfolio", portfolioOnly: true },
 ];
 
-export const RAIL_FLYOUTS: Record<string, { label: string; href: string }[]> = {
+export const RAIL_FLYOUTS: Record<string, RailFlyoutLink[]> = {
   "/": [
     { label: "ホーム", href: "/" },
     { label: "マイタスク", href: "/my-tasks" },
@@ -72,11 +90,7 @@ export const RAIL_FLYOUTS: Record<string, { label: string; href: string }[]> = {
     { label: "受信トレイ", href: "/inbox" },
     { label: "未読を確認", href: "/inbox" },
   ],
-  "/search": [
-    { label: "検索", href: "/search" },
-    { label: "詳細検索", href: "/search" },
-  ],
-  "/portfolio": [{ label: "ポートフォリオ", href: "/portfolio" }],
+  "/portfolio": [{ label: "ポートフォリオ", href: "/portfolio", portfolioOnly: true }],
 };
 
 export const NAV_LABELS = {

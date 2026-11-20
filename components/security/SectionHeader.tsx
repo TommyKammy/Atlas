@@ -1,13 +1,10 @@
 "use client";
 
-export const field =
-  "mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500";
-
 export function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
-    <div>
-      <h3 className="text-sm font-semibold">{title}</h3>
-      <p className="mt-0.5 text-xs text-neutral-500">{description}</p>
+    <div className="min-w-0">
+      <h3 className="text-[14px] font-semibold leading-5 text-text">{title}</h3>
+      <p className="mt-1 text-[12px] leading-5 text-muted">{description}</p>
     </div>
   );
 }

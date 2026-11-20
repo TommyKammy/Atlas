@@ -45,8 +45,8 @@ export function createMentionSuggestion(getUsers: () => MentionUser[]): MentionS
           button.style.width = "100%";
           button.style.border = "0";
           button.style.borderRadius = "6px";
-          button.style.background = index === selected ? "#eef4ff" : "transparent";
-          button.style.color = index === selected ? "#1d4f91" : "#333";
+          button.style.background = index === selected ? "var(--atlas-accent-soft)" : "transparent";
+          button.style.color = index === selected ? "var(--atlas-accent-text)" : "var(--atlas-text)";
           button.style.fontSize = "12px";
           button.style.lineHeight = "20px";
           button.style.padding = "5px 8px";
@@ -82,9 +82,9 @@ export function createMentionSuggestion(getUsers: () => MentionUser[]): MentionS
           element.style.maxHeight = "240px";
           element.style.overflowY = "auto";
           element.style.padding = "4px";
-          element.style.border = "1px solid #e5e5e5";
+          element.style.border = "1px solid var(--atlas-line)";
           element.style.borderRadius = "8px";
-          element.style.background = "#fff";
+          element.style.background = "var(--atlas-surface)";
           element.style.boxShadow = "0 8px 24px rgba(0,0,0,0.14)";
           unmount = nextProps.mount(element);
           draw();

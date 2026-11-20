@@ -91,13 +91,13 @@ export default function TaskDescriptionSection({
 
   return (
     <section className="mt-5" data-task-description>
-      <div className="mb-1 flex min-h-8 items-center gap-2">
-        <h3 className="text-[12px] font-semibold text-neutral-700">説明</h3>
+      <div className="mb-1.5 flex min-h-7 items-center gap-2">
+        <h3 className="text-[12px] font-medium text-muted">説明</h3>
         {canEdit && !editing && hasText && (
           <button
             type="button"
             onClick={start}
-            className="rounded px-1.5 py-0.5 text-[11px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+            className="rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-hover hover:text-secondary"
           >
             編集
           </button>
@@ -123,19 +123,19 @@ export default function TaskDescriptionSection({
             onSubmit={() => void save()}
           />
           <div className="mt-1.5 flex items-center justify-between gap-2">
-            <span className="text-[10px] text-neutral-400">⌘+Enter で保存</span>
+            <span className="text-[10px] text-muted">⌘+Enter で保存</span>
             <div className="flex gap-1.5">
               <button
                 type="button"
                 onClick={cancel}
-                className="rounded px-2.5 py-1 text-[12px] text-neutral-600 hover:bg-neutral-100"
+                className="rounded px-2.5 py-1 text-[12px] text-secondary hover:bg-hover"
               >
                 キャンセル
               </button>
               <button
                 type="button"
                 onClick={() => void save()}
-                className="rounded bg-[#2f6fd0] px-3 py-1 text-[12px] font-medium text-white hover:bg-[#2459ad]"
+                className="rounded bg-accent px-3 py-1 text-[12px] font-medium text-on-accent hover:bg-accent-hover"
               >
                 保存
               </button>
@@ -149,7 +149,7 @@ export default function TaskDescriptionSection({
             start();
           }}
           title={canEdit ? "クリックして編集" : undefined}
-          className={`min-h-[96px] rounded-lg px-2 py-2 ${canEdit ? "cursor-text hover:bg-neutral-50" : ""}`}
+          className={`min-h-0 rounded px-0.5 py-2 ${canEdit ? "cursor-text hover:bg-hover" : ""}`}
         >
           <RichTextView doc={doc} legacy={legacy} mentionUsers={mentionUsers} />
         </div>
@@ -157,11 +157,11 @@ export default function TaskDescriptionSection({
         <button
           type="button"
           onClick={start}
-          className="min-h-[132px] w-full rounded-lg px-2 py-2 text-left text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-500"
+          className="flex min-h-[72px] w-full items-start rounded px-0.5 py-2 text-left text-[13px] text-muted hover:bg-hover hover:text-secondary"
         >
-          このタスクの内容を入力します
+          <span>このタスクの内容を入力します</span>
         </button>
-      ) : <p className="min-h-12 px-2 py-2 text-[13px] text-neutral-500">説明はありません</p>}
+      ) : <p className="min-h-12 px-0.5 py-2 text-[13px] text-muted">説明はありません</p>}
     </section>
   );
 }

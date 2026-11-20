@@ -18,8 +18,8 @@ export default function TaskMetaBadges({
   return (
     <>
       {subtaskCount > 0 && (
-        <span {...subtaskData} className={className} title="サブタスク">
-          <svg viewBox="0 0 16 16" className={iconClassName} fill="none" stroke="currentColor" strokeWidth="1.2">
+        <span {...subtaskData} className={className} title="サブタスク" aria-label={`子タスク ${subtaskCount}`}>
+          <svg viewBox="0 0 16 16" className={iconClassName} fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
             <path d="M4 3v4.5a2 2 0 0 0 2 2h6" />
             <path d="M9.5 7.5 12 9.5 9.5 11.5" />
           </svg>
@@ -27,8 +27,8 @@ export default function TaskMetaBadges({
         </span>
       )}
       {commentCount > 0 && (
-        <span {...commentData} className={className} title="コメント">
-          <svg viewBox="0 0 16 16" className={iconClassName} fill="none" stroke="currentColor" strokeWidth="1.2">
+        <span {...commentData} className={className} title="コメント" aria-label={`コメント ${commentCount}`}>
+          <svg viewBox="0 0 16 16" className={iconClassName} fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
             <path d="M3 3.5h10v7H7.5L4.5 13v-2.5H3z" />
           </svg>
           {commentCount}

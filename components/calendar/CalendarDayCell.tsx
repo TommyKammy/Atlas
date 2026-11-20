@@ -50,7 +50,10 @@ export default function CalendarDayCell({
       data-calendar-day-count={taskCount}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`group relative border-r border-b border-neutral-200 p-1 align-top ${
+      data-calendar-weekend={compact ? "true" : undefined}
+      className={`group relative border-r border-b border-line-subtle p-1 align-top ${
+        compact ? "bg-surface-subtle" : ""
+      } ${
         weekMode ? "min-h-[320px]" : "min-h-[120px] max-h-[240px] overflow-y-auto"
       }`}
     >
@@ -60,7 +63,7 @@ export default function CalendarDayCell({
           type="button"
           data-calendar-more={iso}
           onClick={onExpand}
-          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] font-medium text-[#2c60b8] hover:bg-neutral-100"
+          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] font-medium text-muted hover:bg-hover hover:text-text"
         >
           +{hiddenCount} 件
         </button>
@@ -70,7 +73,7 @@ export default function CalendarDayCell({
           type="button"
           data-calendar-collapse={iso}
           onClick={onCollapse}
-          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] text-neutral-500 hover:bg-neutral-100"
+          className="mt-0.5 flex h-6 w-full items-center rounded px-1 text-left text-[12px] text-muted hover:bg-hover"
         >
           折りたたむ
         </button>
@@ -84,7 +87,7 @@ export default function CalendarDayCell({
           onKeyDown={onDraftKeyDown}
           onBlur={onDraftBlur}
           placeholder="タスク名を入力"
-          className="h-8 w-full rounded border border-blue-500 px-2 text-[13px] outline-none"
+          className="h-8 w-full rounded border border-accent px-2 text-[13px] outline-none"
         />
       ) : (
         !compact &&
@@ -92,7 +95,7 @@ export default function CalendarDayCell({
           <button
             type="button"
             onClick={onStartAdd}
-            className="flex h-8 w-full items-center rounded px-1 text-left text-[12px] text-neutral-400 opacity-0 hover:bg-neutral-100 hover:text-neutral-700 group-hover:opacity-100 focus:opacity-100"
+            className="flex h-8 w-full items-center rounded px-1 text-left text-[12px] text-muted opacity-0 hover:bg-hover hover:text-secondary group-hover:opacity-100 focus:opacity-100"
           >
             ＋ タスクを追加
           </button>

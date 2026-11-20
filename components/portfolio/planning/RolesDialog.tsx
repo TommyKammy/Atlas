@@ -122,7 +122,7 @@ export default function RolesDialog({
       }
     >
       <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-4">
-        <p className="text-[12px] text-neutral-600">
+        <p className="text-[12px] text-secondary">
           {periodLabel} の配賦枠と需要で使う職種です。職種はポートフォリオ全体で共有され、別の四半期にも引き継がれます。
         </p>
         <Notice tone="warn">
@@ -130,7 +130,7 @@ export default function RolesDialog({
         </Notice>
         <div className="space-y-2">
           {rows.length === 0 && (
-            <p className="rounded-md border border-dashed border-neutral-300 px-3 py-5 text-center text-[12px] text-neutral-500">
+            <p className="rounded-md border border-dashed border-line-strong px-3 py-5 text-center text-[12px] text-muted">
               職種がありません。「職種を追加」から登録してください。
             </p>
           )}
@@ -157,7 +157,7 @@ export default function RolesDialog({
                 onClick={() => void remove(row)}
                 disabled={busy}
                 aria-label={`${row.name || `職種 ${index + 1}`}を削除`}
-                className="mb-0.5 inline-flex h-8 items-center rounded-md px-2 text-[12px] text-neutral-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                className="mb-0.5 inline-flex h-8 items-center rounded-md px-2 text-[12px] text-muted hover:bg-danger-soft hover:text-danger disabled:opacity-50"
               >
                 削除
               </button>

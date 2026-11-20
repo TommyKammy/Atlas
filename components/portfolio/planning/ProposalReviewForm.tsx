@@ -74,16 +74,18 @@ export default function ProposalReviewForm({
         event.preventDefault();
         void submit("pass");
       }}
-      className="rounded-md border border-blue-200 bg-blue-50 px-3 py-3"
+      className="flex flex-col gap-3"
     >
-      <h3 className="text-[13px] font-semibold text-blue-950">レビュー</h3>
-      <p className="mt-1 text-[11px] text-blue-800">
-        コメントは判断の記録として保存されます。担当: {reviewerName}
-      </p>
+      <div>
+        <h3 className="text-[13px] font-semibold text-text">レビュー</h3>
+        <p className="mt-0.5 text-[12px] text-muted">
+          コメントは判断の記録として保存されます。担当: {reviewerName}
+        </p>
+      </div>
 
-      <label htmlFor={noteId} className="mt-2 block text-[12px] font-medium text-blue-950">
+      <label htmlFor={noteId} className="block text-[12px] font-medium text-text">
         レビューのコメント・差し戻し理由
-        <span className="ml-1 text-red-700" aria-hidden>
+        <span className="ml-1 text-danger" aria-hidden>
           *
         </span>
         <textarea
@@ -95,7 +97,7 @@ export default function ProposalReviewForm({
             setNote(event.target.value);
             if (event.target.value.trim() !== "") setInvalid(false);
           }}
-          className="mt-1 min-h-24 w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
+          className="mt-1 min-h-24 w-full rounded-lg border border-field-line bg-field px-3 py-2.5 text-[13px] leading-6 text-text outline-none focus:border-accent"
           maxLength={2000}
           placeholder="確認した内容、懸念点、差し戻す場合は修正してほしい点"
           aria-describedby={invalid ? errorId : undefined}
@@ -111,13 +113,17 @@ export default function ProposalReviewForm({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button type="submit" className={buttonPrimary} disabled={busy !== null}>
+      <div className="flex flex-col gap-2">
+        <button
+          type="submit"
+          className={`${buttonPrimary} min-h-11 w-full justify-center font-bold`}
+          disabled={busy !== null}
+        >
           {busy === "pass" ? "確認中…" : "確認して決裁へ"}
         </button>
         <button
           type="button"
-          className={buttonSecondary}
+          className={`${buttonSecondary} min-h-11 w-full justify-center`}
           disabled={busy !== null}
           onClick={() => void submit("return")}
         >

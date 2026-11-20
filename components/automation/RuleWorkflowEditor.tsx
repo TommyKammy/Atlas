@@ -16,9 +16,20 @@ import RuleWorkflowCanvas from "./RuleWorkflowCanvas";
 import RuleStepInspector from "./RuleStepInspector";
 import RulePreviewDialog from "./RulePreviewDialog";
 import RuleExecutionHistory from "./RuleExecutionHistory";
+import { ruleValidationSummary } from "@/lib/automation/editor-presentation";
+import {
+  checkboxClass,
+  dialogCloseClass,
+  dialogTitleClass,
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  fieldTextareaClass,
+  primaryButtonClass,
+  quietButtonClass,
+  secondaryButtonClass,
+} from "../ui/form-controls";
 
-const inputClass = "h-9 w-full rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]";
-const buttonClass = "inline-flex h-8 items-center justify-center rounded-md border border-neutral-200 bg-white px-3 text-[12px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-40";
 type Suggestion = { name: string; description: string; definition: RuleDefinition };
 
 export default function RuleWorkflowEditor({ project, descriptors, initialRule, initialDraft, canEdit }: {
@@ -320,75 +331,93 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
     setSelected({ kind: "action", index: 0 }); setTemplatesOpen(false);
   };
 
-  return <div className="flex h-full min-h-[560px] flex-col overflow-hidden bg-white" data-rule-workflow-editor>
-    <header className="shrink-0 border-b border-neutral-200 bg-white px-5 pt-4 sm:px-6">
-      <div className="mb-3 text-[12px] text-neutral-500"><Link href={`/projects/${project.id}`} className="hover:text-neutral-800">{project.name}</Link><span className="px-2">/</span>ルール</div>
-      <div className="flex flex-wrap items-center gap-3">
-        <Link href={`/projects/${project.id}`} aria-label="プロジェクトに戻る" className="text-xl text-neutral-500" onClick={async (event) => {
+  return <div className="flex h-full min-h-[560px] flex-col overflow-hidden bg-bg" data-rule-workflow-editor>
+    <header className="shrink-0 border-b border-line bg-surface px-5 pb-1 pt-4 sm:px-6">
+      <div className="text-[12px] text-muted"><Link href={`/projects/${project.id}`} className="rounded-sm hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">{project.name}</Link><span className="px-2" aria-hidden="true">/</span>ルール</div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <Link href={`/projects/${project.id}`} aria-label="プロジェクトに戻る" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[18px] leading-none text-muted hover:bg-hover hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring" onClick={async (event) => {
           if (!changed && saveState !== "saving") return;
           event.preventDefault();
           if (await confirmAction("未保存の変更があります。このページを離れますか？")) router.push(`/projects/${project.id}`);
         }}>←</Link>
         <label className="min-w-[180px] flex-1"><span className="sr-only">ルール名</span><input ref={nameInput} aria-label="ルール名" value={document.name} placeholder="ルール名を入力" maxLength={120} readOnly={!canEdit || editingBusy}
-          onChange={(event) => change({ ...document, name: event.target.value })} className="w-full rounded border border-transparent bg-transparent px-1 py-1 text-[18px] font-semibold outline-none hover:border-neutral-200 focus:border-[#2c60b8]" /></label>
-        <span className={`rounded px-2 py-1 text-[11px] ${published ? "bg-green-100 text-green-800" : "bg-neutral-100 text-neutral-600"}`}>{published ? document.enabled ? "公開済み" : "停止中" : "下書き"}</span>
-        <span role="status" aria-live="polite" className="text-[11px] text-neutral-500" data-rule-save-status>{saveState === "saving" ? "保存中…" : saveState === "error" ? "保存できませんでした" : changed ? "未保存の変更" : "✓ 保存済み"}</span>
-        {canEdit && <div className="flex items-center gap-2">
-          <button type="button" className={buttonClass} disabled={Boolean(conflict) || editingBusy} onClick={() => void persist(document).catch(() => undefined)}>下書きを保存</button>
-          <button type="button" className={buttonClass} onClick={() => setPreviewOpen(true)}>▷ テスト</button>
-          <button type="button" onClick={() => void publish()} disabled={editingBusy || Boolean(conflict) || problems.length > 0} aria-describedby={problems.length ? "rule-validation-heading" : undefined} className="h-8 rounded-md bg-[#2c60b8] px-4 text-[12px] font-medium text-white hover:bg-[#24529c] disabled:opacity-40">{publishing ? "公開中…" : "公開する"}</button>
+          onChange={(event) => change({ ...document, name: event.target.value })} className="h-8 w-full rounded-md border border-transparent bg-transparent px-1.5 text-[16px] font-semibold text-text outline-none hover:border-field-line-hover focus:border-accent" /></label>
+        <span className={`inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium ${published ? "bg-success-soft text-success" : "bg-surface-muted text-secondary"}`}>
+          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+          {published ? document.enabled ? "公開済み" : "停止中" : "下書き"}
+        </span>
+        <span role="status" aria-live="polite" className="text-[12px] text-muted" data-rule-save-status>{saveState === "saving" ? "保存中…" : saveState === "error" ? "保存できませんでした" : changed ? "未保存の変更" : "✓ 保存済み"}</span>
+        {canEdit && <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          <button type="button" className={secondaryButtonClass} disabled={Boolean(conflict) || editingBusy} onClick={() => void persist(document).catch(() => undefined)}>下書きを保存</button>
+          <button type="button" className={secondaryButtonClass} onClick={() => setPreviewOpen(true)}>▷ テスト</button>
+          <button type="button" onClick={() => void publish()} disabled={editingBusy || Boolean(conflict) || problems.length > 0} aria-describedby={problems.length ? "rule-validation-heading" : undefined} className={primaryButtonClass}>{publishing ? "公開中…" : "公開する"}</button>
+          <button type="button" className={quietButtonClass} disabled={editingBusy} onClick={() => setTemplatesOpen(true)}>テンプレート</button>
+          <button type="button" className={quietButtonClass} disabled={editingBusy} onClick={() => setAiOpen(true)}>AIアシスト</button>
         </div>}
       </div>
-      <nav aria-label="ルールエディター" className="mt-3 flex flex-wrap gap-5 text-[12px]">
+      <nav aria-label="ルールエディター" className="mt-2 flex flex-wrap gap-1">
         {([['editor', 'エディター'], ['history', '実行履歴'], ['settings', '設定']] as const).map(([id, label]) => <button key={id} type="button" aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}
-          className={`border-b-2 px-1 py-3 ${tab === id ? "border-[#2c60b8] font-semibold text-[#2c60b8]" : "border-transparent text-neutral-600"}`}>{label}</button>)}
-        {canEdit && <div className="ml-auto flex items-center gap-2 pb-2">
-          <button type="button" className={buttonClass} disabled={editingBusy} onClick={() => setTemplatesOpen(true)}>テンプレート</button>
-          <button type="button" className={buttonClass} disabled={editingBusy} onClick={() => setAiOpen(true)}>AIアシスト</button>
-        </div>}
+          className={`h-8 rounded-md px-2.5 text-[13px] font-medium transition-colors ${tab === id ? "bg-accent-soft text-accent-text hover:bg-accent-soft-hover hover:text-accent-hover" : "text-secondary hover:bg-hover hover:text-text"}`}>{label}</button>)}
       </nav>
     </header>
-    {!canEdit && <p className="border-b border-neutral-200 bg-neutral-50 px-6 py-3 text-[12px] text-neutral-600">閲覧モードです。ルールの編集・公開は所有者が行えます。</p>}
-    {canEdit && problems.length > 0 && <section data-rule-validation-summary aria-labelledby="rule-validation-heading" className="max-h-44 shrink-0 overflow-y-auto border-b border-amber-200 bg-amber-50 px-6 py-3 text-[12px] text-amber-950">
-      <h2 id="rule-validation-heading" className="font-semibold">公開前に入力を確認してください</h2>
-      <p className="mt-1 leading-5">未入力の内容は下書きに保存できます。次の項目を修正すると公開できます。</p>
-      <ul className="mt-2 space-y-1">{problems.map((problem, index) => <li key={index}><button type="button" onClick={() => selectProblem(problem)} className="text-left leading-5 underline decoration-amber-700/50 underline-offset-2 hover:decoration-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">{problem.label}</button></li>)}</ul>
+    {!canEdit && <p className="border-b border-line bg-surface-subtle px-6 py-3 text-[12px] text-secondary">閲覧モードです。ルールの編集・公開は所有者が行えます。</p>}
+    {(error || conflict) && <div role="alert" className="shrink-0 border-b border-danger-line bg-danger-soft px-6 py-3 text-[12px] text-danger">
+      <p>{error}</p>{conflict && <div className="mt-2 flex flex-wrap items-center gap-3"><span>編集中の内容は保持しています。</span><button type="button" className={secondaryButtonClass} onClick={() => void reloadDraft()}>{conflict === "rule_conflict" ? "公開版から読み直す（編集内容を破棄）" : "最新の下書きを読み込む（編集内容を破棄）"}</button></div>}
+    </div>}
+    {canEdit && problems.length > 0 && <section data-rule-validation-summary aria-labelledby="rule-validation-heading" className="mx-4 mt-3 max-h-28 max-w-3xl shrink-0 overflow-y-auto rounded-lg border border-warning-line bg-warning-soft px-3 py-2 text-[12px] text-warning">
+      <h2 id="rule-validation-heading" className="flex items-center gap-1.5 font-semibold">
+        <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.4">
+          <path d="M8 2.5 14.5 13.5h-13L8 2.5Z" strokeLinejoin="round" />
+          <path d="M8 6v3.5" strokeLinecap="round" />
+          <circle cx="8" cy="11.4" r="0.65" fill="currentColor" stroke="none" />
+        </svg>
+        {ruleValidationSummary(problems.length)}
+      </h2>
+      <p className="sr-only">未入力の内容は下書きに保存できます。次の項目を修正すると公開できます。</p>
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        {problems[0] && <button type="button" onClick={() => selectProblem(problems[0])} className="line-clamp-2 text-left leading-5 underline decoration-warning/50 underline-offset-2 hover:decoration-warning focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">{problems[0].label}</button>}
+        {problems.length > 1 && <details className="group">
+          <summary className="cursor-pointer list-none rounded-sm text-[12px] text-warning underline decoration-warning/50 underline-offset-2 hover:decoration-warning focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">ほか {problems.length - 1} 件を表示</summary>
+          <ul className="mt-1 space-y-1">{problems.slice(1).map((problem, index) => <li key={index}><button type="button" onClick={() => selectProblem(problem)} className="text-left leading-5 underline decoration-warning/50 underline-offset-2 hover:decoration-warning focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">{problem.label}</button></li>)}</ul>
+        </details>}
+      </div>
     </section>}
-    {(error || conflict) && <div role="alert" className="shrink-0 border-b border-rose-200 bg-rose-50 px-6 py-3 text-[12px] text-rose-700">
-      <p>{error}</p>{conflict && <div className="mt-2 flex flex-wrap items-center gap-3"><span>編集中の内容は保持しています。</span><button type="button" className={buttonClass} onClick={() => void reloadDraft()}>{conflict === "rule_conflict" ? "公開版から読み直す（編集内容を破棄）" : "最新の下書きを読み込む（編集内容を破棄）"}</button></div>}
-    </div>}
-    {tab === "editor" && <div className="relative flex min-h-0 flex-1">
-      <RuleWorkflowCanvas document={document} descriptors={descriptors} selected={selected} readOnly={!canEdit || editingBusy}
-        onSelect={setSelected} onAddTrigger={addTrigger} onAddAction={addAction} onAddBranch={addBranch}
-        onToggleBranches={() => { change({ ...toggleRuleBranches(document, { capability: "task.complete", params: {} }), enabled: document.enabled }); setSelected({ kind: "conditions" }); }}
-        canUndo={history.past.length > 0} canRedo={history.future.length > 0} onUndo={() => dispatch({ type: "undo" })} onRedo={() => dispatch({ type: "redo" })} />
-      {selected && <RuleStepInspector projectId={project.id} document={document} descriptors={descriptors} selected={selected} readOnly={!canEdit || editingBusy}
-        onChange={change} onSelect={setSelected} onClose={() => setSelected(null)} onAddAction={addAction} focusCondition={focusCondition} />}
-    </div>}
+    {tab === "editor" && <>
+      <div className="relative flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <RuleWorkflowCanvas document={document} descriptors={descriptors} selected={selected} readOnly={!canEdit || editingBusy}
+            onSelect={setSelected} onAddTrigger={addTrigger} onAddAction={addAction} onAddBranch={addBranch}
+            onToggleBranches={() => { change({ ...toggleRuleBranches(document, { capability: "task.complete", params: {} }), enabled: document.enabled }); setSelected({ kind: "conditions" }); }}
+            canUndo={history.past.length > 0} canRedo={history.future.length > 0} onUndo={() => dispatch({ type: "undo" })} onRedo={() => dispatch({ type: "redo" })} />
+        </div>
+        {selected && <RuleStepInspector projectId={project.id} document={document} descriptors={descriptors} selected={selected} readOnly={!canEdit || editingBusy}
+          onChange={change} onSelect={setSelected} onClose={() => setSelected(null)} onAddAction={addAction} focusCondition={focusCondition} />}
+      </div>
+    </>}
     {tab === "history" && <RuleExecutionHistory projectId={project.id} ruleId={ruleId} descriptors={descriptors} />}
     {tab === "settings" && <div className="min-h-0 flex-1 overflow-auto p-6"><fieldset disabled={!canEdit || editingBusy} className="max-w-xl space-y-5">
-      <h2 className="text-[16px] font-semibold">ルールの設定</h2>
-      <label className="block text-[12px] font-medium text-neutral-700">説明<textarea maxLength={1000} className={`${inputClass} mt-2 h-28 py-2`} value={document.description} onChange={(event) => change({ ...document, description: event.target.value })} /></label>
-      <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={document.enabled} onChange={(event) => change({ ...document, enabled: event.target.checked })} />公開後にルールを有効にする</label>
-      <p className="text-[12px] leading-6 text-neutral-600">公開済みのルールは、下書きの編集中も現在の設定で動作します。変更は「公開する」を押した後の実行に適用されます。</p>
-      <p className="text-[12px] text-neutral-600">所有者: {initialRule?.owner_name ?? "自分"}</p>
-      <div className="border-t border-neutral-200 pt-5"><button type="button" disabled={!draftData && !changed} onClick={() => void discardDraft()} className={`${buttonClass} text-rose-600`}>下書きを破棄</button><p className="mt-2 text-[11px] text-neutral-500">公開済みのルールはそのまま残ります。</p></div>
+      <h2 className={dialogTitleClass}>ルールの設定</h2>
+      <label className={fieldLabelClass}>説明<textarea maxLength={1000} className={`${fieldTextareaClass} mt-2 h-28`} value={document.description} onChange={(event) => change({ ...document, description: event.target.value })} /></label>
+      <label className="flex items-center gap-2 text-[13px] text-secondary"><input type="checkbox" className={checkboxClass} checked={document.enabled} onChange={(event) => change({ ...document, enabled: event.target.checked })} />公開後にルールを有効にする</label>
+      <p className={fieldHintClass}>公開済みのルールは、下書きの編集中も現在の設定で動作します。変更は「公開する」を押した後の実行に適用されます。</p>
+      <p className={fieldHintClass}>所有者: {initialRule?.owner_name ?? "自分"}</p>
+      <div className="border-t border-line pt-5"><button type="button" disabled={!draftData && !changed} onClick={() => void discardDraft()} className={secondaryButtonClass}><span className="text-danger">下書きを破棄</span></button><p className={`mt-2 ${fieldHintClass}`}>公開済みのルールはそのまま残ります。</p></div>
     </fieldset></div>}
-    {palette && <Dialog open onClose={() => setPalette(null)} title="実行することを追加" panelClassName="flex max-h-[80vh] w-[min(540px,94vw)] flex-col rounded-xl bg-white">
-      <div className="border-b border-neutral-200 p-5"><div className="mb-3 flex justify-between"><h2 className="text-[16px] font-semibold">実行することを追加</h2><button aria-label="閉じる" onClick={() => setPalette(null)}>×</button></div><input autoFocus className={inputClass} placeholder="アクションを検索" value={paletteQuery} onChange={(event) => setPaletteQuery(event.target.value)} /></div>
-      <div className="overflow-auto p-3">{descriptors.actions.filter((entry) => `${entry.label} ${entry.description}`.includes(paletteQuery)).map((entry) => <button type="button" key={entry.id} onClick={() => chooseAction(entry.id)} className="block w-full rounded-md p-3 text-left hover:bg-neutral-50"><span className="block text-[13px] font-medium">{entry.label}</span><span className="mt-1 block text-[12px] text-neutral-500">{entry.description}{entry.requiresTask && !document.triggers.every((trigger) => hasTaskSubject(trigger.event)) ? "（対象タスクを指定）" : ""}</span></button>)}</div>
+    {palette && <Dialog open onClose={() => setPalette(null)} title="実行することを追加" panelClassName="flex max-h-[80vh] w-[min(540px,94vw)] flex-col overflow-hidden rounded-xl bg-surface">
+      <div className="border-b border-line p-5"><div className="mb-3 flex items-center justify-between gap-2"><h2 className={dialogTitleClass}>実行することを追加</h2><button type="button" aria-label="閉じる" onClick={() => setPalette(null)} className={dialogCloseClass}>×</button></div><input autoFocus className={fieldControlClass} placeholder="アクションを検索" value={paletteQuery} onChange={(event) => setPaletteQuery(event.target.value)} /></div>
+      <div className="overflow-auto p-3">{descriptors.actions.filter((entry) => `${entry.label} ${entry.description}`.includes(paletteQuery)).map((entry) => <button type="button" key={entry.id} onClick={() => chooseAction(entry.id)} className="block w-full rounded-md p-3 text-left hover:bg-hover"><span className="block text-[13px] font-medium text-text">{entry.label}</span><span className="mt-1 block text-[12px] text-muted">{entry.description}{entry.requiresTask && !document.triggers.every((trigger) => hasTaskSubject(trigger.event)) ? "（対象タスクを指定）" : ""}</span></button>)}</div>
     </Dialog>}
-    {templatesOpen && <Dialog open onClose={() => setTemplatesOpen(false)} title="テンプレートから作成" panelClassName="w-[min(500px,94vw)] rounded-xl bg-white p-5">
-      <h2 className="mb-3 text-[16px] font-semibold">テンプレートから作成</h2><p className="mb-4 text-[12px] text-neutral-600">現在のフローを置き換えます。元に戻す操作で復元できます。</p>
-      <button type="button" className="mb-2 block w-full rounded-lg border border-neutral-200 p-4 text-left text-[13px] hover:bg-neutral-50" onClick={() => applyTemplate("complete")}>完了時にコメントする</button>
-      <button type="button" className="block w-full rounded-lg border border-neutral-200 p-4 text-left text-[13px] hover:bg-neutral-50" onClick={() => applyTemplate("status")}>新規タスクのStatusを設定</button>
-      <button type="button" className={`${buttonClass} mt-4`} onClick={() => setTemplatesOpen(false)}>閉じる</button>
+    {templatesOpen && <Dialog open onClose={() => setTemplatesOpen(false)} title="テンプレートから作成" panelClassName="w-[min(500px,94vw)] rounded-xl bg-surface p-5">
+      <h2 className={dialogTitleClass}>テンプレートから作成</h2><p className="mb-4 mt-1 text-[12px] text-muted">現在のフローを置き換えます。元に戻す操作で復元できます。</p>
+      <button type="button" className="mb-2 block w-full rounded-lg bg-surface-subtle p-4 text-left text-[13px] text-text hover:bg-hover" onClick={() => applyTemplate("complete")}>完了時にコメントする</button>
+      <button type="button" className="block w-full rounded-lg bg-surface-subtle p-4 text-left text-[13px] text-text hover:bg-hover" onClick={() => applyTemplate("status")}>新規タスクのStatusを設定</button>
+      <button type="button" className={`${secondaryButtonClass} mt-4`} onClick={() => setTemplatesOpen(false)}>閉じる</button>
     </Dialog>}
-    {aiOpen && <Dialog open onClose={() => setAiOpen(false)} title="AIアシスト" panelClassName="w-[min(560px,94vw)] rounded-xl bg-white p-5">
-      <h2 className="text-[16px] font-semibold">AIアシスト</h2><p className="my-3 text-[12px] leading-5 text-neutral-600">作りたいルールを入力してください。提案を確認してから、下書きへ適用できます。</p>
-      <textarea className={`${inputClass} h-24 py-2`} aria-label="作りたいルール" value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} placeholder="例: タスクが完了したらコメントを追加する" />
-      <div className="mt-3 flex gap-2"><button type="button" className={buttonClass} disabled={aiBusy || !aiPrompt.trim()} onClick={() => void suggest()}>{aiBusy ? "提案を作成中…" : "提案を作成"}</button><button type="button" className={buttonClass} onClick={() => setAiOpen(false)}>閉じる</button></div>
-      {suggestion && <div className="mt-4 rounded-lg border border-neutral-200 p-4"><p className="text-[13px] font-semibold">{suggestion.name}</p><p className="mt-2 text-[12px] text-neutral-600">{suggestion.description}</p><p className="mt-3 text-[11px] text-neutral-500">適用すると現在のフローを置き換えます。公開はされません。</p><button type="button" className={`${buttonClass} mt-3`} onClick={() => { change({ ...ruleEditorDraft(suggestion), enabled: document.enabled }); setSelected({ kind: "trigger", index: 0 }); setAiOpen(false); setSuggestion(null); }}>提案を下書きに適用</button></div>}
+    {aiOpen && <Dialog open onClose={() => setAiOpen(false)} title="AIアシスト" panelClassName="w-[min(560px,94vw)] rounded-xl bg-surface p-5">
+      <h2 className={dialogTitleClass}>AIアシスト</h2><p className="mb-3 mt-1 text-[12px] leading-5 text-muted">作りたいルールを入力してください。提案を確認してから、下書きへ適用できます。</p>
+      <textarea className={`${fieldTextareaClass} h-24`} aria-label="作りたいルール" value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} placeholder="例: タスクが完了したらコメントを追加する" />
+      <div className="mt-3 flex gap-2"><button type="button" className={primaryButtonClass} disabled={aiBusy || !aiPrompt.trim()} onClick={() => void suggest()}>{aiBusy ? "提案を作成中…" : "提案を作成"}</button><button type="button" className={secondaryButtonClass} onClick={() => setAiOpen(false)}>閉じる</button></div>
+      {suggestion && <div className="mt-4 rounded-lg bg-surface-subtle p-4"><p className="text-[13px] font-semibold text-text">{suggestion.name}</p><p className="mt-2 text-[12px] text-muted">{suggestion.description}</p><p className={`mt-3 ${fieldHintClass}`}>適用すると現在のフローを置き換えます。公開はされません。</p><button type="button" className={`${secondaryButtonClass} mt-3`} onClick={() => { change({ ...ruleEditorDraft(suggestion), enabled: document.enabled }); setSelected({ kind: "trigger", index: 0 }); setAiOpen(false); setSuggestion(null); }}>提案を下書きに適用</button></div>}
     </Dialog>}
     {previewOpen && <RulePreviewDialog projectId={project.id} ruleId={ruleId} document={document} descriptors={descriptors} onClose={() => setPreviewOpen(false)} />}
   </div>;

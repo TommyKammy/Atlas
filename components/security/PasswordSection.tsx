@@ -3,6 +3,14 @@
 import { useState } from "react";
 import { api } from "@/lib/api-client";
 import type { SecuritySettings } from "@/lib/admin-data";
+import {
+  checkboxClass,
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  formSectionTitleClass,
+  primaryButtonClass,
+} from "../ui/form-controls";
 import { SectionHeader } from "./SectionHeader";
 
 export function PasswordSection({
@@ -46,56 +54,56 @@ export function PasswordSection({
         title="パスワード強度"
         description="全員のパスワード要件を設定します。変更は新しく作成されるパスワードのみに適用されます。"
       />
-      <div className="mt-4 max-w-xl rounded-lg border border-neutral-200 p-4">
-        <label className="text-xs text-neutral-600">
-          最小文字数
+      <div className="mt-4 max-w-xl">
+        <div className={formSectionTitleClass}>要件</div>
+        <label className="mt-3 block">
+          <span className={fieldLabelClass}>最小文字数</span>
           <input
             type="number"
             min={8}
             max={64}
             value={minLength}
             onChange={(e) => setMinLength(e.target.value)}
-            className="mt-1 w-24 rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+            className={`mt-1.5 w-24 tabular-nums ${fieldControlClass}`}
             data-password-min-length
           />
-          <span className="mt-1 block text-[11px] text-neutral-400">
+          <span className={`mt-1.5 block ${fieldHintClass}`}>
             メンバーとゲストのパスワードは、{minLength || 8} 文字以上である必要があります。
           </span>
         </label>
-        <div className="mt-3 grid gap-1.5 text-sm sm:grid-cols-2">
+        <div className="mt-3 grid gap-1.5 text-[13px] text-secondary sm:grid-cols-2">
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={upper} onChange={(e) => setUpper(e.target.checked)} />
+            <input type="checkbox" checked={upper} onChange={(e) => setUpper(e.target.checked)} className={checkboxClass} />
             大文字を含む
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={lower} onChange={(e) => setLower(e.target.checked)} />
+            <input type="checkbox" checked={lower} onChange={(e) => setLower(e.target.checked)} className={checkboxClass} />
             小文字を含む
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={number} onChange={(e) => setNumber(e.target.checked)} />
+            <input type="checkbox" checked={number} onChange={(e) => setNumber(e.target.checked)} className={checkboxClass} />
             数字を含む
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={symbol} onChange={(e) => setSymbol(e.target.checked)} />
+            <input type="checkbox" checked={symbol} onChange={(e) => setSymbol(e.target.checked)} className={checkboxClass} />
             記号を含む
           </label>
         </div>
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             onClick={save}
             disabled={saving}
             data-password-save
-            className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8] disabled:opacity-50"
+            className={primaryButtonClass}
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
-          {msg && <span className="text-sm text-neutral-600">{msg}</span>}
+          {msg && <span className="text-[12px] text-secondary">{msg}</span>}
         </div>
       </div>
-      <div className="mt-3 max-w-xl rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
+      <div className="mt-4 max-w-xl rounded-md bg-surface-subtle px-3 py-2 text-[12px] leading-5 text-secondary">
         パスワードはユーザー作成、管理者による再設定、招待の承諾、プロフィールからの変更時に検証されます。
       </div>
     </div>
   );
 }
-

@@ -29,8 +29,8 @@ export default function ImportForm({ projectId }: { projectId: number }) {
 
   return (
     <span className="inline-flex items-center gap-2 text-sm">
-      <span className="text-neutral-500">インポート:</span>
-      <label className="cursor-pointer rounded border px-2 py-0.5 hover:bg-neutral-50">
+      <span className="text-muted">インポート:</span>
+      <label className="cursor-pointer rounded border px-2 py-0.5 hover:bg-hover">
         {busy ? "取込中…" : "CSVを選択"}
         <input
           type="file"
@@ -44,7 +44,7 @@ export default function ImportForm({ projectId }: { projectId: number }) {
           }}
         />
       </label>
-      {result && <span className="text-neutral-600">{result}</span>}
+      {result && <span className="text-secondary">{result}</span>}
     </span>
   );
 }

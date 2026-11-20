@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import TaskFieldRow from "./TaskFieldRow";
 
 /** Dependency chips and an on-demand picker inside the task pane. */
 export default function TaskDependenciesSection({
@@ -28,20 +29,19 @@ export default function TaskDependenciesSection({
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="flex min-h-9 items-start gap-2 rounded-md px-1 py-1 hover:bg-neutral-50">
-      <span className="w-[88px] shrink-0 pt-1.5 text-[12px] text-neutral-500">依存関係</span>
-      <div className="min-w-0 flex-1">
+    <TaskFieldRow label="依存関係">
+      <div className="min-w-0">
         {dependencies.length === 0 && !adding && (
-          <span className="flex h-7 items-center text-[13px] text-neutral-400">依存関係なし</span>
+          <span className="flex h-7 items-center text-[13px] text-muted">依存関係なし</span>
         )}
         {dependencies.map((dependency) => (
           <div key={dependency.id} className="flex min-h-7 items-center gap-1.5 text-[13px]">
-            <span className="shrink-0 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700">
+            <span className="shrink-0 rounded bg-danger-soft px-1.5 py-0.5 text-[10px] font-medium text-danger">
               先行
             </span>
             <Link
               href={`/projects/${projectId}?view=${view}&task=${dependency.id}`}
-              className="min-w-0 flex-1 truncate text-neutral-800 hover:text-blue-700 hover:underline"
+              className="min-w-0 flex-1 truncate text-text hover:text-accent-text hover:underline"
               title={dependency.name}
             >
               {dependency.name}
@@ -49,7 +49,7 @@ export default function TaskDependenciesSection({
             <button
               type="button"
               onClick={() => onRemove(dependency.id)}
-              className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
+              className="shrink-0 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-danger"
               title="依存を外す"
               aria-label={`${dependency.name} の依存を外す`}
             >
@@ -64,7 +64,7 @@ export default function TaskDependenciesSection({
               <select
                 value={draft}
                 onChange={(event) => onDraftChange(event.target.value)}
-                className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                className="h-8 min-w-0 flex-1 rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
                 aria-label="依存関係を追加"
               >
                 <option value="">このタスクの前に…</option>
@@ -83,7 +83,7 @@ export default function TaskDependenciesSection({
                   onAdd();
                   setAdding(false);
                 }}
-                className="shrink-0 rounded bg-[#2f6fd0] px-3 text-[12px] font-medium text-white hover:bg-[#2459ad] disabled:bg-neutral-200 disabled:text-neutral-500"
+                className="shrink-0 rounded bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover disabled:bg-surface-strong disabled:text-muted"
               >
                 追加
               </button>
@@ -91,7 +91,7 @@ export default function TaskDependenciesSection({
             <button
               type="button"
               onClick={() => setAdding(false)}
-              className="self-start rounded px-1 py-0.5 text-[11px] text-neutral-500 hover:bg-neutral-100"
+              className="self-start rounded px-1 py-0.5 text-[11px] text-muted hover:bg-hover"
             >
               キャンセル
             </button>
@@ -100,13 +100,13 @@ export default function TaskDependenciesSection({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 items-center gap-1 rounded px-0.5 text-[12px] text-muted hover:bg-hover hover:text-secondary"
           >
             <span className="text-sm leading-none">＋</span>
             依存関係を追加
           </button>
         )}
       </div>
-    </div>
+    </TaskFieldRow>
   );
 }

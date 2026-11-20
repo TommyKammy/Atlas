@@ -209,7 +209,14 @@ test("quick list composer uses the row highlight instead of an input outline", a
   const f = await fixture(page); await page.goto(`/projects/${f.id}?view=list`);
   const input = await add(page, "list");
   expect(await input.evaluate((el) => getComputedStyle(el).borderWidth)).toBe("0px");
-  expect(await page.locator("[data-list-row]").last().evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(239, 244, 253)");
+  expect(await page.locator("[data-list-row]").last().evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(await page.evaluate(() => {
+    const probe = document.createElement("div");
+    probe.style.backgroundColor = "var(--atlas-accent-soft)";
+    document.body.append(probe);
+    const value = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return value;
+  }));
   await input.press("Escape");
 });
 

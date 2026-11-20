@@ -18,6 +18,19 @@ import {
   type DashboardWidget,
 } from "@/lib/dashboard-types";
 import ChartRenderer from "./ChartRenderer";
+import {
+  checkboxClass,
+  dialogCloseClass,
+  dialogSubtitleClass,
+  dialogTitleClass,
+  fieldControlClass,
+  fieldLabelClass,
+  fieldTextareaClass,
+  formSectionTitleClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  SelectControl,
+} from "../ui/form-controls";
 
 const CHART_TYPES: DashboardChartType[] = [
   "bar",
@@ -261,42 +274,40 @@ export default function WidgetDialog({
     }
   };
 
-  const field =
-    "mt-1 w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-sm outline-none focus:border-[#4075cf]";
-  const smallField =
-    "mt-1 h-8 w-full rounded-md border border-neutral-300 bg-white px-2 text-[13px] outline-none focus:border-[#4075cf]";
-  const sectionTitle = "text-[12px] font-semibold text-neutral-800";
-  const label = "mt-3 block text-[11px] text-neutral-500";
-
   return (
     <div
-      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/35 p-3 sm:p-6"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-scrim p-3 sm:p-6"
       onClick={onClose}
       data-dashboard-dialog
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-surface shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={mode === "edit" ? "ウィジェットを編集" : "ウィジェットを追加"}
       >
-        <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3">
-          <h2 className="text-[17px] font-semibold">
-            {mode === "edit" ? "ウィジェットを編集" : kind === "text" ? "テキストを追加" : "チャートを追加"}
-          </h2>
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line-subtle px-5 py-4">
+          <div className="min-w-0">
+            <h2 className={dialogTitleClass}>
+              {mode === "edit" ? "ウィジェットを編集" : kind === "text" ? "テキストを追加" : "チャートを追加"}
+            </h2>
+            <p className={dialogSubtitleClass}>
+              {kind === "text" ? "メモやリンクをカードとして表示します。" : "集計するデータと見た目を選びます。"}
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="閉じる"
-            className="rounded p-1 text-xl leading-none text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className={dialogCloseClass}
           >
             ×
           </button>
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
-          <div className="flex min-h-[320px] flex-col border-b border-neutral-200 bg-white p-5 lg:border-b-0 lg:border-r">
+          <div className="flex min-h-[320px] flex-col border-b border-line-subtle bg-surface-subtle p-5 lg:border-b-0 lg:border-r">
             <input
               value={title}
               onChange={(event) => {
@@ -305,32 +316,32 @@ export default function WidgetDialog({
               }}
               placeholder={kind === "text" ? "テキストのタイトル" : "チャートのタイトル"}
               data-dashboard-widget-title
-              className="w-full border-0 border-b border-transparent bg-transparent px-1 py-1 text-[22px] font-medium text-neutral-800 outline-none placeholder:text-neutral-300 focus:border-[#4075cf]"
+              className="h-9 w-full rounded-md border border-transparent bg-transparent px-1 text-[20px] font-semibold text-text outline-none placeholder:text-subtle hover:border-field-line-hover focus:border-accent"
             />
             <div className="mt-4 min-h-[260px] flex-1">
               {kind === "text" ? (
-                <div className="min-h-[260px] rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm leading-6 text-neutral-700 whitespace-pre-wrap">
+                <div className="min-h-[260px] rounded-lg bg-surface p-4 text-[13px] leading-6 text-secondary whitespace-pre-wrap">
                   {body || "テキストを入力するとここにプレビューが表示されます。"}
                 </div>
               ) : (
                 <ChartRenderer data={preview} chartType={chartType} />
               )}
             </div>
-            <div className="mt-2 text-[11px] text-neutral-400">
+            <div className="mt-2 text-[12px] text-muted">
               {kind === "text" ? "テキストウィジェット" : `${CHART_TYPE_LABELS[chartType]} / ${preview.matched} 件のタスク`}
             </div>
           </div>
 
           <div className="min-h-0 overflow-y-auto p-5">
-            <div className={sectionTitle}>データソース</div>
-            <div className="mt-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-[13px] text-neutral-700">
-              <div className="font-medium">{projectName}</div>
-              <div className="mt-0.5 text-[11px] text-neutral-400">このプロジェクトのタスク</div>
+            <div className={formSectionTitleClass}>データソース</div>
+            <div className="mt-2 rounded-lg bg-surface-subtle px-3 py-2 text-[13px] text-secondary">
+              <div className="font-medium text-text">{projectName}</div>
+              <div className="mt-0.5 text-[12px] text-muted">このプロジェクトのタスク</div>
             </div>
 
             {kind === "chart" && (
               <>
-                <div className={`${sectionTitle} mt-5`}>チャートのスタイル</div>
+                <div className={`${formSectionTitleClass} mt-5`}>チャートのスタイル</div>
                 <div className="mt-2 grid grid-cols-3 gap-1.5">
                   {CHART_TYPES.map((type) => (
                     <button
@@ -342,10 +353,10 @@ export default function WidgetDialog({
                       }}
                       title={CHART_TYPE_LABELS[type]}
                       data-dashboard-chart-type={type}
-                      className={`flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[10px] ${
+                      className={`flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[11px] ${
                         chartType === type
-                          ? "border-[#4075cf] bg-[#eff4fd] text-[#2f5fa8]"
-                          : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                          ? "border-accent-line bg-accent-soft text-accent-text"
+                          : "border-line text-muted hover:bg-hover hover:text-secondary"
                       }`}
                     >
                       <ChartTypeIcon type={type} />
@@ -355,16 +366,16 @@ export default function WidgetDialog({
                 </div>
 
                 {!timeChart && !numberChart && (
-                  <label className={label}>
+                  <label className={`${fieldLabelClass} mt-3 block`}>
                     {multiSeries ? "グループ" : "X 軸"}
-                    <select
+                    <SelectControl
+                      containerClassName="mt-1"
                       value={groupBy}
                       onChange={(event) => {
                         const next = event.target.value as DashboardGroupBy;
                         setGroupBy(next);
                         if (!titleTouched) setTitle(suggestedTitle(kind, chartType, next, metric));
                       }}
-                      className={smallField}
                       data-dashboard-group-by
                     >
                       {GROUP_BYS.map((value) => (
@@ -372,21 +383,21 @@ export default function WidgetDialog({
                           {GROUP_BY_LABELS[value]}
                         </option>
                       ))}
-                    </select>
+                    </SelectControl>
                   </label>
                 )}
 
                 {!timeChart && !multiSeries && (
-                  <label className={label}>
+                  <label className={`${fieldLabelClass} mt-3 block`}>
                     Y 軸
-                    <select
+                    <SelectControl
+                      containerClassName="mt-1"
                       value={metric}
                       onChange={(event) => {
                         const next = event.target.value as DashboardMetric;
                         setMetric(next);
                         if (!titleTouched) setTitle(suggestedTitle(kind, chartType, groupBy, next));
                       }}
-                      className={smallField}
                       data-dashboard-metric
                     >
                       {METRICS.map((value) => (
@@ -394,34 +405,35 @@ export default function WidgetDialog({
                           {METRIC_LABELS[value]}
                         </option>
                       ))}
-                    </select>
+                    </SelectControl>
                   </label>
                 )}
 
                 {timeChart && (
-                  <label className={label}>
+                  <label className={`${fieldLabelClass} mt-3 block`}>
                     期間
-                    <select
+                    <SelectControl
+                      containerClassName="mt-1"
                       value={rangeDays}
                       onChange={(event) => setRangeDays(Number(event.target.value))}
-                      className={smallField}
                       data-dashboard-range
                     >
                       <option value={7}>過去7日</option>
                       <option value={14}>過去14日</option>
                       <option value={30}>過去30日</option>
                       <option value={90}>過去90日</option>
-                    </select>
+                    </SelectControl>
                   </label>
                 )}
 
                 {!numberChart && (
                   <div className="mt-5">
-                    <div className={sectionTitle}>フィルター</div>
+                    <div className={formSectionTitleClass}>フィルター</div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
-                      <label className="text-[11px] text-neutral-500">
+                      <label className={`${fieldLabelClass} block`}>
                         完了ステータス
-                        <select
+                        <SelectControl
+                          containerClassName="mt-1"
                           value={filters.completion ?? "all"}
                           onChange={(event) =>
                             setFilters((prev) => ({
@@ -429,32 +441,32 @@ export default function WidgetDialog({
                               completion: event.target.value as DashboardFilter["completion"],
                             }))
                           }
-                          className={smallField}
                         >
                           <option value="all">すべて</option>
                           <option value="open">未完了</option>
                           <option value="done">完了</option>
-                        </select>
+                        </SelectControl>
                       </label>
-                      <label className="text-[11px] text-neutral-500">
+                      <label className={`${fieldLabelClass} block`}>
                         期日
-                        <select
+                        <SelectControl
+                          containerClassName="mt-1"
                           value={filters.due ?? ""}
                           onChange={(event) =>
                             setFilters((prev) => ({ ...prev, due: event.target.value as DashboardFilter["due"] }))
                           }
-                          className={smallField}
                         >
                           <option value="">すべて</option>
                           <option value="overdue">期限超過</option>
                           <option value="today">今日</option>
                           <option value="week">7日以内</option>
                           <option value="month">30日以内</option>
-                        </select>
+                        </SelectControl>
                       </label>
-                      <label className="text-[11px] text-neutral-500">
+                      <label className={`${fieldLabelClass} block`}>
                         担当者
-                        <select
+                        <SelectControl
+                          containerClassName="mt-1"
                           value={filters.assignee ?? ""}
                           onChange={(event) => {
                             const value = event.target.value;
@@ -463,7 +475,6 @@ export default function WidgetDialog({
                               assignee: value === "" ? "" : value === "none" ? "none" : Number(value),
                             }));
                           }}
-                          className={smallField}
                         >
                           <option value="">すべて</option>
                           <option value="none">未割り当て</option>
@@ -472,14 +483,14 @@ export default function WidgetDialog({
                               {user.name}
                             </option>
                           ))}
-                        </select>
+                        </SelectControl>
                       </label>
-                      <label className="text-[11px] text-neutral-500">
+                      <label className={`${fieldLabelClass} block`}>
                         {meta.statusFieldName}
-                        <select
+                        <SelectControl
+                          containerClassName="mt-1"
                           value={filters.status ?? ""}
                           onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
-                          className={smallField}
                         >
                           <option value="">すべて</option>
                           {meta.statusOptions.map((status) => (
@@ -487,17 +498,18 @@ export default function WidgetDialog({
                               {status}
                             </option>
                           ))}
-                        </select>
+                        </SelectControl>
                       </label>
                     </div>
                   </div>
                 )}
 
-                <div className={`${sectionTitle} mt-5`}>データの注釈</div>
-                <div className="mt-2 space-y-2 text-[12px] text-neutral-600">
+                <div className={`${formSectionTitleClass} mt-5`}>データの注釈</div>
+                <div className="mt-2 space-y-2 text-[12px] text-secondary">
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
+                      className={checkboxClass}
                       checked={dataLabels}
                       onChange={(event) => setDataLabels(event.target.checked)}
                     />
@@ -510,7 +522,7 @@ export default function WidgetDialog({
                       value={benchmark}
                       onChange={(event) => setBenchmark(event.target.value)}
                       placeholder="ベンチマーク（任意）"
-                      className="h-8 w-36 rounded-md border border-neutral-300 px-2 text-[13px] outline-none focus:border-[#4075cf]"
+                      className={`${fieldControlClass} w-36`}
                     />
                     <span>ベンチマークライン</span>
                   </label>
@@ -519,28 +531,28 @@ export default function WidgetDialog({
             )}
 
             {kind === "text" && (
-              <label className={label}>
+              <label className={`${fieldLabelClass} mt-3 block`}>
                 本文
                 <textarea
                   value={body}
                   onChange={(event) => setBody(event.target.value)}
                   rows={9}
                   placeholder="プロジェクトの目的、メモ、リンクなどを入力…"
-                  className={`${field} resize-y`}
+                  className={`${fieldTextareaClass} mt-1`}
                   data-dashboard-widget-body
                 />
               </label>
             )}
 
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+            {error && <p className="mt-3 text-[12px] text-danger">{error}</p>}
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-neutral-200 px-5 py-3">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-line-subtle px-5 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100"
+            className={secondaryButtonClass}
           >
             キャンセル
           </button>
@@ -549,7 +561,7 @@ export default function WidgetDialog({
             onClick={save}
             disabled={saving}
             data-dashboard-widget-save
-            className="rounded-md bg-[#2f6fd0] px-4 py-1.5 text-sm font-medium text-white hover:bg-[#2459ad] disabled:opacity-50"
+            className={primaryButtonClass}
           >
             {saving ? "保存中…" : mode === "edit" ? "変更を保存" : kind === "text" ? "テキストを追加" : "チャートを追加"}
           </button>

@@ -92,8 +92,8 @@ export default function ProjectActionsMenu({
 
   const topButtons = groups.flatMap((group) => group.items);
   const itemClass = (danger: boolean | undefined) =>
-    `flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13.5px] leading-5 outline-none transition focus-visible:bg-[#eef3fb] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2c60b8] ${
-      danger ? "text-[#b42318] hover:bg-[#fdf2f1] focus-visible:bg-[#fdf2f1]" : "text-neutral-800 hover:bg-neutral-100"
+    `flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13.5px] leading-5 outline-none transition focus-visible:bg-accent-soft focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+      danger ? "text-danger hover:bg-danger-soft focus-visible:bg-danger-soft" : "text-text hover:bg-hover"
     }`;
 
   return createPortal(
@@ -112,7 +112,7 @@ export default function ProjectActionsMenu({
         aria-label="プロジェクトのアクション"
         data-project-actions-menu
         style={{ left: pos.x, top: pos.y, width: MENU_WIDTH }}
-        className="fixed z-[96] max-h-[calc(100vh-24px)] overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.08)]"
+        className="fixed z-[96] max-h-[calc(100vh-24px)] overflow-y-auto rounded-lg border border-line bg-surface py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.08)]"
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.preventDefault();
@@ -148,7 +148,7 @@ export default function ProjectActionsMenu({
           <div
             key={group.label}
             data-project-action-group={groupIndex}
-            className={groupIndex === 0 ? "" : "mt-1.5 border-t border-neutral-200 pt-1.5"}
+            className={groupIndex === 0 ? "" : "mt-1.5 border-t border-line pt-1.5"}
           >
             {group.items.map((item, itemIndex) => {
               const flatIndex = groups
@@ -197,11 +197,11 @@ export default function ProjectActionsMenu({
                 >
                   <ProjectMenuIcon
                     name={item.icon}
-                    className={item.danger ? "h-4 w-4 text-[#b42318]" : "h-4 w-4 text-neutral-500"}
+                    className={item.danger ? "h-4 w-4 text-danger" : "h-4 w-4 text-muted"}
                   />
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   {hasSubmenu && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 text-neutral-400">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 text-subtle">
                       <path d="m9 6 6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
@@ -217,7 +217,7 @@ export default function ProjectActionsMenu({
           aria-label={submenu.label}
           data-project-actions-submenu={submenu.key}
           style={{ left: submenuPos.x, top: submenuPos.y, width: SUBMENU_WIDTH }}
-          className="fixed z-[97] max-h-[calc(100vh-24px)] overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.08)]"
+          className="fixed z-[97] max-h-[calc(100vh-24px)] overflow-y-auto rounded-lg border border-line bg-surface py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.08)]"
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
@@ -262,7 +262,7 @@ export default function ProjectActionsMenu({
                 event.currentTarget.focus({ preventScroll: true });
               }}
             >
-              <ProjectMenuIcon name={sub.icon} className="h-4 w-4 text-neutral-500" />
+              <ProjectMenuIcon name={sub.icon} className="h-4 w-4 text-muted" />
               <span className="min-w-0 flex-1 truncate">{sub.label}</span>
             </button>
           ))}

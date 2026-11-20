@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { checkboxClass } from "./ui/form-controls";
 
 export const INBOX_CHANNEL = "atlas-inbox";
 
@@ -38,8 +39,8 @@ export default function InboxLive() {
     };
   }, [auto, router]);
   return (
-    <label className="flex items-center gap-1 text-sm text-neutral-600" title="他タブと即時同期＋30秒ごとに自動更新">
-      <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
+    <label className="flex items-center gap-2 text-[13px] text-secondary" title="他タブと即時同期＋30秒ごとに自動更新">
+      <input type="checkbox" className={checkboxClass} checked={auto} onChange={(e) => setAuto(e.target.checked)} />
       自動更新
     </label>
   );

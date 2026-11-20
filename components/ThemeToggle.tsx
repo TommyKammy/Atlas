@@ -3,9 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function ThemeToggle({ initialTheme }: { initialTheme: "light" | "dark" }) {
+export default function ThemeToggle({
+  initialTheme,
+  variant = "sidebar",
+}: {
+  initialTheme: "light" | "dark";
+  /** "sidebar" follows the sidebar tokens; "topbar" follows the page surface. */
+  variant?: "sidebar" | "topbar";
+}) {
   const router = useRouter();
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
+  const colorClass =
+    variant === "sidebar"
+      ? "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text-strong"
+      : "text-muted hover:bg-hover hover:text-text";
 
   const toggle = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -19,12 +30,13 @@ export default function ThemeToggle({ initialTheme }: { initialTheme: "light" | 
     <button
       type="button"
       data-theme-toggle
+      data-theme-toggle-variant={variant}
       data-theme-state={theme}
       onClick={toggle}
       aria-label={theme === "dark" ? "ライトモードに切り替える" : "ダークモードに切り替える"}
       aria-pressed={theme === "dark"}
       title={theme === "dark" ? "ライトモード" : "ダークモード"}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-neutral-300 hover:bg-white/10 hover:text-white"
+      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${colorClass}`}
     >
       {theme === "dark" ? (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">

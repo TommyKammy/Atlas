@@ -93,7 +93,7 @@ export default function PeriodDialog({
       }
     >
       <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-4">
-        <p className="text-[12px] text-neutral-600">
+        <p className="text-[12px] text-secondary">
           対象四半期と、このポートフォリオに配賦する期間予算を設定します。費用と予算は円の整数で保存し、画面では万円で表示します。
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -149,7 +149,7 @@ export default function PeriodDialog({
               placeholder="例: DB担当, 開発担当, QA担当"
             />
           </label>
-          <p className="mt-1 text-[11px] text-neutral-500">
+          <p className="mt-1 text-[11px] text-muted">
             {roles.length > 0
               ? `職種はポートフォリオ全体で共有されています（登録済み ${roles.length}件）。追加したい職種だけ入力してください。`
               : "ここで職種を登録すると、月別の配賦枠と案件別需要を入力できます。後から職種別の余力画面でも編集できます。"}

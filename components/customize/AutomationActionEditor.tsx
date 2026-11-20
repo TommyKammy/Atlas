@@ -4,11 +4,14 @@ import type { DescriptorOption, DescriptorParam, RuleDescriptors } from "@/lib/a
 import { configuredTaskId } from "@/lib/automation/task-target";
 import type { RuleAction } from "@/lib/automation/types";
 import AutomationCustomFieldValue from "./AutomationCustomFieldValue";
-
-const inputClass =
-  "mt-1 h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-[12px] outline-none focus:border-[#2c60b8]";
-const areaClass =
-  "mt-1 min-h-[68px] w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[12px] outline-none focus:border-[#2c60b8]";
+import {
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  fieldTextareaClass,
+  quietButtonClass,
+  SelectControl,
+} from "../ui/form-controls";
 
 function actionWithParam(action: RuleAction, name: string, value: unknown): RuleAction {
   const params = { ...action.params, [name]: value };
@@ -29,9 +32,9 @@ function ActionParamField({ action, descriptors, param, value, onChange }: {
       <div>
         <AutomationCustomFieldValue key={field?.id ?? "none"} field={field} value={value} onChange={onChange}
           users={descriptors.conditionFields.find((entry) => entry.id === "task.assignee_id")?.options ?? []} />
-        {field && <button type="button" className="mt-1 text-[11px] text-neutral-500 hover:text-neutral-800"
+        {field && <button type="button" className="mt-1 text-[12px] text-muted hover:text-text"
           onClick={() => onChange(null)}>値をクリア</button>}
-        {value === null && <p className="mt-1 text-[11px] text-neutral-500">実行すると値をクリアします。</p>}
+        {value === null && <p className={fieldHintClass}>実行すると値をクリアします。</p>}
       </div>
     );
   }
@@ -62,9 +65,9 @@ function ParamField({
   onChange: (value: unknown) => void;
 }) {
   const label = (
-    <span className="block text-[11px] font-medium text-neutral-600">
+    <span className={fieldLabelClass}>
       {param.label}
-      {param.required ? <span className="ml-0.5 text-rose-500">*</span> : null}
+      {param.required ? <span className="ml-0.5 text-danger">*</span> : null}
     </span>
   );
   if (param.type === "textarea") {
@@ -75,9 +78,9 @@ function ParamField({
           value={String(value ?? "")}
           onChange={(event) => onChange(event.target.value)}
           placeholder={param.placeholder}
-          className={areaClass}
+          className={`${fieldTextareaClass} mt-1`}
         />
-        {param.help && <span className="mt-0.5 block text-[10px] text-neutral-400">{param.help}</span>}
+        {param.help && <span className={`mt-0.5 block ${fieldHintClass}`}>{param.help}</span>}
       </label>
     );
   }
@@ -85,10 +88,10 @@ function ParamField({
     return (
       <label className="block">
         {label}
-        <select
+        <SelectControl
+          containerClassName="mt-1"
           value={String(value ?? "")}
           onChange={(event) => onChange(event.target.value)}
-          className={inputClass}
         >
           {!param.required && <option value="">指定なし</option>}
           {(param.options ?? []).map((option: DescriptorOption) => (
@@ -96,7 +99,7 @@ function ParamField({
               {option.label}
             </option>
           ))}
-        </select>
+        </SelectControl>
       </label>
     );
   }
@@ -108,9 +111,9 @@ function ParamField({
         value={String(value ?? "")}
         onChange={(event) => onChange(event.target.value)}
         placeholder={param.placeholder}
-        className={inputClass}
+        className={`${fieldControlClass} mt-1`}
       />
-      {param.help && <span className="mt-0.5 block text-[10px] text-neutral-400">{param.help}</span>}
+      {param.help && <span className={`mt-0.5 block ${fieldHintClass}`}>{param.help}</span>}
     </label>
   );
 }
@@ -125,7 +128,7 @@ export default function AutomationActionEditor({ action, descriptors, taskTrigge
 }) {
   const descriptor = descriptors.actions.find((entry) => entry.id === action.capability);
   const select = (
-    <select value={action.capability} className={inputClass}
+    <SelectControl value={action.capability}
       onChange={(event) => {
         const capability = event.target.value;
         const next = descriptors.actions.find((entry) => entry.id === capability);
@@ -138,14 +141,14 @@ export default function AutomationActionEditor({ action, descriptors, taskTrigge
           {entry.label}{disabled ? "（タスクが必要）" : ""}
         </option>;
       })}
-    </select>
+    </SelectControl>
   );
   return (
-    <div className={compact ? "rounded border border-neutral-100 bg-neutral-50 p-2" : "rounded-lg border border-neutral-200 bg-white p-3"}>
+    <div className={compact ? "rounded-md bg-surface-subtle p-2" : "rounded-lg bg-surface p-3"}>
       <div className="flex items-end gap-2">
-        {compact ? select : <label className="min-w-0 flex-1 text-[11px] text-neutral-600">アクション{select}</label>}
+        {compact ? select : <label className={`${fieldLabelClass} min-w-0 flex-1`}>アクション<span className="mt-1 block">{select}</span></label>}
         <button type="button" aria-label="アクションを削除" onClick={onRemove}
-          className={`mb-0.5 flex h-8 w-8 ${compact ? "shrink-0 " : ""}items-center justify-center rounded text-neutral-400 hover:bg-rose-50 hover:text-rose-600`}>×</button>
+          className={`${quietButtonClass} mb-0.5 w-8 shrink-0 hover:text-danger`}>×</button>
       </div>
       {descriptor && descriptor.params.length > 0 && (
         <div className={compact ? "mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2" : "mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2"}>
@@ -155,7 +158,7 @@ export default function AutomationActionEditor({ action, descriptors, taskTrigge
           ))}
         </div>
       )}
-      {!compact && descriptor?.description && <p className="mt-1 text-[10px] text-neutral-400">{descriptor.description}</p>}
+      {!compact && descriptor?.description && <p className={`mt-1 ${fieldHintClass}`}>{descriptor.description}</p>}
     </div>
   );
 }

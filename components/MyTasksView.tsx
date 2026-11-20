@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState, useTransition } from "react";
 import type { TaskRow } from "@/lib/data";
+import DueStateIcon from "./task/DueStateIcon";
 import { shiftDate } from "@/lib/timeline-dnd";
 import { ApiError, api } from "@/lib/api-client";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
@@ -222,12 +223,12 @@ export default function MyTasksView({
       <h1 className="text-lg font-bold">マイタスク（{viewerName}）</h1>
       <InlineError message={persistError} onDismiss={syncRequired ? undefined : () => setPersistError(null)} className="mt-2 max-w-4xl" />
       {syncRequired && <button type="button" onClick={() => void retrySynchronization()} disabled={busy} data-my-task-resync
-        className="mt-2 rounded border border-neutral-300 px-3 py-1 text-[12px] text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">最新状態を再取得</button>}
+        className="mt-2 rounded border border-line-strong px-3 py-1 text-[12px] text-secondary hover:bg-hover disabled:opacity-50">最新状態を再取得</button>}
       <MutationFeedback pending={busy} pendingLabel={refreshPending && !saving ? "最新状態を表示しています…" : "保存中…"} className="mt-1" />
-      {tooMany && <p role="status" data-my-task-order-limit className="mt-2 text-[12px] text-neutral-600">
+      {tooMany && <p role="status" data-my-task-order-limit className="mt-2 text-[12px] text-secondary">
         並び替え・バケット移動は{MY_TASK_MOVE_TASK_LIMIT.toLocaleString("ja-JP")}件まで対応しています。現在は表示とタスク詳細の操作を利用できます。
       </p>}
-      <p className="mt-1 text-sm text-neutral-500">
+      <p className="mt-1 text-sm text-muted">
         未完了・担当が自分・全プロジェクト横断。ドラッグで並び替え、別のバケットへ移動すると期日が変わります。
       </p>
       {tasks.length === 0 && (
@@ -253,13 +254,13 @@ export default function MyTasksView({
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOverBucket(null);
             }}
             onDrop={(e) => dropOnBucket(e, bucket.key)}
-            className={`mb-5 rounded-lg border border-transparent px-1 pb-1 ${
-              overBucket === bucket.key ? "border-blue-300 bg-blue-50/40" : ""
+            className={`mb-5 rounded-lg border px-1 pb-1 ${
+              overBucket === bucket.key ? "border-accent-line bg-accent-soft/40" : "border-transparent"
             }`}
           >
             <h2
               className={`px-1 font-semibold ${
-                bucket.alert && bucket.items.length > 0 ? "text-red-700" : ""
+                bucket.alert && bucket.items.length > 0 ? "text-danger" : ""
               }`}
             >
               {bucket.label}（{bucket.items.length}）
@@ -267,7 +268,7 @@ export default function MyTasksView({
             {bucket.items.length === 0 && (
               <div
                 data-my-task-empty={bucket.key}
-                className="mx-1 mt-1 rounded border border-dashed border-neutral-200 px-3 py-2 text-[12px] text-neutral-400"
+                className="mx-1 mt-1 rounded border border-dashed border-line px-3 py-2 text-[12px] text-muted"
               >
                 ここにタスクをドラッグ
               </div>
@@ -297,18 +298,18 @@ export default function MyTasksView({
                   setOverBucket(bucket.key);
                 }}
                 onDrop={(e) => dropOnRow(e, task.id, bucket.key)}
-                className={`group flex cursor-grab items-center gap-3 border-b border-neutral-200 py-2 text-sm hover:bg-neutral-50 ${
+                className={`group flex cursor-grab items-center gap-3 border-b border-line py-2 text-sm hover:bg-hover ${
                   draggingId === task.id ? "opacity-50" : ""
                 }`}
               >
                 <span
                   data-my-task-drag-handle
-                  className="w-3 shrink-0 text-center text-neutral-300 group-hover:text-neutral-500"
+                  className="w-3 shrink-0 text-center text-subtle group-hover:text-muted"
                   aria-hidden="true"
                 >
                   ⠿
                 </span>
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-neutral-400" />
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line-strong" />
                 <Link
                   href={`/projects/${task.project_id}?view=list&task=${task.id}`}
                   title={task.name}
@@ -317,14 +318,25 @@ export default function MyTasksView({
                 >
                   {task.name}
                 </Link>
-                <span className="hidden shrink-0 text-xs text-neutral-500 sm:inline">
+                <span className="hidden shrink-0 text-xs text-muted sm:inline">
                   {task.project_name ?? "–"}
                 </span>
                 <span
                   className={`w-24 shrink-0 ${
-                    bucket.alert ? "font-semibold text-red-600" : "text-neutral-600"
+                    bucket.alert ? "font-semibold text-danger" : "text-secondary"
                   }`}
+                  title={
+                    bucket.alert && task.due_on
+                      ? `期限超過: ${task.due_on}`
+                      : bucket.key === "today" && task.due_on
+                        ? `今日が期日: ${task.due_on}`
+                        : undefined
+                  }
                 >
+                  {bucket.alert && <DueStateIcon state="overdue" className="mr-1 align-[-2px]" />}
+                  {bucket.key === "today" && <DueStateIcon state="today" className="mr-1 align-[-2px]" />}
+                  {bucket.alert && <span className="sr-only">期限超過: </span>}
+                  {bucket.key === "today" && <span className="sr-only">今日が期日: </span>}
                   {task.due_on ?? "–"}
                 </span>
                 <span className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
@@ -334,7 +346,7 @@ export default function MyTasksView({
                     aria-label="上へ移動"
                     disabled={cannotMove || index === 0}
                     onClick={() => moveWithin(task.id, "up")}
-                    className="flex h-5 w-5 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 disabled:opacity-30"
+                    className="flex h-5 w-5 items-center justify-center rounded text-muted hover:bg-hover-strong disabled:opacity-30"
                   >
                     ↑
                   </button>
@@ -344,7 +356,7 @@ export default function MyTasksView({
                     aria-label="下へ移動"
                     disabled={cannotMove || index === bucket.items.length - 1}
                     onClick={() => moveWithin(task.id, "down")}
-                    className="flex h-5 w-5 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 disabled:opacity-30"
+                    className="flex h-5 w-5 items-center justify-center rounded text-muted hover:bg-hover-strong disabled:opacity-30"
                   >
                     ↓
                   </button>

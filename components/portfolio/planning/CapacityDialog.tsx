@@ -107,10 +107,10 @@ export default function CapacityDialog({
       }
     >
       <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-4">
-        <p className="text-[12px] text-neutral-600">
+        <p className="text-[12px] text-secondary">
           {periodLabel} にこのポートフォリオへ配賦する月間人日を入力します。通常業務や他ポートフォリオ分は差し引いた値を入力してください。
         </p>
-        <p className="text-[11px] text-neutral-500">
+        <p className="text-[11px] text-muted">
           空欄は未設定、0は「配賦なし」として保存します。0.1人日刻みで入力できます。
         </p>
         {roles.length === 0 ? (
@@ -119,18 +119,18 @@ export default function CapacityDialog({
           <PlanningTable
             label="月別の配賦枠入力"
             caption="月別の配賦枠入力"
-            className="rounded-lg border border-neutral-200"
+            className="rounded-lg border border-line"
           >
-            <thead className="bg-neutral-50">
+            <thead className="bg-surface-subtle">
               <tr>
-                <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">
+                <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">
                   職種 / 人日
                 </th>
                 {PLANNING_MONTHS.map((monthIndex) => (
                   <th
                     key={monthIndex}
                     scope="col"
-                    className="border-b border-neutral-200 px-2 py-2 text-left text-[11px] font-semibold text-neutral-600"
+                    className="border-b border-line px-2 py-2 text-left text-[11px] font-semibold text-secondary"
                   >
                     {monthLabelFromStart(startMonth, monthIndex)}
                   </th>
@@ -139,8 +139,8 @@ export default function CapacityDialog({
             </thead>
             <tbody>
               {roles.map((role) => (
-                <tr key={role.id} className="border-b border-neutral-100 last:border-b-0">
-                  <th scope="row" className="bg-white px-3 py-2 text-left text-[12px] font-medium text-neutral-800">
+                <tr key={role.id} className="border-b border-line-subtle last:border-b-0">
+                  <th scope="row" className="bg-surface px-3 py-2 text-left text-[12px] font-medium text-text">
                     {role.name}
                   </th>
                   {PLANNING_MONTHS.map((monthIndex) => (

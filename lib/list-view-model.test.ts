@@ -94,6 +94,7 @@ test("filterListTasks applies due windows and date ranges", () => {
     task({ id: 3, due_on: "2026-11-12" }),
     task({ id: 4, due_on: "2026-11-20" }),
     task({ id: 5, due_on: null, created_at: "2026-11-09T10:00:00Z" }),
+    task({ id: 6, due_on: "2026-11-01", completed: true }),
   ];
 
   assert.deepEqual(

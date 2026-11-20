@@ -45,7 +45,7 @@ export default function ListGroupAddRow({
         placeholder="タスク名を入力"
         data-add-task
         autoFocus
-        className="w-full max-w-md rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
+        className="w-full max-w-md rounded border px-2 py-1 text-sm outline-none focus:border-accent"
       />
       <select
         value={sectionValue}

@@ -20,12 +20,12 @@ export default function ArchiveProjectDialog({
       open
       onClose={onClose}
       title="プロジェクトをアーカイブ"
-      backdropClassName="backdrop:bg-black/25"
-      panelClassName="w-[min(420px,90vw)] rounded-lg bg-white text-sm shadow-xl"
+      backdropClassName="backdrop:bg-scrim"
+      panelClassName="w-[min(420px,90vw)] rounded-lg bg-surface text-sm shadow-xl"
     >
       <div data-project-archive-dialog className="p-5">
         <h2 className="text-lg font-semibold">プロジェクトをアーカイブ</h2>
-        <p className="mt-2 text-neutral-600">
+        <p className="mt-2 text-secondary">
           「{projectName}」をアーカイブしますか？サイドバーから非表示になります。削除済みページから復元できます。
         </p>
         <div className="mt-5 flex justify-end gap-2">
@@ -34,7 +34,7 @@ export default function ArchiveProjectDialog({
           </button>
           <button
             type="button"
-            className="flex h-8 items-center rounded-md bg-[#c94848] px-3 text-sm font-medium text-white hover:bg-[#b83c3c] disabled:opacity-60"
+            className="flex h-8 items-center rounded-md bg-danger-action px-3 text-sm font-medium text-on-strong hover:bg-danger-action-hover disabled:opacity-60"
             disabled={busy}
             onClick={onArchive}
           >

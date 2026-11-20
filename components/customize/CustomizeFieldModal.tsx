@@ -34,7 +34,7 @@ export default function CustomizeFieldModal({
   return (
     <CustomizeModal title={draft.id === null ? "フィールドを追加" : "フィールドを編集"} onClose={onClose}>
       <form onSubmit={onSubmit} className="p-5">
-        <label className="block text-[12px] font-medium text-neutral-700">
+        <label className="block text-[12px] font-medium text-secondary">
           フィールド名
           <input
             data-customize-field-name
@@ -44,7 +44,7 @@ export default function CustomizeFieldModal({
             className={fieldTypeClass}
           />
         </label>
-        <label className="mt-4 block text-[12px] font-medium text-neutral-700">
+        <label className="mt-4 block text-[12px] font-medium text-secondary">
           フィールドタイプ
           <select
             data-customize-field-type
@@ -53,7 +53,7 @@ export default function CustomizeFieldModal({
             onChange={(event) =>
               onDraft({ ...draft, field_type: event.target.value as CustomField["field_type"] })
             }
-            className={`${fieldTypeClass} disabled:bg-neutral-50 disabled:text-neutral-500`}
+            className={`${fieldTypeClass} disabled:bg-surface-subtle disabled:text-muted`}
           >
             <option value="text">テキスト</option>
             <option value="number">数値</option>
@@ -80,7 +80,7 @@ export default function CustomizeFieldModal({
           </select>
         </label>
         {(draft.field_type === "select" || draft.field_type === "multi_select") && (
-          <label className="mt-4 block text-[12px] font-medium text-neutral-700">
+          <label className="mt-4 block text-[12px] font-medium text-secondary">
             オプション
             <textarea
               data-customize-field-options
@@ -88,9 +88,9 @@ export default function CustomizeFieldModal({
               onChange={(event) => onDraft({ ...draft, options: event.target.value })}
               placeholder="低, 中, 高"
               rows={3}
-              className="mt-1 w-full rounded-md border border-neutral-200 px-2 py-1.5 text-[13px] outline-none focus:border-[#2c60b8]"
+              className="mt-1 w-full rounded-md border border-field-line px-2 py-1.5 text-[13px] outline-none focus:border-accent"
             />
-            <span className="mt-1 block text-[11px] font-normal text-neutral-400">カンマまたは改行で区切ってください。</span>
+            <span className="mt-1 block text-[11px] font-normal text-subtle">カンマまたは改行で区切ってください。</span>
           </label>
         )}
         <div className="mt-6 flex justify-end gap-2">

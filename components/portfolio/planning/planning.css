@@ -57,7 +57,7 @@
   margin-block: 5px 4px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e7ebf1;
+  background: var(--atlas-surface-strong);
 }
 
 .ppt-meter > span {
@@ -96,7 +96,7 @@
   .ppt-stack tbody tr {
     margin-block-end: 12px;
     overflow: hidden;
-    border: 1px solid #e1e5eb;
+    border: 1px solid var(--atlas-line);
     border-radius: 8px;
   }
 
@@ -106,7 +106,7 @@
 
   .ppt-stack tbody th {
     position: static;
-    border-block-end: 1px solid #e1e5eb;
+    border-block-end: 1px solid var(--atlas-line);
   }
 
   .ppt-stack td[data-label]::before {
@@ -114,16 +114,4 @@
     opacity: 0.72;
     font-weight: 600;
   }
-}
-
-html[data-theme="dark"] .ppt-stack tbody tr {
-  border-color: #3a3a3a;
-}
-
-html[data-theme="dark"] .ppt-stack tbody th {
-  border-block-end-color: #3a3a3a;
-}
-
-html[data-theme="dark"] .ppt-meter {
-  background: #3a3a3a;
 }

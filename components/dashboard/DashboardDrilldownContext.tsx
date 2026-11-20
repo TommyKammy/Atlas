@@ -1,6 +1,7 @@
 import { addDaysISO } from "@/lib/dashboard-compute";
 import type { DashboardDrilldown, DashboardMeta } from "@/lib/dashboard-types";
 import { isMultiSeriesChart, isTimeChart, METRIC_LABELS } from "@/lib/dashboard-types";
+import { quietButtonClass, secondaryButtonClass } from "../ui/form-controls";
 
 const formatDay = (day: string) => day.replaceAll("-", "/");
 
@@ -61,29 +62,29 @@ export default function DashboardDrilldownContext({ projectId, selection, count,
       data-dashboard-drilldown
       data-dashboard-drilldown-count={count}
       aria-label="ダッシュボードからの絞り込み"
-      className="mx-4 mb-2 mt-3 flex flex-col gap-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 sm:flex-row sm:items-center"
+      className="mx-4 mb-2 mt-3 flex flex-col gap-3 rounded-lg bg-surface-subtle px-4 py-3 sm:flex-row sm:items-center"
     >
       <div className="min-w-0 flex-1">
         {selection ? (
           <>
-            <p className="text-[12px] text-neutral-600">ダッシュボードからの絞り込み</p>
-            <p data-dashboard-drilldown-title className="break-words text-[14px] font-medium text-neutral-800">{selection.title}</p>
-            <p data-dashboard-drilldown-conditions className="mt-0.5 break-words text-[12px] leading-5 text-neutral-700">
+            <p className="text-[12px] text-muted">ダッシュボードからの絞り込み</p>
+            <p data-dashboard-drilldown-title className="break-words text-[13px] font-semibold text-text">{selection.title}</p>
+            <p data-dashboard-drilldown-conditions className="mt-0.5 break-words text-[12px] leading-5 text-muted">
               {labels.length ? labels.join(" · ") : "すべてのタスク"}
-              <span className="ml-2 whitespace-nowrap font-medium">元の集計対象 {count} 件</span>
+              <span className="ml-2 whitespace-nowrap font-medium text-secondary">元の集計対象 {count} 件</span>
             </p>
           </>
         ) : (
-          <p role="alert" className="text-[13px] leading-5 text-neutral-700">
+          <p role="alert" className="text-[13px] leading-5 text-secondary">
             集計条件を読み取れませんでした。ダッシュボードに戻って、もう一度選択してください。
           </p>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px]">
-        <a data-dashboard-return href={`/projects/${projectId}?view=dashboard`} className="rounded text-[#2c60b8] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">
+      <div className="flex flex-wrap items-center gap-2">
+        <a data-dashboard-return href={`/projects/${projectId}?view=dashboard`} className={secondaryButtonClass}>
           ダッシュボードへ戻る
         </a>
-        <a data-dashboard-clear href={`/projects/${projectId}?view=list`} className="rounded text-neutral-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]">
+        <a data-dashboard-clear href={`/projects/${projectId}?view=list`} className={quietButtonClass}>
           通常のリストに戻る
         </a>
       </div>

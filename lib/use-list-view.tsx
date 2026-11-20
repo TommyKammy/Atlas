@@ -17,6 +17,7 @@ import type { SavedView, Section, TaskRow, User } from "@/lib/data";
 import { groupTasks } from "@/lib/list-grouping";
 import type { ListGroupBy } from "@/lib/list-view";
 import { compareListTasks, filterListTasks, listFooterTotals } from "@/lib/list-view-model";
+import { listTaskSummary } from "@/lib/list-row-state";
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import { useLive } from "@/lib/use-live";
 import { useListBulkActions } from "@/lib/use-list-bulk-actions";
@@ -362,6 +363,8 @@ export function useListView({
     today,
   });
 
+  const summary = listTaskSummary(visible, today);
+
   const bySection = new Map<number | null, TaskRow[]>();
   for (const t of visible) {
     const k = taskSectionId(t);
@@ -390,7 +393,7 @@ export function useListView({
     listFooterTotals(customFields, items, customValues, subtaskMap);
 
   const editInputCls =
-    "w-full min-w-0 rounded border border-blue-500 bg-white py-0.5 pr-1 pl-2 text-[13px] text-neutral-800 outline-none";
+    "w-full min-w-0 rounded border border-accent bg-field py-0.5 pr-1 pl-2 text-[13px] text-text outline-none";
 
   const canEditField = (field: CustomField) =>
     canEditCustomField(field, { viewerId, canEdit, canAdmin });
@@ -456,7 +459,7 @@ export function useListView({
         type="button"
         data-list-show-more={key}
         onClick={() => setRowLimits((current) => ({ ...current, [key]: (current[key] ?? 100) + 200 }))}
-        className="mx-2 my-1 rounded-md border border-[#e1e1e1] bg-white px-3 py-1.5 text-[12px] text-neutral-600 hover:bg-neutral-50"
+        className="mx-2 my-1 rounded-md border border-line bg-surface px-3 py-1.5 text-[12px] text-secondary hover:bg-surface-subtle"
       >
         さらに表示（{shown} / {total} 件）
       </button>
@@ -520,7 +523,6 @@ export function useListView({
       sectionId={sectionId}
       collapsed={collapsedGroups.has(key)}
       groupBy={groupBy}
-      group2={group2}
       sectionDragging={sectionDragging}
       dropTargetId={sectionDrop?.id ?? null}
       editingSection={editingSection}
@@ -764,6 +766,7 @@ export function useListView({
         onCloseFieldDialog: () => setFieldDialog(null),
         onFieldSaved: refresh,
       },
+      summary,
       menuCol: menuCol,
       onCloseMenu: () => setMenuCol(null),
       editingDue: editing?.field === "due",

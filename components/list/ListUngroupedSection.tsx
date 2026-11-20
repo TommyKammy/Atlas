@@ -19,8 +19,9 @@ export default function ListUngroupedSection({
   if (total === 0) return null;
   return (
     <div data-list-unsectioned>
-      <div className="flex h-[37px] items-center pl-[56px] text-[14px] font-semibold text-neutral-500">
-        （セクションなし）
+      <div className="flex h-[38px] items-center gap-2 pl-[56px] text-[14px] font-semibold text-muted">
+        <span>（セクションなし）</span>
+        <span className="text-[12px] font-normal">{total}</span>
       </div>
       {tasks.map((task) => (
         <TaskListRow key={task.id} task={task} ctx={rowCtx} />

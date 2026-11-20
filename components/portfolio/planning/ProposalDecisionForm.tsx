@@ -14,8 +14,10 @@ export type ProposalDecisionInput = {
 };
 
 export default function ProposalDecisionForm({
+  scenarioName,
   onDecide,
 }: {
+  scenarioName?: string;
   onDecide: (input: ProposalDecisionInput) => Promise<void>;
 }) {
   const noteId = useId();
@@ -73,16 +75,18 @@ export default function ProposalDecisionForm({
         event.preventDefault();
         void submit("approve");
       }}
-      className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3"
+      className="flex flex-col gap-3"
     >
-      <h3 className="text-[13px] font-semibold text-emerald-950">最終決裁</h3>
-      <p className="mt-1 text-[11px] text-emerald-900">
-        理由は最終決裁の記録として保存されます。
-      </p>
+      <div>
+        <h3 className="text-[13px] font-semibold text-text">最終決裁</h3>
+        <p className="mt-0.5 text-[12px] text-muted">
+          理由は最終決裁の記録として保存されます。
+        </p>
+      </div>
 
-      <label htmlFor={noteId} className="mt-2 block text-[12px] font-medium text-emerald-950">
+      <label htmlFor={noteId} className="block text-[12px] font-medium text-text">
         決定理由
-        <span className="ml-1 text-red-700" aria-hidden>
+        <span className="ml-1 text-danger" aria-hidden>
           *
         </span>
         <textarea
@@ -94,9 +98,9 @@ export default function ProposalDecisionForm({
             setReason(event.target.value);
             if (event.target.value.trim() !== "") setInvalid(false);
           }}
-          className="mt-1 min-h-20 w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-[13px] text-neutral-900 outline-none focus:border-[#2c60b8]"
+          className="mt-1 min-h-20 w-full rounded-lg border border-field-line bg-field px-3 py-2.5 text-[13px] leading-6 text-text outline-none focus:border-accent"
           maxLength={1000}
-          placeholder="採用する理由、差し戻す理由、今期見送る理由"
+          placeholder="決定の理由を記録します"
           aria-describedby={invalid ? errorId : undefined}
           aria-invalid={invalid}
           required
@@ -110,26 +114,36 @@ export default function ProposalDecisionForm({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button type="submit" className={buttonPrimary} disabled={busy !== null}>
-          {busy === "approve" ? "承認中…" : proposalDecisionActionLabel("approve")}
-        </button>
+      <div className="flex flex-col gap-2">
         <button
-          type="button"
-          className={buttonSecondary}
+          type="submit"
+          className={`${buttonPrimary} min-h-11 w-full justify-center font-bold`}
           disabled={busy !== null}
-          onClick={() => void submit("return")}
         >
-          {busy === "return" ? "差し戻し中…" : proposalDecisionActionLabel("return")}
+          {busy === "approve"
+            ? "承認中…"
+            : scenarioName
+              ? `承認して ${scenarioName}を採用`
+              : "承認して採用"}
         </button>
-        <button
-          type="button"
-          className={buttonSecondary}
-          disabled={busy !== null}
-          onClick={() => void submit("defer")}
-        >
-          {busy === "defer" ? "記録中…" : proposalDecisionActionLabel("defer")}
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className={`${buttonSecondary} min-h-11 justify-center`}
+            disabled={busy !== null}
+            onClick={() => void submit("return")}
+          >
+            {busy === "return" ? "差し戻し中…" : proposalDecisionActionLabel("return")}
+          </button>
+          <button
+            type="button"
+            className={`${buttonSecondary} min-h-11 justify-center`}
+            disabled={busy !== null}
+            onClick={() => void submit("defer")}
+          >
+            {busy === "defer" ? "記録中…" : proposalDecisionActionLabel("defer")}
+          </button>
+        </div>
       </div>
     </form>
   );

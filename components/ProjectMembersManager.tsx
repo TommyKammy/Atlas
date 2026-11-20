@@ -125,7 +125,7 @@ export default function ProjectMembersManager({
     <section className="mt-5">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold">メンバー</h2>
-        <span className="text-xs text-neutral-500">{members.length}人</span>
+        <span className="text-xs text-muted">{members.length}人</span>
       </div>
 
       {canManage && (
@@ -135,7 +135,7 @@ export default function ProjectMembersManager({
             value={addUserId}
             onChange={(e) => setAddUserId(e.target.value)}
             aria-label="追加するユーザー"
-            className="h-8 min-w-40 flex-1 rounded-md border border-neutral-200 bg-white px-2 text-sm"
+            className="h-8 min-w-40 flex-1 rounded-md border border-field-line bg-field px-2 text-sm"
           >
             <option value="">ユーザーを選択…</option>
             {candidates.map((u) => (
@@ -148,7 +148,7 @@ export default function ProjectMembersManager({
           <select
             value={addRole}
             onChange={(e) => setAddRole(e.target.value as ProjectRole)}
-            className="h-8 rounded-md border border-neutral-200 bg-white px-2 text-xs"
+            className="h-8 rounded-md border border-field-line bg-field px-2 text-xs"
             title={PROJECT_ROLE_DESCRIPTIONS[addRole]}
           >
             {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (
@@ -161,34 +161,34 @@ export default function ProjectMembersManager({
             type="button"
             onClick={add}
             disabled={busy || !addUserId}
-            className="h-8 rounded-md bg-[#4075cf] px-3 text-sm text-white hover:bg-[#3567b8] disabled:opacity-40"
+            className="h-8 rounded-md bg-accent px-3 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-40"
           >
             追加
           </button>
         </div>
       )}
 
-      <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-neutral-100">
+      <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-line-subtle">
         {members.length === 0 && (
-          <div className="px-3 py-3 text-sm text-neutral-500">メンバーがいません。</div>
+          <div className="px-3 py-3 text-sm text-muted">メンバーがいません。</div>
         )}
         {members.map((m) => (
-          <div key={m.id} className="flex items-center gap-2 border-b border-neutral-100 px-2 py-1.5 last:border-b-0">
+          <div key={m.id} className="flex items-center gap-2 border-b border-line-subtle px-2 py-1.5 last:border-b-0">
             <UserAvatar name={m.name} url={m.avatar_url} className="h-7 w-7" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1">
                 <span className="truncate text-sm font-medium">{m.name}</span>
                 {m.is_guest && (
-                  <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-800">ゲスト</span>
+                  <span className="rounded bg-warning-soft px-1 text-[10px] text-warning">ゲスト</span>
                 )}
                 {m.deactivated_at && (
-                  <span className="rounded bg-neutral-200 px-1 text-[10px] text-neutral-600">無効</span>
+                  <span className="rounded bg-surface-strong px-1 text-[10px] text-secondary">無効</span>
                 )}
                 {m.id === currentUserId && (
-                  <span className="rounded bg-neutral-100 px-1 text-[10px] text-neutral-500">あなた</span>
+                  <span className="rounded bg-surface-muted px-1 text-[10px] text-muted">あなた</span>
                 )}
               </div>
-              <div className="truncate text-[11px] text-neutral-500">
+              <div className="truncate text-[11px] text-muted">
                 {m.title ? `${m.title} ・ ` : ""}
                 {m.email ?? ""}
               </div>
@@ -199,7 +199,7 @@ export default function ProjectMembersManager({
                   value={m.role}
                   onChange={(e) => changeRole(m.id, e.target.value as ProjectRole)}
                   disabled={busy}
-                  className="h-7 rounded border border-neutral-200 bg-white px-1 text-xs"
+                  className="h-7 rounded border border-field-line bg-field px-1 text-xs"
                   title={PROJECT_ROLE_DESCRIPTIONS[m.role]}
                 >
                   {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (
@@ -212,19 +212,19 @@ export default function ProjectMembersManager({
                   type="button"
                   onClick={() => remove(m)}
                   disabled={busy}
-                  className="text-neutral-300 hover:text-red-600"
+                  className="text-subtle hover:text-danger"
                   title="プロジェクトから除外"
                 >
                   ×
                 </button>
               </>
             ) : (
-              <span className="text-xs text-neutral-500">{PROJECT_ROLE_LABELS[m.role]}</span>
+              <span className="text-xs text-muted">{PROJECT_ROLE_LABELS[m.role]}</span>
             )}
           </div>
         ))}
       </div>
-      {msg && <p className="mt-2 text-xs text-red-600">{msg}</p>}
+      {msg && <p className="mt-2 text-xs text-danger">{msg}</p>}
     </section>
   );
 }

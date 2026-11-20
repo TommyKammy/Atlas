@@ -105,7 +105,7 @@ grep -q 'aria-label="現在のビューを保存"' "$TMPD/p-list.html" && grep -
 grep -q 'lg:hidden' "$TMPD/p-list.html" && grep -q 'fixed inset-0 z-\[80\]' "$TMPD/pane.html" && grep -q 'w-36 shrink-0 border-r' "$TMPD/p-timeline.html" && ok "responsive mobile classes" || bad "responsive mobile classes"
 grep -q 'data-list-row="1"' "$TMPD/p-list.html" && grep -q 'aria-label="詳細を閉じる"' "$TMPD/pane.html" && ok "list keyboard rows" || bad "list keyboard rows"
 grep -q 'aria-label="タスク詳細"' "$TMPD/pane.html" && grep -q 'aria-modal="true"' "$TMPD/pane.html" && ok "task pane focus trap markup" || bad "task pane focus trap markup"
-grep -q 'min-h-\[37px\]' "$TMPD/p-list.html" && grep -q 'minmax(220px,640px)' "$TMPD/p-list.html" && grep -q 'minmax(40px,1fr)' "$TMPD/p-list.html" && ok "list density columns" || bad "list density columns"
+grep -q 'h-\[38px\]' "$TMPD/p-list.html" && grep -q 'minmax(340px,640px)' "$TMPD/p-list.html" && grep -q 'minmax(40px,1fr)' "$TMPD/p-list.html" && ok "list density columns" || bad "list density columns"
 HOST=1; for v in list board timeline calendar; do grep -q 'data-task-context-menu-host' "$TMPD/p-$v.html" || HOST=0; done
 [[ "$HOST" == "1" ]] && ok "task context menu host" || bad "task context menu host"
 
@@ -145,7 +145,7 @@ print("ok" if all(p>=0 for p in pos) and pos==sorted(pos) else "bad:"+",".join(m
 PYEOF
 )
 [[ "$ORDER" == "ok" ]] && ok "list column order" || bad "list column order" "$ORDER"
-grep -Fq 'hover:bg-[#f3f3f3]' "$TMPD/p-list.html" && ok "field header hover style" || bad "field header hover style"
+grep -Fq 'hover:bg-surface-muted' "$TMPD/p-list.html" && ok "field header hover style" || bad "field header hover style"
 DRAG_FIELD=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E並べ替え列","field_type":"text"}')
 DRAG_FIELD_ID=$(jget "$DRAG_FIELD" id)
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/field-drag.html"
@@ -157,8 +157,8 @@ PYEOF
 )
 [[ "$HAS_DRAG" == "yes" ]] && ok "field header draggable markup" || bad "field header draggable markup"
 api DELETE "/api/custom-fields/$DRAG_FIELD_ID" >/dev/null
-grep -q 'minmax(220px,640px)' "$TMPD/p-list.html" && grep -q '119px 119px 119px 119px' "$TMPD/p-list.html" && ok "list column widths (640/119)" || bad "list column widths"
-grep -q 'data-list-section-header="' "$TMPD/p-list.html" && ! grep -q 'data-list-section-count' "$TMPD/p-list.html" && ok "section header count hidden" || bad "section header count hidden"
+grep -q 'minmax(340px,640px)' "$TMPD/p-list.html" && grep -q '119px 119px 119px 119px' "$TMPD/p-list.html" && ok "list column widths (640/119)" || bad "list column widths"
+grep -q 'data-list-section-header="' "$TMPD/p-list.html" && grep -q 'data-list-section-count="' "$TMPD/p-list.html" && ok "section header count shown" || bad "section header count shown"
 HAS_SECTION_DRAG=$(python3 - "$TMPD/p-list.html" <<'PYEOF'
 import re, sys
 h = open(sys.argv[1], encoding='utf-8').read()
@@ -192,12 +192,12 @@ grep -q 'data-list-completed-only="true"' "$TMPD/list-saved-toolbar.html" && gre
 api DELETE "/api/saved-views/$SVID2" >/dev/null
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":2,"name":"   "}')
 [[ "$C" == "400" ]] && ok "empty task name rejected" || bad "empty task name rejected ($C)"
-grep -q 'bg-\[#c94848\]' "$TMPD/p-list.html" && ok "contrast tokens" || bad "contrast tokens"
-grep -q 'focus-visible' app/globals.css && grep -q 'box-shadow: 0 0 0 4px #2c60b8' app/globals.css && ok "global focus-visible styles" || bad "global focus-visible styles"
+grep -Fq 'bg-accent text-on-accent' "$TMPD/p-list.html" && grep -q -- '--atlas-on-accent:' app/globals.css && ok "contrast tokens" || bad "contrast tokens"
+grep -q 'focus-visible' app/globals.css && grep -Fq 'outline: 2px solid var(--atlas-focus-ring)' app/globals.css && grep -Fq 'box-shadow: 0 0 0 4px color-mix(in srgb, var(--atlas-focus-ring) 25%, transparent)' app/globals.css && ok "global focus-visible styles" || bad "global focus-visible styles"
 
 echo "== sidebar rail =="
 curl -s -m 15 -b "$JAR" -b 'atlas_sidebar=collapsed' "$BASE/projects/1?view=list" -o "$TMPD/rail.html"
-grep -q 'data-sidebar-rail' "$TMPD/rail.html" && grep -q 'data-sidebar-flyout="/my-tasks"' "$TMPD/rail.html" && grep -q 'data-sidebar-flyout-link="期限超過"' "$TMPD/rail.html" && ok "sidebar collapsed flyout markup" || bad "sidebar collapsed flyout markup"
+grep -q 'data-sidebar-rail' "$TMPD/rail.html" && grep -q 'data-sidebar-flyout="/my-tasks"' "$TMPD/rail.html" && grep -q 'data-sidebar-flyout-link="期限超過"' "$TMPD/rail.html" && grep -q 'data-sidebar-rail-footer' "$TMPD/rail.html" && ! grep -q 'data-sidebar-navigation' "$TMPD/rail.html" && ok "sidebar collapsed flyout markup" || bad "sidebar collapsed flyout markup"
 
 echo "== project tabs =="
 TABS=$(api GET '/api/project-tabs?project_id=1')
@@ -1055,7 +1055,7 @@ python3 -c "import json; d=json.load(open('$TMPD/gs-history.json')); assert '要
 curl -s -m 15 -b "$JAR" "$BASE/search" -o "$TMPD/gs-empty.html"
 grep -q 'data-search-history' "$TMPD/gs-empty.html" && grep -q 'data-search-history-item="要件定義"' "$TMPD/gs-empty.html" && grep -q 'data-search-history-clear' "$TMPD/gs-empty.html" && ok "search history page" || bad "search history page"
 curl -s -m 15 -b "$JAR" "$BASE/" -o "$TMPD/gs-home.html"
-grep -q 'data-global-search-input' "$TMPD/gs-home.html" && grep -q 'data-global-search' "$TMPD/gs-home.html" && ok "global search shell markup" || bad "global search shell markup"
+grep -q 'data-sidebar-actions' "$TMPD/gs-home.html" && grep -q 'data-command-palette-open' "$TMPD/gs-home.html" && ! grep -q 'data-global-search-input' "$TMPD/gs-home.html" && ok "command palette entry markup" || bad "command palette entry markup"
 curl -s -m 10 -b "$JAR" -X DELETE "$BASE/api/search/history" -o /dev/null
 curl -s -m 15 -b "$JAR" "$BASE/search" -o "$TMPD/gs-cleared.html"
 ! grep -q 'data-search-history' "$TMPD/gs-cleared.html" && ok "search history clear" || bad "search history clear"
@@ -1215,7 +1215,7 @@ PYEOF
 [[ $? == 0 ]] && ok "timeline half plain labels" || bad "timeline half plain labels"
 purge_task "$COARSE_ID" >/dev/null
 api PUT /api/view-state '{"project_id":1,"view":"timeline","state":{}}' >/dev/null
-grep -q 'data-timeline-group-line' "$TMPD/tlui.html" && grep -q 'data-timeline-weekend' "$TMPD/tlui.html" && grep -q 'data-timeline-filter-open' "$TMPD/tlui.html" && grep -q 'data-timeline-sort-open' "$TMPD/tlui.html" && grep -q 'data-timeline-options-open' "$TMPD/tlui.html" && grep -q 'data-view-options-drawer="タイムライン"' "$TMPD/tlui.html" && grep -q 'line-clamp-2' "$TMPD/tlui.html" && grep -q 'aria-expanded="true"' "$TMPD/tlui.html" && ok "timeline parity chrome" || bad "timeline parity chrome"
+grep -q 'data-timeline-group-line' "$TMPD/tlui.html" && grep -q 'data-timeline-weekend' "$TMPD/tlui.html" && grep -q 'data-timeline-filter-open' "$TMPD/tlui.html" && grep -q 'data-timeline-sort-open' "$TMPD/tlui.html" && grep -q 'data-timeline-options-open' "$TMPD/tlui.html" && grep -q 'data-view-options-drawer="タイムライン"' "$TMPD/tlui.html" && grep -q 'data-timeline-bar-state=' "$TMPD/tlui.html" && grep -q 'aria-expanded="true"' "$TMPD/tlui.html" && ok "timeline parity chrome" || bad "timeline parity chrome"
 grep -q 'data-timeline-section-row="1"' "$TMPD/tlui.html" && ok "timeline section header row" || bad "timeline section header row"
 T=$(curl -s -m 10 -b "$JAR" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":2,"name":"E2E移動"}')
 TID=$(echo "$T" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
@@ -1462,12 +1462,12 @@ purge_task "$CT1" >/dev/null
 purge_task "$CT2" >/dev/null
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/sadd.html"
 grep -q 'data-sidebar-add-project' "$TMPD/sadd.html" && ok "sidebar add project" || bad "sidebar add project"
-grep -q 'data-sidebar-user-menu' "$TMPD/sadd.html" && grep -q 'data-sidebar-help' "$TMPD/sadd.html" && grep -q 'data-sidebar-invite' "$TMPD/sadd.html" && ok "sidebar footer controls" || bad "sidebar footer controls"
+grep -q 'data-sidebar-footer' "$TMPD/sadd.html" && grep -q 'data-sidebar-user-menu' "$TMPD/sadd.html" && grep -q 'data-sidebar-help' "$TMPD/sadd.html" && grep -q 'data-theme-toggle' "$TMPD/sadd.html" && grep -q 'data-sidebar-invite' "$TMPD/sadd.html" && ! grep -q 'data-sidebar-rail' "$TMPD/sadd.html" && ok "sidebar footer controls" || bad "sidebar footer controls"
 cp "$JAR" "$TMPD/jar-collapsed"
 printf '127.0.0.1\tFALSE\t/\tFALSE\t0\tatlas_sidebar\tcollapsed\n' >> "$TMPD/jar-collapsed"
 curl -s -m 15 -b "$TMPD/jar-collapsed" "$BASE/projects/1?view=list" -o "$TMPD/scollapse.html"
-grep -q 'サイドバーを展開' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-add-project' "$TMPD/scollapse.html" && ok "sidebar collapsed SSR" || bad "sidebar collapsed SSR"
-grep -q 'data-sidebar-user-menu' "$TMPD/scollapse.html" && grep -q 'data-sidebar-help' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-invite' "$TMPD/scollapse.html" && ok "collapsed rail footer" || bad "collapsed rail footer"
+grep -q 'サイドバーを展開' "$TMPD/scollapse.html" && grep -q 'data-sidebar-rail-actions' "$TMPD/scollapse.html" && grep -q 'data-command-palette-open' "$TMPD/scollapse.html" && grep -q 'data-sidebar-rail-footer' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-footer' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-actions' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-add-project' "$TMPD/scollapse.html" && ok "sidebar collapsed SSR" || bad "sidebar collapsed SSR"
+grep -q 'data-sidebar-rail-footer' "$TMPD/scollapse.html" && grep -q 'data-sidebar-user-menu' "$TMPD/scollapse.html" && grep -q 'data-sidebar-help' "$TMPD/scollapse.html" && grep -q 'data-theme-toggle' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-invite' "$TMPD/scollapse.html" && ok "collapsed rail footer" || bad "collapsed rail footer"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=bogus" -o "$TMPD/cw2.html"
 grep -q '2026年' "$TMPD/cw2.html" && ok "week fallback" || bad "week fallback"
 

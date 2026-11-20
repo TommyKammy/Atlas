@@ -13,7 +13,7 @@ export default async function LoginPage() {
     return (
       <div className="p-8">
         <p className="text-sm">ログイン済みです。</p>
-        <Link href="/" className="text-sm text-blue-700 hover:underline">
+        <Link href="/" className="text-sm text-accent-text hover:underline">
           ホームへ →
         </Link>
       </div>

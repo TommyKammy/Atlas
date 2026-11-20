@@ -12,7 +12,7 @@ export default function SearchHistoryClear() {
         await fetch("/api/search/history", { method: "DELETE" }).catch(() => undefined);
         router.refresh();
       }}
-      className="text-[11px] text-neutral-500 hover:underline"
+      className="inline-flex h-7 items-center rounded-md px-2 text-[12px] text-muted hover:bg-hover hover:text-text"
     >
       履歴をクリア
     </button>

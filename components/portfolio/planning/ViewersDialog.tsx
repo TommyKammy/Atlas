@@ -96,7 +96,7 @@ export default function ViewersDialog({
       }
     >
       <div className="space-y-4">
-        <p className="text-[12px] text-neutral-600">
+        <p className="text-[12px] text-secondary">
           所有者とワークスペース管理者は常に閲覧・編集できます。ここで明示的に追加した閲覧者は、投資計画の内容を閲覧できますが編集・採用はできません。
         </p>
         <Notice tone="info">
@@ -131,16 +131,16 @@ export default function ViewersDialog({
         </div>
         {error && <FieldError>{error}</FieldError>}
         {viewers.length === 0 ? (
-          <p className="rounded-md border border-dashed border-neutral-300 px-3 py-5 text-center text-[12px] text-neutral-500">
+          <p className="rounded-md border border-dashed border-line-strong px-3 py-5 text-center text-[12px] text-muted">
             明示的な閲覧者はまだいません。
           </p>
         ) : (
-          <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200">
+          <ul className="divide-y divide-line rounded-lg border border-line">
             {viewers.map((viewer) => (
               <li key={viewer.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                 <div className="min-w-0">
-                  <div className="truncate text-[13px] font-medium text-neutral-900">{viewer.name}</div>
-                  <div className="truncate text-[11px] text-neutral-500">
+                  <div className="truncate text-[13px] font-medium text-text">{viewer.name}</div>
+                  <div className="truncate text-[11px] text-muted">
                     {viewer.email ?? "メール未設定"} ・ 追加 {formatMonthDay(viewer.grantedAt)}
                   </div>
                 </div>
@@ -148,7 +148,7 @@ export default function ViewersDialog({
                   type="button"
                   onClick={() => void remove(viewer)}
                   disabled={busy}
-                  className="rounded px-2 py-1 text-[12px] text-neutral-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                  className="rounded px-2 py-1 text-[12px] text-muted hover:bg-danger-soft hover:text-danger disabled:opacity-50"
                 >
                   外す
                 </button>

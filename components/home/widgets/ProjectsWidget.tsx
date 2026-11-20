@@ -23,7 +23,7 @@ export default function ProjectsWidget({
 
   return (
     <>
-      <div className="flex items-center gap-1 border-b border-neutral-100 px-4 py-1.5">
+      <div className="flex items-center gap-1 border-b border-line-subtle px-4 py-1.5">
         <button
           type="button"
           onClick={() => setTab("recent")}
@@ -31,8 +31,8 @@ export default function ProjectsWidget({
           aria-pressed={tab === "recent"}
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             tab === "recent"
-              ? "bg-[#eff4fd] font-medium text-[#2c60b8]"
-              : "text-neutral-500 hover:bg-neutral-100"
+              ? "bg-accent-soft font-medium text-accent-text"
+              : "text-muted hover:bg-hover"
           }`}
         >
           最近
@@ -44,35 +44,35 @@ export default function ProjectsWidget({
           aria-pressed={tab === "search"}
           className={`rounded-full px-2 py-0.5 text-[12px] ${
             tab === "search"
-              ? "bg-[#eff4fd] font-medium text-[#2c60b8]"
-              : "text-neutral-500 hover:bg-neutral-100"
+              ? "bg-accent-soft font-medium text-accent-text"
+              : "text-muted hover:bg-hover"
           }`}
         >
           プロジェクトを探す
         </button>
       </div>
       {tab === "search" && (
-        <div className="border-b border-neutral-100 px-4 py-2">
+        <div className="border-b border-line-subtle px-4 py-2">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="プロジェクト名で検索"
             autoFocus
-            className="w-full rounded border border-neutral-200 px-2 py-1 text-[12px] outline-none focus:border-blue-500"
+            className="w-full rounded border border-field-line px-2 py-1 text-[12px] outline-none focus:border-accent"
           />
         </div>
       )}
       <div className="min-h-[190px] flex-1 p-3">
         {filtered.length === 0 ? (
           <div className="flex h-full min-h-[170px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-            <p className="text-[12px] text-neutral-400">
+            <p className="text-[12px] text-muted">
               {tab === "search" && query.trim() !== ""
                 ? "一致するプロジェクトがありません。"
                 : "プロジェクトがありません。"}
             </p>
             {canCreateProject && <Link
               href="/projects/new"
-              className="rounded bg-[#2c60b8] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[#24529c]"
+              className="rounded bg-accent px-3 py-1.5 text-[12px] font-medium text-on-accent hover:bg-accent-hover"
             >
               ＋ 新規プロジェクト
             </Link>}
@@ -85,7 +85,7 @@ export default function ProjectsWidget({
                   key={project.id}
                   href={`/projects/${project.id}?view=list`}
                   data-home-project-row={project.id}
-                  className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-neutral-50"
+                  className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-hover"
                 >
                   <ProjectIcon
                     id={project.id}
@@ -95,10 +95,10 @@ export default function ProjectsWidget({
                     className="h-7 w-7 text-[11px]"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-medium text-neutral-800">
+                    <span className="block truncate text-[13px] font-medium text-text">
                       {project.name}
                     </span>
-                    <span className="block truncate text-[11px] text-neutral-400">
+                    <span className="block truncate text-[11px] text-subtle">
                       {project.due_soon > 0
                         ? `${project.due_soon}件のまもなく期限のタスク`
                         : `${project.open_count}件の未完了タスク`}
@@ -111,7 +111,7 @@ export default function ProjectsWidget({
               <div className="mt-2">
                 <Link
                   href="/projects/new"
-                  className="text-[12px] text-[#2c60b8] hover:underline"
+                  className="text-[12px] text-accent-text hover:underline"
                 >
                   ＋ 新規プロジェクト
                 </Link>
@@ -120,8 +120,8 @@ export default function ProjectsWidget({
           </>
         )}
       </div>
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/portfolio" className="text-[12px] text-neutral-500 hover:text-neutral-800">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right">
+        <Link href="/portfolio" className="text-[12px] text-muted hover:text-text">
           プロジェクトをすべて表示
         </Link>
       </div>

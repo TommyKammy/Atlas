@@ -24,12 +24,12 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-1.5">
-        <span className="text-[11px] text-neutral-400">
+      <div className="flex items-center gap-2 border-b border-line-subtle px-4 py-1.5">
+        <span className="text-[11px] text-subtle">
           {unreadCount > 0 ? `未読 ${unreadCount}件` : "すべて既読"}
         </span>
         <span className="flex-1" />
-        <Link href="/inbox" className="text-[12px] text-[#2c60b8] hover:underline">
+        <Link href="/inbox" className="text-[12px] text-accent-text hover:underline">
           受信トレイ
         </Link>
       </div>
@@ -37,10 +37,10 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
       <div className="min-h-[170px] flex-1">
         {mentions.length === 0 ? (
           <div className="flex h-full min-h-[170px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-300 text-[15px] text-neutral-400">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line-strong text-[15px] text-subtle">
               @
             </span>
-            <p className="text-[12px] text-neutral-400">自分宛てのメンションはありません。</p>
+            <p className="text-[12px] text-muted">自分宛てのメンションはありません。</p>
           </div>
         ) : (
           mentions.slice(0, 6).map((mention) => (
@@ -49,7 +49,7 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
               href={`/projects/${mention.project_id}?view=list&task=${mention.task_id}`}
               data-home-mention-row={mention.comment_id}
               onClick={() => markRead(mention.comment_id)}
-              className="flex min-w-0 items-start gap-2 border-b border-neutral-100 px-4 py-2.5 last:border-b-0 hover:bg-neutral-50"
+              className="flex min-w-0 items-start gap-2 border-b border-line-subtle px-4 py-2.5 last:border-b-0 hover:bg-hover"
             >
               <span className="relative mt-0.5 shrink-0">
                 <UserAvatar
@@ -59,22 +59,22 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
                   textClassName="text-[9px]"
                 />
                 {isUnread(mention) && (
-                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-[#2c60b8]" />
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-on-strong bg-accent" />
                 )}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
-                  <span className="truncate text-[12px] font-medium text-neutral-800">
+                  <span className="truncate text-[12px] font-medium text-text">
                     {mention.author_name ?? "不明なユーザー"}
                   </span>
-                  <span className="shrink-0 text-[10px] text-neutral-400">
+                  <span className="shrink-0 text-[10px] text-subtle">
                     {formatDateTime(mention.created_at)}
                   </span>
                 </span>
-                <span className="mt-0.5 block truncate text-[11px] text-neutral-600">
+                <span className="mt-0.5 block truncate text-[11px] text-secondary">
                   {plainTextSnippet(mention.body, 90)}
                 </span>
-                <span className="mt-0.5 block truncate text-[10px] text-neutral-400">
+                <span className="mt-0.5 block truncate text-[10px] text-subtle">
                   {mention.project_name} ・ {mention.task_name}
                 </span>
               </span>
@@ -83,8 +83,8 @@ export default function MentionsWidget({ mentions }: { mentions: HomeMention[] }
         )}
       </div>
 
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right">
-        <Link href="/inbox" className="text-[12px] text-neutral-500 hover:text-neutral-800">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right">
+        <Link href="/inbox" className="text-[12px] text-muted hover:text-text">
           メンションをすべて表示
         </Link>
       </div>

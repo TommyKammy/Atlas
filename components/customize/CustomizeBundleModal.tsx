@@ -37,7 +37,7 @@ export default function CustomizeBundleModal({
   return (
     <CustomizeModal title="バンドルを作成" onClose={onClose}>
       <form onSubmit={onSubmit} data-customize-bundle-form className="p-5">
-        <label className="block text-[12px] font-medium text-neutral-700">
+        <label className="block text-[12px] font-medium text-secondary">
           バンドル名
           <input
             value={draft.name}
@@ -47,7 +47,7 @@ export default function CustomizeBundleModal({
             className={fieldTypeClass}
           />
         </label>
-        <label className="mt-3 block text-[12px] font-medium text-neutral-700">
+        <label className="mt-3 block text-[12px] font-medium text-secondary">
           説明
           <input
             value={draft.description}
@@ -56,7 +56,7 @@ export default function CustomizeBundleModal({
           />
         </label>
         <div className="mt-4 flex items-center justify-between">
-          <div className="text-[12px] font-medium text-neutral-700">フィールド</div>
+          <div className="text-[12px] font-medium text-secondary">フィールド</div>
           <button
             type="button"
             data-customize-bundle-field-add
@@ -66,14 +66,14 @@ export default function CustomizeBundleModal({
                 fields: [...draft.fields, { name: "", field_type: "text", options: [] }],
               })
             }
-            className="text-[12px] text-[#2c60b8] hover:underline"
+            className="text-[12px] text-accent-text hover:underline"
           >
             ＋ フィールドを追加
           </button>
         </div>
         <div className="mt-2 space-y-2">
           {draft.fields.map((field, index) => (
-            <div key={index} className="rounded-md border border-neutral-200 p-2">
+            <div key={index} className="rounded-md border border-line p-2">
               <div className="flex items-center gap-2">
                 <input
                   value={field.name}
@@ -87,7 +87,7 @@ export default function CustomizeBundleModal({
                   }
                   data-customize-bundle-field-name={index}
                   placeholder="フィールド名"
-                  className="h-7 min-w-0 flex-1 rounded border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#2c60b8]"
+                  className="h-7 min-w-0 flex-1 rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
                 />
                 <select
                   value={field.field_type}
@@ -102,7 +102,7 @@ export default function CustomizeBundleModal({
                     })
                   }
                   data-customize-bundle-field-type={index}
-                  className="h-7 rounded border border-neutral-200 bg-white px-1 text-[12px]"
+                  className="h-7 rounded border border-field-line bg-field px-1 text-[12px]"
                 >
                   <option value="text">テキスト</option>
                   <option value="number">数値</option>
@@ -114,7 +114,7 @@ export default function CustomizeBundleModal({
                     onClick={() =>
                       onDraft({ ...draft, fields: draft.fields.filter((_, i) => i !== index) })
                     }
-                    className="text-neutral-400 hover:text-red-600"
+                    className="text-subtle hover:text-danger"
                   >
                     ×
                   </button>
@@ -141,7 +141,7 @@ export default function CustomizeBundleModal({
                   }
                   data-customize-bundle-field-options={index}
                   placeholder="選択肢（カンマ区切り）"
-                  className="mt-2 h-7 w-full rounded border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#2c60b8]"
+                  className="mt-2 h-7 w-full rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
                 />
               )}
             </div>
@@ -149,15 +149,15 @@ export default function CustomizeBundleModal({
         </div>
         {availableRules.length > 0 && (
           <div className="mt-4">
-            <div className="text-[12px] font-medium text-neutral-700">ルールを含める</div>
-            <p className="mt-0.5 text-[10px] text-neutral-400">
+            <div className="text-[12px] font-medium text-secondary">ルールを含める</div>
+            <p className="mt-0.5 text-[10px] text-subtle">
               現在のプロジェクトのルールをバンドルに同梱できます。
             </p>
             <div className="mt-2 space-y-1.5">
               {availableRules.map((rule) => (
                 <label
                   key={rule.id}
-                  className="flex items-start gap-2 rounded-md border border-neutral-200 p-2 text-[11px]"
+                  className="flex items-start gap-2 rounded-md border border-line p-2 text-[11px]"
                 >
                   <input
                     type="checkbox"
@@ -173,9 +173,9 @@ export default function CustomizeBundleModal({
                     className="mt-0.5"
                   />
                   <span>
-                    <span className="block font-medium text-neutral-800">{rule.name}</span>
+                    <span className="block font-medium text-text">{rule.name}</span>
                     {rule.description && (
-                      <span className="block text-[10px] text-neutral-500">{rule.description}</span>
+                      <span className="block text-[10px] text-muted">{rule.description}</span>
                     )}
                   </span>
                 </label>

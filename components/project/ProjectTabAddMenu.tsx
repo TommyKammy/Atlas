@@ -12,7 +12,7 @@ function ViewIcon({ view }: { view: string }) {
     strokeWidth: 1.6,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    className: "h-5 w-5 shrink-0 text-[#5f7bd0]",
+    className: "h-5 w-5 shrink-0 text-accent-text",
   };
   if (view === "overview")
     return (
@@ -141,13 +141,13 @@ export default function ProjectTabAddMenu({
           width: pos.width,
           maxHeight: `calc(100vh - ${pos.y + 8}px)`,
         }}
-        className="fixed z-[90] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-3 text-sm shadow-[0_8px_28px_rgba(0,0,0,0.18)]"
+        className="fixed z-[90] overflow-y-auto rounded-lg border border-line bg-surface p-3 text-sm shadow-[0_8px_28px_rgba(0,0,0,0.18)]"
       >
         {groups.map(([group, label]) => {
           const options = PROJECT_TAB_VIEW_OPTIONS.filter((option) => option.group === group);
           return (
             <section key={group} className={group === "other" ? "mt-3" : ""}>
-              <div className="px-2 pb-1 text-[11px] font-medium text-neutral-500">{label}</div>
+              <div className="px-2 pb-1 text-[11px] font-medium text-muted">{label}</div>
               <div className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">
                 {options.map((option) => (
                   <button
@@ -157,15 +157,15 @@ export default function ProjectTabAddMenu({
                     data-project-tab-add-option={option.value}
                     disabled={busyView !== null}
                     onClick={() => onSelect(option)}
-                    className="flex items-start gap-3 rounded-md px-2 py-2 text-left hover:bg-neutral-50 focus-visible:bg-neutral-50 focus-visible:outline-none disabled:opacity-50"
+                    className="flex items-start gap-3 rounded-md px-2 py-2 text-left hover:bg-hover focus-visible:bg-surface-subtle focus-visible:outline-none disabled:opacity-50"
                   >
                     <ViewIcon view={option.value} />
                     <span className="min-w-0">
-                      <span className="block text-[14px] font-medium text-neutral-800">
+                      <span className="block text-[14px] font-medium text-text">
                         {option.label}
-                        {busyView === option.value && <span className="ml-2 text-[11px] text-neutral-500">追加中…</span>}
+                        {busyView === option.value && <span className="ml-2 text-[11px] text-muted">追加中…</span>}
                       </span>
-                      <span className="mt-0.5 block text-[12px] leading-[1.35] text-neutral-500">
+                      <span className="mt-0.5 block text-[12px] leading-[1.35] text-muted">
                         {option.description}
                       </span>
                     </span>
@@ -175,9 +175,9 @@ export default function ProjectTabAddMenu({
             </section>
           );
         })}
-        {error && <p className="mt-2 px-2 text-[12px] text-red-600">{error}</p>}
-        <div className="mt-2 border-t border-neutral-100 px-2 pt-2">
-          <a href="/help" className="text-[12px] text-[#6d5bd0] hover:underline">
+        {error && <p className="mt-2 px-2 text-[12px] text-danger">{error}</p>}
+        <div className="mt-2 border-t border-line-subtle px-2 pt-2">
+          <a href="/help" className="text-[12px] text-accent-text hover:underline">
             フィードバックを送る
           </a>
         </div>

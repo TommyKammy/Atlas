@@ -120,18 +120,22 @@ export default function TaskCommentComposer({
 
   const keepFocus = (event: MouseEvent) => event.preventDefault();
   const iconButton =
-    "flex h-6 w-6 items-center justify-center rounded text-[13px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800";
+    "flex h-6 w-6 items-center justify-center rounded text-[13px] text-muted hover:bg-hover hover:text-text";
 
   return (
-    <div className="shrink-0 border-t border-neutral-200 bg-white px-3 py-2.5" data-task-composer>
+    <div
+      className="shrink-0 px-5 pb-[22px] pt-2 md:px-[26px]"
+      data-task-composer
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+      }}
+    >
       <div
-        className={`rounded-lg border bg-white transition-shadow ${
-          focused ? "border-[#4075cf] shadow-[0_0_0_2px_rgba(64,117,207,0.12)]" : "border-neutral-300"
+        data-comment-field
+        className={`rounded-lg border bg-bg transition-shadow ${
+          focused ? "border-accent ring-1 ring-accent" : "border-field-line"
         }`}
-        onFocusCapture={() => setFocused(true)}
-        onBlurCapture={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
-        }}
       >
         {draftReady ? (
           <RichTextEditor
@@ -141,10 +145,12 @@ export default function TaskCommentComposer({
             placeholder="コメントを追加するか、チームメイトを @メンションします"
             ariaLabel="コメント"
             dataAttributes={{ "data-comment-input": "true" }}
-            minHeightClass="min-h-[34px]"
+            minHeightClass="min-h-[42px]"
             compact
             toolbar
             borderless
+            surfaceClassName="bg-transparent"
+            className="atlas-comment-editor"
             onChange={(nextDoc, nextText) => {
               setDoc(nextDoc);
               setText(nextText);
@@ -153,7 +159,7 @@ export default function TaskCommentComposer({
             onReady={setEditor}
           />
         ) : (
-          <div className="min-h-[34px] animate-pulse rounded bg-neutral-50" aria-hidden />
+          <div className="min-h-[42px] animate-pulse rounded-lg bg-surface-subtle" aria-hidden />
         )}
 
         {emojiOpen && (
@@ -167,15 +173,17 @@ export default function TaskCommentComposer({
                   insert(emoji);
                   setEmojiOpen(false);
                 }}
-                className="rounded px-1 text-[16px] hover:bg-neutral-100"
+                className="rounded px-1 text-[16px] hover:bg-hover"
               >
                 {emoji}
               </button>
             ))}
           </div>
         )}
+      </div>
 
-        <div className="flex items-center gap-0.5 px-2 py-1.5">
+      {(focused || text.trim() !== "" || emojiOpen) && (
+        <div className="mt-1 flex items-center gap-0.5 px-0.5">
           <button
             type="button"
             className={iconButton}
@@ -219,7 +227,7 @@ export default function TaskCommentComposer({
             </svg>
           </button>
 
-          <span className="ml-auto text-[10px] text-neutral-400">
+          <span className="ml-auto text-[10px] text-muted">
             {draftState === "saving"
               ? "下書きを保存中…"
               : draftState === "saved"
@@ -234,15 +242,16 @@ export default function TaskCommentComposer({
             aria-label="コメント"
             title="コメント"
             disabled={!text.trim() || sending}
+            onMouseDown={keepFocus}
             onClick={() => void submit()}
-            className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#2f6fd0] text-white hover:bg-[#2459ad] disabled:bg-neutral-200 disabled:text-neutral-400"
+            className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover disabled:bg-surface-strong disabled:text-subtle"
           >
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M8 12.5v-9M4.5 7 8 3.5 11.5 7" />
             </svg>
           </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

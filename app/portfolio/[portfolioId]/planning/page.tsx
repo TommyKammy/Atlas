@@ -35,21 +35,21 @@ export default async function PlanningPage(props: {
   if (!portfolio.can_view_plan) {
     return (
       <div className="mx-auto max-w-[820px] px-4 py-10 md:px-6">
-        <nav aria-label="パンくず" className="text-[12px] text-neutral-500">
-          <Link href={backHref} className="text-[#24529c] hover:underline">
+        <nav aria-label="パンくず" className="text-[12px] text-muted">
+          <Link href={backHref} className="text-accent-text hover:underline">
             ポートフォリオ
           </Link>
           <span className="mx-1.5" aria-hidden>›</span>
           <span>投資計画</span>
         </nav>
-        <div className="mt-5 rounded-lg border border-neutral-200 bg-white p-6">
-          <h1 className="text-[20px] font-semibold text-neutral-900">投資計画を表示できません</h1>
-          <p className="mt-2 text-[13px] leading-6 text-neutral-600">
+        <div className="mt-5 rounded-lg border border-line bg-surface p-6">
+          <h1 className="text-[20px] font-semibold text-text">投資計画を表示できません</h1>
+          <p className="mt-2 text-[13px] leading-6 text-secondary">
             この投資計画を表示する権限がありません。共有ポートフォリオの所有者またはワークスペース管理者に、閲覧者として追加を依頼してください。
           </p>
           <Link
             href={backHref}
-            className="mt-4 inline-flex min-h-9 items-center rounded-md bg-[#2c60b8] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#24529c]"
+            className="mt-4 inline-flex min-h-9 items-center rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-on-accent hover:bg-accent-hover"
           >
             ポートフォリオに戻る
           </Link>

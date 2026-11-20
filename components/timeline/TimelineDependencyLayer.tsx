@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { isCriticalDependency } from "@/lib/timeline-display";
 
 export type TimelineDependencyShape = {
   key: string;
@@ -25,25 +26,30 @@ export type TimelineDependencyDraft = {
 const TimelineDependencyEdge = memo(function TimelineDependencyEdge({
   shape,
   selected,
+  critical,
   onHover,
   onLeave,
 }: {
   shape: TimelineDependencyShape;
   selected: boolean;
+  critical: boolean;
   onHover: (key: string) => void;
   onLeave: () => void;
 }) {
+  // Hover temporarily thickens the edge; otherwise it is a quiet 1px line
+  // whose arrow shares the same color. Critical-path edges use the accent.
+  const tone = selected || critical ? "var(--atlas-accent)" : "var(--atlas-line-strong)";
   return (
-    <g data-timeline-dependency={shape.key}>
+    <g data-timeline-dependency={shape.key} data-timeline-dependency-critical={critical ? "true" : undefined}>
       <path
         d={shape.d}
         fill="none"
-        stroke={selected ? "#2c60b8" : "#737373"}
-        strokeWidth={selected ? 2 : 1.5}
+        stroke={tone}
+        strokeWidth={selected ? 2 : 1}
         strokeLinejoin="round"
       />
-      <circle cx={shape.from.x} cy={shape.y1} r="2.5" fill={selected ? "#2c60b8" : "#737373"} />
-      <path d={shape.arrow} fill={selected ? "#2c60b8" : "#737373"} />
+      <circle cx={shape.from.x} cy={shape.y1} r="2.5" fill={tone} />
+      <path d={shape.arrow} fill={tone} />
       <path
         data-timeline-dependency-hit={shape.key}
         d={shape.d}
@@ -68,11 +74,13 @@ const TimelineDependencyEdge = memo(function TimelineDependencyEdge({
 const TimelineDependencyShapes = memo(function TimelineDependencyShapes({
   shapes,
   hoveredKey,
+  critical,
   onHover,
   onLeave,
 }: {
   shapes: TimelineDependencyShape[];
   hoveredKey: string | null;
+  critical?: ReadonlySet<number>;
   onHover: (key: string) => void;
   onLeave: () => void;
 }) {
@@ -84,6 +92,7 @@ const TimelineDependencyShapes = memo(function TimelineDependencyShapes({
           key={shape.key}
           shape={shape}
           selected={hoveredKey === shape.key}
+          critical={critical ? isCriticalDependency(shape.e, critical) : false}
           onHover={onHover}
           onLeave={onLeave}
         />
@@ -96,6 +105,7 @@ function TimelineDependencyLayer({
   shapes,
   hoveredKey,
   draft,
+  critical,
   onHover,
   onLeave,
   onDelete,
@@ -103,6 +113,7 @@ function TimelineDependencyLayer({
   shapes: TimelineDependencyShape[];
   hoveredKey: string | null;
   draft: TimelineDependencyDraft | null;
+  critical?: ReadonlySet<number>;
   onHover: (key: string) => void;
   onLeave: () => void;
   onDelete: (dependency: { task_id: number; depends_on_id: number }) => void;
@@ -113,6 +124,7 @@ function TimelineDependencyLayer({
       <TimelineDependencyShapes
         shapes={shapes}
         hoveredKey={hoveredKey}
+        critical={critical}
         onHover={onHover}
         onLeave={onLeave}
       />
@@ -129,7 +141,7 @@ function TimelineDependencyLayer({
             onDelete(hoveredShape.e);
           }}
           style={{ left: hoveredShape.midX, top: hoveredShape.midY }}
-          className="absolute z-[6] flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-200 bg-white text-red-600 shadow-md hover:bg-red-50"
+          className="absolute z-[6] flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-danger shadow-md hover:bg-danger-soft"
         >
           <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
             <path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5M6.5 7v4M9.5 7v4" />
@@ -142,11 +154,11 @@ function TimelineDependencyLayer({
             data-timeline-dependency-draft
             d={`M ${draft.x1} ${draft.y1} L ${draft.x2} ${draft.y2}`}
             fill="none"
-            stroke="#2c60b8"
+            stroke="var(--atlas-accent)"
             strokeWidth="2"
             strokeDasharray="5 4"
           />
-          <circle cx={draft.x1} cy={draft.y1} r="3" fill="#2c60b8" />
+          <circle cx={draft.x1} cy={draft.y1} r="3" fill="var(--atlas-accent)" />
         </svg>
       )}
     </>

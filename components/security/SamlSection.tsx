@@ -3,7 +3,17 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import type { SecuritySettings } from "@/lib/admin-data";
-import { SectionHeader, field } from "./SectionHeader";
+import {
+  checkboxClass,
+  fieldControlClass,
+  fieldHintClass,
+  fieldLabelClass,
+  fieldTextareaClass,
+  formSectionTitleClass,
+  primaryButtonClass,
+  smallSecondaryButtonClass,
+} from "../ui/form-controls";
+import { SectionHeader } from "./SectionHeader";
 
 export function SamlSection({
   settings,
@@ -59,9 +69,9 @@ export function SamlSection({
         description="Azure、Okta、OneLogin または SAML のカスタムソリューションでセットアップします。"
       />
 
-      <div className="mt-4 max-w-3xl rounded-lg border border-neutral-200 p-4">
-        <div className="text-xs font-medium text-neutral-600">SAML のモード</div>
-        <div className="mt-2 space-y-2 text-sm">
+      <div className="mt-4 max-w-3xl">
+        <div className={formSectionTitleClass}>SAML のモード</div>
+        <div className="mt-2 space-y-2 text-[13px] text-secondary">
           {(
             [
               ["off", "オフ"],
@@ -77,102 +87,123 @@ export function SamlSection({
                 checked={mode === value}
                 onChange={() => setMode(value)}
                 data-saml-mode={value}
+                className={checkboxClass}
               />
               <span>{label}</span>
             </label>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-neutral-400">
+        <p className={`mt-2 ${fieldHintClass}`}>
           必須にすると、対象ユーザーのパスワード認証による既存セッションも失効し、SAML SSO での再サインインが必要になります。SAML 認証済みのセッションは維持します。管理者は緊急時のためにパスワードでサインインできます。
         </p>
 
         <div className="mt-4 grid gap-3">
-          <label className="text-xs text-neutral-600">
-            サインインページの URL
+          <label className="block">
+            <span className={fieldLabelClass}>サインインページの URL</span>
             <input
               value={signinUrl}
               onChange={(e) => setSigninUrl(e.target.value)}
               placeholder="https://company-app.okta.com/app/company/..."
-              className={field}
+              className={`mt-1.5 ${fieldControlClass}`}
               data-saml-signin-url
             />
-            <span className="mt-1 block text-[11px] text-neutral-400">
+            <span className={`mt-1.5 block ${fieldHintClass}`}>
               このフィールドは IdP から提供されます。「ログイン URL」というラベルが付いている場合があります。
             </span>
           </label>
-          <label className="text-xs text-neutral-600">
-            X.509 証明書
+          <label className="block">
+            <span className={fieldLabelClass}>X.509 証明書</span>
             <textarea
               value={certificate}
               onChange={(e) => setCertificate(e.target.value)}
               placeholder="ここに X.509 証明書をコピーして貼り付け…"
               rows={6}
-              className={`${field} resize-y font-mono text-[11px]`}
+              className={`mt-1.5 font-mono text-[12px] ${fieldTextareaClass}`}
               data-saml-certificate
             />
           </label>
           <div className="flex flex-wrap items-end gap-4">
-            <label className="text-xs text-neutral-600">
-              セッションタイムアウト
-              <div className="mt-1 flex items-center gap-1">
+            <label className="block">
+              <span className={fieldLabelClass}>セッションタイムアウト</span>
+              <div className="mt-1.5 flex items-center gap-1">
                 <input
                   type="number"
                   min={1}
                   max={30}
                   value={sessionDays}
                   onChange={(e) => setSessionDays(e.target.value)}
-                  className="w-20 rounded border border-neutral-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                  className={`${fieldControlClass} w-20 tabular-nums`}
                   data-saml-session-days
                 />
-                <span className="text-sm text-neutral-500">日</span>
+                <span className="text-[13px] text-muted">日</span>
               </div>
             </label>
-            <label className="flex items-center gap-2 pb-2 text-sm">
-              <input type="checkbox" checked={jit} onChange={(e) => setJit(e.target.checked)} />
+            <label className="flex items-center gap-2 pb-2 text-[13px] text-secondary">
+              <input
+                type="checkbox"
+                checked={jit}
+                onChange={(e) => setJit(e.target.checked)}
+                className={checkboxClass}
+              />
               初回サインイン時にユーザーを自動作成する
             </label>
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             onClick={save}
             disabled={saving}
             data-saml-save
-            className="rounded bg-[#4075cf] px-3 py-1.5 text-sm text-white hover:bg-[#3567b8] disabled:opacity-50"
+            className={primaryButtonClass}
           >
             {saving ? "保存中…" : "変更内容を保存"}
           </button>
-          {msg && <span className="text-sm text-neutral-600">{msg}</span>}
+          {msg && <span className="text-[12px] text-secondary">{msg}</span>}
         </div>
       </div>
 
-      <div className="mt-4 max-w-3xl rounded-lg border border-neutral-200 p-4">
-        <h4 className="text-sm font-semibold">IdP に登録するサービスプロバイダー情報</h4>
-        <div className="mt-2 space-y-2 text-xs">
+      <div className="mt-6 max-w-3xl rounded-lg bg-surface-subtle p-4">
+        <h4 className={formSectionTitleClass}>IdP に登録するサービスプロバイダー情報</h4>
+        <div className="mt-2 space-y-2 text-[12px]">
           <div>
-            <div className="text-neutral-500">ACS URL</div>
-            <div className="mt-0.5 flex gap-2">
-              <input readOnly value={acsUrl} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
-              <button onClick={() => copy(acsUrl)} className="rounded border px-2 py-1 hover:bg-neutral-100">
+            <div className="text-muted">ACS URL</div>
+            <div className="mt-1 flex gap-2">
+              <input
+                readOnly
+                value={acsUrl}
+                aria-label="ACS URL"
+                className={`${fieldControlClass} min-w-0 flex-1 font-mono read-only:bg-surface-subtle`}
+              />
+              <button onClick={() => copy(acsUrl)} className={smallSecondaryButtonClass}>
                 コピー
               </button>
             </div>
           </div>
           <div>
-            <div className="text-neutral-500">SP メタデータ URL</div>
-            <div className="mt-0.5 flex gap-2">
-              <input readOnly value={metadataUrl} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
-              <button onClick={() => copy(metadataUrl)} className="rounded border px-2 py-1 hover:bg-neutral-100">
+            <div className="text-muted">SP メタデータ URL</div>
+            <div className="mt-1 flex gap-2">
+              <input
+                readOnly
+                value={metadataUrl}
+                aria-label="SP メタデータ URL"
+                className={`${fieldControlClass} min-w-0 flex-1 font-mono read-only:bg-surface-subtle`}
+              />
+              <button onClick={() => copy(metadataUrl)} className={smallSecondaryButtonClass}>
                 コピー
               </button>
             </div>
           </div>
           <div>
-            <div className="text-neutral-500">Issuer / Entity ID</div>
-            <div className="mt-0.5 flex gap-2">
-              <input readOnly value={issuer} className="min-w-0 flex-1 rounded border bg-neutral-50 px-2 py-1 font-mono" />
-              <button onClick={() => copy(issuer)} className="rounded border px-2 py-1 hover:bg-neutral-100">
+            <div className="text-muted">Issuer / Entity ID</div>
+            <div className="mt-1 flex gap-2">
+              <input
+                readOnly
+                value={issuer}
+                aria-label="Issuer / Entity ID"
+                className={`${fieldControlClass} min-w-0 flex-1 font-mono read-only:bg-surface-subtle`}
+              />
+              <button onClick={() => copy(issuer)} className={smallSecondaryButtonClass}>
                 コピー
               </button>
             </div>
@@ -182,4 +213,3 @@ export function SamlSection({
     </div>
   );
 }
-

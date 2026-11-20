@@ -8,8 +8,9 @@ import {
 } from "@/lib/custom-fields";
 import type { User } from "@/lib/data";
 
-const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500";
-const menuItem = "flex w-full items-center gap-1 rounded px-3 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-neutral-100";
+const menuLabel = "px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted";
+const menuItemBase = "flex w-full items-center gap-1 rounded px-3 py-1.5 text-left text-[13px] hover:bg-hover";
+const menuItem = `${menuItemBase} text-secondary`;
 
 export default function ListColumnHeader({
   columnKey,
@@ -100,13 +101,11 @@ export default function ListColumnHeader({
         className={`group/hd relative flex w-full min-w-0 cursor-grab items-center gap-0.5 self-stretch select-none active:cursor-grabbing ${
           columnKey === "name" ? "" : "pl-2"
         } ${
-          colDropOver === columnKey
-            ? "bg-[#f3f3f3]"
-            : `hover:bg-[#f3f3f3] ${open ? "bg-[#f3f3f3]" : ""}`
-        } ${
           colDragging === columnKey
-            ? "bg-[#f3f3f3]/70 [&>*]:invisible"
-            : ""
+            ? "bg-surface-muted/70 [&>*]:invisible"
+            : colDropOver === columnKey
+              ? "bg-surface-muted"
+              : `hover:bg-surface-muted ${open ? "bg-surface-muted" : ""}`
         }`}
         onDragStart={(event) => startColumnDrag(event, columnKey, label)}
         onDragEnd={endColumnDrag}
@@ -117,7 +116,7 @@ export default function ListColumnHeader({
         {colDropOver === columnKey && colDropSide && (
           <span
             data-column-drop-indicator={colDropSide}
-            className={`pointer-events-none absolute inset-y-0 z-10 w-[2px] bg-[#2f6fd0] ${
+            className={`pointer-events-none absolute inset-y-0 z-10 w-[2px] bg-accent ${
               colDropSide === "before" ? "-left-[1px]" : "-right-[1px]"
             }`}
           />
@@ -126,7 +125,7 @@ export default function ListColumnHeader({
           <button
             onClick={() => cycleSort(columnKey as "name" | "due" | "progress")}
             title="クリックで並び替え（昇順→降順→解除）"
-            className="truncate hover:text-black"
+            className="truncate hover:text-text"
           >
             {label}
             {sortMark(columnKey as "name" | "due" | "progress")}
@@ -137,8 +136,8 @@ export default function ListColumnHeader({
         <button
           onClick={() => setMenuCol(open ? null : columnKey)}
           title="列メニュー"
-          className={`rounded px-0.5 text-[10px] leading-none text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 ${
-            open ? "opacity-100" : "opacity-0 group-hover/hd:opacity-100"
+          className={`rounded px-0.5 text-[10px] leading-none text-muted hover:bg-hover-strong hover:text-secondary ${
+            open ? "opacity-100" : "opacity-0 group-hover/hd:opacity-100 focus-visible:opacity-100"
           }`}
         >
           ▾
@@ -147,18 +146,18 @@ export default function ListColumnHeader({
           <span
             onMouseDown={(e) => gripMouseDown(e, columnKey)}
             title="ドラッグで列幅を変更"
-            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-blue-300"
+            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-accent-line"
           />
         )}
         {columnKey === "name" && (
           <span
             onMouseDown={(e) => gripMouseDown(e, columnKey)}
             title="ドラッグで列幅を変更"
-            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-blue-300"
+            className="absolute top-0 -right-2 bottom-0 z-10 w-4 cursor-col-resize hover:bg-accent-line"
           />
         )}
         {open && (
-          <div className="absolute top-full left-0 z-40 mt-1 w-60 rounded-lg border bg-white py-1 text-sm shadow-lg">
+          <div className="absolute top-full left-0 z-40 mt-1 w-60 rounded-lg border bg-surface py-1 text-sm shadow-lg">
             {columnKey !== "name" && (
               <>
                 <div className={menuLabel}>列を移動</div>
@@ -166,14 +165,14 @@ export default function ListColumnHeader({
                   <button
                     disabled={visibleCols[0] === columnKey}
                     onClick={() => moveCol(columnKey, -1)}
-                    className="rounded border px-2 py-0.5 text-xs hover:bg-neutral-100 disabled:opacity-40"
+                    className="rounded border px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-40"
                   >
                     ← 左へ
                   </button>
                   <button
                     disabled={visibleCols[visibleCols.length - 1] === columnKey}
                     onClick={() => moveCol(columnKey, 1)}
-                    className="rounded border px-2 py-0.5 text-xs hover:bg-neutral-100 disabled:opacity-40"
+                    className="rounded border px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-40"
                   >
                     右へ →
                   </button>
@@ -374,7 +373,7 @@ export default function ListColumnHeader({
                 >
                   列を非表示
                 </button>
-                <button className={menuItem + " text-red-600 hover:bg-red-50"} onClick={() => { removeField(field); setMenuCol(null); }}>
+                <button className={menuItemBase + " text-danger hover:bg-danger-soft"} onClick={() => { removeField(field); setMenuCol(null); }}>
                   フィールドを削除
                 </button>
               </>

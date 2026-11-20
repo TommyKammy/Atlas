@@ -11,6 +11,7 @@ import {
 } from "@/lib/admin-data";
 import { canAccessAdminConsole, getEffectiveRole } from "@/lib/permissions";
 import { getPasswordPolicy, passwordPolicySummary } from "@/lib/password-policy";
+import { pageDescriptionClass, pageShellClass, pageTitleClass } from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -20,9 +21,11 @@ export default async function AdminPage() {
   const role = await getEffectiveRole(uid);
   if (!canAccessAdminConsole(role)) {
     return (
-      <div className="p-8">
-        <h1 className="text-xl font-bold">管理</h1>
-        <p className="mt-2 text-sm text-neutral-500">管理者権限が必要です。</p>
+      <div className={pageShellClass}>
+        <div className="max-w-5xl">
+          <h1 className={pageTitleClass}>管理</h1>
+          <p className={pageDescriptionClass}>管理者権限が必要です。</p>
+        </div>
       </div>
     );
   }
@@ -32,9 +35,11 @@ export default async function AdminPage() {
   const workspace = await workspacePromise;
   if (!workspace) {
     return (
-      <div className="p-8">
-        <h1 className="text-xl font-bold">管理</h1>
-        <p className="mt-2 text-sm text-neutral-500">ワークスペースが見つかりません。</p>
+      <div className={pageShellClass}>
+        <div className="max-w-5xl">
+          <h1 className={pageTitleClass}>管理</h1>
+          <p className={pageDescriptionClass}>ワークスペースが見つかりません。</p>
+        </div>
       </div>
     );
   }
@@ -46,22 +51,24 @@ export default async function AdminPage() {
     getTotpUsers(workspace.id, uid),
   ]);
   return (
-    <div className="max-w-6xl p-6">
-      <h1 className="text-lg font-bold">管理</h1>
-      <p className="mt-0.5 text-xs text-neutral-500">
-        {workspace.name} のメンバー、チーム、セキュリティを管理します。
-      </p>
-      <AdminConsole
-        currentUserId={uid}
-        initialUsers={users}
-        initialRoles={roles}
-        initialTeams={teams}
-        initialWorkspace={workspace}
-        initialSecurity={security}
-        initialTotpUsers={totpUsers}
-        permissions={[...(role?.permissions ?? [])]}
-        passwordPolicyText={passwordPolicyText}
-      />
+    <div className={pageShellClass}>
+      <div className="max-w-6xl">
+        <h1 className={pageTitleClass}>管理</h1>
+        <p className={pageDescriptionClass}>
+          {workspace.name} のメンバー、チーム、セキュリティを管理します。
+        </p>
+        <AdminConsole
+          currentUserId={uid}
+          initialUsers={users}
+          initialRoles={roles}
+          initialTeams={teams}
+          initialWorkspace={workspace}
+          initialSecurity={security}
+          initialTotpUsers={totpUsers}
+          permissions={[...(role?.permissions ?? [])]}
+          passwordPolicyText={passwordPolicyText}
+        />
+      </div>
     </div>
   );
 }

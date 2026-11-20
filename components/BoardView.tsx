@@ -8,10 +8,12 @@ import { isImeComposing } from "@/lib/ime-keyboard";
 import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { api } from "@/lib/api-client";
+import { boardColumnState } from "@/lib/board-column-state";
 import { groupBoardTasks, type BoardGroup } from "@/lib/board-group";
 import type { Section, TaskRow, User } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { isQuickTask } from "@/lib/quick-task";
+import { countOverdueTasks } from "@/lib/list-row-state";
 import { parseListDateFilter, parseListGroupBy, parseListSortKey, taskMatchesListFilters, type ListDateFilter, type ListFilters, type ListGroupBy, type ListSortKey } from "@/lib/list-view";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useApiRefresh } from "@/lib/use-api-refresh";
@@ -20,6 +22,7 @@ import { usePersistedViewState } from "@/lib/view-state-client";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useRef, useState } from "react";
 import BoardCard from "./board/BoardCard";
+import BoardColumnStateIcon from "./board/BoardColumnStateIcon";
 import BoardSectionAdd from "./board/BoardSectionAdd";
 import BoardToolbar, { type BoardCardFields } from "./board/BoardToolbar";
 import EmptyState from "./EmptyState";
@@ -191,6 +194,9 @@ function BoardViewContent({
       dayOffset: shiftDay,
     }),
   );
+  // Counted over the project's board tasks, not the filtered set: the button
+  // reports the backlog the project has, and pressing it reveals that filter.
+  const overdueCount = countOverdueTasks(tasks, today);
   const sortItems = (items: TaskRow[]) => {
     const dir = sortDir === "asc" ? 1 : -1;
     const text = (a: string | null | undefined, b: string | null | undefined) => {
@@ -538,6 +544,14 @@ function BoardViewContent({
     }
   };
 
+  // The column heading and the footer link open the same composer: a quick
+  // card in section grouping, an inline field in every other grouping.
+  const startAdd = (g: BoardGroup<TaskRow>) => {
+    if (effectiveGroupBy === "section")
+      quick?.create("task", g.key === "s-none" ? null : g.sectionId);
+    else setAddingTo(g.key);
+  };
+
   return (
     <div
       data-board-view
@@ -567,6 +581,7 @@ function BoardViewContent({
         statusOptions={statusOptions}
         filters={filters}
         activeFilterCount={activeFilters}
+        overdueCount={overdueCount}
         onFilterChange={setFilter}
         clearFilters={clearFilters}
         sortKey={sortKey}
@@ -610,12 +625,12 @@ function BoardViewContent({
           }
         />
       )}
-      <div data-board-columns className="flex gap-3 overflow-x-auto p-4 pb-16">
+      <div data-board-columns className="flex gap-4 overflow-x-auto p-4 pb-16">
         {groups.map((g) => (
           <div
             key={g.key}
             data-board-column={g.key}
-            className="relative w-72 shrink-0 rounded-lg bg-neutral-100 p-2"
+            className="relative w-[17.5rem] shrink-0"
           >
             {isDragging && (
               <div
@@ -640,9 +655,25 @@ function BoardViewContent({
                 }}
               />
             )}
-            <div className="flex items-baseline gap-2 px-1 py-1">
-              <span className="font-semibold">{g.label}</span>
-              <span className="text-sm text-neutral-600">{g.items.length}</span>
+            <div className="flex items-center gap-2 px-1 pt-1 pb-2">
+              <h2 data-board-column-header className="flex min-w-0 items-center gap-2 text-[13px] font-bold text-text">
+                {effectiveGroupBy === "status" && (() => {
+                  const state = boardColumnState(g.status);
+                  return state ? <BoardColumnStateIcon state={state} /> : null;
+                })()}
+                <span className="truncate" title={g.label}>{g.label}</span>
+                <span data-board-column-count className="shrink-0 font-normal text-muted">{g.items.length}</span>
+              </h2>
+              <button
+                type="button"
+                data-board-column-add
+                aria-label={`${g.label}にタスクを追加`}
+                disabled={!canEdit}
+                onClick={() => startAdd(g)}
+                className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-base leading-none text-muted hover:bg-hover hover:text-secondary disabled:opacity-40"
+              >
+                ＋
+              </button>
             </div>
             <div className="flex flex-col gap-2">
               {(() => {
@@ -657,7 +688,7 @@ function BoardViewContent({
                     {shownItems.map((t, index) => (
                       <Fragment key={t.id}>
                         {hintAt === index && (
-                          <div data-board-drop-line className="h-0.5 -my-0.5 rounded-full bg-[#2c60b8]" />
+                          <div data-board-drop-line className="h-0.5 -my-0.5 rounded-full bg-accent" />
                         )}
                         <BoardCard
                           task={t}
@@ -694,7 +725,7 @@ function BoardViewContent({
                       </Fragment>
                     ))}
                     {hintAt === g.items.length && (
-                      <div data-board-drop-line className="h-0.5 -my-0.5 rounded-full bg-[#2c60b8]" />
+                      <div data-board-drop-line className="h-0.5 -my-0.5 rounded-full bg-accent" />
                     )}
                   </>
                 );
@@ -706,7 +737,7 @@ function BoardViewContent({
                   onClick={() =>
                     setCardLimits((current) => ({ ...current, [g.key]: (current[g.key] ?? 100) + 200 }))
                   }
-                  className="rounded-md border border-[#e1e1e1] bg-white px-2 py-1.5 text-[12px] text-neutral-600 hover:bg-neutral-50"
+                  className="rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] text-secondary hover:bg-hover"
                 >
                   さらに表示（{cardLimits[g.key] ?? 100} / {g.items.length} 件）
                 </button>
@@ -732,26 +763,24 @@ function BoardViewContent({
                   placeholder="タスク名を入力"
                   data-add-task
                   autoFocus
-                  className="w-full rounded border px-2 py-1 text-sm outline-none focus:border-blue-500"
+                  className="w-full rounded-md border border-field-line bg-field px-2 py-1 text-sm outline-none focus:border-accent"
                 />
                 <button
                   disabled={addingTask || !(drafts[g.key] ?? "").trim()}
                   onClick={() => {
                     void addTask(g);
                   }}
-                  className="shrink-0 rounded bg-blue-600 px-2 py-1 text-sm text-white"
+                  className="shrink-0 rounded bg-accent px-2 py-1 text-sm text-on-accent"
                 >
                   追加
                 </button>
               </div>
             ) : (
               <button
-                onClick={() => effectiveGroupBy === "section"
-                  ? quick?.create("task", g.key === "s-none" ? null : g.sectionId)
-                  : setAddingTo(g.key)}
+                onClick={() => startAdd(g)}
                 disabled={!canEdit}
                 data-add-task-open
-                className="mt-2 w-full rounded px-2 py-1 text-left text-sm text-neutral-600 hover:bg-neutral-200/60 hover:text-neutral-700"
+                className="mt-2 w-full rounded px-2 py-1 text-left text-[12px] text-muted hover:bg-hover hover:text-secondary"
               >
                 ＋ タスクを追加
               </button>

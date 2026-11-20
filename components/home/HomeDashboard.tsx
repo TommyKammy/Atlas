@@ -18,10 +18,15 @@ import {
   type HomeTask,
   type HomeWidget,
 } from "@/lib/home-widgets";
+import type { InboxItem } from "@/lib/notification-feed";
+import type { HomeWaitingProposal } from "@/lib/planning/home-waiting";
 import { patchTask } from "@/lib/task-client";
 import { confirmAction, toast } from "@/lib/ui-feedback";
 import AddWidgetPanel from "./AddWidgetPanel";
+import HomeAgenda from "./HomeAgenda";
+import HomeProjectProgress from "./HomeProjectProgress";
 import HomeTaskComposer from "./HomeTaskComposer";
+import HomeWaiting from "./HomeWaiting";
 import HomeWidgetCard, { type HomeWidgetMenuItem } from "./HomeWidgetCard";
 import AssignedTasksWidget from "./widgets/AssignedTasksWidget";
 import CommentDraftsWidget from "./widgets/CommentDraftsWidget";
@@ -37,9 +42,9 @@ import StatusUpdatesWidget from "./widgets/StatusUpdatesWidget";
 export default function HomeDashboard({
   canCreateProject,
   userId,
+  userName,
   today,
   dateLine,
-  greeting,
   myTaskCount,
   unreadCount,
   widgets,
@@ -55,12 +60,15 @@ export default function HomeDashboard({
   commentDrafts,
   notepad,
   users,
+  waitingProposals,
+  inboxItems,
+  now,
 }: {
   canCreateProject: boolean;
   userId: number;
+  userName: string;
   today: string;
   dateLine: string;
-  greeting: string;
   myTaskCount: number;
   unreadCount: number;
   widgets: HomeWidget[];
@@ -76,6 +84,9 @@ export default function HomeDashboard({
   commentDrafts: HomeCommentDraft[];
   notepad: HomeNotepad;
   users: { id: number; name: string; avatar_url?: string | null }[];
+  waitingProposals: HomeWaitingProposal[];
+  inboxItems: InboxItem[];
+  now: string;
 }) {
   const router = useRouter();
   const [period, setPeriod] = useState<"week" | "month">("week");
@@ -186,135 +197,151 @@ export default function HomeDashboard({
   };
 
   return (
-    <div data-home-dashboard className="px-6 py-6 pb-16">
-      <div className="text-[13px] text-neutral-700">{dateLine}</div>
-      <h1 className="mt-1 text-[30px] leading-10 font-normal text-neutral-900">{greeting}</h1>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
-        <Link
-          href="/my-tasks"
-          className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
-        >
-          マイタスク（担当 {myTaskCount}）
-        </Link>
-        <Link
-          href="/inbox"
-          className="rounded-md border border-neutral-200 bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
-        >
-          受信トレイ（未読 {unreadCount}）
-        </Link>
+    <div data-home-dashboard className="px-4 py-6 pb-16 md:px-8 md:py-8">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h1 className="text-[15px] font-bold text-text">ホーム</h1>
+        <span className="text-[13px] text-muted">{dateLine}</span>
+        <span className="hidden flex-1 sm:block" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
+          <Link href="/my-tasks" className="rounded px-1 py-0.5 hover:bg-hover hover:text-text">
+            マイタスク（担当 {myTaskCount}）
+          </Link>
+          <Link href="/inbox" className="rounded px-1 py-0.5 hover:bg-hover hover:text-text">
+            受信トレイ（未読 {unreadCount}）
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3 border-b border-neutral-200 pb-2 text-[12px] text-neutral-500">
-        <label className="flex items-center gap-1">
-          <span>期間</span>
-          <select
-            data-home-period
-            value={period}
-            onChange={(event) => setPeriod(event.target.value as "week" | "month")}
-            className="rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-[12px]"
-          >
-            <option value="week">週</option>
-            <option value="month">月</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-1">
-          <input
-            type="checkbox"
-            data-home-show-completed
-            checked={showCompleted}
-            onChange={(event) => setShowCompleted(event.target.checked)}
+      <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-8 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section aria-labelledby="home-agenda-title" className="flex min-w-0 flex-col gap-8">
+          <HomeAgenda
+            userName={userName}
+            tasks={myTasks}
+            today={today}
+            busyTaskId={busyTaskId}
+            onToggle={(task) => void toggleTask(task)}
           />
-          完了済みのタスク
-        </label>
-        <label className="flex items-center gap-1">
-          <span>コラボレーター</span>
-          <select
-            data-home-collaborator
-            value={collaborator}
-            onChange={(event) => setCollaborator(event.target.value)}
-            className="max-w-[180px] rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-[12px]"
-          >
-            <option value="">全員</option>
-            {users
-              .filter((user) => user.id !== userId)
-              .map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-          </select>
-        </label>
-        <span className="flex-1" />
-        <button
-          type="button"
-          data-home-add-widget-button
-          onClick={() => setAddOpen(true)}
-          className="rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[12px] font-medium text-neutral-700 hover:bg-neutral-50"
-        >
-          ＋ ウィジェットを追加
-        </button>
+          <HomeProjectProgress projects={projects} />
+        </section>
+        <HomeWaiting proposals={waitingProposals} inboxItems={inboxItems} now={now} />
       </div>
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-        {widgets.map((widget) => (
-          <HomeWidgetCard
-            key={widget.id}
-            widgetId={widget.id}
-            widgetType={widget.widget_type}
-            size={widget.size}
-            title={HOME_WIDGET_META[widget.widget_type].label}
-            locked={widget.widget_type === "my_tasks" || widget.widget_type === "notepad" || widget.widget_type === "comment_drafts"}
-            menuItems={menuFor(widget)}
-            onDragStart={() => setDraggingId(widget.id)}
-            onDragEnd={() => setDraggingId(null)}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              const source = Number(event.dataTransfer.getData("text/home-widget")) || draggingId;
-              if (source) void reorder(source, widget.id);
-            }}
-            dragging={draggingId === widget.id}
-            className={widget.size === "full" ? "xl:col-span-2" : ""}
+      <section className="mt-10" aria-labelledby="home-widgets-title">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px] text-muted">
+          <h2 id="home-widgets-title" className="text-[13px] font-bold text-text">
+            ウィジェット
+          </h2>
+          <label className="flex items-center gap-1">
+            <span>期間</span>
+            <select
+              data-home-period
+              value={period}
+              onChange={(event) => setPeriod(event.target.value as "week" | "month")}
+              className="rounded border border-field-line bg-field px-1.5 py-0.5 text-[12px]"
+            >
+              <option value="week">週</option>
+              <option value="month">月</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              data-home-show-completed
+              checked={showCompleted}
+              onChange={(event) => setShowCompleted(event.target.checked)}
+            />
+            完了済みのタスク
+          </label>
+          <label className="flex items-center gap-1">
+            <span>コラボレーター</span>
+            <select
+              data-home-collaborator
+              value={collaborator}
+              onChange={(event) => setCollaborator(event.target.value)}
+              className="max-w-[180px] rounded border border-field-line bg-field px-1.5 py-0.5 text-[12px]"
+            >
+              <option value="">全員</option>
+              {users
+                .filter((user) => user.id !== userId)
+                .map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <span className="flex-1" />
+          <button
+            type="button"
+            data-home-add-widget-button
+            onClick={() => setAddOpen(true)}
+            className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-medium text-secondary hover:bg-hover"
           >
-            {widget.widget_type === "my_tasks" && (
-              <MyTasksWidget
-                tasks={visibleMyTasks}
-                today={today}
-                period={period}
-                showCompleted={showCompleted}
-                busyTaskId={busyTaskId}
-                onCompose={() => setComposer("my_tasks")}
-                onToggle={(task) => void toggleTask(task)}
-              />
-            )}
-            {widget.widget_type === "projects" && (
-              <ProjectsWidget canCreateProject={canCreateProject} projects={projects} />
-            )}
-            {widget.widget_type === "assigned_tasks" && (
-              <AssignedTasksWidget
-                tasks={visibleAssignedTasks}
-                today={today}
-                period={period}
-                showCompleted={showCompleted}
-                busyTaskId={busyTaskId}
-                onCompose={() => setComposer("assigned_tasks")}
-                onToggle={(task) => void toggleTask(task)}
-              />
-            )}
-            {widget.widget_type === "members" && <MembersWidget members={visibleMembers} />}
-            {widget.widget_type === "portfolio" && <PortfolioWidget projects={portfolio} />}
-            {widget.widget_type === "status_updates" && (
-              <StatusUpdatesWidget updates={statusUpdates} projects={statusProjects} />
-            )}
-            {widget.widget_type === "forms" && <FormsWidget forms={forms} />}
-            {widget.widget_type === "mentions" && <MentionsWidget mentions={mentions} />}
-            {widget.widget_type === "comment_drafts" && (
-              <CommentDraftsWidget drafts={commentDrafts} />
-            )}
-            {widget.widget_type === "notepad" && <NotepadWidget initial={notepad} />}
-          </HomeWidgetCard>
-        ))}
-      </div>
+            ＋ ウィジェットを追加
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+          {widgets.map((widget) => (
+            <HomeWidgetCard
+              key={widget.id}
+              widgetId={widget.id}
+              widgetType={widget.widget_type}
+              size={widget.size}
+              title={HOME_WIDGET_META[widget.widget_type].label}
+              locked={widget.widget_type === "my_tasks" || widget.widget_type === "notepad" || widget.widget_type === "comment_drafts"}
+              menuItems={menuFor(widget)}
+              onDragStart={() => setDraggingId(widget.id)}
+              onDragEnd={() => setDraggingId(null)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                const source = Number(event.dataTransfer.getData("text/home-widget")) || draggingId;
+                if (source) void reorder(source, widget.id);
+              }}
+              dragging={draggingId === widget.id}
+              className={widget.size === "full" ? "xl:col-span-2" : ""}
+            >
+              {widget.widget_type === "my_tasks" && (
+                <MyTasksWidget
+                  tasks={visibleMyTasks}
+                  today={today}
+                  period={period}
+                  showCompleted={showCompleted}
+                  busyTaskId={busyTaskId}
+                  onCompose={() => setComposer("my_tasks")}
+                  onToggle={(task) => void toggleTask(task)}
+                />
+              )}
+              {widget.widget_type === "projects" && (
+                <ProjectsWidget canCreateProject={canCreateProject} projects={projects} />
+              )}
+              {widget.widget_type === "assigned_tasks" && (
+                <AssignedTasksWidget
+                  tasks={visibleAssignedTasks}
+                  today={today}
+                  period={period}
+                  showCompleted={showCompleted}
+                  busyTaskId={busyTaskId}
+                  onCompose={() => setComposer("assigned_tasks")}
+                  onToggle={(task) => void toggleTask(task)}
+                />
+              )}
+              {widget.widget_type === "members" && <MembersWidget members={visibleMembers} />}
+              {widget.widget_type === "portfolio" && <PortfolioWidget projects={portfolio} />}
+              {widget.widget_type === "status_updates" && (
+                <StatusUpdatesWidget updates={statusUpdates} projects={statusProjects} />
+              )}
+              {widget.widget_type === "forms" && <FormsWidget forms={forms} />}
+              {widget.widget_type === "mentions" && <MentionsWidget mentions={mentions} />}
+              {widget.widget_type === "comment_drafts" && (
+                <CommentDraftsWidget drafts={commentDrafts} />
+              )}
+              {widget.widget_type === "notepad" && <NotepadWidget initial={notepad} />}
+            </HomeWidgetCard>
+          ))}
+        </div>
+      </section>
 
       <AddWidgetPanel
         open={addOpen}

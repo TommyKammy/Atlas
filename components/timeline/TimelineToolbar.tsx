@@ -18,10 +18,10 @@ export type TimelineMenuKey = "filter" | "sort" | "options" | null;
 export type TimelineZoomPreset = { key: string; label: string; dayWidth: number };
 
 const toolbarBtn = viewToolbarControlClass;
-const activePill = "flex h-7 overflow-hidden rounded-md bg-[#eff4fd] text-[#2C60B8]";
-const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-[#e3edfc]";
-const clearPill = "px-1.5 text-[12px] hover:bg-[#dbe8fb]";
-const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-neutral-200 bg-white shadow-lg";
+const activePill = "flex h-7 overflow-hidden rounded-md bg-accent-soft text-accent-text";
+const activePillMain = "flex items-center gap-1 pr-1 pl-2 text-[12px] font-medium hover:bg-accent-soft-hover";
+const clearPill = "px-1.5 text-[12px] hover:bg-accent-soft-hover";
+const popoverBase = "absolute top-full z-40 mt-1 rounded-lg border border-line bg-surface shadow-lg";
 
 export default function TimelineToolbar({
   projectId,
@@ -182,24 +182,28 @@ export default function TimelineToolbar({
           href={`/projects/${projectId}?view=timeline&from=${linkDay(min - navigationDays)}`}
           aria-label="前の期間"
           title="前の期間"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-neutral-600 hover:bg-neutral-100"
+          className={`${toolbarBtn} w-7 justify-center`}
         >
           ‹
         </a>
-        <a href={`/projects/${projectId}?view=timeline`} className="flex h-7 items-center rounded-md px-2 text-[13px] text-neutral-700 hover:bg-neutral-100">
+        <a href={`/projects/${projectId}?view=timeline`} className={toolbarBtn}>
           今日
         </a>
         <a
           href={`/projects/${projectId}?view=timeline&from=${linkDay(min + navigationDays)}`}
           aria-label="次の期間"
           title="次の期間"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-lg text-neutral-600 hover:bg-neutral-100"
+          className={`${toolbarBtn} w-7 justify-center`}
         >
           ›
         </a>
         {showCritical && (
-          <span className="ml-2 flex items-center gap-1 text-xs text-neutral-500">
-            <span className="inline-block h-2.5 w-4 rounded bg-red-200" /> クリティカルパス
+          <span className="ml-2 flex items-center gap-1.5 text-[12px] text-muted">
+            <span
+              data-timeline-critical-legend
+              className="inline-block h-2.5 w-4 rounded-[2px] border-2 border-accent bg-surface"
+            />{" "}
+            クリティカルパス
           </span>
         )}
         <span className="ml-auto" />
@@ -207,8 +211,8 @@ export default function TimelineToolbar({
           type="button"
           data-timeline-undated
           onClick={() => setUndatedOpen((value) => !value)}
-          className={`flex h-7 items-center rounded-md px-2 text-[13px] hover:bg-neutral-100 ${
-            undatedOpen ? "bg-[#eff4fd] text-[#2c60b8]" : "text-neutral-700"
+          className={`flex h-7 items-center rounded-md px-2 text-[13px] hover:bg-hover ${
+            undatedOpen ? "bg-accent-soft text-accent-text" : "text-secondary"
           }`}
         >
           日付なしのタスク ({undatedCount} 件)
@@ -224,7 +228,7 @@ export default function TimelineToolbar({
             className={toolbarBtn}
           >
             {zoomPreset.label}
-            <span className="text-[10px] text-neutral-400">▾</span>
+            <span className="text-[10px] text-subtle">▾</span>
           </button>
           {zoomMenu && (
             <>
@@ -232,7 +236,7 @@ export default function TimelineToolbar({
               <div
                 data-timeline-zoom-menu
                 role="listbox"
-                className="absolute top-full right-0 z-40 mt-1 w-36 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg"
+                className="absolute top-full right-0 z-40 mt-1 w-36 rounded-lg border border-line bg-surface p-1 shadow-lg"
               >
                 {zoomPresets.map((preset, index) => (
                   <button
@@ -245,8 +249,8 @@ export default function TimelineToolbar({
                       changeZoom(index);
                       setZoomMenu(false);
                     }}
-                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[13px] hover:bg-neutral-100 ${
-                      index === zoom ? "bg-[#eff4fd] text-[#2c60b8]" : "text-neutral-700"
+                    className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[13px] hover:bg-hover ${
+                      index === zoom ? "bg-accent-soft text-accent-text" : "text-secondary"
                     }`}
                   >
                     {preset.label}
@@ -265,7 +269,7 @@ export default function TimelineToolbar({
           title="ズームアウト"
           onClick={() => changeZoom(zoom + 1)}
           disabled={zoom === zoomPresets.length - 1}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-base text-neutral-600 hover:bg-neutral-100 disabled:opacity-30"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-base text-secondary hover:bg-hover disabled:opacity-30"
         >
           −
         </button>
@@ -277,7 +281,7 @@ export default function TimelineToolbar({
           title="ズームイン"
           onClick={() => changeZoom(zoom - 1)}
           disabled={zoom === 0}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-base text-neutral-600 hover:bg-neutral-100 disabled:opacity-30"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-base text-secondary hover:bg-hover disabled:opacity-30"
         >
           ＋
         </button>
@@ -437,14 +441,14 @@ export default function TimelineToolbar({
           setSortOpen(true);
         }}
       >
-        <div className="mt-3 border-t border-neutral-100 pt-3">
-          <div className="px-2 text-[11px] font-medium text-neutral-500">レイアウトオプション</div>
-          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
-            <input type="checkbox" checked={showWeekends} onChange={(event) => setShowWeekends(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+        <div className="mt-3 border-t border-line-subtle pt-3">
+          <div className="px-2 text-[11px] font-medium text-muted">レイアウトオプション</div>
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover">
+            <input type="checkbox" checked={showWeekends} onChange={(event) => setShowWeekends(event.target.checked)} className="h-3.5 w-3.5 accent-accent" />
             週末を網掛け
           </label>
-          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
-            <input type="checkbox" checked={showCritical} onChange={(event) => setShowCritical(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+          <label className="flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover">
+            <input type="checkbox" checked={showCritical} onChange={(event) => setShowCritical(event.target.checked)} className="h-3.5 w-3.5 accent-accent" />
             クリティカルパスを表示
           </label>
           <button
@@ -452,16 +456,16 @@ export default function TimelineToolbar({
             data-timeline-auto-rows
             disabled={!canEdit}
             onClick={() => void resetTimelineRows()}
-            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50 disabled:text-neutral-300"
+            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-secondary hover:bg-hover disabled:text-subtle"
           >
             行を自動整列（固定を解除）
           </button>
-          <div className="mt-2 px-2 text-[11px] text-neutral-500">セクション単位</div>
+          <div className="mt-2 px-2 text-[11px] text-muted">セクション単位</div>
           <select
             value={resetSectionId}
             onChange={(event) => setResetSectionId(event.target.value)}
             aria-label="行固定を解除するセクション"
-            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
           >
             <option value="">セクションを選択…</option>
             {sections.map((section) => (
@@ -475,24 +479,24 @@ export default function TimelineToolbar({
             data-timeline-auto-rows-section
             disabled={!canEdit || resetSectionId === ""}
             onClick={() => void resetSectionRows()}
-            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-neutral-700 hover:bg-neutral-50 disabled:text-neutral-300"
+            className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-secondary hover:bg-hover disabled:text-subtle"
           >
             選択セクションを自動整列
           </button>
         </div>
-        <div className="mt-2 border-t border-neutral-100 pt-3">
-          <div className="px-2 text-[11px] font-medium text-neutral-500">依存関係設定</div>
-          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-neutral-700 hover:bg-neutral-50">
-            <input type="checkbox" checked={showDependencies} onChange={(event) => setShowDependencies(event.target.checked)} className="h-3.5 w-3.5 accent-[#2c60b8]" />
+        <div className="mt-2 border-t border-line-subtle pt-3">
+          <div className="px-2 text-[11px] font-medium text-muted">依存関係設定</div>
+          <label className="mt-2 flex h-8 cursor-pointer items-center gap-2 rounded px-2 text-[13px] text-secondary hover:bg-hover">
+            <input type="checkbox" checked={showDependencies} onChange={(event) => setShowDependencies(event.target.checked)} className="h-3.5 w-3.5 accent-accent" />
             依存関係を表示
           </label>
         </div>
-        <div className="mt-2 border-t border-neutral-100 pt-3">
-          <div className="px-2 text-[11px] font-medium text-neutral-500">ズーム</div>
+        <div className="mt-2 border-t border-line-subtle pt-3">
+          <div className="px-2 text-[11px] font-medium text-muted">ズーム</div>
           <select
             value={zoom}
             onChange={(event) => changeZoom(Number(event.target.value))}
-            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-neutral-200 bg-white px-2 text-[13px] outline-none focus:border-[#2c60b8]"
+            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
             aria-label="ズーム"
           >
             {zoomPresets.map((preset, index) => (

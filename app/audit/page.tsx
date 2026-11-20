@@ -3,6 +3,9 @@ import { requirePageUser } from "@/lib/current-user";
 import { hasPermission } from "@/lib/permissions";
 import { getAuditLog } from "@/lib/audit";
 import { getWorkspace } from "@/lib/data";
+import { auditTimestampISO, formatAuditTimestamp } from "@/lib/audit-display";
+import { quietButtonClass } from "@/components/ui/form-controls";
+import { pageDescriptionClass, pageHeaderRowClass, pageShellClass, pageTitleClass } from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -13,40 +16,78 @@ export default async function AuditPage() {
   const rows = ws ? await getAuditLog(ws.id) : [];
 
   return (
-    <div className="p-6">
-      <div className="flex items-center gap-3">
-        <h1 className="text-lg font-bold">監査ログ</h1>
-        <a href="/api/admin/audit/export?format=json" className="text-sm text-blue-700 hover:underline">
-          JSON
-        </a>
-        <a href="/api/admin/audit/export?format=csv" className="text-sm text-blue-700 hover:underline">
-          CSV
-        </a>
-      </div>
-      <p className="mt-1 text-sm text-neutral-500">
-        {ws?.name} の変更履歴（{rows.length}件・直近200件）
-      </p>
-      <div className="mt-4 max-w-5xl">
-        <div className="grid grid-cols-[170px_120px_140px_minmax(0,1fr)] gap-2 border-b px-2 py-2 text-xs font-semibold text-neutral-500">
-          <span>日時</span>
-          <span>操作者</span>
-          <span>操作</span>
-          <span>対象</span>
-        </div>
-        {rows.map((r) => (
-          <div
-            key={r.id}
-            className="grid grid-cols-[170px_120px_140px_minmax(0,1fr)] gap-2 border-b px-2 py-1.5 text-sm"
-          >
-            <span className="text-neutral-500">{r.created_at}</span>
-            <span className="truncate">{r.actor_name ?? "–"}</span>
-            <span className="break-all font-mono text-xs">{r.action}</span>
-            <span className="break-words text-neutral-700">
-              {[r.project_name, r.summary].filter(Boolean).join(" / ") || `${r.entity}#${r.entity_id ?? "–"}`}
-            </span>
+    <div className={pageShellClass}>
+      <div className="max-w-5xl">
+        <div className={pageHeaderRowClass}>
+          <h1 className={pageTitleClass}>監査ログ</h1>
+          <div className="ml-auto flex items-center gap-1">
+            <a href="/api/admin/audit/export?format=json" data-audit-export="json" className={quietButtonClass}>
+              JSON
+            </a>
+            <a href="/api/admin/audit/export?format=csv" data-audit-export="csv" className={quietButtonClass}>
+              CSV
+            </a>
           </div>
-        ))}
-        {rows.length === 0 && <p className="mt-4 text-sm text-neutral-500">履歴はありません。</p>}
+        </div>
+        <p className={pageDescriptionClass}>
+          {ws?.name} の変更履歴（<span className="tabular-nums">{rows.length}</span>件・直近200件）
+        </p>
+
+        <div data-audit-table-scroll className="mt-5 overflow-x-auto">
+          <table data-audit-table className="w-full min-w-[860px] table-fixed border-collapse text-left">
+            <colgroup>
+              <col className="w-[150px]" />
+              <col className="w-[130px]" />
+              <col className="w-[210px]" />
+              <col />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-line">
+                <th scope="col" className="px-2 py-2 text-[12px] font-medium text-muted">日時</th>
+                <th scope="col" className="px-2 py-2 text-[12px] font-medium text-muted">操作者</th>
+                <th scope="col" className="px-2 py-2 text-[12px] font-medium text-muted">操作</th>
+                <th scope="col" className="px-2 py-2 text-[12px] font-medium text-muted">対象</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const target = [r.project_name, r.summary].filter(Boolean).join(" / ") || `${r.entity}#${r.entity_id ?? "–"}`;
+                return (
+                  <tr key={r.id} data-audit-row={r.id} className="border-b border-line-subtle hover:bg-hover">
+                    <td className="px-2 py-2 align-top">
+                      <time
+                        dateTime={auditTimestampISO(r.created_at)}
+                        title={r.created_at}
+                        className="block text-[12px] tabular-nums whitespace-nowrap text-muted"
+                      >
+                        {formatAuditTimestamp(r.created_at)}
+                      </time>
+                    </td>
+                    <td className="px-2 py-2 align-top">
+                      <span className="block truncate text-[13px] text-secondary" title={r.actor_name ?? "–"}>
+                        {r.actor_name ?? "–"}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 align-top">
+                      <span
+                        className="inline-block max-w-full truncate rounded bg-surface-muted px-1.5 py-0.5 align-top font-mono text-[12px] text-secondary"
+                        title={r.action}
+                      >
+                        {r.action}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 align-top">
+                      <span className="line-clamp-2 text-[13px] text-secondary" title={target}>
+                        {target}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {rows.length === 0 && <p className="mt-4 text-[13px] text-muted">履歴はありません。</p>}
       </div>
     </div>
   );

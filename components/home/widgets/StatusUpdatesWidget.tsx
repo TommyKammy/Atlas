@@ -59,15 +59,15 @@ export default function StatusUpdatesWidget({
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-1.5">
-        <span className="text-[11px] text-neutral-400">プロジェクトの最新状況</span>
+      <div className="flex items-center gap-2 border-b border-line-subtle px-4 py-1.5">
+        <span className="text-[11px] text-subtle">プロジェクトの最新状況</span>
         <span className="flex-1" />
         <button
           type="button"
           data-home-status-update-open
           onClick={startComposer}
           disabled={projects.length === 0}
-          className="rounded px-1.5 py-0.5 text-[12px] text-[#2c60b8] hover:bg-[#eff4fd] disabled:text-neutral-300"
+          className="rounded px-1.5 py-0.5 text-[12px] text-accent-text hover:bg-accent-soft disabled:text-subtle"
         >
           ＋ ステータスを更新
         </button>
@@ -76,15 +76,15 @@ export default function StatusUpdatesWidget({
       <div className="min-h-[170px] flex-1">
         {updates.length === 0 ? (
           <div className="flex h-full min-h-[170px] flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-300 text-neutral-400">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line-strong text-subtle">
               ◉
             </span>
-            <p className="text-[12px] text-neutral-400">まだステータス更新はありません。</p>
+            <p className="text-[12px] text-muted">まだステータス更新はありません。</p>
             {projects.length > 0 && (
               <button
                 type="button"
                 onClick={startComposer}
-                className="text-[12px] text-[#2c60b8] hover:underline"
+                className="text-[12px] text-accent-text hover:underline"
               >
                 最初の更新を投稿
               </button>
@@ -95,7 +95,7 @@ export default function StatusUpdatesWidget({
             <div
               key={update.id}
               data-home-status-update={update.id}
-              className="border-b border-neutral-100 px-4 py-2.5 last:border-b-0"
+              className="border-b border-line-subtle px-4 py-2.5 last:border-b-0"
             >
               <div className="flex items-center gap-2">
                 <ProjectIcon
@@ -107,24 +107,24 @@ export default function StatusUpdatesWidget({
                 />
                 <Link
                   href={`/projects/${update.project_id}?view=overview`}
-                  className="min-w-0 truncate text-[12px] font-medium text-neutral-800 hover:underline"
+                  className="min-w-0 truncate text-[12px] font-medium text-text hover:underline"
                 >
                   {update.project_name}
                 </Link>
                 {update.status && (
-                  <span className="flex shrink-0 items-center gap-1 text-[10px] text-neutral-500">
+                  <span className="flex shrink-0 items-center gap-1 text-[10px] text-muted">
                     <span className={`h-2 w-2 rounded-full ${statusColorDot(update.status_color)}`} />
                     {update.status}
                   </span>
                 )}
-                <span className="ml-auto shrink-0 text-[10px] text-neutral-400">
+                <span className="ml-auto shrink-0 text-[10px] text-subtle">
                   {formatDateTime(update.created_at)}
                 </span>
               </div>
-              <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[12px] leading-5 text-neutral-700">
+              <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[12px] leading-5 text-secondary">
                 {update.body}
               </p>
-              <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-neutral-400">
+              <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-subtle">
                 <UserAvatar
                   name={update.author_name}
                   url={update.author_avatar_url}
@@ -145,17 +145,17 @@ export default function StatusUpdatesWidget({
         titleId="home-status-update-title"
       >
         <div className="p-5">
-          <h2 id="home-status-update-title" className="text-[15px] font-semibold text-neutral-800">
+          <h2 id="home-status-update-title" className="text-[15px] font-semibold text-text">
             プロジェクトのステータスを更新
           </h2>
           <div className="mt-3 space-y-2">
-            <label className="block text-[11px] text-neutral-500">
+            <label className="block text-[11px] text-muted">
               プロジェクト
               <select
                 data-home-status-project
                 value={projectId}
                 onChange={(event) => setProjectId(event.target.value)}
-                className="mt-1 w-full rounded border border-neutral-200 px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded border border-field-line px-2 py-1.5 text-sm"
               >
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
@@ -164,13 +164,13 @@ export default function StatusUpdatesWidget({
                 ))}
               </select>
             </label>
-            <label className="block text-[11px] text-neutral-500">
+            <label className="block text-[11px] text-muted">
               ステータス
               <select
                 data-home-status-value
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
-                className="mt-1 w-full rounded border border-neutral-200 px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded border border-field-line px-2 py-1.5 text-sm"
               >
                 {PROJECT_STATUS_OPTIONS.map((option) => (
                   <option key={option.label} value={option.label}>
@@ -179,7 +179,7 @@ export default function StatusUpdatesWidget({
                 ))}
               </select>
             </label>
-            <label className="block text-[11px] text-neutral-500">
+            <label className="block text-[11px] text-muted">
               更新内容
               <textarea
                 data-home-status-body
@@ -187,16 +187,16 @@ export default function StatusUpdatesWidget({
                 onChange={(event) => setBody(event.target.value)}
                 rows={5}
                 placeholder="プロジェクトの進捗、リスク、次のアクションを共有"
-                className="mt-1 w-full resize-y rounded border border-neutral-200 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                className="mt-1 w-full resize-y rounded border border-field-line px-2 py-1.5 text-sm outline-none focus:border-accent"
               />
             </label>
-            {error !== "" && <p className="text-[12px] text-red-600">{error}</p>}
+            {error !== "" && <p className="text-[12px] text-danger">{error}</p>}
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+              className="rounded-md border border-line px-3 py-1.5 text-sm text-secondary hover:bg-hover"
             >
               キャンセル
             </button>
@@ -205,7 +205,7 @@ export default function StatusUpdatesWidget({
               data-home-status-submit
               disabled={busy || body.trim() === "" || projectId === ""}
               onClick={() => void submit()}
-              className="rounded-md bg-[#2c60b8] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#24529c] disabled:opacity-50"
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
             >
               {busy ? "投稿中…" : "投稿"}
             </button>

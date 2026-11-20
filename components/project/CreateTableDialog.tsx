@@ -49,26 +49,26 @@ export default function CreateTableDialog({
       open
       onClose={onClose}
       title="プロジェクトからテーブルを作成"
-      backdropClassName="backdrop:bg-black/25"
-      panelClassName="w-[min(540px,94vw)] rounded-xl bg-white text-sm shadow-2xl"
+      backdropClassName="backdrop:bg-scrim"
+      panelClassName="w-[min(540px,94vw)] rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-table-dialog className="p-6">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-semibold">プロジェクトからテーブルを作成</h2>
-            <p className="mt-0.5 text-xs text-neutral-500">{projectName}</p>
+            <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-neutral-400 hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-secondary">
             ×
           </button>
         </div>
         {created ? (
-          <div className="mt-5 rounded-lg border border-green-200 bg-green-50 p-4" data-table-created>
-            <p className="font-medium text-green-900">テーブルを作成しました（{created.row_count}行）</p>
+          <div className="mt-5 rounded-lg border border-success-line bg-success-soft p-4" data-table-created>
+            <p className="font-medium text-success">テーブルを作成しました（{created.row_count}行）</p>
             <div className="mt-3 flex gap-2">
               <a
                 href={`/tables/${created.id}`}
-                className="flex h-8 items-center rounded-md bg-[#4075cf] px-3 text-sm font-medium text-white hover:bg-[#3567b8]"
+                className="flex h-8 items-center rounded-md bg-accent px-3 text-sm font-medium text-on-accent hover:bg-accent-hover"
               >
                 テーブルを開く
               </a>
@@ -83,24 +83,24 @@ export default function CreateTableDialog({
         ) : (
           <>
             <label className="mt-4 block">
-              <span className="mb-1 block text-xs font-medium text-neutral-600">テーブルの名前</span>
+              <span className="mb-1 block text-xs font-medium text-secondary">テーブルの名前</span>
               <input
                 autoFocus
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 maxLength={120}
-                className="h-9 w-full rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-[#4075cf] focus:ring-2 focus:ring-[#4075cf]/20"
+                className="h-9 w-full rounded-md border border-field-line px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
               />
             </label>
             <div className="mt-4 space-y-1.5">
-              <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-2.5">
+              <label className="flex items-start gap-2 rounded-md border border-line p-2.5">
                 <input type="checkbox" checked={includeTasks} onChange={(event) => setIncludeTasks(event.target.checked)} className="mt-0.5" />
                 <span>
                   <span className="block font-medium">タスクをレコードとして取り込む</span>
-                  <span className="block text-xs text-neutral-500">セクション、タスク、担当者、期日、カスタムフィールドを列に変換します。</span>
+                  <span className="block text-xs text-muted">セクション、タスク、担当者、期日、カスタムフィールドを列に変換します。</span>
                 </span>
               </label>
-              <label className="flex items-start gap-2 rounded-md border border-neutral-200 p-2.5">
+              <label className="flex items-start gap-2 rounded-md border border-line p-2.5">
                 <input
                   type="checkbox"
                   checked={archiveSource}
@@ -110,16 +110,16 @@ export default function CreateTableDialog({
                 />
                 <span>
                   <span className="block font-medium">元のプロジェクトをアーカイブ</span>
-                  <span className="block text-xs text-neutral-500">
+                  <span className="block text-xs text-muted">
                     変換後、元のプロジェクトをサイドバーから非表示にします{!isAdmin ? "（管理者のみ）" : ""}。
                   </span>
                 </span>
               </label>
             </div>
-            <p className="mt-3 text-xs text-neutral-400">
+            <p className="mt-3 text-xs text-subtle">
               テーブルは作成時点のスナップショットです。元のプロジェクトを変更しても自動更新されません。
             </p>
-            {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+            {error && <p className="mt-3 text-xs text-danger">{error}</p>}
             <div className="mt-5 flex justify-end gap-2">
               <button type="button" className={PROJECT_DIALOG_SECONDARY} onClick={onClose} disabled={busy}>
                 キャンセル

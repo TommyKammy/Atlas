@@ -32,16 +32,29 @@ async function confirmComposition(input: Locator, page: Page, key: "Enter" | "Es
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
 }
 
-test("EV08 search conversion confirmation keeps focus and only the following Enter navigates", async ({ page }) => {
+test("EV08 command palette search conversion confirmation keeps focus and only the following Enter navigates", async ({ page }) => {
   await fixture(page);
   const before = page.url();
-  const input = page.locator("[data-global-search-input]");
-  await input.fill("日本語検索を確定");
+  await page.keyboard.press("ControlOrMeta+K");
+  const dialog = page.getByRole("dialog", { name: "コマンドパレット" });
+  const input = dialog.getByRole("combobox", { name: "コマンドを検索" });
+  await expect(input).toBeFocused();
+  await input.fill("要件");
+  const task = dialog.getByRole("option", { name: /要件定義/ }).first();
+  await expect(task).toBeVisible();
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if ((await task.getAttribute("aria-selected")) === "true") break;
+    await input.press("ArrowDown");
+  }
+  await expect(task).toHaveAttribute("aria-selected", "true");
+
   await confirmComposition(input, page);
   await expect(input).toBeFocused();
   expect(page.url()).toBe(before);
   await input.press("Enter");
-  await page.waitForURL((url) => url.pathname === "/search" && url.searchParams.get("q") === "日本語検索を確定");
+  await page.waitForURL(
+    (url) => url.pathname === "/projects/1" && url.searchParams.get("task") === "2",
+  );
 });
 
 test("EV08 list and task-pane titles do not save on IME confirmation and save on the next Enter", async ({ page }) => {

@@ -31,14 +31,14 @@ export default function TaskAttachmentsSection({
     <section className="mt-5" data-task-attachments>
       <TaskSectionHeading
         title="添付"
-        count={attachments.length}
+        countText={attachments.length > 0 ? String(attachments.length) : undefined}
         action={
           canEdit ? <label
             htmlFor={`${uploadId}-header`}
             className={`flex h-6 w-6 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] justify-center rounded text-[16px] ${
               uploading
-                ? "cursor-wait text-neutral-300"
-                : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+                ? "cursor-wait text-subtle"
+                : "text-muted hover:bg-hover hover:text-text"
             }`}
             title={uploading ? "アップロード中…" : "添付を追加"}
           >
@@ -60,7 +60,7 @@ export default function TaskAttachmentsSection({
       />
 
       {attachments.length === 0 ? (
-        canEdit ? <label htmlFor={`${uploadId}-empty`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[13px] text-neutral-400 hover:bg-neutral-50 hover:text-neutral-600">
+        canEdit ? <label htmlFor={`${uploadId}-empty`} className="flex min-h-[34px] cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2.5 rounded px-0.5 text-[13px] text-muted hover:bg-hover hover:text-secondary">
           <span className="text-base leading-none">＋</span>
           <span>{uploading ? "アップロード中…" : "添付を追加"}</span>
           <input
@@ -75,17 +75,17 @@ export default function TaskAttachmentsSection({
               event.target.value = "";
             }}
           />
-        </label> : <p className="px-1 text-[13px] text-neutral-500">添付はありません</p>
+        </label> : <p className="px-0.5 text-[13px] text-muted">添付はありません</p>
       ) : (
         <div className="space-y-1">
           {attachments.map((attachment) => (
             <div
               key={attachment.id}
               data-attachment-id={attachment.id}
-              className="group/att rounded-md border border-neutral-200 px-2.5 py-2"
+              className="group/att rounded px-0.5 py-2 hover:bg-hover"
             >
               <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-neutral-100 text-neutral-500">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-surface-muted text-muted">
                   <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.2">
                     <path d="M9 2H4.5A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V6z" />
                     <path d="M9 2v4h4" />
@@ -93,7 +93,7 @@ export default function TaskAttachmentsSection({
                 </span>
                 <a
                   href={`/api/attachments/${attachment.id}`}
-                  className="min-w-0 flex-1 truncate text-[13px] font-medium text-neutral-800 hover:text-blue-700 hover:underline"
+                  className="min-w-0 flex-1 truncate text-[13px] font-medium text-text hover:text-accent-text hover:underline"
                   title={attachment.file_name}
                 >
                   {attachment.file_name}
@@ -101,14 +101,14 @@ export default function TaskAttachmentsSection({
                 {canEdit && <button
                   type="button"
                   onClick={() => onDelete(attachment.id)}
-                  className="opacity-0 shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600 group-hover/att:opacity-100 group-focus-within/att:opacity-100 focus:opacity-100"
+                  className="opacity-0 shrink-0 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-danger group-hover/att:opacity-100 group-focus-within/att:opacity-100 focus:opacity-100"
                   title="添付を削除"
                   aria-label={`${attachment.file_name} を削除`}
                 >
                   ×
                 </button>}
               </div>
-              <div className="mt-0.5 flex items-center gap-2 pl-9 text-[10px] text-neutral-400">
+              <div className="mt-0.5 flex items-center gap-2 pl-9 text-[10px] text-muted">
                 <span>{formatSize(attachment.size_bytes)}</span>
                 {attachment.author_name && <span>{attachment.author_name}</span>}
                 <span>{attachment.created_at.slice(0, 16).replace("T", " ")}</span>
@@ -118,7 +118,7 @@ export default function TaskAttachmentsSection({
               </div>
             </div>
           ))}
-          {canEdit && <label htmlFor={`${uploadId}-footer`} className="flex min-h-8 cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700">
+          {canEdit && <label htmlFor={`${uploadId}-footer`} className="flex min-h-[34px] cursor-pointer items-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--foreground)] gap-2.5 rounded px-0.5 text-[12px] text-muted hover:bg-hover hover:text-secondary">
             <span className="text-sm leading-none">＋</span>
             {uploading ? "アップロード中…" : "ファイルを追加"}
             <input

@@ -38,7 +38,7 @@ test("date parameters reject impossible dates before PostgreSQL casts", () => {
 });
 
 test("full result pagination reports total and range and supports accessible native next/previous links", () => {
-  const task = { id: 12, name: "A", completed: false, due_on: null, assignee_name: null, project_id: 1, project_name: "P" };
+  const task = { id: 12, name: "A", completed: false, progress: 0, due_on: null, assignee_name: null, project_id: 1, project_name: "P" };
   const html = renderToStaticMarkup(createElement(SearchResults, {
     q: "A", searched: true, total: 205, tasks: [task], projects: [], messages: [], knowledge: [], files: [],
     pagination: { tasks: { total: 205, page: 2, pageSize: 100, pageCount: 3 }, projects: emptySearchPage(20), messages: emptySearchPage(20), knowledge: emptySearchPage(20), files: emptySearchPage(20) },

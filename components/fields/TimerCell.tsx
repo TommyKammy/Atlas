@@ -61,12 +61,12 @@ export default function TimerCell({
           void act(isRunning ? "stop" : "start");
         }}
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] ${
-          isRunning ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+          isRunning ? "bg-danger-soft text-danger hover:opacity-80" : "bg-surface-muted text-secondary hover:bg-hover-strong"
         }`}
       >
         {isRunning ? "■" : "▶"}
       </button>
-      <span className="truncate text-[12px] tabular-nums text-neutral-700">
+      <span className="truncate text-[12px] tabular-nums text-secondary">
         {formatDuration(timerSeconds(value, now), field.config ?? {})}
       </span>
     </span>

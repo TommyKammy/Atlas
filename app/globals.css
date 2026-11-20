@@ -1,21 +1,194 @@
 @import "tailwindcss";
+@source not "../docs";
+
+/* ---------------------------------------------------------------------------
+   Atlas semantic color tokens
+
+   Light values live on :root, dark values on html[data-theme="dark"].
+   Keep the two blocks in sync: every token below must appear in both.
+   Values are the approved C "workbench" palette (light and dark).
+   See docs/design-tokens.md for usage and the legacy-class mapping.
+   --------------------------------------------------------------------------- */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Backgrounds and surfaces (C "workbench", light) */
+  --atlas-bg: #ffffff;
+  --atlas-surface: #ffffff;
+  --atlas-surface-subtle: #fafafb;
+  --atlas-surface-muted: #eff0f2;
+  --atlas-surface-strong: #e4e6ea;
+  --atlas-field: #ffffff;
+  /* Input borders: same blue-grey hue as line-strong, dark enough for 3:1
+     against field, surface and bg (see docs/design-tokens.md). */
+  --atlas-field-line: #8c95a5;
+  --atlas-field-line-hover: #6c778b;
+  --atlas-hover: #f5f5f7;
+  --atlas-hover-strong: #dee1e6;
+
+  /* Overlay */
+  --atlas-overlay: #ffffff;
+  --atlas-scrim: rgb(0 0 0 / 0.25);
+  --atlas-scrim-soft: rgb(0 0 0 / 0.15);
+
+  /* Inverse chrome (toasts, tooltips, bulk bars: dark in both themes) */
+  --atlas-inverse-surface: #14181d;
+  --atlas-inverse-surface-subtle: #1d2229;
+  --atlas-inverse-surface-muted: #1d2229;
+  --atlas-inverse-surface-deep: #0f1216;
+  --atlas-inverse-line: #3a424e;
+  --atlas-inverse-line-subtle: #252b33;
+  --atlas-inverse-text: #c9cfd8;
+  --atlas-inverse-text-strong: #e8eaed;
+  --atlas-inverse-text-muted: #a3acb8;
+  --atlas-inverse-accent: #b9f227;
+  --atlas-inverse-danger: #ff9c8f;
+  --atlas-inverse-favorite: #f5c04a;
+  --atlas-on-strong: #ffffff;
+
+  /* Sidebar follows the theme (C: side surface) */
+  --atlas-sidebar: #fafafb;
+  --atlas-sidebar-text: #3a4049;
+  --atlas-sidebar-text-strong: #1a1d21;
+  --atlas-sidebar-muted: #5c6470;
+  --atlas-sidebar-line: #e4e6ea;
+  --atlas-sidebar-line-subtle: #eff0f2;
+  --atlas-sidebar-hover: #f5f5f7;
+  --atlas-sidebar-active: #eff0f2;
+  --atlas-sidebar-accent: #3f6b00;
+  --atlas-sidebar-danger: #b83228;
+  --atlas-sidebar-favorite: #9a6700;
+
+  /* Lines */
+  --atlas-line: #e4e6ea;
+  --atlas-line-strong: #cdd1d8;
+  --atlas-line-subtle: #eff0f2;
+  --atlas-data-line: rgb(0 0 0 / 0.10);
+
+  /* Text */
+  --atlas-text: #1a1d21;
+  --atlas-text-secondary: #3a4049;
+  --atlas-text-muted: #5c6470;
+  --atlas-text-subtle: #8a93a0;
+  --atlas-on-accent: #ffffff;
+
+  /* Accent */
+  --atlas-accent: #1a1d21;
+  --atlas-accent-text: #3f6b00;
+  --atlas-accent-soft: #eff0f2;
+  --atlas-accent-soft-hover: #e5e7eb;
+  --atlas-accent-hover: #30343a;
+  --atlas-accent-line: #d5d9df;
+
+  /* Status */
+  --atlas-danger: #b83228;
+  --atlas-danger-soft: #fbe9e6;
+  --atlas-danger-line: #e9b6b0;
+  --atlas-danger-strong: #b83228;
+  --atlas-danger-strong-hover: #9e2a22;
+  --atlas-danger-action: #b83228;
+  --atlas-danger-action-hover: #9e2a22;
+  --atlas-success: #1b7f4b;
+  --atlas-success-soft: #ecf7f0;
+  --atlas-success-line: #b5dcc4;
+  --atlas-success-strong: #1b7f4b;
+  --atlas-success-strong-hover: #14663c;
+  --atlas-warning: #8a5d00;
+  --atlas-warning-soft: #faf2df;
+  --atlas-warning-line: #e7d1a0;
+  --atlas-favorite: #9a6700;
+
+  /* Focus */
+  --atlas-focus-ring: #3f6b00;
+
+  /* Back-compat aliases (kept for existing bg-background/text-foreground usage). */
+  --background: var(--atlas-bg);
+  --foreground: var(--atlas-text);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Semantic palette. Text utilities are text-text / text-secondary /
+     text-muted / text-subtle; see docs/design-tokens.md. */
+  --color-bg: var(--atlas-bg);
+  --color-surface: var(--atlas-surface);
+  --color-surface-subtle: var(--atlas-surface-subtle);
+  --color-surface-muted: var(--atlas-surface-muted);
+  --color-surface-strong: var(--atlas-surface-strong);
+  --color-field: var(--atlas-field);
+  --color-field-line: var(--atlas-field-line);
+  --color-field-line-hover: var(--atlas-field-line-hover);
+  --color-hover: var(--atlas-hover);
+  --color-hover-strong: var(--atlas-hover-strong);
+  --color-overlay: var(--atlas-overlay);
+  --color-scrim: var(--atlas-scrim);
+  --color-scrim-soft: var(--atlas-scrim-soft);
+  --color-inverse-surface: var(--atlas-inverse-surface);
+  --color-inverse-surface-subtle: var(--atlas-inverse-surface-subtle);
+  --color-inverse-surface-muted: var(--atlas-inverse-surface-muted);
+  --color-inverse-surface-deep: var(--atlas-inverse-surface-deep);
+  --color-inverse-line: var(--atlas-inverse-line);
+  --color-inverse-line-subtle: var(--atlas-inverse-line-subtle);
+  --color-inverse-text: var(--atlas-inverse-text);
+  --color-inverse-text-strong: var(--atlas-inverse-text-strong);
+  --color-inverse-text-muted: var(--atlas-inverse-text-muted);
+  --color-inverse-accent: var(--atlas-inverse-accent);
+  --color-inverse-danger: var(--atlas-inverse-danger);
+  --color-inverse-favorite: var(--atlas-inverse-favorite);
+  --color-on-strong: var(--atlas-on-strong);
+  --color-sidebar: var(--atlas-sidebar);
+  --color-sidebar-text: var(--atlas-sidebar-text);
+  --color-sidebar-text-strong: var(--atlas-sidebar-text-strong);
+  --color-sidebar-muted: var(--atlas-sidebar-muted);
+  --color-sidebar-line: var(--atlas-sidebar-line);
+  --color-sidebar-line-subtle: var(--atlas-sidebar-line-subtle);
+  --color-sidebar-hover: var(--atlas-sidebar-hover);
+  --color-sidebar-active: var(--atlas-sidebar-active);
+  --color-sidebar-accent: var(--atlas-sidebar-accent);
+  --color-sidebar-danger: var(--atlas-sidebar-danger);
+  --color-sidebar-favorite: var(--atlas-sidebar-favorite);
+  --color-line: var(--atlas-line);
+  --color-line-strong: var(--atlas-line-strong);
+  --color-line-subtle: var(--atlas-line-subtle);
+  --color-data-line: var(--atlas-data-line);
+  --color-text: var(--atlas-text);
+  --color-secondary: var(--atlas-text-secondary);
+  --color-muted: var(--atlas-text-muted);
+  --color-subtle: var(--atlas-text-subtle);
+  --color-on-accent: var(--atlas-on-accent);
+  --color-accent: var(--atlas-accent);
+  --color-accent-text: var(--atlas-accent-text);
+  --color-accent-soft: var(--atlas-accent-soft);
+  --color-accent-soft-hover: var(--atlas-accent-soft-hover);
+  --color-accent-hover: var(--atlas-accent-hover);
+  --color-accent-line: var(--atlas-accent-line);
+  --color-danger: var(--atlas-danger);
+  --color-danger-soft: var(--atlas-danger-soft);
+  --color-danger-line: var(--atlas-danger-line);
+  --color-danger-strong: var(--atlas-danger-strong);
+  --color-danger-strong-hover: var(--atlas-danger-strong-hover);
+  --color-danger-action: var(--atlas-danger-action);
+  --color-danger-action-hover: var(--atlas-danger-action-hover);
+  --color-success: var(--atlas-success);
+  --color-success-soft: var(--atlas-success-soft);
+  --color-success-line: var(--atlas-success-line);
+  --color-success-strong: var(--atlas-success-strong);
+  --color-success-strong-hover: var(--atlas-success-strong-hover);
+  --color-warning: var(--atlas-warning);
+  --color-warning-soft: var(--atlas-warning-soft);
+  --color-warning-line: var(--atlas-warning-line);
+  --color-favorite: var(--atlas-favorite);
+  --color-focus-ring: var(--atlas-focus-ring);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--atlas-bg);
+  color: var(--atlas-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
     Meiryo, sans-serif;
 }
@@ -24,115 +197,100 @@ body {
    and the atlas_theme cookie so SSR keeps the same palette. */
 html[data-theme="dark"] {
   color-scheme: dark;
-  --background: #1a1a1a;
-  --foreground: #ededed;
+
+  /* Backgrounds and surfaces (C "workbench", dark) */
+  --atlas-bg: #0f1216;
+  --atlas-surface: #14181d;
+  --atlas-surface-subtle: #14181d;
+  --atlas-surface-muted: #1d2229;
+  --atlas-surface-strong: #252b33;
+  --atlas-field: #14181d;
+  --atlas-field-line: #586577;
+  --atlas-field-line-hover: #728197;
+  --atlas-hover: #191d23;
+  --atlas-hover-strong: #2a313a;
+
+  /* Overlay */
+  --atlas-overlay: #ffffff;
+  --atlas-scrim: rgb(0 0 0 / 0.55);
+  --atlas-scrim-soft: rgb(0 0 0 / 0.15);
+
+  /* Inverse chrome (toasts, tooltips, bulk bars: dark in both themes) */
+  --atlas-inverse-surface: #14181d;
+  --atlas-inverse-surface-subtle: #1d2229;
+  --atlas-inverse-surface-muted: #1d2229;
+  --atlas-inverse-surface-deep: #0f1216;
+  --atlas-inverse-line: #3a424e;
+  --atlas-inverse-line-subtle: #252b33;
+  --atlas-inverse-text: #c9cfd8;
+  --atlas-inverse-text-strong: #e8eaed;
+  --atlas-inverse-text-muted: #a3acb8;
+  --atlas-inverse-accent: #b9f227;
+  --atlas-inverse-danger: #ff9c8f;
+  --atlas-inverse-favorite: #f5c04a;
+  --atlas-on-strong: #ffffff;
+
+  /* Sidebar follows the theme (C: side surface) */
+  --atlas-sidebar: #0f1216;
+  --atlas-sidebar-text: #c9cfd8;
+  --atlas-sidebar-text-strong: #e8eaed;
+  --atlas-sidebar-muted: #a3acb8;
+  --atlas-sidebar-line: #252b33;
+  --atlas-sidebar-line-subtle: #1d2229;
+  --atlas-sidebar-hover: #191d23;
+  --atlas-sidebar-active: #1d2229;
+  --atlas-sidebar-accent: #b9f227;
+  --atlas-sidebar-danger: #ff9c8f;
+  --atlas-sidebar-favorite: #f5c04a;
+
+  /* Lines */
+  --atlas-line: #252b33;
+  --atlas-line-strong: #3a424e;
+  --atlas-line-subtle: #1d2229;
+  --atlas-data-line: rgb(0 0 0 / 0.10);
+
+  /* Text */
+  --atlas-text: #e8eaed;
+  --atlas-text-secondary: #c9cfd8;
+  --atlas-text-muted: #a3acb8;
+  --atlas-text-subtle: #9ba5b2;
+  --atlas-on-accent: #10140a;
+
+  /* Accent */
+  --atlas-accent: #b9f227;
+  --atlas-accent-text: #b9f227;
+  --atlas-accent-soft: #1d2229;
+  --atlas-accent-soft-hover: #252b33;
+  --atlas-accent-hover: #c9f94b;
+  --atlas-accent-line: #3a424e;
+
+  /* Status */
+  --atlas-danger: #ff9c8f;
+  --atlas-danger-soft: #2b1917;
+  --atlas-danger-line: #7a3a33;
+  --atlas-danger-strong: #b83228;
+  --atlas-danger-strong-hover: #9e2a22;
+  --atlas-danger-action: #b83228;
+  --atlas-danger-action-hover: #9e2a22;
+  --atlas-success: #7ee2a8;
+  --atlas-success-soft: #15251c;
+  --atlas-success-line: #2f5a3f;
+  --atlas-success-strong: #1b7f4b;
+  --atlas-success-strong-hover: #14663c;
+  --atlas-warning: #f5c04a;
+  --atlas-warning-soft: #2a2114;
+  --atlas-warning-line: #5c4520;
+  --atlas-favorite: #f5c04a;
+
+  /* Focus */
+  --atlas-focus-ring: #b9f227;
+
+  /* Back-compat aliases */
+  --background: var(--atlas-bg);
+  --foreground: var(--atlas-text);
 }
 
-html[data-theme="dark"] body {
-  background: var(--background);
-  color: var(--foreground);
-}
-
-/* Surfaces */
-html[data-theme="dark"] .bg-white { background-color: #242424; }
-html[data-theme="dark"] .bg-neutral-50 { background-color: #2a2a2a; }
-html[data-theme="dark"] .bg-neutral-100 { background-color: #303030; }
-html[data-theme="dark"] .bg-neutral-200 { background-color: #3a3a3a; }
-html[data-theme="dark"] .bg-neutral-300 { background-color: #4a4a4a; }
-html[data-theme="dark"] [class~="bg-white/95"] { background-color: rgba(36, 36, 36, 0.95); }
-html[data-theme="dark"] [class~="bg-white/70"] { background-color: rgba(36, 36, 36, 0.7); }
-html[data-theme="dark"] [class~="bg-[#f3f3f3]"] { background-color: #2c2c2c; }
-html[data-theme="dark"] [class~="bg-[#f5f5f5]"] { background-color: #2a2a2a; }
-html[data-theme="dark"] [class~="bg-[#f5f9ff]"] { background-color: #1c2a3d; }
-html[data-theme="dark"] [class~="bg-[#eff4fd]"] { background-color: #20344f; }
-html[data-theme="dark"] [class~="bg-[#e1ecfc]"] { background-color: #263d5c; }
-html[data-theme="dark"] [class~="bg-[#dfe8fa]"] { background-color: #2a4363; }
-html[data-theme="dark"] [class~="bg-[#e3edfc]"] { background-color: #2a4363; }
-html[data-theme="dark"] [class~="bg-[#eaeaea]"] { background-color: #3a3a3a; }
-html[data-theme="dark"] [class~="bg-[#e1e1e1]"] { background-color: #3a3a3a; }
-html[data-theme="dark"] [class~="bg-[#aaaaaa]"] { background-color: #4a4a4a; }
-html[data-theme="dark"] .bg-blue-50 { background-color: #1e2c40; }
-html[data-theme="dark"] .bg-blue-100 { background-color: #223a5c; }
-html[data-theme="dark"] .bg-red-50 { background-color: #3a2020; }
-html[data-theme="dark"] .bg-red-100 { background-color: #4a2323; }
-html[data-theme="dark"] .bg-red-200 { background-color: #5c2a2a; }
-html[data-theme="dark"] .bg-blue-300 { background-color: #31527d; }
-html[data-theme="dark"] .bg-amber-50 { background-color: #332a18; }
-html[data-theme="dark"] .bg-green-100 { background-color: #1e3a2a; }
-html[data-theme="dark"] .bg-amber-100 { background-color: #3d2f14; }
-
-/* Text */
-html[data-theme="dark"] .text-neutral-900 { color: #f5f5f5; }
-html[data-theme="dark"] .text-neutral-800 { color: #ebebeb; }
-html[data-theme="dark"] .text-neutral-700 { color: #dedede; }
-html[data-theme="dark"] .text-neutral-600 { color: #cfcfcf; }
-html[data-theme="dark"] .text-neutral-500 { color: #bdbdbd; }
-html[data-theme="dark"] .text-neutral-400 { color: #a9a9a9; }
-html[data-theme="dark"] .text-neutral-300 { color: #8f8f8f; }
-html[data-theme="dark"] .text-neutral-200 { color: #e0e0e0; }
-html[data-theme="dark"] [class~="text-[#050505]"] { color: #ededed; }
-html[data-theme="dark"] [class~="text-[#2c60b8]"],
-html[data-theme="dark"] [class~="text-[#2C60B8]"] { color: #8db8ff; }
-html[data-theme="dark"] .text-red-500 { color: #ff9a9a; }
-html[data-theme="dark"] .text-red-600 { color: #ff8f8f; }
-html[data-theme="dark"] .text-red-700 { color: #ffb3b3; }
-html[data-theme="dark"] .text-green-600 { color: #8fe0a0; }
-html[data-theme="dark"] .text-green-700 { color: #8fe0a0; }
-html[data-theme="dark"] .text-green-800 { color: #a7e8b4; }
-html[data-theme="dark"] .text-blue-700 { color: #a9ccff; }
-html[data-theme="dark"] .text-blue-800 { color: #b8d4ff; }
-html[data-theme="dark"] .text-blue-900 { color: #c0dbff; }
-html[data-theme="dark"] .text-amber-800 { color: #f0c987; }
-
-/* Keep initials on pastel avatar chips dark for contrast. */
-html[data-theme="dark"] .bg-violet-400,
-html[data-theme="dark"] .bg-amber-400,
-html[data-theme="dark"] .bg-emerald-500,
-html[data-theme="dark"] .bg-sky-500,
-html[data-theme="dark"] .bg-rose-400 { color: #171717 !important; }
-
-/* Borders and dividers */
-html[data-theme="dark"] .border-neutral-200 { border-color: #3a3a3a; }
-html[data-theme="dark"] .border-neutral-100 { border-color: #333333; }
-html[data-theme="dark"] .border-neutral-300 { border-color: #4a4a4a; }
-html[data-theme="dark"] .border-neutral-400 { border-color: #5a5a5a; }
-html[data-theme="dark"] [class~="border-[#eaeaea]"] { border-color: #3a3a3a; }
-html[data-theme="dark"] [class~="border-[#e1e1e1]"] { border-color: #3a3a3a; }
-html[data-theme="dark"] [class~="divide-[#eaeaea]"] > * { border-color: #3a3a3a; }
-html[data-theme="dark"] .border-blue-200 { border-color: #2f4a6d; }
-html[data-theme="dark"] .border-red-200 { border-color: #5c3030; }
-html[data-theme="dark"] .border-red-300 { border-color: #6b3838; }
-
-/* Form controls without an explicit surface */
-html[data-theme="dark"] input,
-html[data-theme="dark"] select,
-html[data-theme="dark"] textarea {
-  background-color: #2b2b2b;
-  color: #ededed;
-}
-html[data-theme="dark"] input::placeholder,
-html[data-theme="dark"] textarea::placeholder { color: #8f8f8f; }
-html[data-theme="dark"] select option { background-color: #2b2b2b; color: #ededed; }
-
-/* Hover states that would otherwise flash white or black */
-html[data-theme="dark"] .hover\:bg-white:hover { background-color: #2e2e2e; }
-html[data-theme="dark"] .hover\:bg-neutral-50:hover { background-color: #303030; }
-html[data-theme="dark"] .hover\:bg-neutral-100:hover { background-color: #363636; }
-html[data-theme="dark"] .hover\:bg-neutral-200:hover { background-color: #3f3f3f; }
-html[data-theme="dark"] .hover\:text-black:hover { color: #ffffff; }
-html[data-theme="dark"] .hover\:text-neutral-700:hover { color: #dedede; }
-html[data-theme="dark"] .hover\:text-neutral-800:hover { color: #ebebeb; }
-
-/* Timeline bars and calendar day cells */
-html[data-theme="dark"] [class*="shadow-[0_0_0_1px_#eaeaea"] {
-  box-shadow: 0 0 0 1px #3a3a3a, 0 1px 4px rgba(0, 0, 0, 0.45);
-}
-html[data-theme="dark"] .timeline-scroll { scrollbar-color: #5a5a5a transparent; }
-html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb { background: #5a5a5a; }
-html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { background: #737373; }
-
-
-/* Asana parity: hairline separators use #eaeaea, not currentColor.
+/* Asana parity: hairline separators use the line token, not currentColor.
    Tailwind v4 defaults bare `border` to currentColor (near-black text),
    which made every divider render black. */
 @layer base {
@@ -141,23 +299,30 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
   ::after,
   ::backdrop,
   ::file-selector-button {
-    border-color: #eaeaea;
+    border-color: var(--atlas-line);
   }
 
-  /* X-02: consistent, high-contrast keyboard focus ring across light/dark surfaces. */
-  html[data-theme="dark"] *,
-  html[data-theme="dark"] ::before,
-  html[data-theme="dark"] ::after {
-    border-color: #3a3a3a;
+  /* Fallback for form controls without an explicit field surface. Utilities
+     (bg-field, text-secondary, placeholder:text-subtle, disabled:*) win because
+     they live in the utilities layer. */
+  html[data-theme="dark"] input,
+  html[data-theme="dark"] select,
+  html[data-theme="dark"] textarea {
+    background-color: var(--atlas-field);
+    color: var(--atlas-text);
+  }
+  html[data-theme="dark"] select option {
+    background-color: var(--atlas-field);
+    color: var(--atlas-text);
   }
 
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-    outline: 2px solid #ffffff !important;
+    outline: 2px solid var(--atlas-focus-ring) !important;
     outline-offset: 2px !important;
-    box-shadow: 0 0 0 4px #2c60b8 !important;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--atlas-focus-ring) 25%, transparent) !important;
   }
 
-  /* The full-height resize separator uses its own visible blue focus line. */
+  /* The full-height resize separator uses its own visible accent focus line. */
   [data-sidebar-resize]:focus-visible {
     outline: none !important;
     box-shadow: none !important;
@@ -223,7 +388,7 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
 /* Asana-like thin timeline scrollbar. */
 .timeline-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #c7c7c7 transparent;
+  scrollbar-color: var(--atlas-line-strong) transparent;
 }
 
 .timeline-scroll::-webkit-scrollbar {
@@ -236,11 +401,11 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
 
 .timeline-scroll::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: #c7c7c7;
+  background: var(--atlas-line-strong);
 }
 
 .timeline-scroll::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--atlas-text-subtle);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -256,7 +421,7 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
 .atlas-rich-text {
   font-size: 13px;
   line-height: 1.65;
-  color: #404040;
+  color: var(--atlas-text-secondary);
   overflow-wrap: anywhere;
 }
 .atlas-rich-text p {
@@ -266,19 +431,19 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
   margin: 0.6em 0 0.25em;
   font-size: 1.35em;
   font-weight: 650;
-  color: #262626;
+  color: var(--atlas-text);
 }
 .atlas-rich-text h2 {
   margin: 0.55em 0 0.2em;
   font-size: 1.15em;
   font-weight: 650;
-  color: #262626;
+  color: var(--atlas-text);
 }
 .atlas-rich-text h3 {
   margin: 0.5em 0 0.15em;
   font-size: 1em;
   font-weight: 650;
-  color: #262626;
+  color: var(--atlas-text);
 }
 .atlas-rich-text ul,
 .atlas-rich-text ol {
@@ -293,22 +458,22 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
 }
 .atlas-rich-text blockquote {
   margin: 0.45em 0;
-  border-left: 3px solid #d4d4d4;
+  border-left: 3px solid var(--atlas-line-strong);
   padding-left: 0.75rem;
-  color: #666;
+  color: var(--atlas-text-secondary);
 }
 .atlas-rich-text pre {
   margin: 0.4em 0;
   overflow-x: auto;
   border-radius: 0.4rem;
-  background: #f5f5f5;
+  background: var(--atlas-surface-muted);
   padding: 0.55rem 0.75rem;
   font-size: 12px;
   line-height: 1.5;
 }
 .atlas-rich-text code {
   border-radius: 3px;
-  background: #f0f0f0;
+  background: var(--atlas-surface-muted);
   padding: 0.05rem 0.25rem;
   font-size: 0.9em;
 }
@@ -317,18 +482,19 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
   padding: 0;
 }
 .atlas-rich-text a {
-  color: #1d4ed8;
+  color: var(--atlas-accent-text);
   text-decoration: underline;
 }
 .atlas-rich-text mark {
   border-radius: 2px;
-  background: #fef08a;
+  background: var(--atlas-warning-soft);
+  color: var(--atlas-text);
   padding: 0 0.1rem;
 }
 .atlas-rich-text hr {
   margin: 0.75rem 0;
   border: 0;
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid var(--atlas-line);
 }
 .atlas-rich-text .atlas-task-list {
   list-style: none;
@@ -347,17 +513,34 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
 }
 .atlas-rich-text .atlas-mention {
   border-radius: 4px;
-  background: #eef4ff;
+  background: var(--atlas-accent-soft);
   padding: 0 0.2rem;
-  color: #1d4f91;
+  color: var(--atlas-accent-text);
   font-weight: 500;
 }
 .atlas-rich-text p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
   height: 0;
-  color: #a3a3a3;
+  color: var(--atlas-text-subtle);
   pointer-events: none;
+}
+/* The task-pane comment field keeps the mockup's 44px resting height even
+   when the long placeholder does not fit on one line. */
+.atlas-comment-editor .ProseMirror {
+  position: relative;
+}
+.atlas-comment-editor .ProseMirror p.is-editor-empty:first-child::before {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  display: block;
+  float: none;
+  height: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .atlas-rich-editor .ProseMirror {
   outline: none;
@@ -380,15 +563,15 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
 .knowledge-document .tiptap { padding-inline: 0.25rem; }
 .knowledge-document .tableWrapper { overflow-x: auto; margin-block: 1rem; }
 .knowledge-document table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-.knowledge-document th, .knowledge-document td { border: 1px solid #d4d4d4; padding: 0.5rem; vertical-align: top; min-width: 4rem; position: relative; }
-.knowledge-document th { background: #f5f5f5; font-weight: 600; }
-.knowledge-document .selectedCell { background: #eff6ff; }
+.knowledge-document th, .knowledge-document td { border: 1px solid var(--atlas-line-strong); padding: 0.5rem; vertical-align: top; min-width: 4rem; position: relative; }
+.knowledge-document th { background: var(--atlas-surface-muted); font-weight: 600; }
+.knowledge-document .selectedCell { background: var(--atlas-accent-soft); }
 .knowledge-document img { display: block; max-width: 100%; height: auto; margin-block: 1rem; border-radius: 0.375rem; }
 .knowledge-document pre { max-width: 100%; overflow-x: auto; }
 .knowledge-document [contenteditable=false] { cursor: default; }
-.knowledge-document p.is-editor-empty:first-child::before { color: #525252; }
+.knowledge-document p.is-editor-empty:first-child::before { color: var(--atlas-text-muted); }
 
-.knowledge-document .atlas-rich-text, .atlas-rich-text.knowledge-document { font-size: 15px; line-height: 1.8; }
+.knowledge-document .atlas-rich-text, .atlas-rich-text.knowledge-document { font-size: 14px; line-height: 1.8; }
 .knowledge-document .atlas-rich-text h1 { font-size: 1.6em; margin-top: 1.2em; }
 .knowledge-document .atlas-rich-text h2 { font-size: 1.3em; margin-top: 1em; }
 .knowledge-document .atlas-rich-text h3 { font-size: 1.1em; margin-top: 0.8em; }
@@ -418,17 +601,3 @@ html[data-theme="dark"] .timeline-scroll::-webkit-scrollbar-thumb:hover { backgr
   overflow: hidden;
   overscroll-behavior: contain;
 }
-
-/* Semantic text colors must follow the surface, including editor content. */
-html[data-theme="dark"] .atlas-rich-text { color: #dedede; }
-html[data-theme="dark"] .atlas-rich-text :is(h1, h2, h3) { color: #ededed; }
-html[data-theme="dark"] .atlas-rich-text blockquote { color: #bdbdbd; border-color: #737373; }
-html[data-theme="dark"] .atlas-rich-text :is(pre, code) { background: #303030; }
-html[data-theme="dark"] .atlas-rich-text pre code { background: transparent; }
-html[data-theme="dark"] .atlas-rich-text a { color: #a9ccff; }
-html[data-theme="dark"] .atlas-rich-text mark { color: #171717; }
-html[data-theme="dark"] .atlas-rich-text .atlas-mention { background: #20344f; color: #b8d4ff; }
-
-/* Keep Knowledge table headers and selected cells on dark surfaces too. */
-html[data-theme="dark"] .knowledge-document th { background: #303030; }
-html[data-theme="dark"] .knowledge-document .selectedCell { background: #20344f; }

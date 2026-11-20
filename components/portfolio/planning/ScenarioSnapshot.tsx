@@ -42,15 +42,15 @@ export default function ScenarioSnapshotView({
   snapshotLabel?: string;
 }) {
   return (
-    <details className="rounded-lg border border-neutral-200 bg-white" open={highlighted}>
-      <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-3 py-2.5 text-[13px] font-semibold text-neutral-900">
+    <details className="rounded-lg border border-line bg-surface" open={highlighted}>
+      <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-3 py-2.5 text-[13px] font-semibold text-text">
         <span>{scenario.name}</span>
-        <span className="font-normal text-neutral-600">{formatManYen(scenario.knownCostYen)} 万円</span>
+        <span className="font-normal text-secondary">{formatManYen(scenario.knownCostYen)} 万円</span>
         {statusTag(scenario.status)}
         {highlighted && <Tag tone="blue">{highlightLabel}</Tag>}
       </summary>
-      <div className="space-y-3 border-t border-neutral-200 px-3 py-3">
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
+      <div className="space-y-3 border-t border-line px-3 py-3">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-secondary">
           <span>
             投資額 {formatManYen(scenario.knownCostYen)} 万円
             {scenario.costMissing ? "（未設定の費用あり）" : ""}
@@ -66,7 +66,7 @@ export default function ScenarioSnapshotView({
           )}
         </div>
         {scenario.shortages.length > 0 && (
-          <p className="rounded-md border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-[11px] text-orange-900">
+          <p className="rounded-md border border-danger-line bg-danger-soft px-2.5 py-1.5 text-[11px] text-danger">
             {scenario.shortages
               .map(
                 (shortage) =>
@@ -77,20 +77,20 @@ export default function ScenarioSnapshotView({
         )}
         <div className="grid gap-3 md:grid-cols-2">
           <section>
-            <h4 className="text-[12px] font-semibold text-neutral-800">今期に実施</h4>
-            <p className="mt-1 text-[11px] text-neutral-600">
+            <h4 className="text-[12px] font-semibold text-text">今期に実施</h4>
+            <p className="mt-1 text-[11px] text-secondary">
               {scenario.included.map((initiative) => initiative.name).join("、") || "なし"}
             </p>
           </section>
           <section>
-            <h4 className="text-[12px] font-semibold text-neutral-800">今期は見送り</h4>
+            <h4 className="text-[12px] font-semibold text-text">今期は見送り</h4>
             {scenario.skipped.length === 0 ? (
-              <p className="mt-1 text-[11px] text-neutral-600">なし</p>
+              <p className="mt-1 text-[11px] text-secondary">なし</p>
             ) : (
-              <ul className="mt-1 space-y-1 text-[11px] text-neutral-600">
+              <ul className="mt-1 space-y-1 text-[11px] text-secondary">
                 {scenario.skipped.map((initiative) => (
                   <li key={initiative.id}>
-                    <span className="font-medium text-neutral-800">{initiative.name}</span>
+                    <span className="font-medium text-text">{initiative.name}</span>
                     <span className="block">見送る効果: {initiative.expectedEffect}</span>
                   </li>
                 ))}
@@ -102,18 +102,18 @@ export default function ScenarioSnapshotView({
           label={`${scenario.name}の${snapshotLabel}の月別需給`}
           caption={`${scenario.name}の${snapshotLabel}の月別需給`}
           matrix
-          className="rounded-md border border-neutral-200"
+          className="rounded-md border border-line"
         >
-          <thead className="bg-neutral-50">
+          <thead className="bg-surface-subtle">
             <tr>
-              <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">
+              <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">
                 職種 / 需要 / 配賦枠（人日）
               </th>
               {[1, 2, 3].map((monthIndex) => (
                 <th
                   key={monthIndex}
                   scope="col"
-                  className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600"
+                  className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary"
                 >
                   {monthLabelFromStart(startMonth, monthIndex as 1 | 2 | 3)}
                 </th>
@@ -130,15 +130,15 @@ export default function ScenarioSnapshotView({
               },
               [],
             ).map((group) => (
-              <tr key={group.roleId} className="border-b border-neutral-100 last:border-b-0">
-                <th scope="row" className="bg-white px-3 py-2 text-left text-[12px] font-medium text-neutral-800">
+              <tr key={group.roleId} className="border-b border-line-subtle last:border-b-0">
+                <th scope="row" className="bg-surface px-3 py-2 text-left text-[12px] font-medium text-text">
                   {group.roleName}
                 </th>
                 {group.cells.map((cell) => (
                   <td
                     key={cell.monthIndex}
                     className={`px-3 py-2 text-[11px] tabular-nums ${
-                      cell.shortageDays > 0 ? "font-semibold text-orange-700" : "text-neutral-600"
+                      cell.shortageDays > 0 ? "font-semibold text-danger" : "text-secondary"
                     }`}
                   >
                     {cellLabel(cell)}

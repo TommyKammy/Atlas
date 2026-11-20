@@ -4,6 +4,17 @@ import { isImeComposing } from "@/lib/ime-keyboard";
 
 import { useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/use-focus-trap";
+import {
+  dialogCloseClass,
+  dialogSubtitleClass,
+  dialogTitleClass,
+  fieldControlClass,
+  fieldLabelClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  SelectControl,
+  smallSecondaryButtonClass,
+} from "./ui/form-controls";
 
 export default function InviteUserDialog({
   open,
@@ -48,10 +59,9 @@ export default function InviteUserDialog({
     }
   };
 
-  const field = "w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-[#4075cf]";
   return (
     <div
-      className="fixed inset-0 z-[140] flex items-center justify-center bg-black/30 p-4"
+      className="fixed inset-0 z-[140] flex items-center justify-center bg-scrim p-4"
       onMouseDown={onClose}
     >
       <div
@@ -61,65 +71,85 @@ export default function InviteUserDialog({
         aria-modal="true"
         aria-labelledby="invite-dialog-title"
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-xl bg-white p-5 text-neutral-900 shadow-2xl"
+        className="w-full max-w-md overflow-hidden rounded-xl bg-surface text-text shadow-2xl"
       >
-        <div className="flex items-center justify-between">
-          <h2 id="invite-dialog-title" className="text-lg font-semibold">
-            メンバーを招待
-          </h2>
-          <button type="button" onClick={onClose} className="text-xl leading-none text-neutral-400 hover:text-neutral-700" aria-label="閉じる">
+        <div className="flex items-start justify-between gap-3 border-b border-line-subtle px-5 py-4">
+          <div className="min-w-0">
+            <h2 id="invite-dialog-title" className={dialogTitleClass}>
+              メンバーを招待
+            </h2>
+            <p className={dialogSubtitleClass}>メールアドレスと権限を指定して招待します。</p>
+          </div>
+          <button type="button" onClick={onClose} className={dialogCloseClass} aria-label="閉じる">
             ×
           </button>
         </div>
-        <p className="mt-1 text-sm text-neutral-500">メールアドレスと権限を指定して招待します。</p>
-        <div className="mt-4 space-y-2">
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="メールアドレス"
-            type="email"
-            autoComplete="off"
-            className={field}
-            onKeyDown={(e) => {
-              if (isImeComposing(e)) return;
-              if (e.key === "Enter") invite();
-            }}
-          />
-          <select value={role} onChange={(e) => setRole(e.target.value)} className={field}>
-            <option value="member">メンバー</option>
-            <option value="guest">ゲスト</option>
-            <option value="admin">管理者</option>
-          </select>
+        <div className="space-y-3 p-5">
+          <label className="block">
+            <span className={fieldLabelClass}>メールアドレス</span>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="メールアドレス"
+              type="email"
+              autoComplete="off"
+              className={`mt-1.5 ${fieldControlClass}`}
+              onKeyDown={(e) => {
+                if (isImeComposing(e)) return;
+                if (e.key === "Enter") invite();
+              }}
+            />
+          </label>
+          <label className="block">
+            <span className={fieldLabelClass}>権限</span>
+            <SelectControl
+              containerClassName="mt-1.5"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <option value="member">メンバー</option>
+              <option value="guest">ゲスト</option>
+              <option value="admin">管理者</option>
+            </SelectControl>
+          </label>
           <button
             type="button"
             onClick={invite}
             disabled={busy || !email.trim()}
-            className="w-full rounded-md bg-[#4075cf] px-4 py-2 text-sm font-medium text-white hover:bg-[#3567b8] disabled:opacity-40"
+            className={`${primaryButtonClass} w-full`}
           >
             {busy ? "送信中…" : "招待を送る"}
           </button>
+          {msg && <p className="text-[12px] text-secondary">{msg}</p>}
+          {result && (
+            <div className="rounded-md bg-surface-subtle p-3 text-[12px]">
+              <div className="font-medium text-text">
+                {result.emailed ? "招待メールを送信しました" : "SMTP未設定: 下のリンクを共有してください"}
+              </div>
+              <div className="mt-2">
+                <span className={fieldLabelClass}>招待リンク</span>
+                <div className="mt-1.5 flex gap-2">
+                  <input
+                    readOnly
+                    value={result.url}
+                    aria-label="招待リンク"
+                    className={`${fieldControlClass} min-w-0 flex-1 font-mono read-only:bg-surface-subtle`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard?.writeText(result.url).catch(() => undefined)}
+                    className={smallSecondaryButtonClass}
+                  >
+                    コピー
+                  </button>
+                </div>
+              </div>
+              {result.reason && <div className="mt-1 text-muted">{result.reason}</div>}
+            </div>
+          )}
         </div>
-        {msg && <p className="mt-2 text-xs text-neutral-600">{msg}</p>}
-        {result && (
-          <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2 text-xs">
-            <div className="font-medium text-blue-900">
-              {result.emailed ? "招待メールを送信しました" : "SMTP未設定: 下のリンクを共有してください"}
-            </div>
-            <div className="mt-1 flex gap-1">
-              <input readOnly value={result.url} className="min-w-0 flex-1 rounded border bg-white px-2 py-1 font-mono" />
-              <button
-                type="button"
-                onClick={() => navigator.clipboard?.writeText(result.url).catch(() => undefined)}
-                className="rounded border bg-white px-2 py-1 text-neutral-700 hover:bg-neutral-50"
-              >
-                コピー
-              </button>
-            </div>
-            {result.reason && <div className="mt-1 text-neutral-500">{result.reason}</div>}
-          </div>
-        )}
-        <div className="mt-4 text-right">
-          <button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100">
+        <div className="flex justify-end border-t border-line-subtle px-5 py-3">
+          <button type="button" onClick={onClose} className={secondaryButtonClass}>
             閉じる
           </button>
         </div>

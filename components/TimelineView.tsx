@@ -11,6 +11,7 @@ import { isImeComposing } from "@/lib/ime-keyboard";
 import { toast as toastMessage } from "@/lib/ui-feedback";
 
 import { ApiError, api } from "@/lib/api-client";
+import { TIMELINE_CRITICAL_LINE } from "@/lib/data-colors";
 import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,6 +20,7 @@ import { decodeTimelineTask, type TaskTimelineRow, type TimelineTaskPayload } fr
 import { shiftDate } from "@/lib/timeline-dnd";
 import { taskSectionId } from "@/lib/task-section";
 import { formatDay } from "@/lib/calendar";
+import { todayISO } from "@/lib/dates";
 import EmptyState from "./EmptyState";
 import ProjectTaskContextMenu from "./task/ProjectTaskContextMenu";
 import TaskAvatar from "./task/TaskAvatar";
@@ -109,6 +111,7 @@ function TimelineViewContent({
   const tasks = useQuickTasks(decodedTasks);
   const quick = useQuickTask();
   const quickId = quick?.drafts.at(-1)?.task.id;
+  const today = todayISO();
 
   const router = useRouter();
   const refresh = useCallback(() => router.refresh(), [router]);
@@ -610,6 +613,7 @@ function TimelineViewContent({
       <TimelineBar
         key={t.id}
         task={t}
+        today={today}
         lane={lane}
         overlapping={overlapping}
         onMoveRow={moveTimelineRow}
@@ -724,36 +728,44 @@ function TimelineViewContent({
         />
       )}
       <div className="flex">
-        <div className="w-36 shrink-0 border-r border-[#eaeaea] md:w-60">
+        <div className="w-36 shrink-0 border-r border-line-subtle md:w-60">
           <div className="h-[49px]" />
           {displayGroups.map((group) => (
             <div
               key={group.section.id}
-              className={`relative ${drag?.rowDrop?.sectionId === group.sectionId ? "bg-[#e8f0fe]" : ""}`}
+              className={`relative ${drag?.rowDrop?.sectionId === group.sectionId ? "bg-accent-soft" : ""}`}
               data-timeline-section={group.section.id}
               data-timeline-drop-target={drag?.rowDrop?.sectionId === group.sectionId ? "true" : undefined}
             >
-              <button
-                type="button"
-                data-timeline-section-row={group.section.id}
-                aria-expanded={!group.collapsed}
-                onClick={() => toggleSection(group.section.id)}
-                className="flex h-10 w-full items-center gap-1.5 pl-5 pr-2 text-left text-[14px] font-medium text-[#050505] hover:bg-neutral-50"
-              >
-                <svg
-                  viewBox="0 0 12 12"
-                  className={`h-3 w-3 shrink-0 text-neutral-500 transition-transform ${group.collapsed ? "-rotate-90" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
+              <div className="relative flex h-10 items-center max-md:px-1">
+                <button
+                  type="button"
+                  data-timeline-section-row={group.section.id}
+                  aria-expanded={!group.collapsed}
+                  onClick={() => toggleSection(group.section.id)}
+                  className="flex h-full w-full min-w-0 items-center gap-1.5 pl-5 pr-2 text-left text-[13px] font-bold text-text hover:bg-hover md:pr-9"
                 >
-                  <path d="m2.5 4.5 3.5 3 3.5-3" />
-                </svg>
-                <span className="truncate">{group.section.name}</span>
-                {drag?.rowDrop?.sectionId === group.sectionId && (
-                  <span className="ml-auto shrink-0 text-[11px] font-medium text-[#24529c]">移動先</span>
-                )}
-              </button>
+                  <svg
+                    viewBox="0 0 12 12"
+                    className={`h-3 w-3 shrink-0 text-muted transition-transform ${group.collapsed ? "-rotate-90" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path d="m2.5 4.5 3.5 3 3.5-3" />
+                  </svg>
+                  <span className="truncate">{group.section.name}</span>
+                  {drag?.rowDrop?.sectionId === group.sectionId && (
+                    <span className="ml-1 shrink-0 text-[11px] font-medium text-accent-text">移動先</span>
+                  )}
+                </button>
+                <span
+                  data-timeline-section-count
+                  className="pointer-events-none absolute right-2 hidden text-[12px] font-normal text-muted md:block"
+                >
+                  {group.all.length}
+                </span>
+              </div>
               {!group.collapsed &&
                 Array.from({ length: Math.max(0, group.laneCount - 1) }).map((_, index) => (
                   <div
@@ -762,7 +774,7 @@ function TimelineViewContent({
                     data-timeline-lane-spacer={`${group.section.id}-${index}`}
                   />
                 ))}
-              <span data-timeline-group-line className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[#e1e1e1]" />
+              <span data-timeline-group-line className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-line-subtle" />
             </div>
           ))}
           {canConfigure && (
@@ -799,10 +811,10 @@ function TimelineViewContent({
             {hover && !drag && (
               <div
                 data-timeline-hover
-                className="pointer-events-none absolute z-[1] border-x border-[#2c60b8]/20 bg-[#2c60b8]/5"
+                className="pointer-events-none absolute z-[1] border-x border-accent/20 bg-accent/5"
                 style={{ top: hover.top, height: hover.height, left: pct(hover.day), width: `${dayPct}%` }}
               >
-                <span className="absolute left-1/2 top-2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-[#2c60b8] text-[12px] leading-none text-white shadow-sm">
+                <span className="absolute left-1/2 top-2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-accent text-[12px] leading-none text-on-accent shadow-sm">
                   +
                 </span>
               </div>
@@ -813,7 +825,7 @@ function TimelineViewContent({
                 key={`milestone-line-${line.id}`}
                 data-timeline-milestone-line={line.id}
                 aria-hidden="true"
-                className="pointer-events-none absolute bottom-0 top-0 z-[2] w-0.5 bg-[#46a75a] opacity-20"
+                className={`pointer-events-none absolute bottom-0 top-0 z-[2] w-0.5 ${TIMELINE_CRITICAL_LINE} opacity-20`}
                 style={{ left: line.left }}
               />
             ))}
@@ -826,7 +838,7 @@ function TimelineViewContent({
                 data-timeline-group={group.section.id}
               >
                 {drag?.rowDrop?.sectionId === group.sectionId && (
-                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[#2c60b8]/[0.04]" />
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-accent/[0.04]" />
                 )}
                 {!group.collapsed &&
                   group.tasks.map((t) => {
@@ -865,7 +877,7 @@ function TimelineViewContent({
                     data-timeline-draft
                   >
                     <div
-                      className="tl-bar absolute top-[3px] z-10 flex items-center rounded-[4px] bg-white px-2 text-[13px] text-[#050505] shadow-[0_0_0_1px_#eaeaea,0_1px_4px_rgba(118,118,118,0.08)]"
+                      className="tl-bar absolute top-[3px] z-10 flex items-center rounded-[4px] bg-surface px-2 text-[13px] text-text shadow-[0_0_0_1px_var(--atlas-line),0_1px_4px_rgba(118,118,118,0.08)]"
                       style={{
                         height: BAR_H,
                         left: pct(draft.day),
@@ -894,14 +906,14 @@ function TimelineViewContent({
                         onBlur={(e) => finishDraft(e.currentTarget.value)}
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
-                        className="h-full w-full min-w-0 bg-transparent text-[13px] outline-none placeholder:text-neutral-400"
+                        className="h-full w-full min-w-0 bg-transparent text-[13px] outline-none placeholder:text-subtle"
                       />
                     </div>
                   </div>
                 )}
                 <span
                   data-timeline-group-line
-                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-px bg-[#e1e1e1]"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-px bg-line-subtle"
                 />
               </div>
             ))}
@@ -912,10 +924,10 @@ function TimelineViewContent({
                 data-timeline-row-drop-index={drag.rowDrop.row}
                 data-timeline-row-insert={drag.rowDrop.insert ? "true" : undefined}
                 data-timeline-row-drop-section={drag.rowDrop.sectionId ?? "none"}
-                className="pointer-events-none absolute inset-x-0 z-[5] border-y border-[#2c60b8] bg-[#2c60b8]/10"
+                className="pointer-events-none absolute inset-x-0 z-[5] border-y border-accent bg-accent/10"
                 style={{ top: drag.rowDrop.top, height: ROW_PITCH }}
               >
-                <span data-timeline-drop-label className="sticky left-2 inline-block rounded-b bg-[#2c60b8] px-2 py-0.5 text-[11px] font-medium text-white">
+                <span data-timeline-drop-label className="sticky left-2 inline-block rounded-b bg-accent px-2 py-0.5 text-[11px] font-medium text-on-accent">
                   {groups.find((group) => group.sectionId === drag.rowDrop?.sectionId)?.section.name}・{drag.rowDrop.insert ? "挿入" : "行"} {drag.rowDrop.row + 1}
                 </span>
               </div>
@@ -923,7 +935,8 @@ function TimelineViewContent({
 
             {showToday && (
               <div
-                className="pointer-events-none absolute bottom-0 top-[49px] z-[3] w-[2px] bg-[#2C60B8]"
+                data-timeline-today-line
+                className="pointer-events-none absolute bottom-0 top-[49px] z-[3] w-px bg-accent"
                 style={{ left: pct(todayDay) }}
                 title="今日"
               />
@@ -932,6 +945,7 @@ function TimelineViewContent({
               shapes={drag?.axis === "row" ? [] : dependencyShapes}
               hoveredKey={hoveredDep}
               draft={depLink}
+              critical={showCritical ? critical : undefined}
               onHover={showDepHover}
               onLeave={scheduleDepHoverClear}
               onDelete={removeDependency}
@@ -941,14 +955,14 @@ function TimelineViewContent({
         {undatedOpen && (
           <aside
             data-timeline-drawer
-            className="sticky top-0 min-h-[calc(100vh-220px)] max-h-[calc(100vh-220px)] w-[340px] shrink-0 overflow-y-auto border-l border-neutral-200 bg-white"
+            className="sticky top-0 min-h-[calc(100vh-220px)] max-h-[calc(100vh-220px)] w-[340px] shrink-0 overflow-y-auto border-l border-line bg-surface"
           >
-            <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
               <h2 className="text-[15px] font-semibold">日付なしのタスク</h2>
               <button
                 type="button"
                 onClick={() => setUndatedOpen(false)}
-                className="text-xl leading-none text-neutral-400 hover:text-neutral-700"
+                className="text-xl leading-none text-subtle hover:text-secondary"
                 aria-label="閉じる"
               >
                 ×
@@ -956,21 +970,21 @@ function TimelineViewContent({
             </div>
             <div className="p-3">
               {undated.length === 0 ? (
-                <p className="text-sm text-neutral-500">日付なしのタスクはありません。</p>
+                <p className="text-sm text-muted">日付なしのタスクはありません。</p>
               ) : (
                 undated.map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => openTask(t.id)}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-neutral-100"
+                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-hover"
                   >
                     <TaskAvatar name={t.assignee_name ?? "?"} className="h-6 w-6" />
                     <span title={t.name} dir="auto" className="min-w-0 flex-1 truncate">{t.name}</span>
                   </button>
                 ))
               )}
-              <div className="mt-4 border-t border-neutral-100 pt-3 text-xs font-medium text-neutral-500">
+              <div className="mt-4 border-t border-line-subtle pt-3 text-xs font-medium text-muted">
                 このプロジェクト内のタスク
               </div>
               {visibleTasks.map((t) => (
@@ -978,10 +992,10 @@ function TimelineViewContent({
                   key={t.id}
                   type="button"
                   onClick={() => openTask(t.id)}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-neutral-100"
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] hover:bg-hover"
                 >
                   <span title={t.name} dir="auto" className="min-w-0 flex-1 truncate">{t.name}</span>
-                  <span className="shrink-0 text-[11px] text-neutral-400">{t.due_on ?? "—"}</span>
+                  <span className="shrink-0 text-[11px] text-subtle">{t.due_on ?? "—"}</span>
                 </button>
               ))}
             </div>

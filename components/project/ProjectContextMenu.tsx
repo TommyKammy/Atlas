@@ -14,7 +14,7 @@ function MenuIcon({ name }: { name: string }) {
     strokeWidth: 1.6,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    className: "h-4 w-4 shrink-0 text-neutral-500",
+    className: "h-4 w-4 shrink-0 text-muted",
   };
   if (name === "share")
     return (
@@ -110,7 +110,7 @@ export default function ProjectContextMenu({
   useMenuKeyboard({ containerRef: menuRef, onClose });
   if (typeof document === "undefined") return null;
   const item =
-    "flex h-9 w-full items-center gap-2 px-3 text-left text-[14px] text-neutral-800 hover:bg-neutral-100";
+    "flex h-9 w-full items-center gap-2 px-3 text-left text-[14px] text-text hover:bg-hover";
   return createPortal(
     <>
       <div
@@ -126,7 +126,7 @@ export default function ProjectContextMenu({
         role="menu"
         aria-label={`${project.name}のメニュー`}
         style={{ left: pos.x, top: pos.y }}
-        className="fixed z-[90] w-[225px] rounded-md border bg-white py-1 shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
+        className="fixed z-[90] w-[225px] rounded-md border bg-surface py-1 shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
       >
         <button className={item} onClick={onShare}>
           <MenuIcon name="share" /> プロジェクトを共有
@@ -139,7 +139,7 @@ export default function ProjectContextMenu({
         </button>
         <button className={item} onClick={onAppearance}>
           <MenuIcon name="palette" /> カラーとアイコンを設定
-          <span className="ml-auto text-neutral-400">›</span>
+          <span className="ml-auto text-subtle">›</span>
         </button>
         <button className={item} onClick={onRename}>
           <MenuIcon name="pencil" /> 名前を変更

@@ -38,10 +38,10 @@ export default function NotepadWidget({ initial }: { initial: HomeNotepad }) {
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-1.5">
-        <span className="text-[11px] text-neutral-400">自分だけに表示されます</span>
+      <div className="flex items-center gap-2 border-b border-line-subtle px-4 py-1.5">
+        <span className="text-[11px] text-subtle">自分だけに表示されます</span>
         <span className="flex-1" />
-        <span data-home-notepad-status className="text-[11px] text-neutral-400">
+        <span data-home-notepad-status className="text-[11px] text-subtle">
           {state === "saving" ? "保存中…" : state === "saved" ? "保存しました" : ""}
         </span>
       </div>
@@ -55,11 +55,11 @@ export default function NotepadWidget({ initial }: { initial: HomeNotepad }) {
             setValue(event.target.value);
           }}
           placeholder="メモ、アイデア、次のアクションを自由に記録"
-          className="min-h-[150px] flex-1 resize-y rounded-md border border-neutral-200 px-3 py-2 text-[13px] leading-5 text-neutral-800 outline-none focus:border-[#4075cf]"
+          className="min-h-[150px] flex-1 resize-y rounded-md border border-field-line px-3 py-2 text-[13px] leading-5 text-text outline-none focus:border-accent"
         />
       </div>
 
-      <div className="border-t border-neutral-100 px-4 py-1.5 text-right text-[11px] text-neutral-400">
+      <div className="border-t border-line-subtle px-4 py-1.5 text-right text-[11px] text-subtle">
         {savedAt ? `最終更新 ${formatDateTime(savedAt)}` : "未保存"}
       </div>
     </>

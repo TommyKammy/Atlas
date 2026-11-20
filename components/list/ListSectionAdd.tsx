@@ -62,23 +62,23 @@ export default function ListSectionAdd({
             }}
             placeholder="セクション名"
             autoFocus
-            className={`${compact ? "w-full min-w-0 " : ""}rounded border px-2 py-1 text-sm outline-none focus:border-blue-500 disabled:bg-neutral-50`}
+            className={`${compact ? "w-full min-w-0 " : ""}rounded border px-2 py-1 text-sm outline-none focus:border-accent disabled:bg-surface-subtle`}
           />
           <button
             type="button"
             onClick={onCreate}
             disabled={saving}
-            className={`rounded bg-blue-600 py-1 text-white hover:bg-blue-700 disabled:opacity-50 ${compact ? "px-2 text-xs" : "px-3 text-sm"}`}
+            className={`rounded bg-accent py-1 text-on-accent hover:bg-accent-hover disabled:opacity-50 ${compact ? "px-2 text-xs" : "px-3 text-sm"}`}
           >
             {saving ? "追加中…" : "追加"}
           </button>
-          <button type="button" onClick={onCancel} disabled={saving} className={`text-neutral-500 disabled:opacity-50 ${compact ? "px-1 text-xs" : "px-2 text-sm"}`}>
+          <button type="button" onClick={onCancel} disabled={saving} className={`text-muted disabled:opacity-50 ${compact ? "px-1 text-xs" : "px-2 text-sm"}`}>
             キャンセル
           </button>
-          {error && <p id={errorId} role="alert" className="w-full text-sm text-red-700">{error}</p>}
+          {error && <p id={errorId} role="alert" className="w-full text-sm text-danger">{error}</p>}
         </div>
       ) : (
-        <button type="button" ref={startRef} onClick={onStart} className="text-left text-sm text-neutral-500 hover:text-neutral-800">
+        <button type="button" ref={startRef} onClick={onStart} className="text-left text-sm text-muted hover:text-text">
           ＋ セクションを追加
         </button>
       )}

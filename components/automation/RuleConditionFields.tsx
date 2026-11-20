@@ -9,7 +9,14 @@ import { conditionInputProblem } from "@/lib/automation/condition-schema";
 import RuleEntityPicker from "./RuleEntityPicker";
 import RuleMultiEntityPicker from "./RuleMultiEntityPicker";
 import RuleCollectionField from "./RuleCollectionField";
-import RuleValueField, { ruleInputClass } from "./RuleValueField";
+import RuleValueField from "./RuleValueField";
+import {
+  fieldHintClass,
+  fieldLabelClass,
+  quietButtonClass,
+  secondaryButtonClass,
+  SelectControl,
+} from "../ui/form-controls";
 
 export type RuleConditionFieldsProps = {
   conditions: RuleCondition[];
@@ -53,35 +60,35 @@ export function RuleConditionFields({ conditions, descriptors, projectId, onChan
   }
   return (
     <div className="space-y-3" data-rule-condition-fields>
-      <p className="text-[12px] leading-relaxed text-neutral-500">すべての条件を満たしたときに進みます。条件がない場合は、毎回この先へ進みます。</p>
+      <p className={`${fieldHintClass}`}>すべての条件を満たしたときに進みます。条件がない場合は、毎回この先へ進みます。</p>
       {conditions.map((condition, index) => {
         const problem = conditionInputProblem(condition, ruleConditionType(condition.field, descriptors));
-        return <div key={index} data-rule-condition-index={index} className={`space-y-3 rounded-lg border bg-white p-3 ${problem ? "border-rose-300" : "border-neutral-200"}`}>
+        return <div key={index} data-rule-condition-index={index} className={`space-y-3 rounded-lg border bg-surface p-3 ${problem ? "border-danger-line" : "border-line"}`}>
         <div className="flex items-start gap-2">
-          <label className="min-w-0 flex-1 text-[12px] font-medium text-neutral-700">条件の項目
-            <select value={condition.field} className={`${ruleInputClass} mt-1`}
+          <label className={`${fieldLabelClass} min-w-0 flex-1`}>条件の項目
+            <SelectControl containerClassName="mt-1" value={condition.field}
               onChange={(event) => update(index, changeRuleCondition(condition, event.target.value, condition.op, descriptors))}>
               {!fields.some((field) => field.id === condition.field) && <option value={condition.field}>保存済みの項目</option>}
               {groups.map((group) => <optgroup key={group} label={group}>{fields.filter((field) => field.group === group).map((field) =>
                 <option key={field.id} value={field.id}>{field.label}</option>)}</optgroup>)}
-            </select>
+            </SelectControl>
           </label>
           <button type="button" aria-label={`条件${index + 1}を削除`} onClick={() => onChange(conditions.filter((_, item) => item !== index))}
-            className="mt-6 rounded px-2 py-1 text-neutral-400 hover:bg-rose-50 hover:text-rose-600">×</button>
+            className={`${quietButtonClass} mt-5 shrink-0 hover:text-danger`}>×</button>
         </div>
-        <label className="block text-[12px] font-medium text-neutral-700">比較方法
-          <select value={condition.op} className={`${ruleInputClass} mt-1`}
+        <label className={fieldLabelClass}>比較方法
+          <SelectControl containerClassName="mt-1" value={condition.op}
             onChange={(event) => update(index, changeRuleCondition(condition, condition.field, event.target.value as RuleCondition["op"], descriptors))}>
             {ruleConditionOperators(condition.field, descriptors).map((operator) => <option key={operator.value} value={operator.value}>{operator.label}</option>)}
-          </select>
+          </SelectControl>
         </label>
         <div data-rule-condition-value>{valueEditor(condition, index, problem)}</div>
-        {problem && <p id={`${errorPrefix}-${index}-error`} data-rule-condition-error className="text-[12px] leading-5 text-rose-700"><span aria-hidden="true" className="mr-1 font-semibold">!</span>{problem}</p>}
+        {problem && <p id={`${errorPrefix}-${index}-error`} data-rule-condition-error className="text-[12px] leading-5 text-danger"><span aria-hidden="true" className="mr-1 font-semibold">!</span>{problem}</p>}
       </div>; })}
       <button type="button" disabled={conditions.length >= descriptors.limits.conditionsPerPath} onClick={() => {
         const field = fields[0]?.id ?? "task.name";
         onChange([...conditions, changeRuleCondition({ field: "", op: "eq" }, field, "eq", descriptors)]);
-      }} className="rounded-md border border-neutral-300 px-3 py-2 text-[12px] font-medium hover:bg-neutral-50 disabled:opacity-40">条件を追加</button>
+      }} className={secondaryButtonClass}>条件を追加</button>
     </div>
   );
 }

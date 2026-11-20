@@ -79,10 +79,10 @@ export default function TemplateBar({
     load();
   };
 
-  const field = "rounded border px-2 py-1 text-sm outline-none focus:border-blue-500";
+  const field = "rounded border px-2 py-1 text-sm outline-none focus:border-accent";
   return (
     <div className="flex flex-wrap items-center gap-2 border-b py-1.5 text-sm">
-      <span className="text-neutral-500">テンプレート</span>
+      <span className="text-muted">テンプレート</span>
       <select
         value={picked}
         onChange={(e) => setPicked(e.target.value)}
@@ -100,12 +100,12 @@ export default function TemplateBar({
         onClick={instantiate}
         disabled={!picked}
         aria-label="選択したテンプレートからタスクを作成"
-        className="rounded bg-blue-600 px-2 py-0.5 text-white disabled:opacity-40"
+        className="rounded bg-accent px-2 py-0.5 text-on-accent disabled:opacity-40"
       >
         使う
       </button>
       {picked && (
-        <button onClick={remove} className="text-neutral-400 hover:text-red-600" title="テンプレートを削除">
+        <button onClick={remove} className="text-subtle hover:text-danger" title="テンプレートを削除">
           ×
         </button>
       )}
@@ -130,15 +130,15 @@ export default function TemplateBar({
             className={`${field} w-24`}
           />
           <input value={subs} onChange={(e) => setSubs(e.target.value)} placeholder="サブタスク（カンマ区切り）" aria-label="サブタスク" className={`${field} w-48`} />
-          <button onClick={create} aria-label="テンプレートを保存" className="rounded bg-blue-600 px-2 py-0.5 text-white">
+          <button onClick={create} aria-label="テンプレートを保存" className="rounded bg-accent px-2 py-0.5 text-on-accent">
             保存
           </button>
-          <button onClick={() => setForming(false)} aria-label="テンプレート作成をキャンセル" className="text-neutral-500">
+          <button onClick={() => setForming(false)} aria-label="テンプレート作成をキャンセル" className="text-muted">
             ×
           </button>
         </span>
       ) : (
-        <button onClick={() => setForming(true)} aria-label="テンプレートを新規作成" className="text-neutral-600 hover:text-black">
+        <button onClick={() => setForming(true)} aria-label="テンプレートを新規作成" className="text-secondary hover:text-text">
           ＋ 新規
         </button>
       )}

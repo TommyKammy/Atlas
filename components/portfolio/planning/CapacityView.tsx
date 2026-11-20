@@ -59,8 +59,8 @@ export default function CapacityView({
     return (
       <div className="space-y-4">
         <div>
-          <h2 className="text-[16px] font-semibold text-neutral-900">職種別の余力</h2>
-          <p className="mt-0.5 text-[12px] text-neutral-500">
+          <h2 className="text-[16px] font-semibold text-text">職種別の余力</h2>
+          <p className="mt-0.5 text-[12px] text-muted">
             このポートフォリオに配賦された人日と、選択した案の需要を月別に確認します。
           </p>
         </div>
@@ -82,8 +82,8 @@ export default function CapacityView({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[16px] font-semibold text-neutral-900">職種別の余力</h2>
-          <p className="mt-0.5 text-[12px] text-neutral-500">
+          <h2 className="text-[16px] font-semibold text-text">職種別の余力</h2>
+          <p className="mt-0.5 text-[12px] text-muted">
             このポートフォリオに配賦された人日と、選択した案の需要を月別に確認します。
           </p>
         </div>
@@ -98,8 +98,8 @@ export default function CapacityView({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-[14px] font-semibold text-neutral-900">月別の需給</h3>
-        <div className="inline-flex rounded-md border border-neutral-300 bg-white p-0.5" role="group" aria-label="表示する案">
+        <h3 className="text-[14px] font-semibold text-text">月別の需給</h3>
+        <div className="inline-flex rounded-md border border-line-strong bg-surface p-0.5" role="group" aria-label="表示する案">
           {segments.map((segment) => (
             <button
               key={segment.value}
@@ -108,8 +108,8 @@ export default function CapacityView({
               aria-pressed={preview === segment.value}
               className={`rounded px-3 py-1.5 text-[12px] font-medium ${
                 preview === segment.value
-                  ? "bg-[#2c60b8] text-white"
-                  : "text-neutral-700 hover:bg-neutral-100"
+                  ? "bg-accent text-on-accent"
+                  : "text-secondary hover:bg-hover"
               }`}
             >
               {segment.label}
@@ -118,11 +118,11 @@ export default function CapacityView({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
-        <span className="text-[12px] font-semibold text-neutral-800">{result.name}</span>
+      <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface-subtle px-3 py-2">
+        <span className="text-[12px] font-semibold text-text">{result.name}</span>
         <StatusTag result={result} />
         {result.shortages.length > 0 && (
-          <span className="text-[11px] text-orange-800">
+          <span className="text-[11px] text-warning">
             {result.shortages
               .map(
                 (shortage) =>
@@ -132,7 +132,7 @@ export default function CapacityView({
           </span>
         )}
         {result.hasMissing && (
-          <span className="text-[11px] text-amber-800">未設定: {missingSummary(result)}</span>
+          <span className="text-[11px] text-warning">未設定: {missingSummary(result)}</span>
         )}
       </div>
 
@@ -155,18 +155,18 @@ export default function CapacityView({
             label="月別の職種別需給"
             caption={`${period.label} ${result.name}の月別職種別需給`}
             matrix
-            className="rounded-lg border border-neutral-200"
+            className="rounded-lg border border-line"
           >
-            <thead className="bg-neutral-50">
+            <thead className="bg-surface-subtle">
               <tr>
-                <th scope="col" className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">
+                <th scope="col" className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary">
                   職種 / 案件の需要 / 配賦枠
                 </th>
                 {PLANNING_MONTHS.map((monthIndex) => (
                   <th
                     key={monthIndex}
                     scope="col"
-                    className="border-b border-neutral-200 px-3 py-2 text-left text-[11px] font-semibold text-neutral-600"
+                    className="border-b border-line px-3 py-2 text-left text-[11px] font-semibold text-secondary"
                   >
                     {monthLabelFromStart(period.startMonth, monthIndex)}
                   </th>
@@ -175,8 +175,8 @@ export default function CapacityView({
             </thead>
             <tbody>
               {state.roles.map((role) => (
-                <tr key={role.id} className="border-b border-neutral-100 last:border-b-0">
-                  <th scope="row" className="bg-white px-3 py-2.5 text-left text-[12px] font-medium text-neutral-800">
+                <tr key={role.id} className="border-b border-line-subtle last:border-b-0">
+                  <th scope="row" className="bg-surface px-3 py-2.5 text-left text-[12px] font-medium text-text">
                     {role.name}
                   </th>
                   {PLANNING_MONTHS.map((monthIndex) => {
@@ -216,12 +216,12 @@ export default function CapacityView({
                               {formatDays(cell.demandDays)} /{" "}
                               {cell.capacityDays === null ? "未設定" : formatDays(cell.capacityDays)}
                             </b>
-                            <span className="ml-1 text-[10px] font-normal text-neutral-500">人日</span>
+                            <span className="ml-1 text-[10px] font-normal text-muted">人日</span>
                           </span>
                           <span className={`${planningTableStyles.meter} ${hot ? planningTableStyles.meterHot : ""}`}>
                             <span style={{ width: `${meterWidth}%` }} />
                           </span>
-                          <span className={`block text-[10px] ${hot ? "font-semibold text-orange-700" : "text-neutral-500"}`}>
+                          <span className={`block text-[10px] ${hot ? "font-semibold text-warning" : "text-muted"}`}>
                             {label}
                           </span>
                         </button>
@@ -230,8 +230,8 @@ export default function CapacityView({
                   })}
                 </tr>
               ))}
-              <tr className="bg-neutral-50">
-                <th scope="row" className="px-3 py-2 text-left text-[11px] font-semibold text-neutral-600">
+              <tr className="bg-surface-subtle">
+                <th scope="row" className="px-3 py-2 text-left text-[11px] font-semibold text-secondary">
                   合計
                 </th>
                 {PLANNING_MONTHS.map((monthIndex) => {
@@ -239,10 +239,10 @@ export default function CapacityView({
                   const demand = cells.reduce((sum, cell) => sum + cell.demandDays, 0);
                   const shortages = cells.reduce((sum, cell) => sum + cell.shortageDays, 0);
                   return (
-                    <td key={monthIndex} className="px-3 py-2 text-[11px] text-neutral-700 tabular-nums">
+                    <td key={monthIndex} className="px-3 py-2 text-[11px] text-secondary tabular-nums">
                       需要 {formatDays(demand)} 人日
                       {shortages > 0 && (
-                        <span className="ml-1 font-semibold text-orange-700">不足 {formatDays(shortages)}</span>
+                        <span className="ml-1 font-semibold text-warning">不足 {formatDays(shortages)}</span>
                       )}
                     </td>
                   );
@@ -250,13 +250,13 @@ export default function CapacityView({
               </tr>
             </tbody>
           </PlanningTable>
-          <p className="text-[11px] text-neutral-500">
+          <p className="text-[11px] text-muted">
             各セルは「案件の需要 / 配賦枠」。セルを選ぶと案件別の内訳を確認できます。0は明示的な0、空欄は未設定です。
           </p>
         </>
       )}
 
-      <div className="flex flex-wrap justify-end gap-3 border-t border-neutral-200 pt-3">
+      <div className="flex flex-wrap justify-end gap-3 border-t border-line pt-3">
         <button type="button" className={buttonQuiet} onClick={() => onNavigate("ledger")}>
           ← 案件台帳に戻る
         </button>

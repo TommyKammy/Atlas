@@ -49,45 +49,45 @@ export default function DeleteProjectDialog({
       open
       onClose={onClose}
       title="プロジェクトを削除"
-      backdropClassName="backdrop:bg-black/25"
-      panelClassName="w-[min(540px,94vw)] rounded-xl bg-white text-sm shadow-2xl"
+      backdropClassName="backdrop:bg-scrim"
+      panelClassName="w-[min(540px,94vw)] rounded-xl bg-surface text-sm shadow-2xl"
     >
       <div data-project-delete-dialog className="p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-[#b42318]">プロジェクトを削除しますか？</h2>
-            <p className="mt-0.5 text-xs text-neutral-500">{projectName}</p>
+            <h2 className="text-lg font-semibold text-danger">プロジェクトを削除しますか？</h2>
+            <p className="mt-0.5 text-xs text-muted">{projectName}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-neutral-400 hover:text-neutral-700">
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-xl leading-none text-subtle hover:text-secondary">
             ×
           </button>
         </div>
-        <p className="mt-4 text-neutral-700">
+        <p className="mt-4 text-secondary">
           「{projectName}」を削除済みに移動します。次のデータがプロジェクトと一緒に非表示になります。
         </p>
-        <ul className="mt-2 space-y-1 rounded-md border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-600">
+        <ul className="mt-2 space-y-1 rounded-md border border-line bg-surface-subtle px-4 py-3 text-xs text-secondary">
           {CONSEQUENCES.map((item) => (
             <li key={item} className="flex gap-2">
-              <span className="text-neutral-400">•</span>
+              <span className="text-subtle">•</span>
               <span>{item}</span>
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-xs text-neutral-500">
+        <p className="mt-3 text-xs text-muted">
           他のプロジェクトにも属しているタスクは削除されず、他のプロジェクトに残ります。削除済みページから復元できます。
         </p>
         <label className="mt-4 block">
-          <span className="mb-1 block text-xs font-medium text-neutral-600">
+          <span className="mb-1 block text-xs font-medium text-secondary">
             確認のためプロジェクト名「{projectName}」を入力してください
           </span>
           <input
             value={confirmName}
             onChange={(event) => setConfirmName(event.target.value)}
-            className="h-9 w-full rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-[#b42318] focus:ring-2 focus:ring-[#b42318]/20"
+            className="h-9 w-full rounded-md border border-field-line px-2.5 text-sm outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
             placeholder={projectName}
           />
         </label>
-        {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-3 text-xs text-danger">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" autoFocus
               className={PROJECT_DIALOG_SECONDARY} onClick={onClose} disabled={busy}>
@@ -97,7 +97,7 @@ export default function DeleteProjectDialog({
             type="button"
             onClick={() => void submit()}
             disabled={!matches || busy}
-            className="flex h-8 items-center rounded-md bg-[#c94848] px-3 text-sm font-medium text-white hover:bg-[#b83c3c] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-8 items-center rounded-md bg-danger-action px-3 text-sm font-medium text-on-strong hover:bg-danger-action-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? "削除中…" : "プロジェクトを削除"}
           </button>

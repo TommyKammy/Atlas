@@ -80,7 +80,7 @@ export function filterListTasks(tasks: TaskRow[], input: ListFilterInput): TaskR
       (dueFilter === "" ||
         (task.due_on !== null &&
           (dueFilter === "overdue"
-            ? task.due_on < today
+            ? !task.completed && task.due_on < today
             : dueFilter === "today"
               ? task.due_on === today
               : dueFilter === "week"

@@ -3,8 +3,9 @@
 import { useState, type ReactNode } from "react";
 import type { DashboardWidgetData } from "@/lib/dashboard-compute";
 import type { DashboardChartType, DashboardDrilldown } from "@/lib/dashboard-types";
+import { CHART_BENCHMARK_COLOR, CHART_SERIES_COLORS } from "@/lib/data-colors";
 
-const COLORS = ["#9b8cff", "#37b97c", "#5b9cf8", "#f0a44b", "#e879a8"];
+const COLORS = CHART_SERIES_COLORS;
 type HrefFor = (selection: DashboardDrilldown) => string;
 type ChartProps = { data: DashboardWidgetData; title?: string; hrefFor?: HrefFor };
 
@@ -31,7 +32,7 @@ function SvgDatumLink({
       data-dashboard-chart-link={kind}
       data-dashboard-chart-category={categoryKey}
       data-dashboard-chart-series={seriesIndex}
-      className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+      className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
     >
       {children}
     </a>
@@ -43,15 +44,15 @@ function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
   const [open, setOpen] = useState(false);
   if (!hrefFor || data.categories.length === 0) return null;
   return (
-    <details data-dashboard-chart-data onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-1 text-[11px] text-neutral-600">
+    <details data-dashboard-chart-data onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-1 text-[12px] text-secondary">
       <summary
         aria-label={`${title ?? "チャート"}のデータを表示`}
-        className="w-fit cursor-pointer rounded px-1 py-1 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+        className="w-fit cursor-pointer rounded px-1 py-1 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
       >
         データを表示
       </summary>
       {open && (
-        <div className="max-h-56 overflow-auto border-t border-neutral-100">
+        <div className="max-h-56 overflow-auto border-t border-line-subtle">
           <table className="w-full text-left text-[12px]">
             <caption className="sr-only">{title ?? "チャート"}の対象タスク</caption>
             <thead>
@@ -64,7 +65,7 @@ function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
             </thead>
             <tbody>
               {data.categories.map((category, categoryIndex) => (
-                <tr key={category.key ?? categoryIndex} className="border-t border-neutral-100">
+                <tr key={category.key ?? categoryIndex} className="border-t border-line-subtle">
                   <th scope="row" className="px-2 py-1.5 font-normal">{category.label}</th>
                   {category.values.map((value, seriesIndex) => {
                     const selection = category.drilldowns?.[seriesIndex];
@@ -77,7 +78,7 @@ function ChartDataLinks({ data, title, hrefFor }: ChartProps) {
                             data-dashboard-chart-link="table"
                             data-dashboard-chart-category={category.key}
                             data-dashboard-chart-series={seriesIndex}
-                            className="inline-block rounded px-1 py-0.5 text-blue-700 underline underline-offset-2 hover:text-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+                            className="inline-block rounded px-1 py-0.5 text-accent-text underline underline-offset-2 hover:text-accent-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
                           >
                             {value}
                           </a>
@@ -118,7 +119,7 @@ function niceTicks(maxValue: number): { max: number; values: number[] } {
 
 function EmptyChart() {
   return (
-    <div className="flex h-[250px] items-center justify-center rounded-md border border-dashed border-neutral-200 text-sm text-neutral-400">
+    <div className="flex h-[250px] items-center justify-center rounded-md bg-surface-subtle text-[12px] text-muted">
       データがありません
     </div>
   );
@@ -174,14 +175,14 @@ function GridAndAxes({
         const y = top + plotH - (v / max) * plotH;
         return (
           <g key={i}>
-            <line x1={left} x2={left + plotW} y1={y} y2={y} stroke="#ececec" strokeWidth="1" />
-            <text x={left - 7} y={y + 3} textAnchor="end" fontSize="10" fill="#8a8a8a">
+            <line x1={left} x2={left + plotW} y1={y} y2={y} stroke="var(--atlas-line-subtle)" strokeWidth="1" />
+            <text x={left - 7} y={y + 4} textAnchor="end" fontSize="11" fill="var(--atlas-text-muted)">
               {Number.isInteger(v) ? v : v.toFixed(1)}
             </text>
           </g>
         );
       })}
-      <line x1={left} x2={left} y1={top} y2={top + plotH} stroke="#d9d9d9" strokeWidth="1" />
+      <line x1={left} x2={left} y1={top} y2={top + plotH} stroke="var(--atlas-line)" strokeWidth="1" />
     </>
   );
 }
@@ -222,7 +223,7 @@ function CategoricalChart({ data, chartType, title, hrefFor }: ChartProps & { ch
           x2={left + plotW}
           y1={top + plotH - (data.benchmark / maxValue) * plotH}
           y2={top + plotH - (data.benchmark / maxValue) * plotH}
-          stroke="#e879a8"
+          stroke={CHART_BENCHMARK_COLOR}
           strokeDasharray="5 4"
           strokeWidth="1.2"
         />
@@ -271,7 +272,7 @@ function CategoricalChart({ data, chartType, title, hrefFor }: ChartProps & { ch
                         cy={y}
                         r={4.5}
                         fill={COLORS[si % COLORS.length]}
-                        stroke="#fff"
+                        stroke="var(--atlas-surface)"
                         strokeWidth="1"
                       >
                         <title>{`${category.label} / ${data.series[si] ?? ""}: ${value}`}</title>
@@ -286,7 +287,7 @@ function CategoricalChart({ data, chartType, title, hrefFor }: ChartProps & { ch
                       y={y}
                       width={barWidth}
                       height={Math.max(0, h)}
-                      rx={3}
+                      rx={2}
                       fill={COLORS[si % COLORS.length]}
                       opacity={0.9}
                     >
@@ -296,11 +297,11 @@ function CategoricalChart({ data, chartType, title, hrefFor }: ChartProps & { ch
                   {showLabels && value > 0 && (
                     <text
                       x={x + barWidth / 2}
-                      y={y - 5}
+                      y={y - 6}
                       textAnchor="middle"
-                      fontSize="9"
+                      fontSize="11"
                       fontWeight="600"
-                      fill="#6b6b6b"
+                      fill="var(--atlas-text-secondary)"
                     >
                       {value}
                     </text>
@@ -313,8 +314,8 @@ function CategoricalChart({ data, chartType, title, hrefFor }: ChartProps & { ch
               x={center}
               y={top + plotH + 18}
               textAnchor={rotateLabels ? "end" : "middle"}
-              fontSize="10"
-              fill="#7d7d7d"
+              fontSize="11"
+              fill="var(--atlas-text-muted)"
               transform={rotateLabels ? `rotate(-32 ${center} ${top + plotH + 18})` : undefined}
             >
               {truncate(category.label)}
@@ -345,7 +346,7 @@ function DonutChart({ data, title, hrefFor }: ChartProps) {
   return (
     <div className="flex min-h-[250px] items-center gap-5 px-2">
       <svg viewBox="0 0 220 220" role={hrefFor ? "group" : "img"} aria-label={title ?? "チャート"} className="h-[190px] w-[190px] shrink-0">
-        <circle cx="110" cy="110" r={radius} fill="none" stroke="#f0edff" strokeWidth={stroke} />
+        <circle cx="110" cy="110" r={radius} fill="none" stroke="var(--atlas-surface-muted)" strokeWidth={stroke} />
         {slices.map((slice, i) => {
           const length = (slice.value / total) * circumference;
           const dash = `${length} ${circumference - length}`;
@@ -381,10 +382,10 @@ function DonutChart({ data, title, hrefFor }: ChartProps) {
           label={datumLabel(title, "合計", "", total)}
           kind="total"
         >
-        <text x="110" y="106" textAnchor="middle" fontSize="28" fontWeight="600" fill="#303030">
+        <text x="110" y="106" textAnchor="middle" fontSize="24" fontWeight="600" fill="var(--atlas-text)" className="tabular-nums">
           {total}
         </text>
-        <text x="110" y="126" textAnchor="middle" fontSize="11" fill="#8a8a8a">
+        <text x="110" y="126" textAnchor="middle" fontSize="12" fill="var(--atlas-text-muted)">
           合計
         </text>
         </SvgDatumLink>
@@ -399,7 +400,7 @@ function DonutChart({ data, title, hrefFor }: ChartProps) {
               style={{ backgroundColor: COLORS[i % COLORS.length] }}
             />
             <span className="truncate">{slice.label}</span>
-            <span className="ml-auto font-medium text-neutral-800">{slice.value}</span>
+            <span className="ml-auto font-medium text-text">{slice.value}</span>
           </>;
           return href ? (
             <a
@@ -409,9 +410,9 @@ function DonutChart({ data, title, hrefFor }: ChartProps) {
               data-dashboard-chart-link="legend"
               data-dashboard-chart-category={slice.category.key}
               data-dashboard-chart-series={0}
-              className="flex items-center gap-2 rounded px-1 py-0.5 text-[12px] text-neutral-600 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2c60b8]"
+              className="flex items-center gap-2 rounded-md px-1.5 py-1 text-[13px] text-secondary hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
             >{content}</a>
-          ) : <div key={slice.category.key ?? slice.categoryIndex} className="flex items-center gap-2 text-[12px] text-neutral-600">{content}</div>;
+          ) : <div key={slice.category.key ?? slice.categoryIndex} className="flex items-center gap-2 px-1.5 py-1 text-[13px] text-secondary">{content}</div>;
         })}
       </div>
     </div>
@@ -440,7 +441,7 @@ function TimeChart({ data, title, hrefFor }: ChartProps) {
     <ChartFrame height={height} title={title} interactive={Boolean(hrefFor)}>
       <GridAndAxes width={width} height={height} max={maxValue} ticks={scale.values} />
       {data.benchmark !== null && data.benchmark !== undefined && (
-        <line x1={left} x2={left + plotW} y1={yAt(data.benchmark)} y2={yAt(data.benchmark)} stroke="#e879a8" strokeDasharray="5 4" />
+        <line x1={left} x2={left + plotW} y1={yAt(data.benchmark)} y2={yAt(data.benchmark)} stroke={CHART_BENCHMARK_COLOR} strokeDasharray="5 4" />
       )}
       {data.series.map((series, si) => {
         const points = data.categories.map((category, i) => `${xAt(i)},${yAt(category.values[si] ?? 0)}`);
@@ -469,7 +470,7 @@ function TimeChart({ data, title, hrefFor }: ChartProps) {
                 cy={yAt(category.values[si] ?? 0)}
                 r="3.2"
                 fill={COLORS[si % COLORS.length]}
-                stroke="#fff"
+                stroke="var(--atlas-surface)"
                 strokeWidth="1"
               >
                 <title>{`${category.label} / ${series}: ${category.values[si] ?? 0}`}</title>
@@ -496,8 +497,8 @@ function TimeChart({ data, title, hrefFor }: ChartProps) {
             x={xAt(i)}
             y={top + plotH + 18}
             textAnchor="middle"
-            fontSize="9.5"
-            fill="#8a8a8a"
+            fontSize="11"
+            fill="var(--atlas-text-muted)"
           >
             {category.label}
           </text>
@@ -507,7 +508,7 @@ function TimeChart({ data, title, hrefFor }: ChartProps) {
         {data.series.map((series, si) => (
           <g key={series} transform={`translate(${si * 92}, 0)`}>
             <rect width="8" height="8" y="-7" rx="2" fill={COLORS[si % COLORS.length]} />
-            <text x="12" y="0" fontSize="10" fill="#777">
+            <text x="12" y="0" fontSize="11" fill="var(--atlas-text-muted)">
               {series}
             </text>
           </g>
@@ -530,9 +531,9 @@ export default function ChartRenderer({
 }) {
   if (data.kind === "disabled-status") {
     return (
-      <div data-dashboard-status-disabled className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-4 py-5">
-        <div className="font-semibold text-neutral-800">Statusフィールドは削除されています</div>
-        <p className="mt-1 text-sm text-neutral-500">
+      <div data-dashboard-status-disabled className="rounded-md border border-dashed border-line-strong bg-surface-subtle px-4 py-5">
+        <div className="font-semibold text-text">Statusフィールドは削除されています</div>
+        <p className="mt-1 text-sm text-muted">
           カスタマイズ → フィールドからStatusを再追加すると、保持されている値が再表示されます。
         </p>
       </div>
@@ -541,11 +542,11 @@ export default function ChartRenderer({
   if (data.kind === "number") {
     const href = hrefFor && data.drilldown ? hrefFor(data.drilldown) : undefined;
     const value = data.value ?? 0;
-    const valueClass = "text-[48px] font-semibold leading-none tracking-tight text-neutral-900";
+    const valueClass = "text-[34px] font-semibold leading-none tracking-tight text-text tabular-nums";
     return (
       <div className="flex min-h-[64px] flex-col items-center justify-center py-1">
         {href ? (
-          <a href={href} aria-label={datumLabel(title, "", "", value)} data-dashboard-chart-link="total" className={`${valueClass} rounded hover:underline hover:decoration-neutral-300 hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2c60b8]`}>
+          <a href={href} aria-label={datumLabel(title, "", "", value)} data-dashboard-chart-link="total" className={`${valueClass} rounded hover:underline hover:decoration-line-strong hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus-ring`}>
             {value}
           </a>
         ) : <div className={valueClass}>{value}</div>}

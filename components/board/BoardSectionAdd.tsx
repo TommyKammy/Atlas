@@ -27,7 +27,7 @@ export default function BoardSectionAdd({
     <div
       ref={containerRef}
       data-board-section-add
-      className="w-72 shrink-0 self-start pt-1"
+      className="w-[17.5rem] shrink-0 self-start pt-1"
       onFocusCapture={(event) => event.target.scrollIntoView({ block: "nearest", inline: "nearest" })}
     >
       <ListSectionAdd compact {...composer} />

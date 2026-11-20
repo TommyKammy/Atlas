@@ -22,22 +22,22 @@ export default function SavedViewsBar({
           key={view.id}
           className={`flex items-center gap-1 rounded-full border px-2 py-0.5 ${
             view.id === activeSavedId
-              ? "border-blue-600 bg-blue-50 text-blue-700"
-              : "text-neutral-600"
+              ? "border-accent bg-accent-soft text-accent-text"
+              : "text-secondary"
           }`}
         >
           <a href={`/projects/${projectId}?view=list&saved=${view.id}`}>{view.name}</a>
           <button
             onClick={() => void onDelete(view.id)}
             title="保存ビューを削除"
-            className="text-neutral-300 hover:text-red-600"
+            className="text-subtle hover:text-danger"
           >
             ×
           </button>
         </span>
       ))}
       {activeSavedId !== null && (
-        <a href={`/projects/${projectId}?view=list`} className="text-neutral-500 hover:text-black">
+        <a href={`/projects/${projectId}?view=list`} className="text-muted hover:text-text">
           クリア ×
         </a>
       )}

@@ -55,7 +55,7 @@ export default function ProjectDescriptionEditor({
               setValue(initial);
               setEditing(true);
             }}
-            className="text-[12px] text-neutral-500 hover:underline"
+            className="text-[12px] text-muted hover:underline"
           >
             編集
           </button>
@@ -69,13 +69,13 @@ export default function ProjectDescriptionEditor({
             onChange={(e) => setValue(e.target.value)}
             rows={4}
             placeholder="プロジェクトの目的、背景、決定事項を入力（Markdown可）"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-md border border-field-line px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setEditing(false)}
-              className="rounded px-3 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
+              className="rounded px-3 py-1 text-sm text-secondary hover:bg-hover"
             >
               キャンセル
             </button>
@@ -84,7 +84,7 @@ export default function ProjectDescriptionEditor({
               data-project-description-save
               disabled={saving}
               onClick={() => void save()}
-              className="rounded bg-blue-600 px-4 py-1 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded bg-accent px-4 py-1 text-sm text-on-accent hover:bg-accent-hover disabled:opacity-50"
             >
               保存
             </button>
@@ -99,8 +99,8 @@ export default function ProjectDescriptionEditor({
               setEditing(true);
             }
           }}
-          className={`prose-sm mt-2 max-w-none text-sm text-neutral-700 [&_a]:text-blue-700 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 ${
-            canEdit ? "cursor-text rounded p-2 hover:bg-neutral-50" : ""
+          className={`prose-sm mt-2 max-w-none text-sm text-secondary [&_a]:text-accent-text [&_code]:rounded [&_code]:bg-surface-muted [&_code]:px-1 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 ${
+            canEdit ? "cursor-text rounded p-2 hover:bg-hover" : ""
           }`}
           dangerouslySetInnerHTML={{ __html: renderMarkdown(initial) }}
         />
@@ -114,7 +114,7 @@ export default function ProjectDescriptionEditor({
             setValue("");
             setEditing(true);
           }}
-          className="mt-2 w-full rounded-md border border-dashed border-neutral-200 px-3 py-4 text-left text-sm text-neutral-500 hover:bg-neutral-50 disabled:cursor-default"
+          className="mt-2 w-full rounded-md border border-dashed border-line px-3 py-4 text-left text-sm text-muted hover:bg-hover disabled:cursor-default"
         >
           プロジェクトの説明を追加
         </button>

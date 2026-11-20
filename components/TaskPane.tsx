@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { ReactNode } from "react";
 import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
+import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import {
   customFieldDisplay,
   customValueToArray,
@@ -12,8 +12,15 @@ import {
   type CustomField,
   type CustomValue,
 } from "@/lib/custom-fields";
+import { todayISO } from "@/lib/dates";
+import {
+  overdueBadgeText,
+  overdueDays,
+  taskStateSummary,
+} from "@/lib/task-pane-presentation";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import TaskPaneHeader from "./task/TaskPaneHeader";
+import TaskFieldRow from "./task/TaskFieldRow";
 import TaskMilestoneIcon from "./task/TaskMilestoneIcon";
 import TaskVisibilityBanner from "./task/TaskVisibilityBanner";
 import TaskDescriptionSection from "./task/TaskDescriptionSection";
@@ -35,17 +42,6 @@ import TaskDraftInput from "./task/TaskDraftInput";
 import TaskSaveStatus from "./task/TaskSaveStatus";
 import type { TaskApprovalSummary } from "@/lib/task-approval";
 import { QUICK_REACTIONS, useTaskPane } from "@/lib/use-task-pane";
-
-function FieldRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-9 items-start gap-2 rounded-md px-1 py-1 hover:bg-neutral-50">
-      <span className="w-[88px] shrink-0 truncate pt-1.5 text-[12px] text-neutral-500" title={label}>
-        {label}
-      </span>
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
-  );
-}
 
 export default function TaskPane({
   projectId,
@@ -182,7 +178,7 @@ export default function TaskPane({
       return (
         <div
           key={`cf-${task.id}-${field.id}`}
-          className="min-h-7 py-1 text-[13px] text-neutral-700"
+          className="min-h-7 py-1 text-[13px] text-text"
           data-custom-readonly={field.field_type}
         >
           {customFieldDisplay(field, value, task, users, customValues, customFields)}
@@ -206,7 +202,7 @@ export default function TaskPane({
           <button
             type="button"
             onClick={() => setReferenceOpen(field.id)}
-            className="min-h-7 w-full rounded border border-transparent px-1 py-1 text-left text-[13px] text-neutral-700 hover:border-neutral-200 hover:bg-white"
+            className="min-h-7 w-full rounded border border-transparent px-1 py-1 text-left text-[13px] text-text hover:border-line hover:bg-hover"
           >
             {customFieldDisplay(field, value, task, users, customValues, customFields)}
           </button>
@@ -229,10 +225,10 @@ export default function TaskPane({
       return (
         <div className="flex flex-wrap gap-x-3 gap-y-1 py-1" key={`cf-${task.id}-${field.id}`}>
           {users.length === 0 ? (
-            <span className="text-[12px] text-neutral-400">メンバーがいません</span>
+            <span className="text-[12px] text-muted">メンバーがいません</span>
           ) : (
             users.map((user) => (
-              <label key={user.id} className="flex cursor-pointer items-center gap-1 text-[12px] text-neutral-600">
+              <label key={user.id} className="flex cursor-pointer items-center gap-1 text-[12px] text-text">
                 <input
                   type="checkbox"
                   checked={selected.includes(user.id)}
@@ -261,7 +257,7 @@ export default function TaskPane({
           onBlur={(event) =>
             setCustomValue(field.id, event.target.value === "" ? null : Number(event.target.value))
           }
-          className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+          className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
         />
       );
     }
@@ -272,7 +268,7 @@ export default function TaskPane({
           defaultValue={value?.value_date ?? ""}
           key={`cf-${task.id}-${field.id}`}
           onBlur={(event) => setCustomValue(field.id, event.target.value || null)}
-          className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+          className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
         />
       );
     }
@@ -281,10 +277,10 @@ export default function TaskPane({
       return (
         <div className="flex flex-wrap gap-x-3 gap-y-1 py-1" key={`cf-${task.id}-${field.id}`}>
           {field.options.length === 0 ? (
-            <span className="text-[12px] text-neutral-400">選択肢がありません</span>
+            <span className="text-[12px] text-muted">選択肢がありません</span>
           ) : (
             field.options.map((option) => (
-              <label key={option} className="flex cursor-pointer items-center gap-1 text-[12px] text-neutral-600">
+              <label key={option} className="flex cursor-pointer items-center gap-1 text-[12px] text-text">
                 <input
                   type="checkbox"
                   checked={selected.includes(option)}
@@ -310,7 +306,7 @@ export default function TaskPane({
           defaultValue={customValueToInput(field, value)}
           key={`cf-${task.id}-${field.id}`}
           onChange={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
-          className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+          className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
         >
           <option value="">–</option>
           {field.options.map((option) => (
@@ -326,7 +322,7 @@ export default function TaskPane({
         defaultValue={customValueToInput(field, value)}
         key={`cf-${task.id}-${field.id}`}
         onBlur={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
-        className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+        className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
       />
     );
   };
@@ -347,6 +343,9 @@ export default function TaskPane({
   const statusChoices = statusOptions.includes(task.status)
     ? statusOptions
     : [task.status, ...statusOptions];
+  const today = todayISO();
+  const stateSummary = taskStateSummary(task, today);
+  const lateDays = stateSummary.state === "overdue" ? overdueDays(task.due_on, today) : 0;
 
   return (
     <aside
@@ -356,10 +355,10 @@ export default function TaskPane({
       aria-modal="true"
       aria-label="タスク詳細"
       data-task-pane
-      className={`taskpane-enter flex w-full shrink-0 flex-col overflow-hidden border-t bg-white ${
+      className={`taskpane-enter @container flex w-full shrink-0 flex-col overflow-hidden bg-surface-subtle ${
         maximized
           ? "fixed inset-0 z-[120]"
-          : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[calc(100dvh-3rem)] md:w-[560px] md:self-start md:border-l md:border-t-0 xl:w-[680px] 2xl:w-[760px]"
+          : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[100dvh] md:w-[480px] md:self-start md:border-l md:border-line lg:w-[440px]"
       }`}
     >
       <TaskPaneHeader
@@ -368,6 +367,9 @@ export default function TaskPane({
         showTitle={showTitle}
         closeHref={closeHref}
         maximized={maximized}
+        stateText={stateSummary.text}
+        overdueDays={lateDays}
+        overdueText={lateDays > 0 ? overdueBadgeText(lateDays) : null}
         onToggle={toggle}
         onRemove={remove}
         onShare={() => void shareTask()}
@@ -385,12 +387,12 @@ export default function TaskPane({
       >
         <TaskVisibilityBanner onShare={() => void shareTask()} />
 
-        <div className="px-4 pb-8 pt-3">
+        <div className="px-5 pb-10 pt-4 md:px-[26px] md:pt-[18px]" data-task-pane-content>
           <TaskSaveStatus states={saveStates} reloading={reloading} onReload={reloadTask} />
-          {!canEdit && <p role="status" data-task-readonly className="mb-2 text-[12px] text-neutral-600">タスクの項目は閲覧のみです。変更には編集権限が必要です。</p>}
+          {!canEdit && <p role="status" data-task-readonly className="mb-2 text-[12px] text-secondary">タスクの項目は閲覧のみです。変更には編集権限が必要です。</p>}
           {conflict && (
-            <div className="mb-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm">
-              <div className="font-semibold text-red-700">他のユーザーが先に更新しました</div>
+            <div className="mb-3 rounded-lg border border-danger-line bg-danger-soft p-3 text-sm">
+              <div className="font-semibold text-danger">他のユーザーが先に更新しました</div>
               <div className="mt-1 space-y-0.5">
                 {Object.keys(conflict.attempted)
                   .filter((key) => key in FIELD_LABELS)
@@ -407,14 +409,14 @@ export default function TaskPane({
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={retryOverwrite}
-                  className="rounded bg-red-600 px-3 py-1 text-white hover:bg-red-700"
+                  className="rounded bg-danger-strong px-3 py-1 text-on-strong hover:bg-danger-strong-hover"
                 >
                   最新で上書きする
                 </button>
                 <button
                   onClick={discardConflict}
                   data-task-conflict-discard
-                  className="rounded border px-3 py-1 hover:bg-white"
+                  className="rounded border px-3 py-1 hover:bg-hover"
                 >
                   破棄して最新表示
                 </button>
@@ -433,12 +435,12 @@ export default function TaskPane({
             onSave={(value, stamp) => { if (value.trim()) return patch({ name: value.trim() }, stamp); }}
             normalize={(value) => value.trim()}
             enterBlurs
-            className="w-full border-b border-transparent bg-transparent pb-1 text-[24px] font-semibold leading-8 tracking-[-0.01em] text-neutral-900 outline-none placeholder:text-neutral-300 focus:border-[#4075cf]"
+            className="w-full border-b border-transparent bg-transparent pb-1 text-[20px] font-bold leading-[1.4] text-text outline-none placeholder:text-subtle focus:border-accent"
             placeholder="タスク名を入力"
           />
 
           {task.is_milestone && (
-            <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-[#2f7d43]">
+            <div className="mt-2 flex items-center gap-1 text-[11px] font-medium text-success">
               <TaskMilestoneIcon />
               マイルストーン
             </div>
@@ -447,8 +449,8 @@ export default function TaskPane({
           <TaskApprovalSection key={task.id} task={task} viewerId={viewerId} canEdit={canEdit}
             openSignal={approvalOpenSignal} onSummaryChange={(value) => setApprovalOverride({ taskId: task.id, stamp: task.updated_at, approval: value })} onChanged={refresh} />
 
-          <fieldset disabled={!canEdit || reloading} className="mt-2 min-w-0 space-y-0.5 border-0 p-0" data-task-fields>
-            <FieldRow label="担当者">
+          <fieldset disabled={!canEdit || reloading} className="mt-5 flex min-w-0 flex-col gap-3 border-0 p-0" data-task-fields>
+            <TaskFieldRow label="担当者">
               {assigneeEditing ? (
                 <div className="min-w-0">
                   <AssigneePicker
@@ -466,7 +468,7 @@ export default function TaskPane({
                   type="button"
                   onClick={() => setAssigneeEditing(true)}
                   aria-label="担当者を設定"
-                  className="flex h-7 min-w-0 max-w-full items-center gap-2 rounded px-1 text-[13px] text-neutral-800 hover:bg-neutral-100"
+                  className="flex h-7 min-w-0 max-w-full items-center gap-2 rounded px-0.5 text-[13px] text-text hover:bg-hover"
                 >
                   {assignee ? (
                     <TaskAvatar name={assignee.name} url={assignee.avatar_url} className="h-5 w-5" textClassName="text-[9px]" />
@@ -474,14 +476,14 @@ export default function TaskPane({
                     <EmptyCellIcon kind="assignee" />
                   )}
                   <span className="truncate">{assignee?.name ?? "未割り当て"}</span>
-                  <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.3">
                     <path d="m3.5 6 4.5 4 4.5-4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
               )}
-            </FieldRow>
+            </TaskFieldRow>
 
-            <FieldRow label="期日">
+            <TaskFieldRow label="期日">
               <TaskDueDateField
                 key={`dates-${task.id}-${reloadRevision}`}
                 start={task.start_on}
@@ -489,7 +491,7 @@ export default function TaskPane({
                 overdue={isOverdue}
                 onPatch={patch}
               />
-            </FieldRow>
+            </TaskFieldRow>
 
             <TaskDependenciesSection
               key={`dependencies-${task.id}-${reloadRevision}`}
@@ -504,13 +506,13 @@ export default function TaskPane({
               onRemove={removeDependency}
             />
 
-            <FieldRow label="プロジェクト">
-              <div className="min-w-0 text-neutral-800">
+            <TaskFieldRow label="プロジェクト">
+              <div className="min-w-0 text-text">
                 {memberships.map((membership) => {
                   const isPrimary = membership.id === task.project_id;
                   return (
                     <div key={membership.id} className="flex min-h-7 items-center gap-1.5 text-[13px]">
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[#e8eef8] text-[#38506e]">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-accent-soft text-accent-text">
                         <svg viewBox="0 0 16 16" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.4">
                           <path d="M3 13V3h10v10zM3 6h10M6 6v7" />
                         </svg>
@@ -520,12 +522,12 @@ export default function TaskPane({
                         {membership.section_name ? ` / ${membership.section_name}` : ""}
                       </span>
                       {isPrimary ? (
-                        <span className="shrink-0 text-[10px] text-neutral-400">主</span>
+                        <span className="shrink-0 text-[10px] text-muted">主</span>
                       ) : (
                         <button
                           type="button"
                           onClick={() => removeMembership(membership.id)}
-                          className="shrink-0 rounded px-1 text-[12px] text-neutral-400 hover:bg-neutral-100 hover:text-red-600"
+                          className="shrink-0 rounded px-1 text-[12px] text-muted hover:bg-hover hover:text-danger"
                           title="所属を外す"
                           aria-label={`${membership.name} から外す`}
                         >
@@ -539,7 +541,7 @@ export default function TaskPane({
                   <button
                     type="button"
                     onClick={openAddProject}
-                    className="flex h-7 items-center gap-1 rounded px-1 text-[12px] text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+                    className="flex h-7 items-center gap-1 rounded px-0.5 text-[12px] text-muted hover:bg-hover hover:text-secondary"
                   >
                     <span className="text-sm leading-none">＋</span>
                     プロジェクトを追加
@@ -549,7 +551,7 @@ export default function TaskPane({
                     <select
                       value={newMemberProject}
                       onChange={(event) => onPickMemberProject(event.target.value)}
-                      className="h-8 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                      className="h-8 rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
                       aria-label="プロジェクトを選択"
                     >
                       <option value="">プロジェクトを選択</option>
@@ -566,7 +568,7 @@ export default function TaskPane({
                         <select
                           value={newMemberSection}
                           onChange={(event) => setNewMemberSection(event.target.value)}
-                          className="h-8 min-w-0 flex-1 rounded border border-neutral-300 px-2 text-[12px] outline-none focus:border-[#4075cf]"
+                          className="h-8 min-w-0 flex-1 rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
                           aria-label="セクションを選択"
                         >
                           <option value="">セクションなし</option>
@@ -579,7 +581,7 @@ export default function TaskPane({
                         <button
                           type="button"
                           onClick={addMembership}
-                          className="shrink-0 rounded bg-[#2f6fd0] px-3 text-[12px] font-medium text-white hover:bg-[#2459ad]"
+                          className="shrink-0 rounded bg-accent px-3 text-[12px] font-medium text-on-accent hover:bg-accent-hover"
                         >
                           追加
                         </button>
@@ -588,71 +590,99 @@ export default function TaskPane({
                     <button
                       type="button"
                       onClick={closeAddProject}
-                      className="self-start rounded px-1 py-0.5 text-[11px] text-neutral-500 hover:bg-neutral-100"
+                      className="self-start rounded px-1 py-0.5 text-[11px] text-muted hover:bg-hover"
                     >
                       キャンセル
                     </button>
                   </div>
                 )}
               </div>
-            </FieldRow>
+            </TaskFieldRow>
 
-            <FieldRow label="進捗">
-              <div className="flex h-7 items-center gap-2">
-                <TaskDraftInput
-                  taskId={task.id}
-                  field="progress"
-                  value={task.progress}
-                  updatedAt={task.updated_at}
-                  recovery={inputRecovery}
-                  readOnly={!canEdit || reloading}
-                  type="number"
-                  min={0}
-                  max={100}
-                  onSave={(value, stamp) => patch({ progress: Math.max(0, Math.min(100, Number(value))) }, stamp)}
-                  normalize={(value) => String(Math.max(0, Math.min(100, Number(value))))}
-                  label="進捗"
-                  className="h-7 w-12 rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
-                />
-                <span className="text-[10px] text-neutral-400">%</span>
-                <span className="h-1.5 w-28 overflow-hidden rounded-full bg-neutral-200">
-                  <span className="block h-full rounded-full bg-green-500" style={{ width: `${task.progress}%` }} />
-                </span>
-              </div>
-            </FieldRow>
-
-            {statusFieldEnabled && (
-              <FieldRow label={statusFieldName}>
-                {canEdit ? <details className="relative inline-block">
-                  <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
-                    <TaskStatusChip status={task.status} />
-                  </summary>
-                  <div className="absolute left-0 top-full z-[130] mt-1 w-44 rounded-lg border border-neutral-200 bg-white p-1 text-[12px] shadow-xl">
-                    {statusChoices.map((choice) => (
-                      <button
-                        key={choice}
-                        type="button"
-                        onClick={(event) => {
-                          patch({ status: choice });
-                          event.currentTarget.closest("details")?.removeAttribute("open");
-                        }}
-                        className={`flex w-full items-center rounded px-2 py-1 text-left hover:bg-neutral-100 ${
-                          choice === task.status ? "font-semibold text-neutral-900" : "text-neutral-700"
-                        }`}
-                      >
-                        {choice}
-                      </button>
-                    ))}
+            {statusFieldEnabled ? (
+              <TaskFieldRow label={statusFieldName}>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1" data-task-status-row>
+                  {canEdit ? <details className="relative inline-block">
+                    <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
+                      <TaskStatusChip status={task.status} />
+                    </summary>
+                    <div className="absolute left-0 top-full z-[130] mt-1 w-44 rounded-lg border border-line bg-surface p-1 text-[12px] shadow-xl">
+                      {statusChoices.map((choice) => (
+                        <button
+                          key={choice}
+                          type="button"
+                          onClick={(event) => {
+                            patch({ status: choice });
+                            event.currentTarget.closest("details")?.removeAttribute("open");
+                          }}
+                          className={`flex w-full items-center rounded px-2 py-1 text-left hover:bg-hover ${
+                            choice === task.status ? "font-semibold text-text" : "text-secondary"
+                          }`}
+                        >
+                          {choice}
+                        </button>
+                      ))}
+                    </div>
+                  </details> : <TaskStatusChip status={task.status} />}
+                  <span aria-hidden="true" className="text-muted">・</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex items-center gap-0.5">
+                      <TaskDraftInput
+                        taskId={task.id}
+                        field="progress"
+                        value={task.progress}
+                        updatedAt={task.updated_at}
+                        recovery={inputRecovery}
+                        readOnly={!canEdit || reloading}
+                        type="number"
+                        min={0}
+                        max={100}
+                        onSave={(value, stamp) => patch({ progress: Math.max(0, Math.min(100, Number(value))) }, stamp)}
+                        normalize={(value) => String(Math.max(0, Math.min(100, Number(value))))}
+                        label="進捗"
+                        className="h-7 w-9 rounded border border-transparent bg-transparent px-1 text-right text-[13px] text-text outline-none [appearance:textfield] hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                      <span className="text-[10px] text-muted">%</span>
+                    </span>
+                    <span className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-strong">
+                      <span className={`block h-full rounded-full ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${task.progress}%` }} />
+                    </span>
                   </div>
-                </details> : <TaskStatusChip status={task.status} />}
-              </FieldRow>
+                </div>
+              </TaskFieldRow>
+            ) : (
+              <TaskFieldRow label="進捗">
+                <div className="flex h-7 min-w-0 items-center gap-2">
+                  <span className="flex items-center gap-0.5">
+                    <TaskDraftInput
+                      taskId={task.id}
+                      field="progress"
+                      value={task.progress}
+                      updatedAt={task.updated_at}
+                      recovery={inputRecovery}
+                      readOnly={!canEdit || reloading}
+                      type="number"
+                      min={0}
+                      max={100}
+                      onSave={(value, stamp) => patch({ progress: Math.max(0, Math.min(100, Number(value))) }, stamp)}
+                      normalize={(value) => String(Math.max(0, Math.min(100, Number(value))))}
+                      label="進捗"
+                      className="h-7 w-9 rounded border border-transparent bg-transparent px-1 text-right text-[13px] text-text outline-none [appearance:textfield] hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <span className="text-[10px] text-muted">%</span>
+                  </span>
+                  <span className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-strong">
+                    <span className={`block h-full rounded-full ${PROGRESS_BAR_COLORS.green}`} style={{ width: `${task.progress}%` }} />
+                  </span>
+                </div>
+              </TaskFieldRow>
             )}
 
-            <FieldRow label="繰り返し">
+            <TaskFieldRow label="繰り返し">
               <select
                 value={task.recurrence ?? "none"}
                 onChange={(event) => patch({ recurrence: event.target.value })}
-                className="h-7 max-w-[180px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] text-neutral-800 outline-none hover:border-neutral-200 hover:bg-white focus:border-[#4075cf] focus:bg-white"
+                className="h-7 max-w-[180px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] text-text outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
                 aria-label="繰り返し"
               >
                 <option value="none">なし</option>
@@ -660,7 +690,7 @@ export default function TaskPane({
                 <option value="weekly">毎週</option>
                 <option value="monthly">毎月</option>
               </select>
-            </FieldRow>
+            </TaskFieldRow>
           </fieldset>
 
           <TaskCustomFieldsSection key={`fields-${task.id}-${reloadRevision}`} customFields={customFields} renderEditor={renderCustomEditor} />

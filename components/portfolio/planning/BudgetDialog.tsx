@@ -79,7 +79,7 @@ export default function BudgetDialog({
       }
     >
       <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-4">
-        <p className="text-[12px] text-neutral-600">{periodLabel} の予算上限を万円で入力します。</p>
+        <p className="text-[12px] text-secondary">{periodLabel} の予算上限を万円で入力します。</p>
         <label className={labelClass}>
           予算上限（万円）
           <input
@@ -93,7 +93,7 @@ export default function BudgetDialog({
             required
           />
         </label>
-        <p className="text-[11px] text-neutral-500">
+        <p className="text-[11px] text-muted">
           保存・計算は円の整数で行います。画面表示だけを万円にしています。
         </p>
         {error && <FieldError>{error}</FieldError>}
