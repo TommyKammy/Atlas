@@ -98,7 +98,7 @@ export default function ProposalDecisionForm({
             setReason(event.target.value);
             if (event.target.value.trim() !== "") setInvalid(false);
           }}
-          className="mt-1 min-h-20 w-full rounded-lg border border-line-strong bg-field px-3 py-2.5 text-[13px] leading-6 text-text outline-none focus:border-accent"
+          className="mt-1 min-h-20 w-full rounded-lg border border-field-line bg-field px-3 py-2.5 text-[13px] leading-6 text-text outline-none focus:border-accent"
           maxLength={1000}
           placeholder="決定の理由を記録します"
           aria-describedby={invalid ? errorId : undefined}

@@ -579,7 +579,7 @@ export default function ProjectTaskContextMenu({
                 if (event.key === "Enter") void createSubtask();
               }}
               placeholder="サブタスク名"
-              className="mt-3 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent"
+              className="mt-3 h-9 w-full rounded-md border border-field-line px-2 text-[13px] outline-none focus:border-accent"
             />
             {error && <p className="mt-2 text-[11px] text-danger">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
@@ -616,7 +616,7 @@ export default function ProjectTaskContextMenu({
             <select
               value={parentId}
               onChange={(event) => setParentId(event.target.value)}
-              className="mt-3 h-9 w-full rounded-md border border-line bg-field px-2 text-[13px]"
+              className="mt-3 h-9 w-full rounded-md border border-field-line bg-field px-2 text-[13px]"
             >
               <option value="">親タスクを選択…</option>
               {candidates.map((candidate) => (

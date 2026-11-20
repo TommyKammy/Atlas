@@ -135,7 +135,7 @@ export default function ProjectMembersManager({
             value={addUserId}
             onChange={(e) => setAddUserId(e.target.value)}
             aria-label="追加するユーザー"
-            className="h-8 min-w-40 flex-1 rounded-md border border-line bg-field px-2 text-sm"
+            className="h-8 min-w-40 flex-1 rounded-md border border-field-line bg-field px-2 text-sm"
           >
             <option value="">ユーザーを選択…</option>
             {candidates.map((u) => (
@@ -148,7 +148,7 @@ export default function ProjectMembersManager({
           <select
             value={addRole}
             onChange={(e) => setAddRole(e.target.value as ProjectRole)}
-            className="h-8 rounded-md border border-line bg-field px-2 text-xs"
+            className="h-8 rounded-md border border-field-line bg-field px-2 text-xs"
             title={PROJECT_ROLE_DESCRIPTIONS[addRole]}
           >
             {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (
@@ -199,7 +199,7 @@ export default function ProjectMembersManager({
                   value={m.role}
                   onChange={(e) => changeRole(m.id, e.target.value as ProjectRole)}
                   disabled={busy}
-                  className="h-7 rounded border border-line bg-field px-1 text-xs"
+                  className="h-7 rounded border border-field-line bg-field px-1 text-xs"
                   title={PROJECT_ROLE_DESCRIPTIONS[m.role]}
                 >
                   {PROJECT_ROLES.filter((r) => canManageAdmins || r !== "admin").map((r) => (

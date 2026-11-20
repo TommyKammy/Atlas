@@ -134,7 +134,7 @@ export default function TaskCommentComposer({
       <div
         data-comment-field
         className={`rounded-lg border bg-bg transition-shadow ${
-          focused ? "border-accent ring-1 ring-accent" : "border-line"
+          focused ? "border-accent ring-1 ring-accent" : "border-field-line"
         }`}
       >
         {draftReady ? (

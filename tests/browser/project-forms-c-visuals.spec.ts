@@ -52,7 +52,7 @@ test("C workbench form controls, left nav selection and the 通知 tab", async (
     shadow: "none",
   });
 
-  // Inputs are 32px tall on the field surface with a 6px radius.
+  // Inputs are 32px tall on the field surface with a 6px radius and a field-line border (3:1).
   await page.locator('[data-project-create-nav="blank"]').click();
   const nameInput = page.locator("[data-project-create-name]");
   await expect(nameInput).toBeVisible();
@@ -61,7 +61,7 @@ test("C workbench form controls, left nav selection and the 通知 tab", async (
   // The control transitions its border color, so poll until it settles.
   await expect
     .poll(() => nameInput.evaluate((element) => getComputedStyle(element).borderColor))
-    .toBe("rgb(228, 230, 234)");
+    .toBe("rgb(140, 149, 165)");
   const inputMetrics = await nameInput.evaluate((element) => {
     const style = getComputedStyle(element);
     return {
@@ -76,7 +76,7 @@ test("C workbench form controls, left nav selection and the 通知 tab", async (
     height: 32,
     radius: "6px",
     background: "rgb(255, 255, 255)",
-    border: "rgb(228, 230, 234)",
+    border: "rgb(140, 149, 165)",
     labelSize: "12px",
   });
 

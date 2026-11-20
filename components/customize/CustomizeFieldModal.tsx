@@ -88,7 +88,7 @@ export default function CustomizeFieldModal({
               onChange={(event) => onDraft({ ...draft, options: event.target.value })}
               placeholder="低, 中, 高"
               rows={3}
-              className="mt-1 w-full rounded-md border border-line px-2 py-1.5 text-[13px] outline-none focus:border-accent"
+              className="mt-1 w-full rounded-md border border-field-line px-2 py-1.5 text-[13px] outline-none focus:border-accent"
             />
             <span className="mt-1 block text-[11px] font-normal text-subtle">カンマまたは改行で区切ってください。</span>
           </label>

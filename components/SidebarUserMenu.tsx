@@ -281,7 +281,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                     data-user-ooo-from
                     value={oooFrom}
                     onChange={(e) => setOooFrom(e.target.value)}
-                    className="mt-1 w-full rounded border border-line-strong px-2 py-1 text-sm"
+                    className="mt-1 w-full rounded border border-field-line px-2 py-1 text-sm"
                   />
                 </label>
                 <label className="text-[12px] text-secondary">
@@ -291,7 +291,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                     data-user-ooo-to
                     value={oooTo}
                     onChange={(e) => setOooTo(e.target.value)}
-                    className="mt-1 w-full rounded border border-line-strong px-2 py-1 text-sm"
+                    className="mt-1 w-full rounded border border-field-line px-2 py-1 text-sm"
                   />
                 </label>
               </div>
@@ -302,7 +302,7 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
                   value={oooNote}
                   onChange={(e) => setOooNote(e.target.value)}
                   rows={2}
-                  className="mt-1 w-full rounded border border-line-strong px-2 py-1 text-sm"
+                  className="mt-1 w-full rounded border border-field-line px-2 py-1 text-sm"
                   placeholder="例: 休暇のため返信が遅れます"
                 />
               </label>

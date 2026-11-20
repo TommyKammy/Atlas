@@ -55,7 +55,7 @@ export default function NotepadWidget({ initial }: { initial: HomeNotepad }) {
             setValue(event.target.value);
           }}
           placeholder="メモ、アイデア、次のアクションを自由に記録"
-          className="min-h-[150px] flex-1 resize-y rounded-md border border-line px-3 py-2 text-[13px] leading-5 text-text outline-none focus:border-accent"
+          className="min-h-[150px] flex-1 resize-y rounded-md border border-field-line px-3 py-2 text-[13px] leading-5 text-text outline-none focus:border-accent"
         />
       </div>
 

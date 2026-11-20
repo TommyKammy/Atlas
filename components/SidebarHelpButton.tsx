@@ -10,10 +10,15 @@ import {
   shortcutsForScope,
 } from "@/lib/keyboard-shortcuts";
 
-export default function SidebarHelpButton() {
+export default function SidebarHelpButton({
+  variant = "sidebar",
+}: {
+  /** "sidebar" opens beside the footer column; "topbar" opens below the button. */
+  variant?: "sidebar" | "topbar";
+}) {
   const [open, setOpen] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
-  const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
+  const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
   const ref = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -24,14 +29,29 @@ export default function SidebarHelpButton() {
     if (!rect) return;
     const margin = 8;
     const height = menuRef.current?.offsetHeight ?? 0;
+    if (variant === "topbar") {
+      // In the narrow-screen bar the button sits at the right edge, so open
+      // below it, right-aligned, and clamp both axes to the viewport.
+      const width = menuRef.current?.offsetWidth ?? 256;
+      const maxLeft = Math.max(margin, window.innerWidth - margin - width);
+      const left = Math.min(Math.max(margin, rect.right - width), maxLeft);
+      const maxTop = Math.max(margin, window.innerHeight - margin - height);
+      const top = Math.min(rect.bottom + margin, maxTop);
+      setPos((current) =>
+        current && current.left === left && current.top === top && current.bottom === undefined
+          ? current
+          : { left, top },
+      );
+      return;
+    }
     const maxBottom = Math.max(margin, window.innerHeight - margin - height);
     const bottom = Math.min(Math.max(margin, window.innerHeight - rect.bottom), maxBottom);
     setPos((current) =>
-      current && current.left === rect.right + 8 && current.bottom === bottom
+      current && current.left === rect.right + 8 && current.bottom === bottom && current.top === undefined
         ? current
         : { left: rect.right + 8, bottom },
     );
-  }, []);
+  }, [variant]);
 
   const openMenu = () => {
     placeMenu();
@@ -72,11 +92,16 @@ export default function SidebarHelpButton() {
       <button
         ref={ref}
         type="button"
-        data-sidebar-help
+        data-sidebar-help={variant === "sidebar" ? "" : undefined}
+        data-topbar-help={variant === "topbar" ? "" : undefined}
         onClick={openMenu}
         aria-label="ヘルプ"
         title="ヘルプ"
-        className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text-strong"
+        className={`flex h-7 w-7 items-center justify-center rounded-md ${
+          variant === "sidebar"
+            ? "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text-strong"
+            : "text-muted hover:bg-hover hover:text-text"
+        }`}
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
           <circle cx="12" cy="12" r="9" />
@@ -94,7 +119,7 @@ export default function SidebarHelpButton() {
             role="menu"
             data-sidebar-help-menu
             className="fixed z-[130] w-64 rounded-lg border border-line bg-surface p-1 text-sm text-text shadow-xl"
-            style={{ left: pos.left, bottom: pos.bottom }}
+            style={pos.top === undefined ? { left: pos.left, bottom: pos.bottom } : { left: pos.left, top: pos.top }}
           >
             <div className="border-b border-line-subtle px-3 py-2 text-[12px] font-semibold text-muted">
               ヘルプと始め方

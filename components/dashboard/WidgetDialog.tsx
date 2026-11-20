@@ -316,7 +316,7 @@ export default function WidgetDialog({
               }}
               placeholder={kind === "text" ? "テキストのタイトル" : "チャートのタイトル"}
               data-dashboard-widget-title
-              className="h-9 w-full rounded-md border border-transparent bg-transparent px-1 text-[20px] font-semibold text-text outline-none placeholder:text-subtle hover:border-line focus:border-accent"
+              className="h-9 w-full rounded-md border border-transparent bg-transparent px-1 text-[20px] font-semibold text-text outline-none placeholder:text-subtle hover:border-field-line-hover focus:border-accent"
             />
             <div className="mt-4 min-h-[260px] flex-1">
               {kind === "text" ? (

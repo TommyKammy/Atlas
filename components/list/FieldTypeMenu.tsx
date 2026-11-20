@@ -178,7 +178,7 @@ export default function FieldTypeMenu({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="フィールドタイプを検索"
           aria-label="フィールドタイプを検索"
-          className="mt-1.5 h-8 w-full rounded border border-line px-2 text-[12px] outline-none focus:border-accent"
+          className="mt-1.5 h-8 w-full rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
         />
       </div>
       <div role="listbox" aria-label="フィールドタイプ" className="min-h-0 flex-1 overflow-y-auto p-1">

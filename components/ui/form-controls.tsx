@@ -5,15 +5,17 @@ import type { SelectHTMLAttributes } from "react";
  * project create screen, project settings, the custom field dialogs, the rule
  * editor, and the standalone inbox, search and trash screens.
  *
- * Inputs and selects are 32px tall on the field surface with a hairline
- * border. Focus adds the accent border; the global keyboard focus ring is the
- * only ring (no extra focus:ring-* utility, which would double it).
+ * Inputs and selects are 32px tall on the field surface with a 3:1
+ * field-line border. Focus adds the accent border; the global keyboard focus
+ * ring is the only ring (no extra focus:ring-* utility, which would double
+ * it). The disabled border intentionally stays line (WCAG 1.4.11 exempts
+ * inactive controls).
  */
 export const fieldControlClass =
-  "h-8 w-full rounded-md border border-line bg-field px-2.5 text-[13px] text-text outline-none transition-colors placeholder:text-subtle hover:border-line-strong focus:border-accent disabled:cursor-not-allowed disabled:border-line disabled:bg-surface-subtle disabled:text-muted";
+  "h-8 w-full rounded-md border border-field-line bg-field px-2.5 text-[13px] text-text outline-none transition-colors placeholder:text-subtle hover:border-field-line-hover focus:border-accent disabled:cursor-not-allowed disabled:border-line disabled:bg-surface-subtle disabled:text-muted";
 
 export const fieldTextareaClass =
-  "min-h-16 w-full resize-y rounded-md border border-line bg-field px-2.5 py-2 text-[13px] leading-5 text-text outline-none transition-colors placeholder:text-subtle hover:border-line-strong focus:border-accent disabled:cursor-not-allowed disabled:border-line disabled:bg-surface-subtle disabled:text-muted";
+  "min-h-16 w-full resize-y rounded-md border border-field-line bg-field px-2.5 py-2 text-[13px] leading-5 text-text outline-none transition-colors placeholder:text-subtle hover:border-field-line-hover focus:border-accent disabled:cursor-not-allowed disabled:border-line disabled:bg-surface-subtle disabled:text-muted";
 
 export const fieldLabelClass = "block text-[12px] font-medium text-secondary";
 export const fieldHintClass = "text-[12px] leading-5 text-muted";

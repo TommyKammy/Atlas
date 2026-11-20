@@ -169,13 +169,13 @@ export default function PortfolioWorkspace({
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="新しいポートフォリオ名"
-              className="h-8 w-full rounded-md border border-line px-2 text-[12px] outline-none focus:border-accent"
+              className="h-8 w-full rounded-md border border-field-line px-2 text-[12px] outline-none focus:border-accent"
             />
             <input
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="説明（任意）"
-              className="h-8 w-full rounded-md border border-line px-2 text-[12px] outline-none focus:border-accent"
+              className="h-8 w-full rounded-md border border-field-line px-2 text-[12px] outline-none focus:border-accent"
             />
             <button
               type="button"
@@ -291,7 +291,7 @@ export default function PortfolioWorkspace({
                     <select
                       value={projectId}
                       onChange={(event) => setProjectId(event.target.value)}
-                      className="h-8 min-w-0 max-w-full rounded-md border border-line bg-field px-2 text-[12px]"
+                      className="h-8 min-w-0 max-w-full rounded-md border border-field-line bg-field px-2 text-[12px]"
                     >
                       <option value="">プロジェクトを選択…</option>
                       {addableProjects.map((project) => (

@@ -148,7 +148,7 @@ export default function ProjectCustomizeButton({
   };
 
   const fieldTypeClass =
-    "mt-1 h-9 w-full rounded-md border border-line bg-surface px-2 text-[13px] outline-none focus:border-accent";
+    "mt-1 h-9 w-full rounded-md border border-field-line bg-surface px-2 text-[13px] outline-none focus:border-accent";
   const primaryButton =
     "flex h-8 items-center justify-center rounded-md bg-accent px-3 text-[13px] font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50";
   const secondaryButton =

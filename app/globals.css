@@ -18,6 +18,10 @@
   --atlas-surface-muted: #eff0f2;
   --atlas-surface-strong: #e4e6ea;
   --atlas-field: #ffffff;
+  /* Input borders: same blue-grey hue as line-strong, dark enough for 3:1
+     against field, surface and bg (see docs/design-tokens.md). */
+  --atlas-field-line: #8c95a5;
+  --atlas-field-line-hover: #6c778b;
   --atlas-hover: #f5f5f7;
   --atlas-hover-strong: #dee1e6;
 
@@ -113,6 +117,8 @@
   --color-surface-muted: var(--atlas-surface-muted);
   --color-surface-strong: var(--atlas-surface-strong);
   --color-field: var(--atlas-field);
+  --color-field-line: var(--atlas-field-line);
+  --color-field-line-hover: var(--atlas-field-line-hover);
   --color-hover: var(--atlas-hover);
   --color-hover-strong: var(--atlas-hover-strong);
   --color-overlay: var(--atlas-overlay);
@@ -199,6 +205,8 @@ html[data-theme="dark"] {
   --atlas-surface-muted: #1d2229;
   --atlas-surface-strong: #252b33;
   --atlas-field: #14181d;
+  --atlas-field-line: #586577;
+  --atlas-field-line-hover: #728197;
   --atlas-hover: #191d23;
   --atlas-hover-strong: #2a313a;
 

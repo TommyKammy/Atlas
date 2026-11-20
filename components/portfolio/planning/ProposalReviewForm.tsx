@@ -97,7 +97,7 @@ export default function ProposalReviewForm({
             setNote(event.target.value);
             if (event.target.value.trim() !== "") setInvalid(false);
           }}
-          className="mt-1 min-h-24 w-full rounded-lg border border-line-strong bg-field px-3 py-2.5 text-[13px] leading-6 text-text outline-none focus:border-accent"
+          className="mt-1 min-h-24 w-full rounded-lg border border-field-line bg-field px-3 py-2.5 text-[13px] leading-6 text-text outline-none focus:border-accent"
           maxLength={2000}
           placeholder="確認した内容、懸念点、差し戻す場合は修正してほしい点"
           aria-describedby={invalid ? errorId : undefined}

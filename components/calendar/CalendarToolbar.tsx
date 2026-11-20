@@ -367,7 +367,7 @@ export default function CalendarToolbar({
             placeholder="このビュー内で検索"
             aria-label="このビュー内で検索"
             autoFocus
-            className="h-7 w-44 rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
+            className="h-7 w-44 rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
           />
         )}
         <button
@@ -416,7 +416,7 @@ export default function CalendarToolbar({
             <select
               value={colorBy}
               onChange={(event) => setColor(event.target.value)}
-              className="mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
+              className="mt-1 h-8 w-full rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
             >
               {colorOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -438,7 +438,7 @@ export default function CalendarToolbar({
             <select
               value={weekStart}
               onChange={(event) => setWeekStartOn(event.target.value === "1" ? 1 : 0)}
-              className="mt-1 h-8 w-full rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
+              className="mt-1 h-8 w-full rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
             >
               <option value={0}>日曜日</option>
               <option value={1}>月曜日</option>

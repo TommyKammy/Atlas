@@ -47,7 +47,7 @@ export default function CustomizeStatusPanel({
           value={statusFieldName}
           disabled={!canAdmin}
           onChange={(event) => onStatusFieldName(event.target.value)}
-          className="mt-1 h-8 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-surface-subtle"
+          className="mt-1 h-8 w-full rounded-md border border-field-line px-2 text-[13px] outline-none focus:border-accent disabled:border-line disabled:bg-surface-subtle"
         />
       </label>
       <div className="mt-4 text-[12px] font-medium text-secondary">選択肢</div>
@@ -60,7 +60,7 @@ export default function CustomizeStatusPanel({
               value={draft.value}
               disabled={!canAdmin}
               onChange={(event) => onChangeDraft(draft.key, event.target.value)}
-              className="h-8 min-w-0 flex-1 rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-surface-subtle"
+              className="h-8 min-w-0 flex-1 rounded-md border border-field-line px-2 text-[13px] outline-none focus:border-accent disabled:border-line disabled:bg-surface-subtle"
             />
             {canAdmin && (
               <button

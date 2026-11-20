@@ -237,7 +237,7 @@ export default function HomeDashboard({
               data-home-period
               value={period}
               onChange={(event) => setPeriod(event.target.value as "week" | "month")}
-              className="rounded border border-line bg-field px-1.5 py-0.5 text-[12px]"
+              className="rounded border border-field-line bg-field px-1.5 py-0.5 text-[12px]"
             >
               <option value="week">週</option>
               <option value="month">月</option>
@@ -258,7 +258,7 @@ export default function HomeDashboard({
               data-home-collaborator
               value={collaborator}
               onChange={(event) => setCollaborator(event.target.value)}
-              className="max-w-[180px] rounded border border-line bg-field px-1.5 py-0.5 text-[12px]"
+              className="max-w-[180px] rounded border border-field-line bg-field px-1.5 py-0.5 text-[12px]"
             >
               <option value="">全員</option>
               {users

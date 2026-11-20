@@ -87,7 +87,7 @@ export default function CustomizeBundleModal({
                   }
                   data-customize-bundle-field-name={index}
                   placeholder="フィールド名"
-                  className="h-7 min-w-0 flex-1 rounded border border-line px-2 text-[12px] outline-none focus:border-accent"
+                  className="h-7 min-w-0 flex-1 rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
                 />
                 <select
                   value={field.field_type}
@@ -102,7 +102,7 @@ export default function CustomizeBundleModal({
                     })
                   }
                   data-customize-bundle-field-type={index}
-                  className="h-7 rounded border border-line bg-field px-1 text-[12px]"
+                  className="h-7 rounded border border-field-line bg-field px-1 text-[12px]"
                 >
                   <option value="text">テキスト</option>
                   <option value="number">数値</option>
@@ -141,7 +141,7 @@ export default function CustomizeBundleModal({
                   }
                   data-customize-bundle-field-options={index}
                   placeholder="選択肢（カンマ区切り）"
-                  className="mt-2 h-7 w-full rounded border border-line px-2 text-[12px] outline-none focus:border-accent"
+                  className="mt-2 h-7 w-full rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
                 />
               )}
             </div>

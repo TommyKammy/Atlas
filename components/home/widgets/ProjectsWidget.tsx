@@ -58,7 +58,7 @@ export default function ProjectsWidget({
             onChange={(event) => setQuery(event.target.value)}
             placeholder="プロジェクト名で検索"
             autoFocus
-            className="w-full rounded border border-line px-2 py-1 text-[12px] outline-none focus:border-accent"
+            className="w-full rounded border border-field-line px-2 py-1 text-[12px] outline-none focus:border-accent"
           />
         </div>
       )}

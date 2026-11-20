@@ -95,19 +95,19 @@ test("admin, profile, login and invite follow the C workbench treatment", async 
     height: 32,
     fontSize: "13px",
     appearance: "none",
-    borderTopColor: "rgb(228, 230, 234)",
+    borderTopColor: "rgb(140, 149, 165)",
   });
   const roleChevron = roleSelect.locator("xpath=..").locator('svg[aria-hidden="true"]');
   expect(await css(roleChevron)).toMatchObject({ color: "rgb(92, 100, 112)" });
   expect(await roleChevron.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
-  const deleteButton = member.getByRole("button", { name: "削除", exact: true });
+  const deleteButton = member.getByRole("button", { name: "田中 太郎 を削除", exact: true });
   expect(await css(deleteButton)).toMatchObject({
     height: 28,
     fontSize: "12px",
     color: "rgb(184, 50, 40)",
     borderTopWidth: "0px",
   });
-  for (const name of ["編集", "PW", "無効化"]) {
+  for (const name of ["田中 太郎 を編集", "田中 太郎 のパスワードを再設定", "田中 太郎 を無効化"]) {
     expect(await css(member.getByRole("button", { name, exact: true }))).toMatchObject({ height: 28, fontSize: "12px" });
   }
 
@@ -285,11 +285,11 @@ test("admin, profile, login and invite follow the C workbench treatment", async 
     borderBottomWidth: "0px",
   });
   await page.locator('[data-admin-tab="members"]').click();
-  const darkDelete = page.getByText("tanaka@example.com", { exact: true }).locator("..").getByRole("button", { name: "削除", exact: true });
+  const darkDelete = page.getByText("tanaka@example.com", { exact: true }).locator("..").getByRole("button", { name: "田中 太郎 を削除", exact: true });
   expect(await css(darkDelete)).toMatchObject({ color: "rgb(255, 156, 143)", borderTopWidth: "0px" });
   expect(await css(page.getByText("tanaka@example.com", { exact: true }).locator("..").getByRole("combobox"))).toMatchObject({
     background: "rgb(20, 24, 29)",
-    borderTopColor: "rgb(37, 43, 51)",
+    borderTopColor: "rgb(88, 101, 119)",
   });
 
   const darkAnonymous = await browser.newContext({ baseURL: test.info().project.use.baseURL });

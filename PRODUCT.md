@@ -20,7 +20,9 @@ interface.
 - **Daily teamwork.** Home, Inbox, My tasks, and Projects, including the project
   list, board, and timeline views. These screens carry no portfolio summaries,
   investment status, budget figures, or investment-proposal approval stages.
-  Ordinary task approvals belong here and appear under Approvals. A member can
+  Ordinary task approvals stay with the task: request and decide them in the
+  task detail's approval section, see the state as a badge on list and board
+  tasks, and receive approval requests and decisions in Inbox. A member can
   finish a normal day of work without meeting portfolio concepts.
 - **Portfolio work.** Used when a piece of work is a project-shaped case that
   needs investment planning, approvals, and decisions. Here the portfolio
@@ -44,8 +46,9 @@ are not a target for new work.
 ## Theme
 
 Light and dark are both officially supported and the user selects one. The
-default is light; the theme switch sits at the bottom of the sidebar. Following
-the OS setting is a future consideration, not current behavior.
+default is light; the theme switch sits at the bottom of the sidebar, or at the
+right end of the top bar when the sidebar is hidden. Following the OS setting is
+a future consideration, not current behavior.
 
 All color comes from the semantic tokens in `docs/design-tokens.md`, defined once
 per theme. Components read tokens and do not branch on the theme to choose
@@ -57,9 +60,12 @@ alone; pair it with an icon, a label, or both.
 
 ## Screen structure
 
-- One left sidebar: Home, Inbox, My tasks, Approvals, Projects. The theme switch
-  is at its bottom. A portfolio entry appears only for users with portfolio view
-  permission.
+- One left sidebar: Home, Inbox, My tasks, Portfolio for users with portfolio
+  view permission, and a Projects section. Trash is always present, admins also
+  see Admin, and favorites and recent projects appear when they exist. The
+  theme switch, help, and user menu are at its bottom; at widths where the
+  sidebar is hidden, the theme switch and help move to the right end of the top
+  bar.
 - The top of each screen is a single header row: screen name, view switcher,
   search and command entry, and create action. The row does not wrap at narrow
   widths. Long names truncate with an ellipsis and the actions stay reachable.

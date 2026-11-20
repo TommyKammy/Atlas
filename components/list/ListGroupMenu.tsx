@@ -73,7 +73,7 @@ export default function ListGroupMenu({
           data-list-group-primary
           value={groupBy}
           onChange={(event) => onSelectPrimary(event.target.value as ListGroupBy)}
-          className="h-8 min-w-0 flex-1 rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
+          className="h-8 min-w-0 flex-1 rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
         >
           {primaryOptions.map((key) => (
             <option key={key} value={key}>
@@ -89,7 +89,7 @@ export default function ListGroupMenu({
           data-list-group-dir
           value={groupDir}
           onChange={(event) => onSetGroupDir(event.target.value === "desc" ? "desc" : "asc")}
-          className="h-8 min-w-0 flex-1 rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
+          className="h-8 min-w-0 flex-1 rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
         >
           <option value="asc">昇順</option>
           <option value="desc">降順</option>
@@ -107,7 +107,7 @@ export default function ListGroupMenu({
                 if (event.target.value === "") return;
                 onSelectSecondary(event.target.value as ListGroupBy);
               }}
-              className="h-8 min-w-0 flex-1 rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
+              className="h-8 min-w-0 flex-1 rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
             >
               <option value="">選択…</option>
               {secondaryOptions.map((key) => (
@@ -135,7 +135,7 @@ export default function ListGroupMenu({
             data-list-group-secondary
             value={group2}
             onChange={(event) => onSelectSecondary(event.target.value === "" ? null : (event.target.value as ListGroupBy))}
-            className="h-8 min-w-0 flex-1 rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
+            className="h-8 min-w-0 flex-1 rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
           >
             <option value="">なし</option>
             {secondaryOptions.map((key) => (

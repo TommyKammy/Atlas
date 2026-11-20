@@ -341,7 +341,7 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
           if (await confirmAction("未保存の変更があります。このページを離れますか？")) router.push(`/projects/${project.id}`);
         }}>←</Link>
         <label className="min-w-[180px] flex-1"><span className="sr-only">ルール名</span><input ref={nameInput} aria-label="ルール名" value={document.name} placeholder="ルール名を入力" maxLength={120} readOnly={!canEdit || editingBusy}
-          onChange={(event) => change({ ...document, name: event.target.value })} className="h-8 w-full rounded-md border border-transparent bg-transparent px-1.5 text-[16px] font-semibold text-text outline-none hover:border-line focus:border-accent" /></label>
+          onChange={(event) => change({ ...document, name: event.target.value })} className="h-8 w-full rounded-md border border-transparent bg-transparent px-1.5 text-[16px] font-semibold text-text outline-none hover:border-field-line-hover focus:border-accent" /></label>
         <span className={`inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium ${published ? "bg-success-soft text-success" : "bg-surface-muted text-secondary"}`}>
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
           {published ? document.enabled ? "公開済み" : "停止中" : "下書き"}

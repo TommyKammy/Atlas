@@ -44,7 +44,11 @@ test("MW01 production CSP authorizes framework scripts and hydration without all
   const scripts = await page.locator("script").evaluateAll((elements) => elements.map((element) => (element as HTMLScriptElement).nonce));
   expect(scripts.length).toBeGreaterThan(0);
   expect(scripts.every((value) => value === nonce)).toBe(true);
-  const toggle = page.locator("[data-theme-toggle]");
+  // Signed-out screens have no app chrome (and therefore no theme toggle).
+  // Exercise the toggle on the signed-in shell instead.
+  expect((await page.request.post("/api/auth/login", { data: credentials })).status()).toBe(200);
+  await page.goto("/");
+  const toggle = page.locator("[data-sidebar-footer] [data-theme-toggle]");
   await toggle.click(); await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(violations).toEqual([]);
   // Use a separate page so the theme's router.refresh cannot interrupt the

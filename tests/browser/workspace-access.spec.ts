@@ -180,12 +180,13 @@ for (const role of ["guest", "member", "admin"] as const) {
     await page.goto("/admin");
     if (admin) {
       const target = page.getByText(accounts.super.email, { exact: true }).locator("..");
-      for (const name of ["編集", "PW", "無効化", "削除"]) {
+      const targetName = `${accounts.super.role}-${run}`;
+      for (const name of [`${targetName} を編集`, `${targetName} のパスワードを再設定`, `${targetName} を無効化`, `${targetName} を削除`]) {
         await expect(target.getByRole("button", { name, exact: true })).toBeDisabled();
       }
       await expect(target.getByRole("combobox")).toBeDisabled();
       const member = page.getByText(accounts.member.email, { exact: true }).locator("..");
-      await expect(member.getByRole("button", { name: "編集", exact: true })).toBeEnabled();
+      await expect(member.getByRole("button", { name: `${accounts.member.role}-${run} を編集`, exact: true })).toBeEnabled();
       await expect(member.locator('option[value="super_admin"]')).toBeDisabled();
       await page.locator('[data-admin-tab="security"]').click();
       await expect(page.locator(`[data-totp-user="${accounts.super.id}"] button`)).toBeDisabled();
@@ -346,7 +347,7 @@ test("super administrator can recover a protected account", async ({ page }) => 
   await login(page.request, seedAdmin.email, seedAdmin.password);
   await page.goto("/admin");
   const user = page.getByText(accounts.super.email, { exact: true }).locator("..");
-  await expect(user.getByRole("button", { name: "編集", exact: true })).toBeEnabled();
+  await expect(user.getByRole("button", { name: `${accounts.super.role}-${run} を編集`, exact: true })).toBeEnabled();
   await page.locator('[data-admin-tab="security"]').click();
   await page.locator('[data-security-tab="two-factor"]').click();
   const row = page.locator(`[data-totp-user="${accounts.super.id}"]`);

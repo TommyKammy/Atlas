@@ -83,7 +83,7 @@ export default function DeleteProjectDialog({
           <input
             value={confirmName}
             onChange={(event) => setConfirmName(event.target.value)}
-            className="h-9 w-full rounded-md border border-line-strong px-2.5 text-sm outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
+            className="h-9 w-full rounded-md border border-field-line px-2.5 text-sm outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
             placeholder={projectName}
           />
         </label>

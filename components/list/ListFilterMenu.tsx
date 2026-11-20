@@ -48,7 +48,7 @@ const ALL_QUICK: QuickFilterKey[] = ["open", "done", "mine", "week", "nextweek"]
 const quickFilterCls =
   "flex h-7 items-center rounded-full border px-2.5 text-[12px] transition-colors";
 const rowSelect =
-  "h-8 min-w-0 flex-1 rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent";
+  "h-8 min-w-0 flex-1 rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent";
 
 function initialFields(
   filters: ListFilters,

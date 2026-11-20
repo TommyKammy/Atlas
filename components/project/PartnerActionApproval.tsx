@@ -5,7 +5,7 @@ import { explicitActionDate, type ActionOptions, type ApprovalSelection, type Ap
 import { knowledgeAction, knowledgePrimaryAction } from "../knowledge/KnowledgeActionMenu";
 
 type Draft = { title: string; assignee: string; due: string; section: string };
-const inputClass = "mt-1 block w-full min-w-0 rounded-md border border-line-strong bg-field px-2.5 py-2 text-sm text-text focus:outline-focus-ring disabled:bg-surface-subtle";
+const inputClass = "mt-1 block w-full min-w-0 rounded-md border border-field-line bg-field px-2.5 py-2 text-sm text-text focus:outline-focus-ring disabled:border-line disabled:bg-surface-subtle";
 export default function PartnerActionApproval({ projectId, batchId, actions, onCommitting }: {
   projectId: number; batchId: string; actions: PartnerAction[]; onCommitting: (value: boolean) => void;
 }) {

@@ -155,7 +155,7 @@ export default function StatusUpdatesWidget({
                 data-home-status-project
                 value={projectId}
                 onChange={(event) => setProjectId(event.target.value)}
-                className="mt-1 w-full rounded border border-line px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded border border-field-line px-2 py-1.5 text-sm"
               >
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
@@ -170,7 +170,7 @@ export default function StatusUpdatesWidget({
                 data-home-status-value
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
-                className="mt-1 w-full rounded border border-line px-2 py-1.5 text-sm"
+                className="mt-1 w-full rounded border border-field-line px-2 py-1.5 text-sm"
               >
                 {PROJECT_STATUS_OPTIONS.map((option) => (
                   <option key={option.label} value={option.label}>
@@ -187,7 +187,7 @@ export default function StatusUpdatesWidget({
                 onChange={(event) => setBody(event.target.value)}
                 rows={5}
                 placeholder="プロジェクトの進捗、リスク、次のアクションを共有"
-                className="mt-1 w-full resize-y rounded border border-line px-2 py-1.5 text-sm outline-none focus:border-accent"
+                className="mt-1 w-full resize-y rounded border border-field-line px-2 py-1.5 text-sm outline-none focus:border-accent"
               />
             </label>
             {error !== "" && <p className="text-[12px] text-danger">{error}</p>}

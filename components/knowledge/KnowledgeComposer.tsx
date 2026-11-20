@@ -155,7 +155,7 @@ export default function KnowledgeComposer({ note, projectId, viewerId, template,
     </div>}
     {seed.recovered && <p className="mb-3 text-[12px] text-accent-text">このタブに残っていた未保存の下書きを復元しました。</p>}
     {note && !note.body_doc && <p className={`mb-4 ${fieldHintClass}`}>本文を編集するとブロック形式で保存します。元のMarkdownは履歴から復元できます。</p>}
-    <input data-knowledge-title aria-label="ノートのタイトル" maxLength={300} value={draft.title} onChange={e => change({ ...latest.current, title: e.target.value })} placeholder="無題のノート" className="mb-4 h-10 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1 text-2xl font-semibold tracking-tight text-text outline-none placeholder:text-subtle hover:border-line focus:border-accent" />
+    <input data-knowledge-title aria-label="ノートのタイトル" maxLength={300} value={draft.title} onChange={e => change({ ...latest.current, title: e.target.value })} placeholder="無題のノート" className="mb-4 h-10 w-full min-w-0 rounded-md border border-transparent bg-transparent px-1 text-2xl font-semibold tracking-tight text-text outline-none placeholder:text-subtle hover:border-field-line-hover focus:border-accent" />
     {editor && <KnowledgeTools editor={editor} links={links} />}
     <RichTextEditor initialDoc={initial.doc} extraExtensions={knowledgeExtensions} borderless minHeightClass="min-h-[320px]"
       ariaLabel="ノートの本文" dataAttributes={{ "data-knowledge-body": "" }} placeholder="書き始めるか、/ でブロックを選択"

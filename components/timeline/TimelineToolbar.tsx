@@ -465,7 +465,7 @@ export default function TimelineToolbar({
             value={resetSectionId}
             onChange={(event) => setResetSectionId(event.target.value)}
             aria-label="行固定を解除するセクション"
-            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
+            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
           >
             <option value="">セクションを選択…</option>
             {sections.map((section) => (
@@ -496,7 +496,7 @@ export default function TimelineToolbar({
           <select
             value={zoom}
             onChange={(event) => changeZoom(Number(event.target.value))}
-            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-line bg-field px-2 text-[13px] outline-none focus:border-accent"
+            className="mx-2 mt-1 h-8 w-[calc(100%-1rem)] rounded-md border border-field-line bg-field px-2 text-[13px] outline-none focus:border-accent"
             aria-label="ズーム"
           >
             {zoomPresets.map((preset, index) => (

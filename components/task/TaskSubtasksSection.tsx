@@ -131,7 +131,7 @@ export default function TaskSubtasksSection({
             }}
             placeholder="サブタスク名を入力"
             autoFocus
-            className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-accent"
+            className="h-8 min-w-0 flex-1 rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
           />
           <button
             type="button"

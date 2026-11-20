@@ -268,7 +268,7 @@ export default function ListOptionsDrawer({
                 disabled={renameDisabled || renameBusy}
                 aria-label="ビューの名前"
                 data-list-view-name
-                className="mt-1 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-surface-subtle disabled:text-muted"
+                className="mt-1 h-9 w-full rounded-md border border-field-line px-2 text-[13px] outline-none focus:border-accent disabled:border-line disabled:bg-surface-subtle disabled:text-muted"
               />
             </div>
           </div>
@@ -372,7 +372,7 @@ export default function ListOptionsDrawer({
                   placeholder="ビュー名"
                   aria-label="保存するビュー名"
                   autoFocus
-                  className="h-8 w-32 rounded border border-line px-2 text-[13px] outline-none focus:border-accent"
+                  className="h-8 w-32 rounded border border-field-line px-2 text-[13px] outline-none focus:border-accent"
                 />
                 <button onClick={saveView} aria-label="ビューを保存" className="h-8 rounded bg-accent px-2 text-[12px] text-on-accent">
                   保存

@@ -72,13 +72,13 @@ export default function HomeTaskComposer({
             onKeyDown={(event) => !isImeComposing(event) && event.key === "Enter" && void create()}
             placeholder="タスク名"
             autoFocus
-            className="w-full rounded border border-line px-2 py-1.5 text-sm outline-none focus:border-accent"
+            className="w-full rounded border border-field-line px-2 py-1.5 text-sm outline-none focus:border-accent"
           />
           <select
             data-home-composer-project
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
-            className="w-full rounded border border-line px-2 py-1.5 text-sm"
+            className="w-full rounded border border-field-line px-2 py-1.5 text-sm"
           >
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
@@ -91,7 +91,7 @@ export default function HomeTaskComposer({
               data-home-composer-assignee
               value={assigneeId}
               onChange={(event) => setAssigneeId(event.target.value)}
-              className="w-full rounded border border-line px-2 py-1.5 text-sm"
+              className="w-full rounded border border-field-line px-2 py-1.5 text-sm"
             >
               {users
                 .filter((user) => user.id !== viewerId)

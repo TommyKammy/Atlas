@@ -109,7 +109,7 @@ export default function CustomizeTemplateModal({
               onChange={(event) => onDraft({ ...draft, subtasks: event.target.value })}
               placeholder="資料を準備する, 関係者に共有する"
               rows={2}
-              className="mt-1 w-full rounded-md border border-line px-2 py-1.5 text-[13px] outline-none focus:border-accent"
+              className="mt-1 w-full rounded-md border border-field-line px-2 py-1.5 text-[13px] outline-none focus:border-accent"
             />
             <span className="mt-1 block text-[11px] font-normal text-subtle">カンマまたは改行で区切ってください。</span>
           </label>

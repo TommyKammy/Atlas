@@ -69,7 +69,7 @@ export default function ProjectDescriptionEditor({
             onChange={(e) => setValue(e.target.value)}
             rows={4}
             placeholder="プロジェクトの目的、背景、決定事項を入力（Markdown可）"
-            className="w-full rounded-md border border-line-strong px-3 py-2 text-sm outline-none focus:border-accent"
+            className="w-full rounded-md border border-field-line px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <div className="mt-2 flex justify-end gap-2">
             <button

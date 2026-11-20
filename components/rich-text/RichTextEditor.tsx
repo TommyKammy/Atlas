@@ -137,7 +137,7 @@ export default function RichTextEditor({
 
   if (!editor) {
     return (
-      <div className={`rounded-lg border border-line-strong ${surfaceClassName} ${className}`}>
+      <div className={`rounded-lg border border-field-line ${surfaceClassName} ${className}`}>
         <div className={`${minHeightClass} animate-pulse bg-surface-subtle`} />
       </div>
     );
@@ -150,7 +150,7 @@ export default function RichTextEditor({
           ? "border-0"
           : focused
             ? "border border-accent shadow-[0_0_0_2px_rgba(64,117,207,0.12)]"
-            : "border border-line-strong"
+            : "border border-field-line"
       } ${className}`}
       aria-busy={!ready}
       style={!ready ? { pointerEvents: "none" } : undefined}

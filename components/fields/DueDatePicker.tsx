@@ -221,7 +221,7 @@ export default function DueDatePicker({
                   placeholder="開始日"
                   aria-label="開始日"
                   spellCheck={false}
-                  className="h-8 w-full rounded border border-line-strong px-2 pr-6 text-[12px] text-text outline-none focus:border-accent"
+                  className="h-8 w-full rounded border border-field-line px-2 pr-6 text-[12px] text-text outline-none focus:border-accent"
                 />
                 {startText && (
                   <button
@@ -253,7 +253,7 @@ export default function DueDatePicker({
                   placeholder="期日"
                   aria-label="期日"
                   spellCheck={false}
-                  className="h-8 w-full rounded border border-line-strong px-2 pr-6 text-[12px] text-text outline-none focus:border-accent"
+                  className="h-8 w-full rounded border border-field-line px-2 pr-6 text-[12px] text-text outline-none focus:border-accent"
                 />
                 {dueText && (
                   <button

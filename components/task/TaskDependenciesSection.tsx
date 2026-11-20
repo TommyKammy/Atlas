@@ -64,7 +64,7 @@ export default function TaskDependenciesSection({
               <select
                 value={draft}
                 onChange={(event) => onDraftChange(event.target.value)}
-                className="h-8 min-w-0 flex-1 rounded border border-line-strong px-2 text-[12px] outline-none focus:border-accent"
+                className="h-8 min-w-0 flex-1 rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
                 aria-label="依存関係を追加"
               >
                 <option value="">このタスクの前に…</option>

@@ -89,7 +89,7 @@ export default function CreateTableDialog({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 maxLength={120}
-                className="h-9 w-full rounded-md border border-line-strong px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
+                className="h-9 w-full rounded-md border border-field-line px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/20"
               />
             </label>
             <div className="mt-4 space-y-1.5">

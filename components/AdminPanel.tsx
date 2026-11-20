@@ -278,7 +278,7 @@ export default function AdminPanel({
                 <button
                   disabled={!u.can_manage}
                   onClick={() => openEdit(u)}
-                  title={`${u.name}を編集`}
+                  aria-label={`${u.name} を編集`}
                   className={smallQuietButtonClass}
                 >
                   編集
@@ -286,7 +286,7 @@ export default function AdminPanel({
                 <button
                   disabled={!u.can_manage}
                   onClick={() => openReset(u)}
-                  title={`${u.name}のパスワードを再設定`}
+                  aria-label={`${u.name} のパスワードを再設定`}
                   className={smallQuietButtonClass}
                 >
                   PW
@@ -294,7 +294,7 @@ export default function AdminPanel({
                 <button
                   onClick={() => toggleActive(u)}
                   disabled={!u.can_manage || u.id === currentUserId}
-                  title={u.deactivated_at ? `${u.name}を有効化` : `${u.name}を無効化`}
+                  aria-label={u.deactivated_at ? `${u.name} を有効化` : `${u.name} を無効化`}
                   className={smallQuietButtonClass}
                 >
                   {u.deactivated_at ? "有効化" : "無効化"}
@@ -302,7 +302,7 @@ export default function AdminPanel({
                 <button
                   onClick={() => remove(u.id, u.name)}
                   disabled={!u.can_manage || u.id === currentUserId}
-                  title={`${u.name}を削除`}
+                  aria-label={`${u.name} を削除`}
                   className={smallQuietDangerButtonClass}
                 >
                   削除

@@ -190,7 +190,7 @@ export default function ViewOptionsDrawer({
                 }}
                 disabled={renameDisabled || renameBusy}
                 aria-label="ビューの名前"
-                className="mt-1 h-9 w-full rounded-md border border-line px-2 text-[13px] outline-none focus:border-accent disabled:bg-surface-subtle disabled:text-muted"
+                className="mt-1 h-9 w-full rounded-md border border-field-line px-2 text-[13px] outline-none focus:border-accent disabled:border-line disabled:bg-surface-subtle disabled:text-muted"
               />
             </div>
           </div>

@@ -763,7 +763,7 @@ function BoardViewContent({
                   placeholder="タスク名を入力"
                   data-add-task
                   autoFocus
-                  className="w-full rounded-md border border-line bg-field px-2 py-1 text-sm outline-none focus:border-accent"
+                  className="w-full rounded-md border border-field-line bg-field px-2 py-1 text-sm outline-none focus:border-accent"
                 />
                 <button
                   disabled={addingTask || !(drafts[g.key] ?? "").trim()}

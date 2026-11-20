@@ -6,12 +6,14 @@ import OpenCommandPaletteButton from "./OpenCommandPaletteButton";
 import SidebarNav from "./SidebarNav";
 import SidebarRail from "./SidebarRail";
 import SidebarRailFooter from "./SidebarRailFooter";
+import SidebarHelpButton from "./SidebarHelpButton";
+import ThemeToggle from "./ThemeToggle";
 import { MOBILE_NAV, visibleNavItems } from "@/lib/navigation";
 import FeedbackHost from "./ui/FeedbackHost";
 import CommandPalette from "./CommandPalette";
 import ResizableSidebar from "./ResizableSidebar";
 import { parseSidebarWidth, SIDEBAR_WIDTH_COOKIE } from "@/lib/sidebar-width";
-import { getServerSession } from "@/lib/api/session";
+import { getMfaServerSession, getServerSession } from "@/lib/api/session";
 import { getWorkspace } from "@/lib/data";
 import { canUsePortfolio } from "@/lib/repositories/portfolios";
 import { hasPermission } from "@/lib/permissions";
@@ -27,7 +29,28 @@ export default async function AppShell({
   const collapsed = preferences.get("atlas_sidebar")?.value === "collapsed";
   const sidebarWidth = parseSidebarWidth(preferences.get(SIDEBAR_WIDTH_COOKIE)?.value);
   const session = await getServerSession();
+  // getServerSession hides a session that is still waiting for MFA. The shell
+  // only disappears when there is no valid session at all, so a user finishing
+  // /profile#two-factor keeps the chrome they had before this change.
+  const hasSession = (await getMfaServerSession()) !== null;
   const currentUserId = session?.id ?? null;
+
+  // Screens with no valid session (login, invitation acceptance, public share)
+  // render without the application chrome: no sidebar, narrow-screen
+  // navigation bar or command palette. The pages own their centered cards. A
+  // signed-in user who opens /login keeps the full shell, as before.
+  //
+  // This lives in the root layout rather than a route group because /login
+  // shows the shell when the visitor already has a session. A route group
+  // would force /login into the signed-out layout and change that behavior.
+  if (!hasSession) {
+    return (
+      <div className="flex h-screen flex-col overflow-hidden bg-bg text-text">
+        <main className="min-h-0 flex-1 overflow-auto">{children}</main>
+      </div>
+    );
+  }
+
   const isAdmin = session?.isAdmin === true;
   const workspace = currentUserId === null ? undefined : await getWorkspace();
   // One server-side decision shared by every portfolio entry point.
@@ -66,7 +89,7 @@ export default async function AppShell({
           )}
         </ResizableSidebar>
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-1 border-b bg-surface px-2 py-1.5 text-sm md:hidden">
+          <div data-mobile-bar className="flex items-center gap-1 border-b bg-surface px-2 py-1.5 text-sm md:hidden">
             <nav aria-label="モバイルナビゲーション" className="flex min-w-0 flex-1 gap-1 overflow-x-auto p-1 whitespace-nowrap">
               {visibleNavItems(MOBILE_NAV, showPortfolio).map((entry) => (
                 <Link key={entry.href} href={entry.href} className="rounded px-2 py-1 hover:bg-hover">
@@ -80,6 +103,10 @@ export default async function AppShell({
                 <OpenCommandPaletteButton className="flex h-8 shrink-0 items-center justify-center rounded-md px-2 text-[13px] text-secondary hover:bg-surface-muted hover:text-text" />
               </div>
             )}
+            <div data-mobile-preferences className="flex shrink-0 items-center gap-0.5">
+              <ThemeToggle initialTheme={theme} variant="topbar" />
+              <SidebarHelpButton variant="topbar" />
+            </div>
           </div>
           <main className="min-h-0 flex-1 overflow-auto">{children}</main>
         </div>

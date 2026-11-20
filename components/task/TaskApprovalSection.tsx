@@ -7,7 +7,7 @@ import type { TaskApprovalAction, TaskApprovalResponse, TaskApprovalSummary } fr
 import { TASK_APPROVAL_ACTION_LABELS, TASK_APPROVAL_STATUS_LABELS } from "@/lib/task-approval";
 import TaskApprovalBadge from "./TaskApprovalBadge";
 
-const inputClass = "w-full rounded border border-line-strong bg-field px-2.5 py-2 text-[13px] text-text placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:bg-surface-subtle disabled:text-muted";
+const inputClass = "w-full rounded border border-field-line bg-field px-2.5 py-2 text-[13px] text-text placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:border-line disabled:bg-surface-subtle disabled:text-muted";
 const secondaryButtonBase = "rounded border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:opacity-50";
 const secondaryButton = `${secondaryButtonBase} text-secondary`;
 const dangerSecondaryButton = `${secondaryButtonBase} text-danger`;

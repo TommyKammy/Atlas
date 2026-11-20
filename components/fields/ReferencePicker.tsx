@@ -67,7 +67,7 @@ export default function ReferencePicker({
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="タスクを検索"
-        className="h-8 w-full rounded border border-line px-2 text-[12px] outline-none focus:border-accent"
+        className="h-8 w-full rounded border border-field-line px-2 text-[12px] outline-none focus:border-accent"
       />
       <div className="mt-1.5 max-h-56 space-y-0.5 overflow-y-auto">
         {loading && <div className="px-1 py-3 text-[11px] text-subtle">読み込み中…</div>}

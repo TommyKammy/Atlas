@@ -82,6 +82,8 @@ Tailwind の `text-*` ユーティリティと自然に組み合わせるため�
 | `--atlas-surface-muted` | `bg-surface-muted` | `#eff0f2` | `#1d2229` | 弱い面。入力欄の下地、選択行、ボードの列 |
 | `--atlas-surface-strong` | `bg-surface-strong` | `#e4e6ea` | `#252b33` | 強い面。押下状態、無効化された面 |
 | `--atlas-field` | `bg-field` | `#ffffff` | `#14181d` | 入力欄（`input` / `select` / `textarea`）の面 |
+| `--atlas-field-line` | `border-field-line` | `#8c95a5` | `#586577` | 入力欄の枠線。`field` / `surface` / `bg` のいずれに対しても 3:1 以上 |
+| `--atlas-field-line-hover` | `hover:border-field-line-hover` | `#6c778b` | `#728197` | 入力欄のホバー枠線。`field-line` より強い（4.5:1 以上） |
 | `--atlas-hover` | `bg-hover`（`hover:bg-hover`） | `#f5f5f7` | `#191d23` | 行・項目・ボタンのホバー面。`hover:` と組み合わせる |
 | `--atlas-hover-strong` | `bg-hover-strong` | `#dee1e6` | `#2a313a` | 強いホバー・押下 |
 | `--atlas-overlay` | `bg-overlay/10` / `border-overlay/15` / `ring-overlay/20` | `#ffffff` | `#ffffff` | 画像・暗いクローム・色付き面の上の白いベール。不透明度は `/10` などで付ける |
@@ -112,7 +114,7 @@ Tailwind の `text-*` ユーティリティと自然に組み合わせるため�
 | `--atlas-sidebar-danger` | `text-sidebar-danger` | `#b83228` | `#ff9c8f` | サイドバーのエラー文字 |
 | `--atlas-sidebar-favorite` | `text-sidebar-favorite` | `#9a6700` | `#f5c04a` | サイドバーのお気に入り星 |
 | `--atlas-line` | `border-line` / `divide-line` / `bg-line` | `#e4e6ea` | `#252b33` | 既定の罫線・区切り線。`@layer base` の `border-color` に適用済み |
-| `--atlas-line-strong` | `border-line-strong` | `#cdd1d8` | `#3a424e` | 強調罫線、入力欄の境界 |
+| `--atlas-line-strong` | `border-line-strong` | `#cdd1d8` | `#3a424e` | 強調罫線（カード・ボタン・ポップオーバーの境界）。入力欄は `field-line` |
 | `--atlas-line-subtle` | `border-line-subtle` / `divide-line-subtle` | `#eff0f2` | `#1d2229` | 行の区切りなど弱い罫線 |
 | `--atlas-data-line` | `border-data-line` | `rgb(0 0 0 / 0.10)` | `rgb(0 0 0 / 0.10)` | データ色（プロジェクト色・写真）の縁。色の上で黒 10% のまま |
 | `--atlas-text` | `text-text`（互換: `text-foreground`） | `#1a1d21` | `#e8eaed` | 既定の本文色。`body` に適用済み |
@@ -825,6 +827,7 @@ node scripts/check-color-literals.mjs --summary  # 全体・種類別・上位20
 - `danger-strong` / `danger-action` = `bad` を白文字用に暗くした値（`#B83228`、ホバー `#9E2A22`）
 - `success-strong` = `ok` を白文字用にした値（`#1B7F4B`、ホバー `#14663C`）
 - `favorite` = アイコンの非テキスト 3:1 を満たす `warn` 系（ライト `#9A6700` / ダーク `#F5C04A`）
+- `field-line` = `line-strong` と同じ青みグレーの色相・彩度のまま、入力欄の面（`field`）、カードの面（`surface`）、ページ背景（`bg`）に対して 3:1 以上となる最も明るさの近い値（ライト `#8C95A5` / ダーク `#586577`）。`field-line-hover` は同じ系列でさらに一段強くした値（ライト `#6C778B` / ダーク `#728197`）
 - `inverse-*` = C 案のダーク値（`#14181D` / `#1D2229` / `#0F1216` / `#3A424E` / `#252B33` / `#C9CFD8` / `#E8EAED` / `#A3ACB8` / `#B9F227` / `#FF9C8F` / `#F5C04A`）
 
 ### 10.2 主要なコントラスト
@@ -857,6 +860,12 @@ WCAG の相対輝度で計算した。太字は 4.5:1 以上、`*` は非テキ�
 | `favorite` / `bg` * | 4.87 | 11.20 |
 | `focus-ring` / `bg` * | 6.34 | 14.12 |
 | `focus-ring` / `surface-muted` * | 5.56 | 12.03 |
+| `field-line` / `field` * | 3.02 | 3.01 |
+| `field-line` / `surface` * | 3.02 | 3.01 |
+| `field-line` / `bg` * | 3.02 | 3.17 |
+| `field-line-hover` / `field` * | 4.52 | 4.50 |
+| `field-line-hover` / `surface` * | 4.52 | 4.50 |
+| `field-line-hover` / `bg` * | 4.52 | 4.74 |
 
 `text-subtle` はプレースホルダ・無効・装飾専用で、本文には使わない。ライトの 3.11 は AA 未満だが、旧値 2.58 より高く、コントラスト監査のベースラインには装飾用途だけを残している。
 
@@ -867,7 +876,7 @@ WCAG の相対輝度で計算した。太字は 4.5:1 以上、`*` は非テキ�
 - `ResizableSidebar`（面・文字・罫線）
 - `SidebarNav` / `SidebarProjectLink` / `SidebarProjectList`（文字・お気に入り・ドロップ位置・フォーカス）
 - `SidebarRail` / `SidebarToggle` / `SidebarAddProject` / `SidebarInviteButton` / `SidebarHelpButton` / `SidebarUserMenu`（アイドル・ホバー・選択・招待ボタン）
-- `ThemeToggle`（サイドバー下部）
+- `ThemeToggle`（サイドバー下部、狭い画面では上部バー）と `SidebarHelpButton`（サイドバーのほか、狭い画面では上部バー）は、上部バーでは `sidebar-*` ではなく通常の `text-muted` / `hover:bg-hover` / `hover:text-text` を使う
 - `InboxButtons` の「すべて既読にする」と `CreateMenu` の作成ボタンは、通常の `accent` / `on-accent` へ移した（サイドバー専用ではないため）
 - `Shortcuts` / `SidebarHelpButton` のダイアログの「閉じる」も通常の `accent` へ移した
 
