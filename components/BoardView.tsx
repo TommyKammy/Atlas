@@ -19,6 +19,8 @@ import { patchTask, TaskConflictError } from "@/lib/task-client";
 import { useApiRefresh } from "@/lib/use-api-refresh";
 import { useLive } from "@/lib/use-live";
 import { usePersistedViewState } from "@/lib/view-state-client";
+import { SectionDraftProvider } from "@/lib/section-draft-context";
+import { useSectionDraft } from "@/lib/use-section-draft";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useRef, useState } from "react";
 import BoardCard from "./board/BoardCard";
@@ -119,6 +121,26 @@ function BoardViewContent({
     due: initial.show_due !== false,
     status: initial.show_status !== false,
     meta: initial.show_meta !== false,
+  });
+  const sectionDraft = useSectionDraft({
+    projectId,
+    onCreated: (created, origin) => {
+      setCreatedSectionIds((current) => new Set(current).add(created.id));
+      refresh();
+      if (origin !== "enter") return;
+      // The new column arrives with the server refresh; keep checking for it
+      // so the column's task composer can receive focus.
+      const focusColumn = (attempt = 0) => {
+        const column = document.querySelector<HTMLElement>(`[data-board-column="s${created.id}"]`);
+        if (!column) {
+          if (attempt < 120) requestAnimationFrame(() => focusColumn(attempt + 1));
+          return;
+        }
+        column.scrollIntoView({ block: "nearest", inline: "nearest" });
+        quick?.create("task", created.id);
+      };
+      requestAnimationFrame(() => focusColumn());
+    },
   });
   const onLive = useCallback(() => router.refresh(), [router]);
   useLive(projectId, autoRefresh, onLive);
@@ -553,6 +575,9 @@ function BoardViewContent({
   };
 
   return (
+    <SectionDraftProvider
+      start={canConfigure && effectiveGroupBy === "section" ? () => sectionDraft.start(null) : null}
+    >
     <div
       className="flex h-full min-h-0 flex-col"
       data-board-view
@@ -791,17 +816,14 @@ function BoardViewContent({
         ))}
         {canConfigure && effectiveGroupBy === "section" && (
           <BoardSectionAdd
-            projectId={projectId}
-            columnCount={groups.length}
-            onCreated={(sectionId) => {
-              setCreatedSectionIds((current) => new Set(current).add(sectionId));
-              refresh();
-            }}
+            draft={sectionDraft}
+            onStart={() => sectionDraft.start(null)}
           />
         )}
       </div>
       </div>
     </div>
+    </SectionDraftProvider>
   );
 }
 

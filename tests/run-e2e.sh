@@ -129,7 +129,7 @@ if [[ "$suite" == browser || "$suite" == ui-contrast || "$suite" == toolbar || "
         --workers 1 --output "$browser_output"
     fi
   elif [[ "$suite" == task-create ]]; then
-    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/project-task-create.spec.ts tests/browser/section-task-create.spec.ts tests/browser/list.spec.ts tests/browser/board-section-add.spec.ts tests/browser/project-toolbar.spec.ts tests/browser/timeline-section-add.spec.ts tests/browser/timeline-windowing.spec.ts --workers 1 --output "$browser_output"
+    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/project-task-create.spec.ts tests/browser/section-task-create.spec.ts tests/browser/list.spec.ts tests/browser/board-section-add.spec.ts tests/browser/project-toolbar.spec.ts tests/browser/timeline-section-add.spec.ts tests/browser/list-section-insert.spec.ts tests/browser/timeline-windowing.spec.ts --workers 1 --output "$browser_output"
   elif [[ "$suite" == toolbar ]]; then
     E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/project-toolbar.spec.ts tests/browser/board-section-add.spec.ts tests/browser/list.spec.ts --workers 1 --output "$browser_output"
   elif [[ "$suite" == knowledge-ai ]]; then

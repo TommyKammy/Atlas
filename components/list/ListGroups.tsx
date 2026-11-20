@@ -2,9 +2,10 @@
 
 import { useQuickTask } from "../task/QuickTaskContext";
 
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { Fragment, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { Section, TaskRow } from "@/lib/data";
 import type { ListGroupBy } from "@/lib/list-view";
+import type { SectionAnchor } from "@/lib/section-order";
 import type { TaskRowContext } from "./TaskListRow";
 import ListGroupAddRow from "./ListGroupAddRow";
 import ListSectionBlock from "./ListSectionBlock";
@@ -57,6 +58,8 @@ export type ListGroupsProps = {
     reorderSections: (sourceId: number, targetId: number, side: "before" | "after") => Promise<void>;
     appendToSection: (dragId: number, sectionId: number | null) => Promise<void>;
   };
+  /** A draft heading anchored immediately before/after one section. */
+  sectionDraft: { anchor: SectionAnchor; node: ReactNode } | null;
 };
 
 /**
@@ -64,7 +67,7 @@ export type ListGroupsProps = {
  * controls and the section-less bucket. All child components keep their
  * existing data-* contracts.
  */
-export default function ListGroups({ groups, render, composer, dnd }: ListGroupsProps) {
+export default function ListGroups({ groups, render, composer, dnd, sectionDraft }: ListGroupsProps) {
   const quick = useQuickTask();
   const { groupBy, group2, groupOrder, orderedSections, bySection, collapsedGroups, rowLimitFor } =
     groups;
@@ -88,6 +91,8 @@ export default function ListGroups({ groups, render, composer, dnd }: ListGroups
     reorderSections,
     appendToSection,
   } = dnd;
+  const draftNode = sectionDraft?.node ?? null;
+  const draftAnchor = sectionDraft?.anchor ?? null;
 
   const looseItems = bySection.get(null) ?? [];
   const shownLoose = looseItems.slice(0, rowLimitFor("none"));
@@ -143,8 +148,9 @@ export default function ListGroups({ groups, render, composer, dnd }: ListGroups
             const items = bySection.get(section.id) ?? [];
             const shownItems = items.slice(0, rowLimitFor(key));
             return (
-              <ListSectionBlock
-                key={section.id}
+              <Fragment key={section.id}>
+                {draftNode && draftAnchor?.before === section.id && draftNode}
+                <ListSectionBlock
                 sectionId={section.id}
                 collapsed={collapsed}
                 dropSide={sectionDrop?.id === section.id ? sectionDrop.side : null}
@@ -190,7 +196,9 @@ export default function ListGroups({ groups, render, composer, dnd }: ListGroups
                   {showMoreRows(key, items.length, shownItems.length)}
                   {ghostRow(() => quick?.create("task", section.id), items)}
                 </>
-              </ListSectionBlock>
+                </ListSectionBlock>
+                {draftNode && draftAnchor?.after === section.id && draftNode}
+              </Fragment>
             );
           })}
       <ListUngroupedSection

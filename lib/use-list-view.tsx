@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuickTask } from "@/components/task/QuickTaskContext";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { todayISO } from "@/lib/dates";
@@ -143,10 +143,6 @@ export function useListView({
     remove,
   } = useListTaskActions({ projectId, refresh, customFields, sections, groupSections });
   const {
-    addingSection,
-    setAddingSection,
-    sectionName,
-    setSectionName,
     orderedSections,
     sectionDragging,
     setSectionDragging,
@@ -158,6 +154,9 @@ export function useListView({
     setSectionEditName,
     sectionMenu,
     setSectionMenu,
+    sectionDraft,
+    startSectionDraft,
+    cancelSectionDraft,
     startSectionDrag,
     reorderSections,
     beginSectionEdit,
@@ -165,13 +164,12 @@ export function useListView({
     addTaskToSection,
     openSectionMenu,
     deleteSection,
-    createSection,
     sectionDropSide,
   } = useListSections({
     projectId,
     sections,
     refresh,
-    onAddTask: id => quick?.create("task", id),
+    onAddTask: (id, options) => quick?.create("task", id, options),
     onDragStart: () => setHint(null),
   });
   const [fieldMenuAnchor, setFieldMenuAnchor] = useState<{
@@ -227,6 +225,8 @@ export function useListView({
   const [menuCol, setMenuCol] = useState<string | null>(null);
   const [rowLimits, setRowLimits] = useState<Record<string, number>>({});
   const [customFilter, setCustomFilter] = useState<Record<number, string>>({});
+  // Toolbar section creation lands below the section the user last touched.
+  const lastSectionRef = useRef<number | null>(null);
 
 
   const focusAdd = () => {
@@ -364,6 +364,39 @@ export function useListView({
   });
 
   const summary = listTaskSummary(visible, today);
+
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>("[data-list-view]");
+    if (!root) return;
+    const remember = (event: Event) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      const row = target.closest<HTMLElement>("[data-list-row]");
+      if (row) {
+        const taskId = Number(row.getAttribute("data-list-row"));
+        const task = visible.find((item) => item.id === taskId);
+        if (task) {
+          lastSectionRef.current = taskSectionId(task);
+          return;
+        }
+      }
+      const block = target.closest<HTMLElement>("[data-list-section-block]");
+      if (!block) return;
+      const sectionId = Number(block.getAttribute("data-list-section-block"));
+      if (Number.isInteger(sectionId) && sectionId > 0) lastSectionRef.current = sectionId;
+    };
+    root.addEventListener("focusin", remember);
+    root.addEventListener("pointerdown", remember);
+    return () => {
+      root.removeEventListener("focusin", remember);
+      root.removeEventListener("pointerdown", remember);
+    };
+  }, [visible]);
+
+  const startSectionFromToolbar = () => {
+    const sectionId = lastSectionRef.current;
+    startSectionDraft(groupBy === "section" && sectionId !== null ? { after: sectionId } : null);
+  };
 
   const bySection = new Map<number | null, TaskRow[]>();
   for (const t of visible) {
@@ -548,6 +581,39 @@ export function useListView({
     />
   );
 
+  const sectionDraftHeader = sectionDraft.active ? (
+    <ListSectionHeader
+      groupKey="draft"
+      name=""
+      count={0}
+      groupBy={groupBy}
+      collapsed={false}
+      sectionDragging={null}
+      dropTargetId={null}
+      editingSection={null}
+      sectionEditName=""
+      sectionMenuId={null}
+      canEdit={canEdit}
+      onToggle={() => undefined}
+      onBeginEdit={() => undefined}
+      onEditNameChange={() => undefined}
+      onSaveName={() => undefined}
+      onCancelEdit={() => undefined}
+      onAddTask={() => undefined}
+      onOpenMenu={() => undefined}
+      onDragStart={() => undefined}
+      onDragEnd={() => undefined}
+      draft={{
+        name: sectionDraft.name,
+        saving: sectionDraft.saving,
+        error: sectionDraft.error,
+        onNameChange: sectionDraft.changeName,
+        onCommit: (origin) => void sectionDraft.commit(origin),
+        onCancel: cancelSectionDraft,
+      }}
+    />
+  ) : null;
+
   const ghostRow = (onClick: () => void, items: TaskRow[]) => (
     <ListFooterRow
       variant="ghost"
@@ -721,14 +787,17 @@ export function useListView({
           reorderSections,
           appendToSection,
         },
+        sectionDraft:
+          sectionDraftHeader && sectionDraft.anchor
+            ? { anchor: sectionDraft.anchor, node: sectionDraftHeader }
+            : null,
       },
-      sectionAdd: {
-        adding: addingSection,
-        name: sectionName,
-        onNameChange: setSectionName,
-        onCreate: () => void createSection(),
-        onCancel: () => setAddingSection(false),
-        onStart: () => setAddingSection(true),
+      sectionDraft: {
+        active: sectionDraft.active,
+        atEnd: sectionDraft.anchor === null,
+        node: sectionDraftHeader,
+        onStartFromToolbar: startSectionFromToolbar,
+        onStartAtEnd: () => startSectionDraft(null),
       },
       overlays: {
         projectId,
@@ -740,17 +809,8 @@ export function useListView({
         users,
         onCloseSectionMenu: () => setSectionMenu(null),
         onRenameSection: (section) => beginSectionEdit(section.id, section.name),
-        onAddSection: () => {
-          setSectionMenu(null);
-          setAddingSection(true);
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              const input = document.querySelector<HTMLInputElement>("input[data-add-section-input]");
-              input?.scrollIntoView({ block: "nearest" });
-              input?.focus();
-            });
-          });
-        },
+        onAddSectionBefore: (section) => startSectionDraft({ before: section.id }),
+        onAddSectionAfter: (section) => startSectionDraft({ after: section.id }),
         onToggleCollapseSection: (sectionId) => {
           setSectionMenu(null);
           toggleGroup(`s:${sectionId}`);

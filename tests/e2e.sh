@@ -745,6 +745,28 @@ R=$(api DELETE /api/field-library/$LID)
 [[ "$(jget "$R" deleted)" == "$LID" ]] && ok "field library delete" || bad "field library delete" "$R"
 db_sql -q -c "DELETE FROM custom_fields WHERE deleted_at IS NOT NULL AND (name LIKE 'E2E%' OR name='E2E復元' OR name='E2E権限');"
 
+echo "== section insert =="
+P=$(api POST /api/projects '{"workspace_id":1,"name":"E2Eセクション挿入"}')
+PID=$(jget "$P" id)
+SECS=$(curl -s -m 15 -b "$JAR" "$BASE/api/lookup?project_id=$PID")
+S1=$(python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])" <<<"$SECS")
+S2=$(python3 -c "import json,sys; print(json.load(sys.stdin)[1]['id'])" <<<"$SECS")
+S2NAME=$(python3 -c "import json,sys; print(json.load(sys.stdin)[1]['name'])" <<<"$SECS")
+R1=$(api POST /api/sections "{\"project_id\":$PID,\"name\":\"E2E上に挿入\",\"before_section_id\":$S2}")
+[[ "$(jget "$R1" name)" == "E2E上に挿入" && -n "$(jget "$R1" position)" ]] && ok "section insert before response" || bad "section insert before response" "$R1"
+R2=$(api POST /api/sections "{\"project_id\":$PID,\"name\":\"E2E下に挿入\",\"after_section_id\":$S2}")
+[[ "$(jget "$R2" name)" == "E2E下に挿入" && -n "$(jget "$R2" position)" ]] && ok "section insert after response" || bad "section insert after response" "$R2"
+R3=$(api POST /api/sections "{\"project_id\":$PID,\"name\":\"E2E末尾\"}")
+[[ "$(jget "$R3" name)" == "E2E末尾" && -n "$(jget "$R3" position)" ]] && ok "section append response" || bad "section append response" "$R3"
+N=$(curl -s -m 15 -b "$JAR" "$BASE/api/lookup?project_id=$PID" | python3 -c "import json,sys; names=[s['name'] for s in json.load(sys.stdin)]; i=names.index('$S2NAME'); print('ok' if names[i-1]=='E2E上に挿入' and names[i+1]=='E2E下に挿入' and names[-1]=='E2E末尾' else 'bad:'+','.join(names))")
+[[ "$N" == "ok" ]] && ok "section insert order" || bad "section insert order" "$N"
+C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/sections" -H 'Content-Type: application/json' -d "{\"project_id\":$PID,\"name\":\"E2E両方\",\"before_section_id\":$S1,\"after_section_id\":$S2}")
+[[ "$C" == "400" ]] && ok "section both anchors rejected ($C)" || bad "section both anchors rejected ($C)"
+C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/sections" -H 'Content-Type: application/json' -d "{\"project_id\":$PID,\"name\":\"E2E他PJ\",\"before_section_id\":2}")
+[[ "$C" == "400" || "$C" == "404" ]] && ok "section foreign anchor rejected ($C)" || bad "section foreign anchor rejected ($C)"
+R=$(api DELETE /api/projects/$PID)
+[[ "$(jget "$R" deleted)" == "$PID" ]] && ok "section insert fixture cleaned" || bad "section insert fixture cleaned" "$R"
+
 echo "== multi-homing =="
 P=$(api POST /api/projects '{"workspace_id":1,"name":"E2E一時PJ"}')
 PID=$(jget "$P" id)

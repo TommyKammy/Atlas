@@ -57,11 +57,19 @@ function editor(page: Page) {
   const wrapper = page.locator("[data-board-section-add]");
   return {
     wrapper,
+    draft: page.locator("[data-board-section-draft]"),
     start: wrapper.getByRole("button", { name: "＋ セクションを追加", exact: true }),
     input: wrapper.locator("[data-add-section-input]"),
-    submit: wrapper.getByRole("button", { name: /^追加(?:中…)?$/ }),
-    cancel: wrapper.getByRole("button", { name: "キャンセル", exact: true }),
   };
+}
+
+async function closeComposer(page: Page, sectionId: number) {
+  const input = page.locator(`[data-board-column="s${sectionId}"]`).getByRole("textbox", { name: "新しいタスク名", exact: true });
+  if (await input.count()) {
+    await expect(input).toBeFocused();
+    await input.press("Escape");
+    await expect(input).toHaveCount(0);
+  }
 }
 
 async function startSection(page: Page) {
@@ -128,12 +136,14 @@ test("board adds a trimmed section inline to the right of every existing column"
   await e.wrapper.scrollIntoViewIfNeeded();
   const columns = page.locator("[data-board-columns]");
   expect(await columns.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
-  const last = await page.locator("[data-board-column]").last().boundingBox();
+  const last = await page.locator('[data-board-column]:not([data-board-column="draft"])').last().boundingBox();
   const added = await e.wrapper.boundingBox();
   expect(last).not.toBeNull(); expect(added).not.toBeNull();
   expect(added!.x).toBeGreaterThanOrEqual(last!.x + last!.width + 10);
   expect(Math.abs(added!.y - last!.y)).toBeLessThanOrEqual(1);
+  await expect(e.wrapper).toHaveAttribute("data-board-section-draft", "true");
   await expect(e.input).toHaveAccessibleName("セクション名");
+  await expect(e.input).toHaveAttribute("placeholder", "新しいセクション");
   await e.input.fill("  ボードの新しい工程  ");
   await capture(page, "wide-board-section-editor");
   const created = sectionResponse(page);
@@ -141,55 +151,68 @@ test("board adds a trimmed section inline to the right of every existing column"
   const response = await created;
   expect(response.request().postDataJSON()).toEqual({ project_id: projectId, name: "ボードの新しい工程" });
   const { id } = await response.json() as { id: number };
-  await expect(e.start).toBeVisible();
+  await expect(e.draft).toHaveCount(0);
   await expect(page.locator(`[data-board-column="s${id}"]`)).toContainText("ボードの新しい工程");
-  await expect(page.locator("[data-board-column]").last()).toHaveAttribute("data-board-column", `s${id}`);
-  await expect(e.start).toBeFocused();
-  await expect(e.start).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('[data-board-column]:not([data-board-column="draft"])').last()).toHaveAttribute("data-board-column", `s${id}`);
+  const newTask = page.locator(`[data-board-column="s${id}"]`).getByRole("textbox", { name: "新しいタスク名", exact: true });
+  await expect(newTask).toBeFocused();
+  await newTask.press("Escape");
   expect((await sections(page, projectId)).map((section) => section.name)).toEqual([...initial.map((section) => section.name), "ボードの新しい工程"]);
   expect(dialogs).toEqual([]);
 });
 
-test("narrow board keeps the composer within its column and blur waits for explicit Add", async ({ page }) => {
-  await page.setViewportSize({ width: 700, height: 900 });
+test("board toolbar section starts the trailing column draft", async ({ page }) => {
   const { projectId, initial } = await fixture(page);
+  await openBoard(page, projectId);
+  await page.getByRole("button", { name: "追加オプション" }).first().click();
+  await page.getByRole("menuitem", { name: "セクション", exact: true }).click();
+  const e = editor(page);
+  await expect(e.draft).toBeVisible();
+  await expect(e.input).toBeFocused();
+  await e.input.fill("ツールバーから追加");
+  const created = sectionResponse(page);
+  await e.input.press("Enter");
+  const { id } = await (await created).json() as { id: number };
+  await expect(e.draft).toHaveCount(0);
+  await expect(page.locator(`[data-board-column="s${id}"]`)).toContainText("ツールバーから追加");
+  expect((await sections(page, projectId)).map((section) => section.name))
+    .toEqual([...initial.map((section) => section.name), "ツールバーから追加"]);
+});
+
+test("narrow board keeps the draft heading within its column and blur saves it", async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 900 });
+  const { projectId } = await fixture(page);
   await openBoard(page, projectId);
   const writes = sectionWrites(page);
   const e = await startSection(page);
   await e.input.fill("  狭い画面で追加  ");
-  await e.input.blur();
-  await renderCheckpoint(page);
-  expect(writes).toEqual([]);
-  expect(await sections(page, projectId)).toEqual(initial);
-  await expect(e.input).toHaveValue("  狭い画面で追加  ");
   await e.wrapper.scrollIntoViewIfNeeded();
   const wrapper = await e.wrapper.boundingBox();
   expect(wrapper).not.toBeNull();
-  for (const control of [e.input, e.submit, e.cancel]) {
-    await expect(control).toBeInViewport();
-    const box = await control.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.x).toBeGreaterThanOrEqual(wrapper!.x);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(wrapper!.x + wrapper!.width + 1);
-  }
+  await expect(e.input).toBeInViewport();
+  const box = await e.input.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(wrapper!.x);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(wrapper!.x + wrapper!.width + 1);
   await capture(page, "narrow-board-section-editor");
   const created = sectionResponse(page);
-  await e.submit.click();
+  await e.input.blur();
   const { id } = await (await created).json() as { id: number };
+  await expect(e.draft).toHaveCount(0);
   await expect(page.locator(`[data-board-column="s${id}"]`)).toContainText("狭い画面で追加");
-  await expect(e.start).toBeVisible();
-  await expect(e.start).toBeFocused();
-  await expect(e.start).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("textbox", { name: "新しいタスク名", exact: true })).toHaveCount(0);
   expect(writes).toEqual([{ project_id: projectId, name: "狭い画面で追加" }]);
 });
 
-test("board Escape and Cancel discard drafts and restore focus while empty confirmation sends nothing", async ({ page }) => {
+test("board Escape and empty blur discard drafts without a write", async ({ page }) => {
   const { projectId, initial } = await fixture(page);
   await openBoard(page, projectId);
   const writes = sectionWrites(page);
   let e = await startSection(page);
   await e.input.fill("取消される工程");
   await e.input.press("Escape");
+  await expect(e.draft).toHaveCount(0);
+  await expect(e.start).toBeVisible();
   await expect(e.start).toBeFocused();
   e = await startSection(page);
   await expect(e.input).toHaveValue("");
@@ -197,10 +220,8 @@ test("board Escape and Cancel discard drafts and restore focus while empty confi
   await e.input.press("Enter");
   await expect(e.input).toBeFocused();
   await expect(e.input).toHaveValue("   ");
-  await e.submit.click();
-  await expect(e.input).toHaveValue("   ");
-  await e.cancel.click();
-  await expect(e.start).toBeFocused();
+  await e.input.blur();
+  await expect(e.draft).toHaveCount(0);
   await renderCheckpoint(page);
   expect(writes).toEqual([]);
   expect(await sections(page, projectId)).toEqual(initial);
@@ -251,14 +272,16 @@ test("board repeated Enter in one turn and blur cannot create duplicate sections
     });
     await arrived;
     await expect(e.input).toBeDisabled();
-    await expect(e.submit).toBeDisabled();
-    await expect(e.cancel).toBeDisabled();
     await e.input.dispatchEvent("keydown", { key: "Enter", code: "Enter", bubbles: true });
     await renderCheckpoint(page);
     expect(writes).toEqual([{ project_id: projectId, name: "一度だけの工程" }]);
     release();
-    await created;
-    await expect(e.start).toBeVisible();
+    const { id } = await (await created).json() as { id: number };
+    await expect(e.draft).toHaveCount(0);
+    await expect(page.locator(`[data-board-column="s${id}"]`)).toContainText("一度だけの工程");
+    const newTask = page.locator(`[data-board-column="s${id}"]`).getByRole("textbox", { name: "新しいタスク名", exact: true });
+    await expect(newTask).toBeFocused();
+    await newTask.press("Escape");
     expect((await sections(page, projectId)).filter((section) => section.name === "一度だけの工程")).toHaveLength(1);
     expect(writes).toHaveLength(1);
   } finally {
@@ -289,12 +312,12 @@ test("board 503 retains the draft with an accessible warning and allows a succes
   await expect(e.input).toHaveAttribute("aria-invalid", "true");
   await expect(e.input).toHaveValue("  再試行する工程  ");
   await expect(e.input).toBeEnabled();
-  await expect(e.submit).toBeEnabled();
+  await expect(e.input).toBeFocused();
   expect(await sections(page, projectId)).toEqual(initial);
   const created = sectionResponse(page);
-  await e.submit.click();
+  await e.input.press("Enter");
   const { id } = await (await created).json() as { id: number };
-  await expect(e.start).toBeVisible();
+  await expect(e.draft).toHaveCount(0);
   await expect(e.wrapper.getByRole("alert")).toHaveCount(0);
   await expect(page.locator(`[data-board-column="s${id}"]`)).toContainText("再試行する工程");
   expect(attempts).toBe(2);
@@ -322,8 +345,9 @@ for (const emptySections of [false, true]) {
 test("hidden empty groups still reveal multiple new sections until the user changes that option", async ({ page }) => {
   const { projectId, initial } = await fixture(page);
   await openBoard(page, projectId);
-  await startSection(page);
-  await editor(page).cancel.click();
+  const firstDraft = await startSection(page);
+  await firstDraft.input.press("Escape");
+  await expect(firstDraft.draft).toHaveCount(0);
   await setShowEmpty(page, false);
   await expect(page.locator("[data-board-column]")).toHaveCount(1);
   const createdIds: number[] = [];
@@ -335,7 +359,8 @@ test("hidden empty groups still reveal multiple new sections until the user chan
     createdIds.push((await (await created).json() as { id: number }).id);
     await expect(page.locator(`[data-board-column="s${createdIds.at(-1)}"]`)).toContainText(name);
     await expect(page.locator("[data-board-view]")).toHaveAttribute("data-board-show-empty", "false");
-    await expect(page.locator("[data-board-column]")).toHaveCount(1 + createdIds.length);
+    await expect(page.locator('[data-board-column]:not([data-board-column="draft"])')).toHaveCount(1 + createdIds.length);
+    await closeComposer(page, createdIds.at(-1)!);
   }
   await setShowEmpty(page, true);
   await expect(page.locator("[data-board-column]")).toHaveCount(initial.length + 2);

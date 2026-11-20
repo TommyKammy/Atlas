@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import type { Section } from "@/lib/data";
+import { useMenuKeyboard } from "@/lib/use-menu-keyboard";
 
 export type SectionMenuState = { id: number; left: number; top: number };
 
@@ -10,7 +12,8 @@ export default function ListSectionMenu({
   sections,
   onClose,
   onRename,
-  onAddSection,
+  onAddBefore,
+  onAddAfter,
   onToggleCollapse,
   onDelete,
 }: {
@@ -18,10 +21,14 @@ export default function ListSectionMenu({
   sections: Section[];
   onClose: () => void;
   onRename: (section: Section) => void;
-  onAddSection: () => void;
+  onAddBefore: (section: Section) => void;
+  onAddAfter: (section: Section) => void;
   onToggleCollapse: (sectionId: number) => void;
   onDelete: (section: Section) => void;
 }) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  useMenuKeyboard({ open: Boolean(menu), containerRef: menuRef, onClose });
+
   if (!menu) return null;
   const section = sections.find((item) => item.id === menu.id);
   if (!section) return null;
@@ -32,6 +39,7 @@ export default function ListSectionMenu({
     <>
       <div className="fixed inset-0 z-[60]" onClick={onClose} />
       <div
+        ref={menuRef}
         role="menu"
         data-section-menu={section.id}
         aria-label="セクションのその他のアクション"
@@ -53,14 +61,26 @@ export default function ListSectionMenu({
         <button
           type="button"
           role="menuitem"
-          data-section-menu-action="add"
-          onClick={onAddSection}
+          data-section-menu-action="add-before"
+          onClick={() => onAddBefore(section)}
           className={itemClass}
         >
           <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.3">
             <path d="M8 3v10M3 8h10" strokeLinecap="round" />
           </svg>
-          セクションを追加
+          上にセクションを追加
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          data-section-menu-action="add-after"
+          onClick={() => onAddAfter(section)}
+          className={itemClass}
+        >
+          <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.3">
+            <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+          </svg>
+          下にセクションを追加
         </button>
         <button
           type="button"

@@ -18,10 +18,12 @@ type Draft = {
   cancelled: boolean;
   seenOnServer: boolean;
   openApproval: boolean;
+  continuous: boolean;
 };
+type CreateOptions = { continuous?: boolean };
 type Context = {
   drafts: Draft[];
-  create: (kind?: Kind, sectionId?: number | null) => void;
+  create: (kind?: Kind, sectionId?: number | null, options?: CreateOptions) => void;
   change: (draft: Draft, text: string) => void;
   finish: (draft: Draft) => Promise<void>;
   cancel: (draft: Draft) => void;
@@ -114,6 +116,13 @@ export function QuickTaskProvider({ projectId, sections, view, canEdit, children
         router.push(`/projects/${projectId}?${query}`);
       }
       router.refresh();
+      if (draft.continuous) {
+        create(
+          draft.task.is_milestone ? "milestone" : "task",
+          draft.task.section_id,
+          { continuous: true },
+        );
+      }
     } catch {
       // An ambiguous failure may still have committed; keep the text so the
       // user can decide whether to retry from this same composer.
@@ -121,7 +130,11 @@ export function QuickTaskProvider({ projectId, sections, view, canEdit, children
       draft.editing = true;
     } finally { draft.saving = false; redraw(); }
   };
-  const create = (kind: Kind = "task", sectionId: number | null = sections[0]?.id ?? null) => {
+  const create = (
+    kind: Kind = "task",
+    sectionId: number | null = sections[0]?.id ?? null,
+    options: CreateOptions = {},
+  ) => {
     if (!canEdit) return;
     const today = todayISO();
     const dated = view === "timeline" || view === "calendar";
@@ -139,6 +152,7 @@ export function QuickTaskProvider({ projectId, sections, view, canEdit, children
     const draft: Draft = {
       task, text: "", editing: true, saving: false, error: "",
       cancelled: false, seenOnServer: false, openApproval: kind === "approval",
+      continuous: options.continuous === true,
     };
     setDrafts(current => [...current, draft]);
   };
