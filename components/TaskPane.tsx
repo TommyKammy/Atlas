@@ -358,7 +358,7 @@ export default function TaskPane({
       className={`taskpane-enter @container flex w-full shrink-0 flex-col overflow-hidden bg-surface-subtle ${
         maximized
           ? "fixed inset-0 z-[120]"
-          : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[100dvh] md:w-[480px] md:self-start md:border-l md:border-line lg:w-[440px]"
+          : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[100dvh] md:w-[560px] md:self-start md:border-l md:border-line xl:w-[680px] 2xl:w-[760px]"
       }`}
     >
       <TaskPaneHeader

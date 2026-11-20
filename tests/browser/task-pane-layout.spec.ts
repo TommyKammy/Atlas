@@ -17,15 +17,16 @@ async function openPane(page: Page, url = PANE_URL) {
   return pane;
 }
 
-test("the pane uses the 440px C workbench width and surface at the large breakpoints", async ({ page }) => {
+test("the pane keeps the pre-C widths (560/680/760px) with the C workbench surface", async ({ page }) => {
   const pane = await openPane(page);
 
   for (const [width, expected] of [
-    [1440, 440],
-    [1280, 440],
-    [1024, 440],
-    [900, 480],
-    [768, 480],
+    [1600, 760],
+    [1440, 680],
+    [1280, 680],
+    [1024, 560],
+    [900, 560],
+    [768, 560],
   ] as const) {
     await page.setViewportSize({ width, height: 1000 });
     const box = (await pane.boundingBox())!;
@@ -200,7 +201,7 @@ test("the pane still fills the viewport at 375px and keeps its header actions re
   expect(fieldBox.x + fieldBox.width).toBeLessThanOrEqual(375);
 });
 
-test("fullscreen still expands the pane and returns to the 440px dock", async ({ page }) => {
+test("fullscreen still expands the pane and returns to the 680px dock", async ({ page }) => {
   const pane = await openPane(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
 
@@ -213,5 +214,5 @@ test("fullscreen still expands the pane and returns to the 440px dock", async ({
 
   await pane.getByRole("button", { name: "全画面を終了", exact: true }).click();
   const restored = (await pane.boundingBox())!;
-  expect(Math.round(restored.width)).toBe(440);
+  expect(Math.round(restored.width)).toBe(680);
 });
