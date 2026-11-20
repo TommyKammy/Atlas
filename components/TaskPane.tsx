@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
 import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import {
@@ -42,6 +43,8 @@ import TaskDraftInput from "./task/TaskDraftInput";
 import TaskSaveStatus from "./task/TaskSaveStatus";
 import type { TaskApprovalSummary } from "@/lib/task-approval";
 import { QUICK_REACTIONS, useTaskPane } from "@/lib/use-task-pane";
+import { useQuickTask } from "./task/QuickTaskContext";
+import { isImeComposing } from "@/lib/ime-keyboard";
 
 export default function TaskPane({
   projectId,
@@ -167,10 +170,15 @@ export default function TaskPane({
 
   const paneRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const quick = useQuickTask();
+  const paneDraft = quick?.paneDraft ?? null;
+  // The URL task is still the fallback while the draft is unsaved. Once the
+  // draft receives its server id, the pushed URL renders the normal pane.
+  const draftActive = Boolean(paneDraft && paneDraft.task.id !== task.id);
   const [approvalOverride, setApprovalOverride] = useState<{ taskId: number; stamp: string; approval: TaskApprovalSummary | null } | null>(null);
   const [approvalOpenSignal, setApprovalOpenSignal] = useState(0);
   const approval = approvalOverride?.taskId === task.id && approvalOverride.stamp === task.updated_at ? approvalOverride.approval : task.approval;
-  useFocusTrap(paneRef, true, () => router.push(closeHref));
+  useFocusTrap(paneRef, true, () => router.push(closeHref), draftActive);
 
   const renderCustomEditor = (field: CustomField) => {
     const value = customValues[field.id];
@@ -346,6 +354,116 @@ export default function TaskPane({
   const today = todayISO();
   const stateSummary = taskStateSummary(task, today);
   const lateDays = stateSummary.state === "overdue" ? overdueDays(task.due_on, today) : 0;
+  const paneShellClass = `taskpane-enter @container flex w-full shrink-0 flex-col overflow-hidden bg-surface-subtle ${
+    maximized
+      ? "fixed inset-0 z-[120]"
+      : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[100dvh] md:w-[560px] md:self-start md:border-l md:border-line xl:w-[680px] 2xl:w-[760px]"
+  }`;
+  const draftProjectName = memberships.find((membership) => membership.id === projectId)?.name ?? "";
+
+  if (draftActive && paneDraft && quick) {
+    return (
+      <aside
+        ref={paneRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="タスク詳細"
+        data-task-pane
+        data-task-pane-draft
+        className={paneShellClass}
+      >
+        <div className="flex min-h-8 shrink-0 items-center gap-1 px-5 pt-4 md:px-[26px] md:pt-[18px]">
+          <span data-task-state-summary className="shrink-0 whitespace-nowrap text-[12px] text-muted">
+            新規タスク
+          </span>
+          <span className="flex-1" />
+          <button
+            type="button"
+            onClick={() => setMaximized((value) => !value)}
+            title={maximized ? "全画面を終了" : "フルスクリーン"}
+            aria-label={maximized ? "全画面を終了" : "フルスクリーン"}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-text"
+          >
+            {maximized ? (
+              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.3">
+                <path d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.3">
+                <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" />
+              </svg>
+            )}
+          </button>
+          <Link
+            href={closeHref}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-text"
+            title="詳細を閉じる"
+            aria-label="詳細を閉じる"
+          >
+            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.4">
+              <path d="M3 3l10 10M13 3 3 13" />
+            </svg>
+          </Link>
+        </div>
+
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" data-task-pane-scroll>
+          <div className="px-5 pb-10 pt-4 md:px-[26px] md:pt-[18px]" data-task-pane-content data-draft-pane>
+            <p role="status" className="mb-3 rounded-md border border-line-subtle bg-surface p-2 text-[12px] text-secondary">
+              タスク名を確定すると、担当者・期日・説明を編集できます。
+            </p>
+            <input
+              value={paneDraft.text}
+              onChange={(event) => quick.change(paneDraft, event.target.value)}
+              onBlur={(event) => {
+                const next = event.relatedTarget;
+                if (next instanceof Element && next.closest("[data-quick-task]")) return;
+                void quick.finish(paneDraft);
+              }}
+              onKeyDown={(event) => {
+                if (isImeComposing(event)) return;
+                if (event.key === "Enter") { event.preventDefault(); void quick.finish(paneDraft); }
+                if (event.key === "Escape") { event.preventDefault(); quick.cancel(paneDraft); }
+              }}
+              readOnly={paneDraft.saving}
+              aria-busy={paneDraft.saving}
+              aria-label="タスク名"
+              placeholder="タスク名を入力"
+              maxLength={1000}
+              data-draft-pane-name
+              className="w-full border-b border-transparent bg-transparent pb-1 text-[20px] font-bold leading-[1.4] text-text outline-none placeholder:text-subtle focus:border-accent"
+            />
+            {paneDraft.error && (
+              <p role="alert" className="mt-2 rounded border border-danger-line bg-surface p-2 text-xs text-danger">
+                {paneDraft.error}
+              </p>
+            )}
+
+            <fieldset disabled className="mt-5 flex min-w-0 flex-col gap-3 border-0 p-0" data-task-fields data-draft-pane-fields>
+              <TaskFieldRow label="担当者">
+                <button type="button" disabled className="flex h-7 min-w-0 max-w-full items-center gap-2 rounded px-0.5 text-[13px] text-subtle">
+                  <EmptyCellIcon kind="assignee" />
+                  <span className="truncate">未割り当て</span>
+                </button>
+              </TaskFieldRow>
+              <TaskFieldRow label="期日">
+                <button type="button" disabled className="flex h-7 min-w-0 items-center gap-2 rounded px-0.5 text-[13px] text-subtle">
+                  <EmptyCellIcon kind="due" />
+                  <span className="truncate">期日なし</span>
+                </button>
+              </TaskFieldRow>
+              <TaskFieldRow label="プロジェクト">
+                <span className="flex min-h-7 items-center truncate text-[13px] text-secondary">{draftProjectName}</span>
+              </TaskFieldRow>
+              <TaskFieldRow label="説明">
+                <span className="flex min-h-7 items-center text-[13px] text-subtle">タスク名の確定後に編集できます</span>
+              </TaskFieldRow>
+            </fieldset>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside
@@ -355,11 +473,7 @@ export default function TaskPane({
       aria-modal="true"
       aria-label="タスク詳細"
       data-task-pane
-      className={`taskpane-enter @container flex w-full shrink-0 flex-col overflow-hidden bg-surface-subtle ${
-        maximized
-          ? "fixed inset-0 z-[120]"
-          : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[100dvh] md:w-[560px] md:self-start md:border-l md:border-line xl:w-[680px] 2xl:w-[760px]"
-      }`}
+      className={paneShellClass}
     >
       <TaskPaneHeader
         task={{ ...task, approval }}

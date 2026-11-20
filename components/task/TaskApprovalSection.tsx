@@ -41,11 +41,13 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
   const queuedBackgroundRead = useRef(false);
   const mutation = useRef(false);
   const alive = useRef(true);
+  const staleRef = useRef(false);
   const taskStamp = useRef(task.updated_at);
   const summaryCallback = useRef(onSummaryChange);
   const changedCallback = useRef(onChanged);
 
   useEffect(() => { summaryCallback.current = onSummaryChange; changedCallback.current = onChanged; }, [onSummaryChange, onChanged]);
+  useEffect(() => { staleRef.current = stale; }, [stale]);
 
   const adopt = useCallback((result: TaskApprovalResponse) => {
     setData(result);
@@ -75,7 +77,9 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
       setStale(true);
     }
     setLoading(true);
-    setError("");
+    // A background read must not erase the error from an unconfirmed
+    // mutation; only the explicit confirmation read may lift that fence.
+    if (explicit || !staleRef.current) setError("");
     try {
       const response = await fetch(`/api/tasks/${task.id}/approval`, { signal: request.signal, cache: "no-store" });
       const result = await response.json();
@@ -83,6 +87,7 @@ export default function TaskApprovalSection({ task, viewerId, canEdit, openSigna
       if (request.signal.aborted || !alive.current || controller.current !== request) return;
       adopt(result as TaskApprovalResponse);
       setReadFailed(false);
+      if (!staleRef.current) setError("");
       if (explicit) {
         setStale(false);
         setNotice("最新の承認情報を読み込みました。内容を確認してから操作してください。");

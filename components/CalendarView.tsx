@@ -1,6 +1,6 @@
 "use client";
 
-import { QuickTaskProvider, useQuickTasks, useQuickTask } from "@/components/task/QuickTaskContext";
+import { useQuickTasks, useQuickTask } from "@/components/task/QuickTaskContext";
 
 import { isImeComposing } from "@/lib/ime-keyboard";
 
@@ -766,7 +766,5 @@ function monthLabelShift(month: string, delta: number): string {
 }
 
 export default function CalendarView(props: Parameters<typeof CalendarViewContent>[0]) {
-  return <QuickTaskProvider key={props.projectId} projectId={props.projectId} sections={props.sections} view="calendar" canEdit={props.canEdit}>
-    <CalendarViewContent {...props} />
-  </QuickTaskProvider>;
+  return <CalendarViewContent {...props} />;
 }

@@ -50,6 +50,7 @@ import ProjectMemberFacepile from "@/components/project/ProjectMemberFacepile";
 import ProjectShareButton from "@/components/ProjectShareButton";
 import ProjectCustomizeButton from "@/components/ProjectCustomizeButton";
 import ProjectTaskContextMenu from "@/components/task/ProjectTaskContextMenu";
+import ProjectQuickTaskProvider from "@/components/project/ProjectQuickTaskProvider";
 import { getCurrentUserId } from "@/lib/current-user";
 import {
   buildBoardInitial,
@@ -187,8 +188,16 @@ export default async function ProjectPage(props: {
   const calendarInitial = buildCalendarInitial({ searchParams, stored: viewStates.calendar });
 
   const canConfigure = canConfigureProject(access.role, project.settings);
+  const quickView = view === "board" || view === "timeline" || view === "calendar" ? view : "list";
 
   return (
+    <ProjectQuickTaskProvider
+      projectId={projectId}
+      sections={sections}
+      view={quickView}
+      canEdit={access.role === "admin" || access.role === "editor"}
+      paneTaskId={task?.id ?? null}
+    >
     <div className="flex h-full min-h-0 flex-col md:flex-row">
       <div className="@container flex min-h-0 min-w-0 flex-1 flex-col">
         <div
@@ -454,5 +463,6 @@ export default async function ProjectPage(props: {
         />
       )}
     </div>
+    </ProjectQuickTaskProvider>
   );
 }

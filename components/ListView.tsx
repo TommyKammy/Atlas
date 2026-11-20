@@ -1,6 +1,6 @@
 "use client";
 
-import { QuickTaskProvider, useQuickTasks } from "./task/QuickTaskContext";
+import { useQuickTasks } from "./task/QuickTaskContext";
 import ListViewContent from "./list/ListViewContent";
 import { useListView, type ListViewProps } from "@/lib/use-list-view";
 
@@ -13,7 +13,5 @@ function ListClient(props: ListViewProps) {
   return <ListViewContent {...useListView({ ...props, tasks })} />;
 }
 export default function ListView(props: ListViewProps) {
-  return <QuickTaskProvider key={props.projectId} projectId={props.projectId} sections={props.sections} view="list" canEdit={props.canEdit}>
-    <ListClient {...props} />
-  </QuickTaskProvider>;
+  return <ListClient {...props} />;
 }

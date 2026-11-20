@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { Section, TaskRow } from "@/lib/data";
 import { api, ApiError } from "@/lib/api-client";
@@ -9,7 +9,7 @@ import { shiftDay } from "@/lib/calendar";
 import { isImeComposing } from "@/lib/ime-keyboard";
 
 type Kind = "task" | "approval" | "milestone";
-type Draft = {
+export type QuickTaskDraft = {
   task: TaskRow;
   text: string;
   editing: boolean;
@@ -20,9 +20,11 @@ type Draft = {
   openApproval: boolean;
   continuous: boolean;
 };
+type Draft = QuickTaskDraft;
 type CreateOptions = { continuous?: boolean };
 type Context = {
   drafts: Draft[];
+  paneDraft: Draft | null;
   create: (kind?: Kind, sectionId?: number | null, options?: CreateOptions) => void;
   change: (draft: Draft, text: string) => void;
   finish: (draft: Draft) => Promise<void>;
@@ -40,15 +42,26 @@ export const useQuickTask = () => useContext(QuickContext);
  * Inline creation holds a local row until the user commits a name. Asana does
  * not create a server task for an untouched composer, so opening and
  * abandoning this row performs no write at all.
+ *
+ * When a task detail pane is open, the row draft is also shown there. The pane
+ * keeps the URL task until the name is committed, so cancelling returns to the
+ * task that was open and committing navigates once to the created task.
  */
-export function QuickTaskProvider({ projectId, sections, view, canEdit, children }: {
+export function QuickTaskProvider({ projectId, sections, view, canEdit, paneTaskId, children }: {
   projectId: number; sections: Section[]; view: "list" | "board" | "timeline" | "calendar";
-  canEdit: boolean; children: ReactNode;
+  canEdit: boolean; paneTaskId: number | null; children: ReactNode;
 }) {
   const router = useRouter();
   const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [paneDraft, setPaneDraft] = useState<Draft | null>(null);
+  const paneDraftRef = useRef<Draft | null>(null);
+  const expectedPaneTaskId = useRef<number | null>(null);
   const nextId = useRef(-1);
   const nextPosition = useRef(Number.MAX_SAFE_INTEGER - 1_000_000);
+  const showPaneDraft = useCallback((draft: Draft | null) => {
+    paneDraftRef.current = draft;
+    setPaneDraft(draft);
+  }, []);
   const redraw = () => setDrafts(current => [...current]);
   const retire = (draft: Draft) =>
     setDrafts(current => current.filter(item => item !== draft));
@@ -57,12 +70,22 @@ export function QuickTaskProvider({ projectId, sections, view, canEdit, children
     draft.seenOnServer = true;
     redraw();
   };
-  const forget = (taskId: number) =>
+  const forget = (taskId: number) => {
+    if (paneDraftRef.current?.task.id === taskId) showPaneDraft(null);
     setDrafts(current => current.filter(item => item.task.id !== taskId));
+  };
   const removeDraft = (draft: Draft) =>
     setDrafts(current => current.filter(item => item !== draft));
   const cancel = (draft: Draft) => {
     draft.cancelled = true;
+    if (paneDraftRef.current === draft) {
+      showPaneDraft(null);
+      // The URL task the pane should return to may have been deleted while the
+      // draft was open. Refresh after the cancel so the server can close it.
+      if (paneTaskId !== null) {
+        requestAnimationFrame(() => router.refresh());
+      }
+    }
     removeDraft(draft);
   };
   const finish = async (draft: Draft) => {
@@ -106,13 +129,20 @@ export function QuickTaskProvider({ projectId, sections, view, canEdit, children
         await api(`/api/tasks/${result.id}`, "DELETE").catch(() => undefined);
         return;
       }
+      const shownInPane = paneDraftRef.current === draft;
       draft.task = { ...draft.task, id: result.id, name, updated_at: result.updated_at };
       draft.text = name;
       draft.editing = false;
       draft.error = "";
       if (draft.openApproval) {
+        expectedPaneTaskId.current = result.id;
         const query = new URLSearchParams(window.location.search);
         query.set("task", String(result.id)); query.set("approval", "1");
+        router.push(`/projects/${projectId}?${query}`);
+      } else if (shownInPane) {
+        expectedPaneTaskId.current = result.id;
+        const query = new URLSearchParams(window.location.search);
+        query.set("task", String(result.id));
         router.push(`/projects/${projectId}?${query}`);
       }
       router.refresh();
@@ -155,8 +185,39 @@ export function QuickTaskProvider({ projectId, sections, view, canEdit, children
       continuous: options.continuous === true,
     };
     setDrafts(current => [...current, draft]);
+    // The pane only follows drafts it can return from, so a closed pane is
+    // never opened by quick creation.
+    if (paneTaskId !== null) showPaneDraft(draft);
   };
-  return <QuickContext.Provider value={{ drafts, create, finish, cancel, canEdit, retire, markSeen, forget,
+
+  // A URL task change (row click, back/forward, close, or the commit push)
+  // ends the draft view. A continuous composer that was opened by that same
+  // commit keeps the pane on the next draft.
+  useEffect(() => {
+    const current = paneDraftRef.current;
+    if (paneTaskId === null) {
+      expectedPaneTaskId.current = null;
+      if (current) showPaneDraft(null);
+      return;
+    }
+    if (!current) {
+      expectedPaneTaskId.current = null;
+      return;
+    }
+    if (paneTaskId === current.task.id) {
+      expectedPaneTaskId.current = null;
+      showPaneDraft(null);
+      return;
+    }
+    if (expectedPaneTaskId.current === paneTaskId) {
+      expectedPaneTaskId.current = null;
+      return;
+    }
+    expectedPaneTaskId.current = null;
+    showPaneDraft(null);
+  }, [paneTaskId, showPaneDraft]);
+
+  return <QuickContext.Provider value={{ drafts, paneDraft, create, finish, cancel, canEdit, retire, markSeen, forget,
     change: (draft, text) => { draft.text = text; redraw(); },
     edit: draft => { draft.editing = true; redraw(); },
   }}>{children}</QuickContext.Provider>;
@@ -222,7 +283,12 @@ export function QuickTaskName({ task, children }: { task: { id: number; name: st
       readOnly={draft.saving} aria-busy={draft.saving} value={draft.text} onChange={event => context.change(draft, event.target.value)}
       className="pointer-events-auto h-6 w-full min-w-0 rounded border-0 bg-transparent px-1 text-[13px] text-text outline-none"
       onFocus={event => event.target.scrollIntoView({ block: "nearest", inline: "nearest" })}
-      onBlur={() => { void context.finish(draft); }}
+      onBlur={event => {
+        // Moving into the pane's draft name keeps the same composer active.
+        const next = event.relatedTarget;
+        if (next instanceof Element && next.closest("[data-draft-pane-name]")) return;
+        void context.finish(draft);
+      }}
       onKeyDown={event => {
         if (isImeComposing(event)) return;
         if (event.key === "Enter") { event.preventDefault(); void context.finish(draft); }
