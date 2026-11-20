@@ -54,10 +54,9 @@ function editor(page: Page) {
   const wrapper = page.locator("[data-timeline-section-add]");
   return {
     wrapper,
+    draft: page.locator("[data-timeline-section-draft]"),
     start: wrapper.getByRole("button", { name: "＋ セクションを追加", exact: true }),
     input: wrapper.locator("[data-add-section-input]"),
-    submit: wrapper.getByRole("button", { name: /^追加(?:中…)?$/ }),
-    cancel: wrapper.getByRole("button", { name: "キャンセル", exact: true }),
   };
 }
 
@@ -120,11 +119,29 @@ test("timeline adds a trimmed section inline in the sidebar without a native dia
   const created = sectionResponse(page);
   await e.input.press("Enter");
   expect((await created).request().postDataJSON()).toEqual({ project_id: projectId, name: "新しい工程" });
+  await expect(e.draft).toHaveCount(0);
   await expect(e.input).toHaveCount(0);
   const current = await sections(page, projectId);
   expect(current.map((section) => section.name)).toEqual([...initial.map((section) => section.name), "新しい工程"]);
   await expect(page.locator(`[data-timeline-section-row="${current.at(-1)!.id}"]`)).toHaveText("新しい工程");
   expect(dialogs).toEqual([]);
+});
+
+test("timeline toolbar section starts the sidebar's trailing draft", async ({ page }) => {
+  const { projectId, initial } = await fixture(page);
+  await openTimeline(page, projectId);
+  await page.getByRole("button", { name: "追加オプション" }).first().click();
+  await page.getByRole("menuitem", { name: "セクション", exact: true }).click();
+  const e = editor(page);
+  await expect(e.draft).toBeVisible();
+  await expect(e.input).toBeFocused();
+  await e.input.fill("ツールバーの工程");
+  const created = sectionResponse(page);
+  await e.input.press("Enter");
+  await created;
+  await expect(e.draft).toHaveCount(0);
+  expect((await sections(page, projectId)).map((section) => section.name))
+    .toEqual([...initial.map((section) => section.name), "ツールバーの工程"]);
 });
 
 test("the inline section editor fits the narrow timeline sidebar", async ({ page }) => {
@@ -136,46 +153,42 @@ test("the inline section editor fits the narrow timeline sidebar", async ({ page
   const section = await page.locator(`[data-timeline-section-row="${initial[0].id}"]`).boundingBox();
   expect(section).not.toBeNull();
   expect(section!.width).toBeLessThanOrEqual(144);
-  for (const control of [e.input, e.submit, e.cancel]) {
-    await expect(control).toBeVisible();
-    const box = await control.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.x).toBeGreaterThanOrEqual(section!.x);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(section!.x + section!.width + 1);
-  }
+  await expect(e.input).toBeVisible();
+  const box = await e.input.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(section!.x);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(section!.x + section!.width + 1);
   const screenshot = test.info().outputPath("narrow-inline-section-editor.png");
   await page.screenshot({ path: screenshot });
   await test.info().attach("narrow-inline-section-editor", { path: screenshot, contentType: "image/png" });
-  await e.cancel.click();
+  await e.input.press("Escape");
+  await expect(e.draft).toHaveCount(0);
   expect(await sections(page, projectId)).toEqual(initial);
 });
 
-test("timeline blur keeps the draft and the explicit Add button creates it", async ({ page }) => {
-  const { projectId, initial } = await fixture(page);
+test("timeline blur commits the named draft", async ({ page }) => {
+  const { projectId } = await fixture(page);
   await openTimeline(page, projectId);
   const writes = sectionWrites(page);
   const e = await startSection(page);
-  await e.input.fill("  ボタンで追加  ");
-  await e.input.blur();
-  await renderCheckpoint(page);
-  await expect(e.input).toHaveValue("  ボタンで追加  ");
-  expect(writes).toEqual([]);
-  expect(await sections(page, projectId)).toEqual(initial);
+  await e.input.fill("  ぼかしで追加  ");
   const created = sectionResponse(page);
-  await e.submit.click();
+  await e.input.blur();
   await created;
+  await expect(e.draft).toHaveCount(0);
   await expect(e.start).toBeVisible();
-  expect(writes).toEqual([{ project_id: projectId, name: "ボタンで追加" }]);
-  expect((await sections(page, projectId)).filter((section) => section.name === "ボタンで追加")).toHaveLength(1);
+  expect(writes).toEqual([{ project_id: projectId, name: "ぼかしで追加" }]);
+  expect((await sections(page, projectId)).filter((section) => section.name === "ぼかしで追加")).toHaveLength(1);
 });
 
-test("timeline Escape and Cancel discard drafts while empty Enter stays open without a write", async ({ page }) => {
+test("timeline Escape discards drafts while empty Enter stays open without a write", async ({ page }) => {
   const { projectId, initial } = await fixture(page);
   await openTimeline(page, projectId);
   const writes = sectionWrites(page);
   let e = await startSection(page);
   await e.input.fill("未保存のセクション");
   await e.input.press("Escape");
+  await expect(e.draft).toHaveCount(0);
   await expect(e.start).toBeVisible();
   await expect(e.start).toBeFocused();
   e = await startSection(page);
@@ -184,9 +197,8 @@ test("timeline Escape and Cancel discard drafts while empty Enter stays open wit
   await e.input.press("Enter");
   await expect(e.input).toBeFocused();
   await expect(e.input).toHaveValue("   ");
-  await e.cancel.click();
-  await expect(e.start).toBeVisible();
-  await expect(e.start).toBeFocused();
+  await e.input.blur();
+  await expect(e.draft).toHaveCount(0);
   await renderCheckpoint(page);
   expect(writes).toEqual([]);
   expect(await sections(page, projectId)).toEqual(initial);
@@ -238,14 +250,13 @@ test("timeline repeated Enter and blur while saving create only one section", as
     });
     await arrived;
     await expect(e.input).toBeDisabled();
-    await expect(e.submit).toBeDisabled();
-    await expect(e.cancel).toBeDisabled();
     await e.input.dispatchEvent("keydown", { key: "Enter", code: "Enter", bubbles: true });
     await e.input.dispatchEvent("blur");
     await renderCheckpoint(page);
     expect(writes).toEqual([{ project_id: projectId, name: "一度だけ追加" }]);
     release();
     await created;
+    await expect(e.draft).toHaveCount(0);
     await expect(e.start).toBeVisible();
     expect((await sections(page, projectId)).filter((section) => section.name === "一度だけ追加")).toHaveLength(1);
     expect(writes).toHaveLength(1);
@@ -276,11 +287,12 @@ test("timeline 503 shows an inline warning, retains the draft and supports retry
   await expect(e.wrapper.getByRole("alert")).toHaveText("セクションの追加に失敗しました。もう一度お試しください。");
   await expect(e.input).toHaveValue("  失敗後に再試行  ");
   await expect(e.input).toBeEnabled();
-  await expect(e.submit).toBeEnabled();
+  await expect(e.input).toBeFocused();
   expect(await sections(page, projectId)).toEqual(initial);
   const created = sectionResponse(page);
-  await e.submit.click();
+  await e.input.press("Enter");
   await created;
+  await expect(e.draft).toHaveCount(0);
   await expect(e.start).toBeVisible();
   await expect(e.wrapper.getByRole("alert")).toHaveCount(0);
   expect(attempts).toBe(2);
@@ -300,7 +312,7 @@ test("an empty timeline can draft an unsectioned task without first creating a s
   const e = await startSection(page);
   await e.input.fill("最初の工程");
   const created = sectionResponse(page);
-  await e.submit.click();
+  await e.input.press("Enter");
   const { id: sectionId } = await (await created).json() as { id: number };
   await expect(page.locator(`[data-timeline-section-row="${sectionId}"]`)).toHaveText("最初の工程");
 });
@@ -365,7 +377,7 @@ for (const role of ["editor", "viewer"] as const) {
   }
 }
 
-test("the shared list section editor retains explicit confirmation, trimming and cancellation", async ({ page }) => {
+test("the shared list section editor discards on Escape and saves blur with trimming", async ({ page }) => {
   const { projectId, initial } = await fixture(page);
   await page.goto(`/projects/${projectId}?view=list`);
   const input = page.locator("[data-add-section-input]");
@@ -377,17 +389,14 @@ test("the shared list section editor retains explicit confirmation, trimming and
   await expect(input).toBeFocused();
   await input.fill("リストで取消");
   await input.press("Escape");
+  await expect(input).toHaveCount(0);
   await expect(start).toBeVisible();
-  await expect(start).toBeFocused();
   expect(await sections(page, projectId)).toEqual(initial);
   await start.click();
   await input.fill("  リストの新工程  ");
-  await input.blur();
-  await renderCheckpoint(page);
-  expect(await sections(page, projectId)).toEqual(initial);
   const created = sectionResponse(page);
-  await input.press("Enter");
+  await input.blur();
   await created;
-  await expect(start).toBeVisible();
+  await expect(input).toHaveCount(0);
   expect((await sections(page, projectId)).filter((section) => section.name === "リストの新工程")).toHaveLength(1);
 });

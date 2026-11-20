@@ -30,6 +30,7 @@ import TimelineCanvas from "./timeline/TimelineCanvas";
 import TimelineDependencyLayer from "./timeline/TimelineDependencyLayer";
 import TimelineToolbar from "./timeline/TimelineToolbar";
 import TimelineSectionAdd, { type TimelineSectionAddHandle } from "./timeline/TimelineSectionAdd";
+import { SectionDraftProvider } from "@/lib/section-draft-context";
 import { usePersistedViewState } from "@/lib/view-state-client";
 import { timelineInterval } from "@/lib/timeline-lanes";
 import { clampTimelineDay } from "@/lib/timeline-axis";
@@ -647,6 +648,7 @@ function TimelineViewContent({
   };
 
   return (
+    <SectionDraftProvider start={canConfigure ? () => sectionAddRef.current?.start() : null}>
     <div
       className="flex h-full min-h-0 flex-col text-sm"
       data-timeline
@@ -1008,6 +1010,7 @@ function TimelineViewContent({
       </div>
       <ProjectTaskContextMenu projectId={projectId} tasks={tasks} canEdit={canEdit} />
     </div>
+    </SectionDraftProvider>
   );
 }
 

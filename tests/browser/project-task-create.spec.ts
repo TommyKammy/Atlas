@@ -86,9 +86,11 @@ test("four menu options create a milestone, section and approval setup", async (
   await expect(page.locator(`[data-list-row="${id}"]`).getByRole("button", { name: "マイルストーンを完了にする" })).toBeVisible();
   await page.getByRole("button", { name: "追加オプション" }).click();
   await page.getByRole("menuitem", { name: "セクション" }).click();
-  await page.getByRole("textbox", { name: "新しいセクション名" }).fill("リリース準備");
-  await page.getByRole("textbox", { name: "新しいセクション名" }).press("Enter");
-  await expect(page.getByRole("textbox", { name: "新しいセクション名" })).toHaveCount(0);
+  const sectionInput = page.getByRole("textbox", { name: "セクション名", exact: true });
+  await expect(sectionInput).toBeFocused();
+  await sectionInput.fill("リリース準備");
+  await sectionInput.press("Enter");
+  await expect(sectionInput).toHaveCount(0);
   await expect.poll(async () => (await (await page.request.get(`/api/lookup?project_id=${f.id}`)).json()).some((s: { name: string }) => s.name === "リリース準備")).toBe(true);
   await page.getByRole("button", { name: "追加オプション" }).click();
   await page.getByRole("menuitem", { name: "承認リクエスト" }).click();

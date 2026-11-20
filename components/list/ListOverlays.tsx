@@ -29,7 +29,8 @@ export default function ListOverlays({
   users,
   onCloseSectionMenu,
   onRenameSection,
-  onAddSection,
+  onAddSectionBefore,
+  onAddSectionAfter,
   onToggleCollapseSection,
   onDeleteSection,
   onCloseFieldMenu,
@@ -48,7 +49,8 @@ export default function ListOverlays({
   users: User[];
   onCloseSectionMenu: () => void;
   onRenameSection: (section: Section) => void;
-  onAddSection: () => void;
+  onAddSectionBefore: (section: Section) => void;
+  onAddSectionAfter: (section: Section) => void;
   onToggleCollapseSection: (sectionId: number) => void;
   onDeleteSection: (section: Section) => void;
   onCloseFieldMenu: () => void;
@@ -65,7 +67,8 @@ export default function ListOverlays({
         sections={sections}
         onClose={onCloseSectionMenu}
         onRename={onRenameSection}
-        onAddSection={onAddSection}
+        onAddBefore={onAddSectionBefore}
+        onAddAfter={onAddSectionAfter}
         onToggleCollapse={onToggleCollapseSection}
         onDelete={onDeleteSection}
       />

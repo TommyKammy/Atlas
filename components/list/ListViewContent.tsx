@@ -1,9 +1,10 @@
 "use client";
 
-import type { ComponentProps, Dispatch, SetStateAction } from "react";
+import type { ComponentProps, Dispatch, ReactNode, SetStateAction } from "react";
 import type { SavedView } from "@/lib/data";
 import type { ListGroupBy, ListSortKey } from "@/lib/list-view";
 import type { ListTaskSummary } from "@/lib/list-row-state";
+import { SectionDraftProvider } from "@/lib/section-draft-context";
 import ListBulkToolbar from "./ListBulkToolbar";
 import ListColumnHeaderRow from "./ListColumnHeaderRow";
 import ListColumnHeaders from "./ListColumnHeaders";
@@ -52,7 +53,13 @@ export type ListViewContentProps = {
     hidden: ComponentProps<typeof ListHiddenColumnsBar>;
   };
   groups: ComponentProps<typeof ListGroups>;
-  sectionAdd: ComponentProps<typeof ListSectionAdd>;
+  sectionDraft: {
+    active: boolean;
+    atEnd: boolean;
+    node: ReactNode | null;
+    onStartFromToolbar: () => void;
+    onStartAtEnd: () => void;
+  };
   overlays: ComponentProps<typeof ListOverlays>;
   summary: ListTaskSummary;
   menuCol: string | null;
@@ -71,7 +78,7 @@ export default function ListViewContent({
   bulk,
   columns,
   groups,
-  sectionAdd,
+  sectionDraft,
   overlays,
   summary,
   menuCol,
@@ -83,6 +90,7 @@ export default function ListViewContent({
   focusAdd,
 }: ListViewContentProps) {
   return (
+    <SectionDraftProvider start={sectionDraft.onStartFromToolbar}>
     <div
       className="flex h-full min-h-0 flex-col px-4"
       data-list-view
@@ -129,10 +137,14 @@ export default function ListViewContent({
           />
           <ListHiddenColumnsBar {...columns.hidden} />
           <ListGroups {...groups} />
-          <ListSectionAdd {...sectionAdd} />
+          {sectionDraft.active && sectionDraft.atEnd && sectionDraft.node}
+          {!(sectionDraft.active && sectionDraft.atEnd) && (
+            <ListSectionAdd onStart={sectionDraft.onStartAtEnd} />
+          )}
         </div>
       </div>
       <ListOverlays {...overlays} />
     </div>
+    </SectionDraftProvider>
   );
 }
