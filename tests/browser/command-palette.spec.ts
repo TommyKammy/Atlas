@@ -154,3 +154,29 @@ test("search suggestions show a seeded task and Enter opens it", async ({ page }
     (url) => url.pathname === "/projects/1" && url.searchParams.get("task") === "2",
   );
 });
+
+test("the search field's focus stays inside the panel: no outline ring, accent line under the search row", async ({ page }) => {
+  await login(page.request, accounts.member.email, password);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const { dialog, input } = await openPalette(page);
+  // Opened from the keyboard, so the field is :focus-visible.
+  expect(await input.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+  const styles = await input.evaluate((element) => {
+    const own = getComputedStyle(element);
+    const row = getComputedStyle(element.parentElement!);
+    return { outline: own.outlineStyle, shadow: own.boxShadow, rowLine: row.borderBottomColor };
+  });
+  expect(styles.outline).toBe("none");
+  expect(styles.shadow).toBe("none");
+  // The row line uses the accent token instead of the resting line colour.
+  const accent = await dialog.evaluate(() => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--atlas-accent)";
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  });
+  expect(styles.rowLine).toBe(accent);
+});

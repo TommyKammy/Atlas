@@ -224,7 +224,10 @@ export default function CommandPalette({
       panelClassName="mb-[8vh] w-[min(640px,94vw)] overflow-hidden rounded-xl border border-line bg-surface text-text shadow-2xl"
       backdropClassName="backdrop:bg-scrim"
     >
-      <div className="flex items-center gap-2 border-b border-line px-3">
+      {/* The search row carries the focus indication: the input itself spans
+          the dialog, so the global outline ring would spill past it and be
+          clipped by the rounded panel. */}
+      <div className="flex items-center gap-2 border-b border-line px-3 focus-within:border-accent">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -259,6 +262,7 @@ export default function CommandPalette({
           autoComplete="off"
           autoFocus
           spellCheck={false}
+          data-command-palette-input
           className="min-w-0 flex-1 bg-transparent py-3 text-sm text-text outline-none placeholder:text-subtle"
         />
         <kbd className="hidden shrink-0 rounded border border-line bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] text-muted sm:inline">
