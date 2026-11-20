@@ -331,7 +331,7 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
     setSelected({ kind: "action", index: 0 }); setTemplatesOpen(false);
   };
 
-  return <div className="flex h-full min-h-[560px] flex-col overflow-hidden bg-bg" data-rule-workflow-editor>
+  return <div className="flex h-full min-h-0 flex-col overflow-hidden bg-bg" data-rule-workflow-editor>
     <header className="shrink-0 border-b border-line bg-surface px-5 pb-1 pt-4 sm:px-6">
       <div className="text-[12px] text-muted"><Link href={`/projects/${project.id}`} className="rounded-sm hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">{project.name}</Link><span className="px-2" aria-hidden="true">/</span>ルール</div>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -395,7 +395,7 @@ export default function RuleWorkflowEditor({ project, descriptors, initialRule, 
       </div>
     </>}
     {tab === "history" && <RuleExecutionHistory projectId={project.id} ruleId={ruleId} descriptors={descriptors} />}
-    {tab === "settings" && <div className="min-h-0 flex-1 overflow-auto p-6"><fieldset disabled={!canEdit || editingBusy} className="max-w-xl space-y-5">
+    {tab === "settings" && <div className="min-h-0 flex-1 overflow-auto p-6" data-page-scroll><fieldset disabled={!canEdit || editingBusy} className="max-w-xl space-y-5">
       <h2 className={dialogTitleClass}>ルールの設定</h2>
       <label className={fieldLabelClass}>説明<textarea maxLength={1000} className={`${fieldTextareaClass} mt-2 h-28`} value={document.description} onChange={(event) => change({ ...document, description: event.target.value })} /></label>
       <label className="flex items-center gap-2 text-[13px] text-secondary"><input type="checkbox" className={checkboxClass} checked={document.enabled} onChange={(event) => change({ ...document, enabled: event.target.checked })} />公開後にルールを有効にする</label>

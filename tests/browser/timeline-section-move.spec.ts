@@ -359,10 +359,11 @@ test("a stationary row drag follows vertical scrolling when resolving the destin
   expect(box).not.toBeNull();
   const delta = box!.y + 20 - pointerY;
   expect(delta).toBeGreaterThan(200);
-  const main = page.locator("main");
-  const before = await main.evaluate((element) => element.scrollTop);
-  await main.evaluate((element, offset) => { element.scrollTop += offset; }, delta);
-  await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(before + 200);
+  // Project views scroll inside their fixed-header region, not <main>.
+  const pageScroll = page.locator("[data-page-scroll]");
+  const before = await pageScroll.evaluate((element) => element.scrollTop);
+  await pageScroll.evaluate((element, offset) => { element.scrollTop += offset; }, delta);
+  await expect.poll(() => pageScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(before + 200);
   // No pointermove occurs between scrolling and dropping.
   await expect(page.locator("[data-timeline-row-drop]")).toHaveAttribute("data-timeline-row-drop-section", String(f.sections[2].id));
   await expect.poll(async () => {
@@ -484,7 +485,7 @@ test("milestone and one-day marker bodies support vertical section movement with
   }
 });
 
-test("row drag auto-scrolls the main page instead of the horizontal scroller and stops after cancellation", async ({ page }) => {
+test("row drag auto-scrolls the page scroll region instead of the horizontal scroller and stops after cancellation", async ({ page }) => {
   const f = await fixture(page);
   await pin(page, f.projectId, f.taskId, 18);
   const tail = await createTask(page, f.projectId, f.sections[2].id, "Auto-scroll trailing space");
@@ -498,14 +499,14 @@ test("row drag auto-scrolls the main page instead of the horizontal scroller and
     (element as HTMLElement).dataset.testPointerId = String((event as PointerEvent).pointerId);
   }, { capture: true, once: true }));
   const point = await source.boundingBox();
-  const main = page.locator("main");
-  const mainBox = await main.boundingBox();
-  expect(point).not.toBeNull(); expect(mainBox).not.toBeNull();
+  const pageScroll = page.locator("[data-page-scroll]");
+  const pageScrollBox = await pageScroll.boundingBox();
+  expect(point).not.toBeNull(); expect(pageScrollBox).not.toBeNull();
   const x = point!.x + point!.width / 2;
   const y = point!.y + 5;
-  const bottom = Math.min(mainBox!.y + mainBox!.height, 1000) - 4;
-  const before = await main.evaluate((element) => element.scrollTop);
-  expect(await main.evaluate((element) => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeGreaterThan(300);
+  const bottom = Math.min(pageScrollBox!.y + pageScrollBox!.height, 1000) - 4;
+  const before = await pageScroll.evaluate((element) => element.scrollTop);
+  expect(await pageScroll.evaluate((element) => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeGreaterThan(300);
   let writes = 0;
   page.on("request", (request) => {
     if (new URL(request.url()).pathname === `/api/tasks/${f.taskId}/timeline-row` && request.method() === "PUT") writes++;
@@ -517,7 +518,7 @@ test("row drag auto-scrolls the main page instead of the horizontal scroller and
   await page.mouse.move(x, bottom, { steps: 5 });
   await expect(source).toHaveClass(/shadow-lg/);
   // The pointer stays still while the animation frame loop advances the page.
-  await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(before + 14);
+  await expect.poll(() => pageScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(before + 14);
   expect(await page.locator(".timeline-scroll").evaluate((element) => element.scrollTop)).toBe(0);
   const pointerId = Number(await source.getAttribute("data-test-pointer-id"));
   expect(pointerId).toBeGreaterThan(0);
@@ -526,9 +527,9 @@ test("row drag auto-scrolls the main page instead of the horizontal scroller and
   await expect(source).not.toHaveClass(/shadow-lg/);
   await expect(page.locator("[data-timeline-row-drop]")).toHaveCount(0);
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  const stopped = await main.evaluate((element) => element.scrollTop);
+  const stopped = await pageScroll.evaluate((element) => element.scrollTop);
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  expect(await main.evaluate((element) => element.scrollTop)).toBe(stopped);
+  expect(await pageScroll.evaluate((element) => element.scrollTop)).toBe(stopped);
   expect(writes).toBe(0);
   expect((await readTask(page, f.projectId, f.taskId)).section_id).toBe(f.sections[0].id);
 });
@@ -829,7 +830,7 @@ test("free ghost follows both scroll axes after an X-first drag and Escape write
   await page.mouse.move(x, started.y, { steps: 3 });
   await page.mouse.move(x, y, { steps: 3 });
   await page.locator(".timeline-scroll").evaluate(e => { e.scrollLeft += 64; });
-  await page.locator("main").evaluate(e => { e.scrollTop += 90; });
+  await page.locator("[data-page-scroll]").evaluate(e => { e.scrollTop += 90; });
   await expect.poll(async () => {
     const ghost = (await started.target.boundingBox())!;
     return Math.max(Math.abs(ghost.x - original.x - 60), Math.abs(ghost.y + 5 - y));

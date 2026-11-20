@@ -184,9 +184,9 @@ export default function ProjectCreateScreen({
   );
 
   return (
-    <div data-project-create-screen data-project-create-mode={view} className="min-h-full bg-surface-subtle">
-      <div className="mx-auto flex min-h-full w-full max-w-[1320px] flex-col lg:flex-row">
-        <aside className="shrink-0 border-b border-line bg-surface px-4 py-4 lg:w-[240px] lg:border-b-0 lg:border-r lg:px-4 lg:py-6">
+    <div data-project-create-screen data-project-create-mode={view} className="h-full overflow-hidden bg-surface-subtle">
+      <div className="mx-auto flex h-full w-full max-w-[1320px] flex-col lg:flex-row">
+        <aside data-page-fixed className="shrink-0 border-b border-line bg-surface px-4 py-4 lg:w-[240px] lg:border-b-0 lg:border-r lg:px-4 lg:py-6">
           <Link href="/" className="text-[12px] text-muted hover:text-text">
             ← ホーム
           </Link>
@@ -231,7 +231,7 @@ export default function ProjectCreateScreen({
           </div>
         </aside>
 
-        <section className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8">
+        <section data-page-scroll className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">
           {view === "gallery" && (
             <div data-project-create-gallery>
               <div className="flex flex-wrap items-start justify-between gap-3">

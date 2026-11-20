@@ -84,8 +84,8 @@ export default function ProjectPartnerWorkspace({ projectId, canEdit, children }
   const focusTab = (next: typeof view) => document.getElementById(`${id}-${next}-tab`)?.focus();
   const generate = (skill: "project_status" | "weekly_report") => { setView("reports"); void partner.generate(skill); };
   const latest = reports.items[0];
-  return <div data-overview-workspace className="mx-auto max-w-7xl px-4 pb-16 sm:px-7">
-    <div ref={toolbar} className="mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4 pt-2">
+  return <div data-overview-workspace className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col px-4 sm:px-7">
+    <div ref={toolbar} className="mb-7 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-line pb-4 pt-2">
       <div role="tablist" aria-label="概要の表示" className="flex min-w-0 items-center gap-1">
         {tabs.map(tab => <button key={tab} type="button" role="tab" id={`${id}-${tab}-tab`} aria-controls={`${id}-${tab}-panel`} aria-selected={view === tab} tabIndex={view === tab ? 0 : -1}
           disabled={partner.locked || reports.busy !== null} onClick={() => choose(tab)}
@@ -100,6 +100,7 @@ export default function ProjectPartnerWorkspace({ projectId, canEdit, children }
         <button role="menuitem" className={knowledgeMenuItem} onClick={() => generate("weekly_report")}><KnowledgeIcon name="history" />週次報告を作成</button>
       </KnowledgeActionMenu>}
     </div>
+    <div data-page-scroll className="min-h-0 flex-1 overflow-auto pb-16">
     <div className={`grid min-w-0 gap-7 ${partner.open ? "xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]" : "grid-cols-1"}`}>
       <div className="min-w-0">
         <div role="tabpanel" id={`${id}-overview-panel`} aria-labelledby={`${id}-overview-tab`} hidden={view !== "overview"} tabIndex={0} className="outline-focus-ring">
@@ -117,6 +118,7 @@ export default function ProjectPartnerWorkspace({ projectId, canEdit, children }
         </div>
       </div>
       {partner.open && <ProjectPartnerPanel partner={partner} canEdit={canEdit} onClose={() => { const trigger = toolbar.current?.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]'); if (trigger) trigger.focus(); else focusTab(view); }} />}
+    </div>
     </div>
   </div>;
 }

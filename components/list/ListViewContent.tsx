@@ -84,7 +84,7 @@ export default function ListViewContent({
 }: ListViewContentProps) {
   return (
     <div
-      className="px-4 pb-16"
+      className="flex h-full min-h-0 flex-col px-4"
       data-list-view
       data-list-hide-completed={view.hideCompleted}
       data-list-completed-only={view.completedOnly}
@@ -110,9 +110,9 @@ export default function ListViewContent({
         setAutoRefresh={toolbar.setAutoRefresh}
         lastRefresh={toolbar.lastRefresh}
       />
-      <ListSummaryLine summary={summary} />
-      <div className="overflow-x-auto">
-        <div className="min-w-[860px]">
+      <div data-page-scroll className="min-h-0 flex-1 overflow-auto">
+        <div className="min-w-[860px] pb-16">
+          <ListSummaryLine summary={summary} />
           <SavedViewsBar
             projectId={toolbar.props.projectId}
             savedViews={toolbar.savedViews}

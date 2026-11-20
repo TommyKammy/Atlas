@@ -22,7 +22,15 @@ import {
   quietButtonClass,
   SelectControl,
 } from "@/components/ui/form-controls";
-import { pageDescriptionClass, pageShellClass, pageTitleClass } from "@/components/ui/page-layout";
+import {
+  pageContentInsetClass,
+  pageDescriptionClass,
+  pageFixedClass,
+  pageFrameClass,
+  pageHeaderInsetClass,
+  pageScrollClass,
+  pageTitleClass,
+} from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -109,13 +117,18 @@ export default async function SearchPage(props: {
   const pagination = { tasks: taskPage, projects: projectPage, messages: messagePage, knowledge: knowledgePage, files: filePage };
 
   return (
-    <div className={pageShellClass}>
+    <div className={pageFrameClass}>
+      <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
       <div className="max-w-5xl">
         <h1 className={pageTitleClass}>検索</h1>
         <p className={pageDescriptionClass}>タスク・プロジェクト・メッセージ・知識・ファイルを横断して検索します。</p>
         {str(sp, "q").trim().length > SEARCH_QUERY_LIMIT && (
           <p role="status" className="mt-2 text-[12px] text-warning">キーワードは先頭{SEARCH_QUERY_LIMIT}文字で検索しています。</p>
         )}
+      </div>
+      </div>
+      <div data-page-scroll className={`${pageScrollClass} ${pageContentInsetClass}`}>
+      <div className="max-w-5xl">
         {q === "" && searchHistory.length > 0 && (
           <div data-search-history className="mt-3 flex flex-wrap items-center gap-1.5 text-[12px] text-secondary">
             <span className="mr-1 font-medium text-muted">最近の検索</span>
@@ -270,6 +283,7 @@ export default async function SearchPage(props: {
           pagination={pagination}
           searchParams={searchParams}
         />
+      </div>
       </div>
     </div>
   );

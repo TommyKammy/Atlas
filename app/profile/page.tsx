@@ -4,7 +4,15 @@ import { redirect } from "next/navigation";
 import ProfileForm from "@/components/ProfileForm";
 import { getSecuritySettings } from "@/lib/admin-data";
 import { passwordPolicySummary } from "@/lib/password-policy";
-import { pageDescriptionClass, pageShellClass, pageTitleClass } from "@/components/ui/page-layout";
+import {
+  pageContentInsetClass,
+  pageDescriptionClass,
+  pageFixedClass,
+  pageFrameClass,
+  pageHeaderInsetClass,
+  pageScrollClass,
+  pageTitleClass,
+} from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -14,20 +22,27 @@ export default async function ProfilePage() {
   const me = access.mfaPending ? null : (await getUsers(access.user.id)).find((u) => u.id === access.user.id);
   if (!me && !access.mfaPending) {
     return (
-      <div className={pageShellClass}>
+      <div className={pageFrameClass}>
+        <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
         <div className="max-w-xl">
           <h1 className={pageTitleClass}>プロフィール</h1>
           <p className={pageDescriptionClass}>ユーザーがありません。</p>
+        </div>
         </div>
       </div>
     );
   }
   const security = await getSecuritySettings();
   return (
-    <div className={pageShellClass}>
+    <div className={pageFrameClass}>
+      <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
       <div className="max-w-xl">
         <h1 className={pageTitleClass}>プロフィール</h1>
         <p className={pageDescriptionClass}>アカウント情報とサインインの設定を管理します。</p>
+      </div>
+      </div>
+      <div data-page-scroll className={`${pageScrollClass} ${pageContentInsetClass}`}>
+      <div className="max-w-xl">
         <div id="settings">
           <ProfileForm
             userId={access.user.id}
@@ -49,6 +64,7 @@ export default async function ProfilePage() {
             })}
           />
         </div>
+      </div>
       </div>
     </div>
   );

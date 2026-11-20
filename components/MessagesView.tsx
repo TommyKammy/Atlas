@@ -42,10 +42,14 @@ export default function MessagesView({
   };
 
   return (
-    <div className="max-w-3xl px-4 pb-16">
-      <ProjectViewToolbar>
-        <ViewAddButton data-message-new onClick={() => setOpen(true)} disabled={open}>メッセージを作成</ViewAddButton>
-      </ProjectViewToolbar>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="max-w-3xl shrink-0 px-4">
+        <ProjectViewToolbar>
+          <ViewAddButton data-message-new onClick={() => setOpen(true)} disabled={open}>メッセージを作成</ViewAddButton>
+        </ProjectViewToolbar>
+      </div>
+      <div data-page-scroll className="min-h-0 flex-1 overflow-auto">
+      <div className="max-w-3xl px-4 pb-16">
       {open && (
         <div className="mt-4 rounded-lg border p-3">
           <input
@@ -105,6 +109,8 @@ export default function MessagesView({
             </div>
           ))
         )}
+      </div>
+      </div>
       </div>
     </div>
   );

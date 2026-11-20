@@ -138,8 +138,8 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
   };
   const links = notes.map(note => ({ title: note.title, href: `/projects/${projectId}?view=knowledge&note=${note.id}` }));
 
-  return <div data-knowledge className="px-4 pb-12 text-text">
-    <ProjectViewToolbar className="mb-5 justify-between">
+  return <div data-knowledge className="flex h-full min-h-0 flex-col px-4 text-text">
+    <ProjectViewToolbar className="mb-5 justify-between shrink-0">
       {canEdit && <>
         <ViewAddButton data-knowledge-new disabled={busy} onClick={() => create()}>ノートを追加</ViewAddButton>
         <button className={viewToolbarActionClass} disabled={busy} aria-pressed={trashOpen} onClick={() => void action(async () => {
@@ -148,6 +148,7 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
         })}>{trashOpen ? "ノート一覧に戻る" : "ゴミ箱"}</button>
       </>}
     </ProjectViewToolbar>
+    <div data-page-scroll className="min-h-0 flex-1 overflow-auto pb-12">
     {error && <p role="alert" className="mb-4 rounded-md bg-danger-soft p-3 text-[13px] text-danger">{error}</p>}
     {notice && <p role="status" className="mb-4 text-[13px] text-muted">{notice}</p>}
     {trashOpen ? <KnowledgeTrash projectId={projectId} onBusyChange={setBusy} onRestored={async note => {
@@ -228,5 +229,6 @@ export default function KnowledgeView({ projectId, initial, canEdit = false, ini
       </section>
     </div>
     </>}
+    </div>
   </div>;
 }

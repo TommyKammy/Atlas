@@ -195,10 +195,14 @@ export default function FormsView({
   };
 
   return (
-    <div data-forms className="max-w-4xl px-4 pb-16">
-      <ProjectViewToolbar>
-        <ViewAddButton data-form-new disabled={!canConfigure} onClick={startCreate}>フォームを作成</ViewAddButton>
-      </ProjectViewToolbar>
+    <div data-forms className="flex h-full min-h-0 flex-col">
+      <div className="max-w-4xl shrink-0 px-4">
+        <ProjectViewToolbar>
+          <ViewAddButton data-form-new disabled={!canConfigure} onClick={startCreate}>フォームを作成</ViewAddButton>
+        </ProjectViewToolbar>
+      </div>
+      <div data-page-scroll className="min-h-0 flex-1 overflow-auto">
+      <div className="max-w-4xl px-4 pb-16">
       <p className="mt-4 text-[13px] text-muted">
         入力フォームから回答を受け取り、プロジェクトにタスクを自動で作成します。
       </p>
@@ -304,6 +308,8 @@ export default function FormsView({
             </article>
           ))
         )}
+      </div>
+      </div>
       </div>
 
       {builder && (

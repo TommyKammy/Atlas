@@ -11,7 +11,15 @@ import {
 } from "@/lib/admin-data";
 import { canAccessAdminConsole, getEffectiveRole } from "@/lib/permissions";
 import { getPasswordPolicy, passwordPolicySummary } from "@/lib/password-policy";
-import { pageDescriptionClass, pageShellClass, pageTitleClass } from "@/components/ui/page-layout";
+import {
+  pageContentInsetClass,
+  pageDescriptionClass,
+  pageFixedClass,
+  pageFrameClass,
+  pageHeaderInsetClass,
+  pageScrollClass,
+  pageTitleClass,
+} from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -21,10 +29,12 @@ export default async function AdminPage() {
   const role = await getEffectiveRole(uid);
   if (!canAccessAdminConsole(role)) {
     return (
-      <div className={pageShellClass}>
+      <div className={pageFrameClass}>
+        <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
         <div className="max-w-5xl">
           <h1 className={pageTitleClass}>管理</h1>
           <p className={pageDescriptionClass}>管理者権限が必要です。</p>
+        </div>
         </div>
       </div>
     );
@@ -35,10 +45,12 @@ export default async function AdminPage() {
   const workspace = await workspacePromise;
   if (!workspace) {
     return (
-      <div className={pageShellClass}>
+      <div className={pageFrameClass}>
+        <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
         <div className="max-w-5xl">
           <h1 className={pageTitleClass}>管理</h1>
           <p className={pageDescriptionClass}>ワークスペースが見つかりません。</p>
+        </div>
         </div>
       </div>
     );
@@ -51,12 +63,17 @@ export default async function AdminPage() {
     getTotpUsers(workspace.id, uid),
   ]);
   return (
-    <div className={pageShellClass}>
+    <div className={pageFrameClass}>
+      <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
       <div className="max-w-6xl">
         <h1 className={pageTitleClass}>管理</h1>
         <p className={pageDescriptionClass}>
           {workspace.name} のメンバー、チーム、セキュリティを管理します。
         </p>
+      </div>
+      </div>
+      <div data-page-scroll className={`${pageScrollClass} ${pageContentInsetClass}`}>
+      <div className="max-w-6xl">
         <AdminConsole
           currentUserId={uid}
           initialUsers={users}
@@ -68,6 +85,7 @@ export default async function AdminPage() {
           permissions={[...(role?.permissions ?? [])]}
           passwordPolicyText={passwordPolicyText}
         />
+      </div>
       </div>
     </div>
   );

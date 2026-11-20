@@ -18,7 +18,7 @@ export default function CalendarGrid({
   children: ReactNode;
 }) {
   return (
-    <div data-calendar-grid className="min-h-0 flex-1 overflow-auto rounded-b-md border-l border-t border-line-subtle">
+    <div data-calendar-grid data-page-scroll className="min-h-0 flex-1 overflow-auto rounded-b-md border-l border-t border-line-subtle">
       <div className="flex min-h-full min-w-[720px] flex-col">
         {!weekMode && (
           <div

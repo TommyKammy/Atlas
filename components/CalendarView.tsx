@@ -523,7 +523,7 @@ function CalendarViewContent({
 
   return (
     <div
-      className="flex min-h-[560px] flex-col px-4 pb-2 text-sm md:h-[calc(100vh-200px)]"
+      className="flex h-full min-h-0 flex-col px-4 pb-2 text-sm"
       data-calendar-view
       data-calendar-completed={completedFilter}
       data-calendar-assignee={assigneeFilter}

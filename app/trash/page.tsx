@@ -5,7 +5,15 @@ import TrashList from "@/components/TrashList";
 import ArchivedProjects from "@/components/ArchivedProjects";
 import DeletedProjects from "@/components/DeletedProjects";
 import { quietButtonClass } from "@/components/ui/form-controls";
-import { pageDescriptionClass, pageShellClass, pageTitleClass } from "@/components/ui/page-layout";
+import {
+  pageContentInsetClass,
+  pageDescriptionClass,
+  pageFixedClass,
+  pageFrameClass,
+  pageHeaderInsetClass,
+  pageScrollClass,
+  pageTitleClass,
+} from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -25,11 +33,15 @@ export default async function TrashPage() {
   const archived = ws ? await getArchivedProjects(ws.id, user.id) : [];
   const deleted = ws ? await getDeletedProjects(ws.id, user.id) : [];
   return (
-    <div className={pageShellClass}>
+    <div className={pageFrameClass}>
+      <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
       <div className="max-w-5xl">
         <h1 className={pageTitleClass}>削除済み</h1>
         <p className={pageDescriptionClass}>削除したタスクとプロジェクトを復元できます。完全に削除したものは元に戻せません。</p>
-
+      </div>
+      </div>
+      <div data-page-scroll className={`${pageScrollClass} ${pageContentInsetClass}`}>
+      <div className="max-w-5xl">
         <section className="mt-6">
           <SectionHeading label="ゴミ箱のタスク" count={items.length} />
           <p className="mt-0.5 text-[12px] text-muted">復元または完全削除ができます。削除から30日後に自動で完全削除されます。</p>
@@ -53,6 +65,7 @@ export default async function TrashPage() {
             ← ホームに戻る
           </Link>
         </p>
+      </div>
       </div>
     </div>
   );

@@ -197,7 +197,8 @@ export default function HomeDashboard({
   };
 
   return (
-    <div data-home-dashboard className="px-4 py-6 pb-16 md:px-8 md:py-8">
+    <div data-home-dashboard className="flex h-full min-h-0 flex-col">
+      <div data-page-fixed className="shrink-0 px-4 pt-6 md:px-8 md:pt-8">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-[15px] font-bold text-text">ホーム</h1>
         <span className="text-[13px] text-muted">{dateLine}</span>
@@ -211,7 +212,9 @@ export default function HomeDashboard({
           </Link>
         </div>
       </div>
+      </div>
 
+      <div data-page-scroll className="min-h-0 flex-1 overflow-auto px-4 pb-16 md:px-8">
       <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section aria-labelledby="home-agenda-title" className="flex min-w-0 flex-col gap-8">
           <HomeAgenda
@@ -342,6 +345,7 @@ export default function HomeDashboard({
           ))}
         </div>
       </section>
+      </div>
 
       <AddWidgetPanel
         open={addOpen}

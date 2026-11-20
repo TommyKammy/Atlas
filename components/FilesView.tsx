@@ -18,13 +18,14 @@ export default function FilesView({
   attachments: Attachment[];
 }) {
   return (
-    <div className="px-4 pb-16">
+    <div className="flex h-full min-h-0 flex-col px-4">
       <ProjectViewToolbar>
         <span title="タスク詳細ペインから添付してください">
           <ViewAddButton disabled aria-describedby="project-files-upload-help">ファイルを追加</ViewAddButton>
         </span>
         <span className="ml-auto text-[12px] text-muted">{attachments.length} 件 · 上限25MB/件</span>
       </ProjectViewToolbar>
+      <div data-page-scroll className="min-h-0 flex-1 overflow-auto pb-16">
       <p id="project-files-upload-help" className="my-4 text-[12px] text-muted">ファイルはタスク詳細ペインから添付できます。</p>
       {attachments.length === 0 ? (
         <EmptyState
@@ -59,6 +60,7 @@ export default function FilesView({
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

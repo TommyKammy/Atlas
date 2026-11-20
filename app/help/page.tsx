@@ -5,8 +5,12 @@ import {
   sectionTitleClass,
 } from "@/components/ui/form-controls";
 import {
+  pageContentInsetClass,
   pageDescriptionClass,
-  pageShellClass,
+  pageFixedClass,
+  pageFrameClass,
+  pageHeaderInsetClass,
+  pageScrollClass,
   pageTitleClass,
 } from "@/components/ui/page-layout";
 import {
@@ -48,13 +52,17 @@ function HelpSection({
 
 export default function HelpPage() {
   return (
-    <div data-help-page className={pageShellClass}>
+    <div data-help-page className={pageFrameClass}>
+      <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
       <div className="max-w-4xl">
         <h1 className={pageTitleClass}>ヘルプと始め方</h1>
         <p className={pageDescriptionClass}>
           Atlas の基本操作、新しい画面の見方、連携、ショートカットをまとめています。
         </p>
-
+      </div>
+      </div>
+      <div data-page-scroll className={`${pageScrollClass} ${pageContentInsetClass}`}>
+      <div className="max-w-4xl">
         <HelpSection
           id="about"
           title="Atlas について"
@@ -197,6 +205,7 @@ export default function HelpPage() {
             管理者コンソール
           </Link>
         </HelpSection>
+      </div>
       </div>
     </div>
   );

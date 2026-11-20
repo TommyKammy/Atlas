@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
+import { pageFixedClass, pageFrameClass, pageScrollClass } from "@/components/ui/page-layout";
 import { confirmAction, toast } from "@/lib/ui-feedback";
 import { periodKey as makePeriodKey } from "@/lib/planning/format";
 import type { PlanningScenarioResult } from "@/lib/planning/calculations";
@@ -414,7 +415,8 @@ export default function PlanningWorkspace({
   const adopterResult = adoptSlot === null ? null : scenarioCalculation(state, adoptSlot);
 
   return (
-    <div className="mx-auto max-w-[1180px] px-4 py-5 md:px-6 md:py-6">
+    <div className={pageFrameClass}>
+      <div data-page-fixed className={`${pageFixedClass} mx-auto w-full max-w-[1180px] px-4 pt-5 md:px-6 md:pt-6`}>
       <PlanningHeader
         portfolioName={state.portfolio.name || portfolioName}
         backHref={backHref}
@@ -431,6 +433,9 @@ export default function PlanningWorkspace({
         onManageViewers={() => setViewersDialog(true)}
         onApprovalSettings={() => setApprovalSettingsDialog(true)}
       />
+      </div>
+      <div data-page-scroll className={pageScrollClass}>
+      <div className="mx-auto max-w-[1180px] px-4 pb-6 md:px-6">
 
       {pendingChange && (
         <section aria-label="承認設定の変更申請" className="mt-3 space-y-2 rounded border p-3 text-sm">
@@ -531,6 +536,8 @@ export default function PlanningWorkspace({
             onNavigate={switchView}
           />
         )}
+      </div>
+      </div>
       </div>
 
       {initiativeDialog && selectedPeriod && (initiativeDialog.initiativeId === null || initiative) && (
