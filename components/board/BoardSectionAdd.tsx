@@ -36,16 +36,18 @@ export default function BoardSectionAdd({
       <div
         ref={containerRef}
         data-board-section-add
-        className="w-[17.5rem] shrink-0 self-start pt-1"
+        className="w-[17.5rem] shrink-0 self-start"
         onFocusCapture={(event) => event.target.scrollIntoView({ block: "nearest", inline: "nearest" })}
       >
-        <div className="px-3 pb-3 pt-2">
+        {/* Same geometry as a column heading (px-1 pt-1 pb-2, 28px row), so the
+            draft heading that replaces this button opens where it was clicked. */}
+        <div className="flex items-center gap-2 px-1 pt-1 pb-2">
           <button
             ref={triggerRef}
             type="button"
             data-add-section-open
             onClick={onStart}
-            className="text-left text-sm text-muted hover:text-text"
+            className="flex h-7 items-center text-left text-[13px] text-muted hover:text-text"
           >
             ＋ セクションを追加
           </button>
@@ -74,7 +76,9 @@ export default function BoardSectionAdd({
           }}
           saving={draft.saving}
           error={draft.error}
-          className="h-7 min-w-0 flex-1 rounded border border-accent bg-field px-2 text-[13px] font-bold text-text outline-none disabled:bg-surface-subtle"
+          // Pulled left by border + padding (1px + 3px) so the typed name starts
+          // where column titles start (4px in) and does not shift on save.
+          className="-ml-1 h-7 min-w-0 flex-1 rounded border border-accent bg-field px-[3px] text-[13px] font-bold text-text outline-none disabled:bg-surface-subtle"
           errorClassName="absolute left-1 top-full z-20 mt-1 w-full rounded border border-danger-line bg-surface px-2 py-1 text-[12px] text-danger shadow"
         />
         <span className="shrink-0 text-[12px] font-normal text-muted">0</span>

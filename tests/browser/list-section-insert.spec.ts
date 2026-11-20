@@ -353,3 +353,43 @@ test("failed save keeps the named draft visible and retries from the same input"
   await expect(draft(page)).toHaveCount(0);
   expect(attempts).toBe(2);
 });
+
+test("the draft heading opens exactly where the add button was and its text lines up with section names", async ({ page }) => {
+  const f = await fixture(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const textStart = (input: Locator) => input.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return element.getBoundingClientRect().x + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+  });
+
+  // List: the add row has the heading geometry, so nothing jumps on click.
+  await openList(page, f.projectId);
+  const trigger = page.getByRole("button", { name: "＋ セクションを追加", exact: true });
+  await trigger.scrollIntoViewIfNeeded();
+  const row = (await page.locator("[data-list-section-add-row]").boundingBox())!;
+  const nameX = (await page.locator(`[data-section-name="${f.sections[0].id}"]`).boundingBox())!.x;
+  await trigger.click();
+  const input = page.getByRole("textbox", { name: "セクション名" });
+  await expect(input).toBeFocused();
+  const draftRow = (await page.locator("[data-list-section-header]").filter({ has: input }).boundingBox())!;
+  expect(Math.round(draftRow.y), "list draft row replaces the add row").toBe(Math.round(row.y));
+  expect(Math.round(draftRow.height)).toBe(Math.round(row.height));
+  expect(Math.round(await textStart(input)), "list draft text starts at the section name column").toBe(Math.round(nameX));
+  await page.keyboard.press("Escape");
+
+  // Board: the typed name starts where column titles start.
+  await page.goto(`/projects/${f.projectId}?view=board`);
+  const boardTrigger = page.getByRole("button", { name: "＋ セクションを追加", exact: true });
+  await boardTrigger.scrollIntoViewIfNeeded();
+  const buttonBox = (await boardTrigger.boundingBox())!;
+  await boardTrigger.click();
+  const boardInput = page.getByRole("textbox", { name: "セクション名" });
+  await expect(boardInput).toBeFocused();
+  const draftColumn = (await page.locator("[data-board-section-draft]").boundingBox())!;
+  const realColumn = page.locator("[data-board-column]").filter({ has: page.locator("[data-board-column-header]") }).last();
+  const offset = await realColumn.evaluate((column) =>
+    column.querySelector("[data-board-column-header]")!.getBoundingClientRect().x - column.getBoundingClientRect().x);
+  expect(Math.round(await textStart(boardInput) - draftColumn.x), "board draft text offset").toBe(Math.round(offset));
+  expect(Math.round((await boardInput.boundingBox())!.y), "board draft opens at the button row").toBe(Math.round(buttonBox.y));
+  await page.keyboard.press("Escape");
+});

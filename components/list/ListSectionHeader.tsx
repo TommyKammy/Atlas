@@ -5,6 +5,15 @@ import { isImeComposing } from "@/lib/ime-keyboard";
 import type { ListGroupBy } from "@/lib/list-view";
 import SectionDraftInput from "../sections/SectionDraftInput";
 
+/**
+ * Name input for a new or renamed section. The box is pulled left by its own
+ * border + padding (1px + 7px) so the typed text starts exactly where section
+ * names start, and it is 32px tall inside the 38px heading row. This keeps the
+ * text from shifting when the heading switches between label and input.
+ */
+const sectionNameInputClass =
+  "-ml-2 h-8 w-[240px] max-w-[360px] rounded border border-accent bg-field px-[7px] text-[14px] leading-6 font-semibold text-text ring-2 ring-focus-ring/15 outline-none disabled:bg-surface-subtle";
+
 export type ListSectionHeaderProps = {
   groupKey: string;
   name: string;
@@ -112,7 +121,7 @@ export default function ListSectionHeader({
               onCancel={draft.onCancel}
               saving={draft.saving}
               error={draft.error}
-              className="h-9 w-[240px] max-w-[360px] rounded border border-accent bg-field px-2 text-[14px] font-semibold text-text ring-2 ring-focus-ring/15 outline-none disabled:bg-surface-subtle"
+              className={sectionNameInputClass}
               errorClassName="absolute left-6 top-full z-20 mt-1 w-[280px] rounded border border-danger-line bg-surface px-2 py-1 text-[12px] text-danger shadow"
             />
           ) : editingSection === sectionId ? (
@@ -134,7 +143,7 @@ export default function ListSectionHeader({
               onBlur={() => onSaveName(sectionId)}
               aria-label="セクション名"
               autoFocus
-              className="h-9 w-[200px] rounded border border-accent bg-field px-2 text-[14px] font-semibold text-text ring-2 ring-focus-ring/15 outline-none"
+              className={sectionNameInputClass}
             />
           ) : (
             <button
