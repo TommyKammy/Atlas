@@ -294,6 +294,13 @@ html[data-theme="dark"] {
    Tailwind v4 defaults bare `border` to currentColor (near-black text),
    which made every divider render black. */
 @layer base {
+  /* Each page owns one scroll region below its fixed header. Make it the
+     containing block for absolutely positioned descendants (sr-only labels,
+     badges) so they scroll with it instead of extending the document. */
+  [data-page-scroll] {
+    position: relative;
+  }
+
   *,
   ::before,
   ::after,

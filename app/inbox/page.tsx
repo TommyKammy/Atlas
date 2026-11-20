@@ -8,7 +8,16 @@ import InboxLive from "@/components/InboxLive";
 import { formatDateTime } from "@/lib/dates";
 import { isInboxItemUnread } from "@/lib/inbox-display";
 import { quietButtonClass } from "@/components/ui/form-controls";
-import { pageDescriptionClass, pageHeaderRowClass, pageShellClass, pageTitleClass } from "@/components/ui/page-layout";
+import {
+  pageContentInsetClass,
+  pageDescriptionClass,
+  pageFixedClass,
+  pageFrameClass,
+  pageHeaderInsetClass,
+  pageHeaderRowClass,
+  pageScrollClass,
+  pageTitleClass,
+} from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -99,7 +108,8 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   };
 
   return (
-    <div className={pageShellClass}>
+    <div className={pageFrameClass}>
+      <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
       <div className="max-w-5xl">
         <div className={pageHeaderRowClass}>
           <h1 className={pageTitleClass}>受信トレイ</h1>
@@ -129,6 +139,10 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
             );
           })}
         </nav>
+      </div>
+      </div>
+      <div data-page-scroll className={`${pageScrollClass} ${pageContentInsetClass}`}>
+      <div className="max-w-5xl">
         {invalidCursor && <p role="alert" className="mt-3 text-[13px] text-danger">通知の表示位置を読み込めなかったため、先頭から表示しています。</p>}
         <h2 data-inbox-total={page.total} className="mt-5 flex items-baseline gap-2 text-[13px] font-semibold text-text">
           対象の通知：<span className="text-[12px] font-normal tabular-nums text-muted">{page.total}件</span>
@@ -143,6 +157,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           {cursor && <Link href={`/inbox?filter=${filter}`} data-inbox-first className={quietButtonClass}>先頭へ戻る</Link>}
           {page.nextCursor && <Link href={`/inbox?filter=${filter}&cursor=${encodeURIComponent(page.nextCursor)}`} data-inbox-next className={quietButtonClass}>次の通知を表示</Link>}
         </nav>
+      </div>
       </div>
     </div>
   );

@@ -189,11 +189,11 @@ export default async function ProjectPage(props: {
   const canConfigure = canConfigureProject(access.role, project.settings);
 
   return (
-    <div className="flex min-h-full flex-col md:flex-row">
-      <div className="@container min-w-0 flex-1">
+    <div className="flex h-full min-h-0 flex-col md:flex-row">
+      <div className="@container flex min-h-0 min-w-0 flex-1 flex-col">
         <div
           data-project-header
-          className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 pt-3 sm:gap-x-3 md:flex md:flex-nowrap md:gap-2 md:px-6 md:pb-2 md:@max-[420px]:gap-1 md:@max-[420px]:px-4"
+          className="grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 pt-3 sm:gap-x-3 md:flex md:flex-nowrap md:gap-2 md:px-6 md:pb-2 md:@max-[420px]:gap-1 md:@max-[420px]:px-4"
         >
           <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2 pl-3 sm:gap-3 sm:pl-6 md:gap-1.5 md:pl-0 md:@max-[420px]:gap-1">
             <ProjectIcon
@@ -264,7 +264,7 @@ export default async function ProjectPage(props: {
             />
           </div>
         </div>
-        <div data-project-view={view}>
+        <div data-project-view={view} className="flex min-h-0 flex-1 flex-col">
         {view === "overview" && overviewData && (
           <LazyOverviewView
             projectId={projectId}

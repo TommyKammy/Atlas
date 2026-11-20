@@ -211,7 +211,7 @@ export default function DashboardView({
   };
 
   return (
-    <div className="px-4 pb-16" data-dashboard-view>
+    <div className="flex h-full min-h-0 flex-col px-4" data-dashboard-view>
       <ProjectViewToolbar>
         {canEdit && (
           <div className="relative">
@@ -254,6 +254,7 @@ export default function DashboardView({
         </div>
       </ProjectViewToolbar>
 
+      <div data-page-scroll className="min-h-0 flex-1 overflow-auto pb-16">
       {tasks.length === 0 && (
         <EmptyState
           scope="dashboard"
@@ -462,6 +463,7 @@ export default function DashboardView({
           ウィジェットがありません。「ウィジェットを追加」から作成してください。
         </div>
       )}
+      </div>
 
       {dialog && (
         <WidgetDialog

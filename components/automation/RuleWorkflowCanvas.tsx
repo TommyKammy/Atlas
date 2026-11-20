@@ -60,7 +60,7 @@ export default function RuleWorkflowCanvas({ document, descriptors, selected, re
       {document.useBranches && document.conditions.length === 0 && <button type="button" onClick={() => onSelect({ kind: "conditions" })} className="h-8 rounded-md px-2 text-accent-text hover:bg-accent-soft">共通の条件を追加</button>}
       {!readOnly && <button type="button" aria-pressed={document.useBranches} onClick={onToggleBranches} className={`${secondaryButtonClass} ml-auto`}>{document.useBranches ? "単純なフローに切り替え" : "条件で分岐する"}</button>}
     </div>
-    <div className="min-h-0 flex-1 overflow-auto p-6 sm:p-10" data-rule-canvas>
+    <div className="min-h-0 flex-1 overflow-auto p-6 sm:p-10" data-rule-canvas data-page-scroll>
       <div style={{ zoom }} className="flex min-w-[870px] items-start gap-0 py-8">
         <div className="w-[230px] shrink-0 space-y-3">
           {document.triggers.map((trigger, index) => <Card key={index}

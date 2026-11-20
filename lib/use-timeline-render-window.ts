@@ -60,8 +60,10 @@ export function useTimelineRenderWindow({
     const scroller = scrollRef.current;
     const canvas = contentRef.current;
     if (!scroller || !canvas) return;
-    const main = scroller.closest("main");
-    const verticalScroller = main ?? window;
+    // The shell's <main> no longer scrolls; project views own the single
+    // vertical scroll region below their fixed header and toolbar.
+    const pageScroll = scroller.closest<HTMLElement>("[data-page-scroll]");
+    const verticalScroller: HTMLElement | Window = pageScroll ?? window;
     let frame = 0;
     let geometryDirty = true;
     let measured: Viewport | null = null;
@@ -90,9 +92,10 @@ export function useTimelineRenderWindow({
       if (geometryDirty) {
         geometryDirty = false;
         const canvasTop = canvas.getBoundingClientRect().top;
-        const mainRect = main?.getBoundingClientRect();
-        const visibleTop = Math.max(0, (mainRect?.top ?? 0) - canvasTop);
-        const visibleBottom = Math.max(visibleTop, Math.min(window.innerHeight, mainRect?.bottom ?? window.innerHeight) - canvasTop);
+        const pageRect = pageScroll?.getBoundingClientRect();
+        const viewportBottom = pageRect?.bottom ?? window.innerHeight;
+        const visibleTop = Math.max(0, (pageRect?.top ?? 0) - canvasTop);
+        const visibleBottom = Math.max(visibleTop, Math.min(window.innerHeight, viewportBottom) - canvasTop);
         width = scroller.clientWidth;
         top = Math.floor(visibleTop / VERTICAL_BUFFER) * VERTICAL_BUFFER;
         bottom = Math.ceil(visibleBottom / VERTICAL_BUFFER) * VERTICAL_BUFFER;
@@ -120,7 +123,7 @@ export function useTimelineRenderWindow({
     const observer = new ResizeObserver(scheduleGeometry);
     observer.observe(scroller);
     observer.observe(canvas);
-    if (main) observer.observe(main);
+    if (pageScroll) observer.observe(pageScroll);
     scroller.addEventListener("scroll", onHorizontalScroll, { passive: true });
     verticalScroller.addEventListener("scroll", scheduleGeometry, { passive: true });
     window.addEventListener("resize", scheduleGeometry);

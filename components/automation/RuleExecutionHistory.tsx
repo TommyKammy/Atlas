@@ -25,7 +25,7 @@ export default function RuleExecutionHistory({ projectId, ruleId, descriptors }:
     return () => controller.abort();
   }, [projectId, ruleId, generation]);
   if (!ruleId) return <p className="p-6 text-[13px] text-muted">公開後に実行履歴を確認できます。</p>;
-  return <section className="min-h-0 flex-1 overflow-auto p-6" aria-label="ルールの実行履歴">
+  return <section className="min-h-0 flex-1 overflow-auto p-6" aria-label="ルールの実行履歴" data-page-scroll>
     <div className="max-w-4xl">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className={dialogTitleClass}>実行履歴</h2><button type="button" onClick={() => { setState({ loading: true, runs: [], error: "" }); setGeneration((value) => value + 1); }} className={secondaryButtonClass}>更新</button></div>
       {state.loading ? <p role="status" className="text-[13px] text-muted">実行履歴を読み込んでいます…</p> : state.error ? <p role="alert" className="text-[13px] text-danger">{state.error}</p> : state.runs.length === 0 ? <p className="text-[13px] text-muted">実行履歴はありません。</p> : <div className="divide-y divide-line-subtle border-y border-line-subtle">{state.runs.map((run) => <details key={run.id} className="py-3">

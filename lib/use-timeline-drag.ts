@@ -135,7 +135,7 @@ export function useTimelineDrag({
         }
       }
     };
-    // Capture also sees the main page's vertical scrolling, not just canvas X.
+    // Capture also sees the page scroll region's vertical scrolling, not just canvas X.
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
     return () => window.removeEventListener("scroll", onScroll, true);
   }, [publishDrag, dragPosition]);
@@ -306,5 +306,6 @@ function verticalScrollParent(element: HTMLElement | null, horizontalScroller: H
     if (parent === horizontalScroller) continue;
     if (parent.scrollHeight > parent.clientHeight && /auto|scroll/.test(getComputedStyle(parent).overflowY)) return parent;
   }
-  return document.scrollingElement instanceof HTMLElement ? document.scrollingElement : null;
+  return element?.closest<HTMLElement>("[data-page-scroll]") ??
+    (document.scrollingElement instanceof HTMLElement ? document.scrollingElement : null);
 }

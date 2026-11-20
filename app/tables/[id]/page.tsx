@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/current-user";
 import { getProjectAccess } from "@/lib/data";
+import { pageFixedClass, pageFrameClass } from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -34,7 +35,8 @@ export default async function ProjectTablePage({ params }: { params: Promise<{ i
   if (!access.role) notFound();
 
   return (
-    <div className="p-6">
+    <div className={`${pageFrameClass} p-6`}>
+      <div data-page-fixed className={pageFixedClass}>
       <p className="text-xs text-subtle">
         {table.project_name} から作成したテーブル ・ {table.created_at.slice(0, 10)}
       </p>
@@ -56,7 +58,8 @@ export default async function ProjectTablePage({ params }: { params: Promise<{ i
           元のプロジェクト →
         </a>
       </div>
-      <div className="mt-4 overflow-auto rounded border">
+      </div>
+      <div data-page-scroll className="mt-4 min-h-0 flex-1 overflow-auto rounded border">
         <table className="min-w-full border-collapse text-sm" data-project-table={table.id}>
           <thead className="sticky top-0 bg-surface-subtle">
             <tr>

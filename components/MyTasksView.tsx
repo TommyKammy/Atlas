@@ -219,7 +219,8 @@ export default function MyTasksView({
   };
 
   return (
-    <div className="p-6" data-my-tasks-view data-my-task-saving={busy} data-my-task-sync-required={syncRequired}>
+    <div className="flex h-full min-h-0 flex-col" data-my-tasks-view data-my-task-saving={busy} data-my-task-sync-required={syncRequired}>
+      <div data-page-fixed className="shrink-0 p-6 pb-0">
       <h1 className="text-lg font-bold">マイタスク（{viewerName}）</h1>
       <InlineError message={persistError} onDismiss={syncRequired ? undefined : () => setPersistError(null)} className="mt-2 max-w-4xl" />
       {syncRequired && <button type="button" onClick={() => void retrySynchronization()} disabled={busy} data-my-task-resync
@@ -231,6 +232,8 @@ export default function MyTasksView({
       <p className="mt-1 text-sm text-muted">
         未完了・担当が自分・全プロジェクト横断。ドラッグで並び替え、別のバケットへ移動すると期日が変わります。
       </p>
+      </div>
+      <div data-page-scroll className="min-h-0 flex-1 overflow-auto px-6 pb-6">
       {tasks.length === 0 && (
         <EmptyState
           scope="my-tasks"
@@ -365,6 +368,7 @@ export default function MyTasksView({
             ))}
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

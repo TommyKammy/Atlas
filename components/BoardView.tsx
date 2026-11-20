@@ -554,6 +554,7 @@ function BoardViewContent({
 
   return (
     <div
+      className="flex h-full min-h-0 flex-col"
       data-board-view
       data-board-group={effectiveGroupBy}
       data-board-hide-completed={hideCompleted}
@@ -615,6 +616,7 @@ function BoardViewContent({
         cardFields={cardFields}
         onToggleCardField={(key) => setCardFields((current) => ({ ...current, [key]: !current[key] }))}
       />
+      <div data-page-scroll className="min-h-0 flex-1 overflow-auto">
       {tasks.length === 0 && (
         <EmptyState
           scope="board"
@@ -797,6 +799,7 @@ function BoardViewContent({
             }}
           />
         )}
+      </div>
       </div>
     </div>
   );

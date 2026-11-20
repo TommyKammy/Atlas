@@ -108,7 +108,10 @@ export default async function AppShell({
               <SidebarHelpButton variant="topbar" />
             </div>
           </div>
-          <main className="min-h-0 flex-1 overflow-auto">{children}</main>
+          {/* Pages own their scroll region (`data-page-scroll`). Keeping the
+              shell itself unscrollable avoids a second scrollbar for fixed
+              headers. Print/share/login render their own scroll box. */}
+          <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
         </div>
       </div>
       {currentUserId !== null && <CommandPalette showPortfolio={showPortfolio} isAdmin={isAdmin} />}

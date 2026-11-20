@@ -46,13 +46,13 @@ test("large timelines reveal offscreen bars for scroll, keyboard focus, and crea
     const farId = await farPlaceholder.getAttribute("data-timeline-focus-placeholder");
     expect(farId).not.toBeNull();
     const farBar = timeline.locator(`[data-timeline-bar="${farId}"]`);
-    const main = page.locator("main");
+    const pageScroll = page.locator("[data-page-scroll]");
     const scroller = timeline.locator(".timeline-scroll");
-    await main.evaluate((node) => { node.scrollTop = node.scrollHeight; });
+    await pageScroll.evaluate((node) => { node.scrollTop = node.scrollHeight; });
     await expect(farBar).toHaveCount(0);
     const wheelTarget = await scroller.evaluate((node) => {
       const bounds = node.getBoundingClientRect();
-      const clip = node.closest("main")!.getBoundingClientRect();
+      const clip = node.closest("[data-page-scroll]")!.getBoundingClientRect();
       const left = Math.max(0, bounds.left, clip.left);
       const right = Math.min(window.innerWidth, bounds.right, clip.right);
       const top = Math.max(0, bounds.top, clip.top);
@@ -74,7 +74,7 @@ test("large timelines reveal offscreen bars for scroll, keyboard focus, and crea
       .toBeLessThan(2);
     await expect(farBar).toBeInViewport();
 
-    await main.evaluate((node) => { node.scrollTop = 0; });
+    await pageScroll.evaluate((node) => { node.scrollTop = 0; });
     await scroller.evaluate((node) => { node.scrollLeft = 0; });
     await expect(farBar).toHaveCount(0);
     const previousPlaceholder = timeline.getByRole("button", { name: "Window B 999", exact: true });
@@ -114,7 +114,7 @@ test("large timelines reveal offscreen bars for scroll, keyboard focus, and crea
       await input.fill("Created outside viewport");
       await input.press("Enter");
       const createdId = await created;
-      await main.evaluate((node) => { node.scrollTop = 0; });
+      await pageScroll.evaluate((node) => { node.scrollTop = 0; });
       await scroller.evaluate((node) => { node.scrollLeft = 0; });
       releaseCreate();
       const addedBar = page.locator(`[data-timeline-bar="${createdId}"]`);

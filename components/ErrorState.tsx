@@ -12,7 +12,7 @@ export default function ErrorState({
   scope?: string;
 }) {
   return (
-    <div data-error-state={scope} className="flex min-h-[320px] items-center justify-center px-6 py-16">
+    <div data-error-state={scope} className="flex h-full min-h-[320px] items-center justify-center overflow-auto px-6 py-16">
       <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 text-center shadow-sm">
         <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-danger-soft text-lg text-danger">
           !

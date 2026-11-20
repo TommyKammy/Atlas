@@ -38,7 +38,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     totals.rows[0].total === 0 ? 0 : Math.round((totals.rows[0].done / totals.rows[0].total) * 100);
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className="mx-auto h-full max-w-4xl overflow-auto p-6">
       <p className="text-xs text-subtle">Atlas 共有プレビュー（読み取り専用）</p>
       <h1 className="mt-1 text-xl font-bold">{project.name}</h1>
       <p className="mt-1 text-sm text-secondary">

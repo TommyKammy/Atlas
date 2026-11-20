@@ -5,6 +5,7 @@ import { hasPermission } from "@/lib/permissions";
 import { requirePageUser } from "@/lib/current-user";
 import { getPortfolios } from "@/lib/repositories/portfolios";
 import PortfolioWorkspace from "@/components/PortfolioWorkspace";
+import { pageFixedClass, pageFrameClass, pageScrollClass } from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -28,7 +29,8 @@ export default async function PortfolioPage({
       : undefined;
 
   return (
-    <div className="p-6">
+    <div className={pageFrameClass}>
+      <div data-page-fixed className={`${pageFixedClass} px-6 pt-6`}>
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-bold">ポートフォリオ</h1>
         {viewer.isAdmin && await hasPermission(viewerId, "audit.view") && <a href="/audit" className="text-sm text-accent-text hover:underline">
@@ -38,6 +40,8 @@ export default async function PortfolioPage({
       <p className="mt-1 text-sm text-muted">
         {ws?.name} の全プロジェクト（{rows.length}件）
       </p>
+      </div>
+      <div data-page-scroll className={`${pageScrollClass} px-6 pb-6`}>
       <div className="mt-4 max-w-5xl">
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold">マイポートフォリオ</h2>
@@ -109,6 +113,7 @@ export default async function PortfolioPage({
         initialSelectedId={initialSelectedId}
         availableProjects={rows.map((row) => ({ id: row.id, name: row.name }))}
       />
+      </div>
     </div>
   );
 }

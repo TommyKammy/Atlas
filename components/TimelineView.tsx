@@ -648,7 +648,7 @@ function TimelineViewContent({
 
   return (
     <div
-      className="pb-16 text-sm"
+      className="flex h-full min-h-0 flex-col text-sm"
       data-timeline
       data-timeline-windowed={renderWindow ? "true" : undefined}
       onFocusCapture={renderWindow ? (event) => {
@@ -717,17 +717,19 @@ function TimelineViewContent({
         showCritical={showCritical}
         setShowCritical={setShowCritical}
       />
-      {tasks.length === 0 && (
-        <EmptyState
-          scope="timeline"
-          title="タイムラインにタスクがありません"
-          description="タスクを追加すると、日付に沿ってここに表示されます。"
-          action={canEdit && (sections.length > 0 || canConfigure) ? (
-            <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} disabled={!canEdit} />
-          ) : undefined}
-        />
-      )}
-      <div className="flex">
+      <div className="flex min-h-0 flex-1">
+        <div data-page-scroll className="min-w-0 flex-1 overflow-auto">
+        {tasks.length === 0 && (
+          <EmptyState
+            scope="timeline"
+            title="タイムラインにタスクがありません"
+            description="タスクを追加すると、日付に沿ってここに表示されます。"
+            action={canEdit && (sections.length > 0 || canConfigure) ? (
+              <ProjectTaskCreateButton projectId={projectId} sections={sections} users={users} disabled={!canEdit} />
+            ) : undefined}
+          />
+        )}
+        <div className="flex min-h-full">
         <div className="w-36 shrink-0 border-r border-line-subtle md:w-60">
           <div className="h-[49px]" />
           {displayGroups.map((group) => (
@@ -951,11 +953,13 @@ function TimelineViewContent({
               onDelete={removeDependency}
             />
         </TimelineCanvas>
+        </div>
+        </div>
 
         {undatedOpen && (
           <aside
             data-timeline-drawer
-            className="sticky top-0 min-h-[calc(100vh-220px)] max-h-[calc(100vh-220px)] w-[340px] shrink-0 overflow-y-auto border-l border-line bg-surface"
+            className="h-full w-[340px] shrink-0 overflow-y-auto border-l border-line bg-surface"
           >
             <div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
               <h2 className="text-[15px] font-semibold">日付なしのタスク</h2>

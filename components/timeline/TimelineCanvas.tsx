@@ -26,12 +26,11 @@ export default function TimelineCanvas({
   children: ReactNode;
 }) {
   return (
-    <div ref={scrollRef} className="timeline-scroll min-w-0 flex-1 overflow-x-auto">
+    <div ref={scrollRef} className="timeline-scroll flex min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
       <div
-        className="relative w-full cursor-copy bg-bg"
+        className="relative w-full flex-1 cursor-copy bg-bg"
         style={{
           minWidth: Math.max(700, span * dayWidth),
-          minHeight: "max(520px, calc(100vh - 178px))",
         }}
         ref={contentRef}
         data-timeline-canvas

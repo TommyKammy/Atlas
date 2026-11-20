@@ -26,7 +26,7 @@ export default async function ProjectPrintPage({ params }: { params: Promise<{ i
     : sections;
 
   return (
-    <div data-print-view className="mx-auto max-w-5xl bg-surface p-8 text-text print:p-0">
+    <div data-print-view className="mx-auto h-full max-w-5xl overflow-auto bg-surface p-8 text-text print:p-0">
       <div className="flex items-start justify-between print:hidden">
         <p className="text-xs text-subtle">Atlas 印刷ビュー</p>
         <PrintButton />

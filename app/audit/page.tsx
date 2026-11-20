@@ -5,7 +5,16 @@ import { getAuditLog } from "@/lib/audit";
 import { getWorkspace } from "@/lib/data";
 import { auditTimestampISO, formatAuditTimestamp } from "@/lib/audit-display";
 import { quietButtonClass } from "@/components/ui/form-controls";
-import { pageDescriptionClass, pageHeaderRowClass, pageShellClass, pageTitleClass } from "@/components/ui/page-layout";
+import {
+  pageContentInsetClass,
+  pageDescriptionClass,
+  pageFixedClass,
+  pageFrameClass,
+  pageHeaderInsetClass,
+  pageHeaderRowClass,
+  pageScrollClass,
+  pageTitleClass,
+} from "@/components/ui/page-layout";
 
 export const instant = false;
 
@@ -16,7 +25,8 @@ export default async function AuditPage() {
   const rows = ws ? await getAuditLog(ws.id) : [];
 
   return (
-    <div className={pageShellClass}>
+    <div className={pageFrameClass}>
+      <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
       <div className="max-w-5xl">
         <div className={pageHeaderRowClass}>
           <h1 className={pageTitleClass}>監査ログ</h1>
@@ -32,7 +42,10 @@ export default async function AuditPage() {
         <p className={pageDescriptionClass}>
           {ws?.name} の変更履歴（<span className="tabular-nums">{rows.length}</span>件・直近200件）
         </p>
-
+      </div>
+      </div>
+      <div data-page-scroll className={`${pageScrollClass} ${pageContentInsetClass}`}>
+      <div className="max-w-5xl">
         <div data-audit-table-scroll className="mt-5 overflow-x-auto">
           <table data-audit-table className="w-full min-w-[860px] table-fixed border-collapse text-left">
             <colgroup>
@@ -88,6 +101,7 @@ export default async function AuditPage() {
           </table>
         </div>
         {rows.length === 0 && <p className="mt-4 text-[13px] text-muted">履歴はありません。</p>}
+      </div>
       </div>
     </div>
   );
