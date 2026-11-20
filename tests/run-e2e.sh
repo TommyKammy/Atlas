@@ -152,7 +152,10 @@ if [[ "$suite" == browser || "$suite" == ui-contrast || "$suite" == toolbar || "
   elif [[ "$suite" == sidebar ]]; then
     E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/sidebar.spec.ts tests/browser/sidebar-project-order.spec.ts --workers 1 --output "$browser_output"
   else
-    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- ${browser_shard[@]+"${browser_shard[@]}"} --output "$browser_output"
+    # The suite shares one database (sidebar order, recents, seeded users), so
+    # it must run one test at a time. Pin it: Playwright's default worker count
+    # follows the runner's CPU count and gave 2 workers on 4-core runners.
+    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- ${browser_shard[@]+"${browser_shard[@]}"} --workers 1 --output "$browser_output"
   fi
 elif [[ "$suite" == critical-performance ]]; then
   require_e2e_target
