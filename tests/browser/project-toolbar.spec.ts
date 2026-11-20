@@ -55,8 +55,14 @@ for (const width of [1440, 390]) test(`project actions align across pages at ${w
 for (const mode of ["section", "empty", "assignee"]) test(`board toolbar creates inline: ${mode}`, async ({ page }) => {
   const f = await fixture(page, mode === "empty");
   await page.goto(`/projects/${f.id}?view=board&group=${mode === "assignee" ? "assignee" : "section"}`);
-  await page.locator("[data-board-add]").click();
   const input = page.getByRole("textbox", { name: "新しいタスク名", exact: true });
+  // The SSR toolbar can render before its client handlers attach; a click that
+  // lands earlier is lost. Opening the draft writes nothing, so retry the click
+  // until the inline input appears.
+  await expect(async () => {
+    if (!await input.isVisible()) await page.locator("[data-board-add]").click();
+    await expect(input).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
   await expect(input).toBeFocused(); await input.fill("ツールバーから追加"); await input.press("Enter");
   await expect(input).toHaveCount(0);
   await expect(page.locator("[data-board-card]")).toContainText(["ツールバーから追加"]);
