@@ -79,6 +79,27 @@ test("the top row summarizes the list state and marks overdue days with text and
 });
 
 test("the title, property grid and section spacing follow the mockup", async ({ page }) => {
+  // The seed has no custom fields or attachments, so create one of each for
+  // the rows this test measures and remove them afterwards.
+  const field = await page.request.post("/api/custom-fields", {
+    data: { project_id: 1, name: `レイアウト確認 ${test.info().testId}`, field_type: "text" },
+  });
+  expect(field.status()).toBe(201);
+  const { id: fieldId } = await field.json() as { id: number };
+  const attachment = await page.request.post("/api/attachments", { multipart: {
+    task_id: "2", file: { name: "layout-check.txt", mimeType: "text/plain", buffer: Buffer.from("layout check") },
+  } });
+  expect(attachment.status()).toBe(201);
+  const { id: attachmentId } = await attachment.json() as { id: number };
+  try {
+    await checkTitleGridAndSections(page);
+  } finally {
+    expect((await page.request.delete(`/api/attachments/${attachmentId}`)).status()).toBe(200);
+    expect((await page.request.delete(`/api/custom-fields/${fieldId}`)).status()).toBe(200);
+  }
+});
+
+async function checkTitleGridAndSections(page: Page) {
   const pane = await openPane(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
 
@@ -121,7 +142,7 @@ test("the title, property grid and section spacing follow the mockup", async ({ 
   const feed = pane.locator("[data-task-feed]");
   expect(await feed.evaluate((element) => getComputedStyle(element.firstElementChild!).borderBottomWidth)).toBe("0px");
   expect(await feed.evaluate((element) => getComputedStyle(element).marginTop)).toBe("20px");
-});
+}
 
 test("the status row shows status and progress together and the comment field is pinned at 44px", async ({ page }) => {
   const pane = await openPane(page);

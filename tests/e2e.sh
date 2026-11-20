@@ -105,7 +105,7 @@ grep -q 'aria-label="現在のビューを保存"' "$TMPD/p-list.html" && grep -
 grep -q 'lg:hidden' "$TMPD/p-list.html" && grep -q 'fixed inset-0 z-\[80\]' "$TMPD/pane.html" && grep -q 'w-36 shrink-0 border-r' "$TMPD/p-timeline.html" && ok "responsive mobile classes" || bad "responsive mobile classes"
 grep -q 'data-list-row="1"' "$TMPD/p-list.html" && grep -q 'aria-label="詳細を閉じる"' "$TMPD/pane.html" && ok "list keyboard rows" || bad "list keyboard rows"
 grep -q 'aria-label="タスク詳細"' "$TMPD/pane.html" && grep -q 'aria-modal="true"' "$TMPD/pane.html" && ok "task pane focus trap markup" || bad "task pane focus trap markup"
-grep -q 'min-h-\[37px\]' "$TMPD/p-list.html" && grep -q 'minmax(220px,640px)' "$TMPD/p-list.html" && grep -q 'minmax(40px,1fr)' "$TMPD/p-list.html" && ok "list density columns" || bad "list density columns"
+grep -q 'h-\[38px\]' "$TMPD/p-list.html" && grep -q 'minmax(340px,640px)' "$TMPD/p-list.html" && grep -q 'minmax(40px,1fr)' "$TMPD/p-list.html" && ok "list density columns" || bad "list density columns"
 HOST=1; for v in list board timeline calendar; do grep -q 'data-task-context-menu-host' "$TMPD/p-$v.html" || HOST=0; done
 [[ "$HOST" == "1" ]] && ok "task context menu host" || bad "task context menu host"
 
@@ -145,7 +145,7 @@ print("ok" if all(p>=0 for p in pos) and pos==sorted(pos) else "bad:"+",".join(m
 PYEOF
 )
 [[ "$ORDER" == "ok" ]] && ok "list column order" || bad "list column order" "$ORDER"
-grep -Fq 'hover:bg-[#f3f3f3]' "$TMPD/p-list.html" && ok "field header hover style" || bad "field header hover style"
+grep -Fq 'hover:bg-surface-muted' "$TMPD/p-list.html" && ok "field header hover style" || bad "field header hover style"
 DRAG_FIELD=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E並べ替え列","field_type":"text"}')
 DRAG_FIELD_ID=$(jget "$DRAG_FIELD" id)
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/field-drag.html"
@@ -157,8 +157,8 @@ PYEOF
 )
 [[ "$HAS_DRAG" == "yes" ]] && ok "field header draggable markup" || bad "field header draggable markup"
 api DELETE "/api/custom-fields/$DRAG_FIELD_ID" >/dev/null
-grep -q 'minmax(220px,640px)' "$TMPD/p-list.html" && grep -q '119px 119px 119px 119px' "$TMPD/p-list.html" && ok "list column widths (640/119)" || bad "list column widths"
-grep -q 'data-list-section-header="' "$TMPD/p-list.html" && ! grep -q 'data-list-section-count' "$TMPD/p-list.html" && ok "section header count hidden" || bad "section header count hidden"
+grep -q 'minmax(340px,640px)' "$TMPD/p-list.html" && grep -q '119px 119px 119px 119px' "$TMPD/p-list.html" && ok "list column widths (640/119)" || bad "list column widths"
+grep -q 'data-list-section-header="' "$TMPD/p-list.html" && grep -q 'data-list-section-count="' "$TMPD/p-list.html" && ok "section header count shown" || bad "section header count shown"
 HAS_SECTION_DRAG=$(python3 - "$TMPD/p-list.html" <<'PYEOF'
 import re, sys
 h = open(sys.argv[1], encoding='utf-8').read()
@@ -192,8 +192,8 @@ grep -q 'data-list-completed-only="true"' "$TMPD/list-saved-toolbar.html" && gre
 api DELETE "/api/saved-views/$SVID2" >/dev/null
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":2,"name":"   "}')
 [[ "$C" == "400" ]] && ok "empty task name rejected" || bad "empty task name rejected ($C)"
-grep -q 'bg-\[#c94848\]' "$TMPD/p-list.html" && ok "contrast tokens" || bad "contrast tokens"
-grep -q 'focus-visible' app/globals.css && grep -q 'box-shadow: 0 0 0 4px #2c60b8' app/globals.css && ok "global focus-visible styles" || bad "global focus-visible styles"
+grep -Fq 'bg-accent text-on-accent' "$TMPD/p-list.html" && grep -q -- '--atlas-on-accent:' app/globals.css && ok "contrast tokens" || bad "contrast tokens"
+grep -q 'focus-visible' app/globals.css && grep -Fq 'outline: 2px solid var(--atlas-focus-ring)' app/globals.css && grep -Fq 'box-shadow: 0 0 0 4px color-mix(in srgb, var(--atlas-focus-ring) 25%, transparent)' app/globals.css && ok "global focus-visible styles" || bad "global focus-visible styles"
 
 echo "== sidebar rail =="
 curl -s -m 15 -b "$JAR" -b 'atlas_sidebar=collapsed' "$BASE/projects/1?view=list" -o "$TMPD/rail.html"
