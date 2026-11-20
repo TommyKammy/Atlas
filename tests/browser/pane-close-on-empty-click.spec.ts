@@ -302,6 +302,59 @@ test("list: a named draft still moves the pane to the created task", async ({ pa
   ).toBe(name);
 });
 
+test("list: holding the press until a named draft is created keeps the created task open", async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  const f = await fixture(page);
+  const pane = await openPane(page, f.projectId, "list", f.a.id);
+
+  await page.locator("[data-list-add]").click();
+  await expect(pane).toHaveAttribute("data-task-pane-draft", "true");
+  const name = "長押し中に作成されるタスク";
+  await page.getByRole("textbox", { name: "新しいタスク名", exact: true }).fill(name);
+
+  // Press on empty space and hold until the commit and the pane handoff have
+  // both finished, then release. The release must not close the new task.
+  const summaryPoint = emptyPoint((await page.locator("[data-list-summary]").boundingBox())!);
+  await page.mouse.move(summaryPoint.x, summaryPoint.y);
+  await page.mouse.down();
+  await expect.poll(() => new URL(page.url()).searchParams.get("task")).not.toBe(String(f.a.id));
+  await expect(pane).not.toHaveAttribute("data-task-pane-draft", "true");
+  const createdId = new URL(page.url()).searchParams.get("task");
+  await page.mouse.up();
+
+  await page.waitForTimeout(300);
+  await expect(page.locator("[data-task-pane]")).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("task")).toBe(createdId);
+  await expect(pane.getByRole("textbox", { name: "タスク名", exact: true })).toHaveValue(name);
+});
+
+test("list: a cancelled drag on the draft name does not disable empty-space closing", async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  const f = await fixture(page);
+  const pane = await openPane(page, f.projectId, "list", f.a.id);
+
+  await page.locator("[data-list-add]").click();
+  await expect(pane).toHaveAttribute("data-task-pane-draft", "true");
+  const input = page.getByRole("textbox", { name: "新しいタスク名", exact: true });
+  // The draft name cancels dragstart (no dragend follows). Dispatch the same
+  // native event a text drag would start with and confirm it was cancelled.
+  const cancelled = await input.evaluate((element) => {
+    const event = new DragEvent("dragstart", { bubbles: true, cancelable: true });
+    element.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(cancelled).toBe(true);
+  await page.waitForTimeout(50);
+
+  // Discard the untouched draft; the pane returns to task A.
+  await input.press("Escape");
+  await expectPaneOn(page, f.a.id);
+
+  const summaryPoint = emptyPoint((await page.locator("[data-list-summary]").boundingBox())!);
+  await page.mouse.click(summaryPoint.x, summaryPoint.y);
+  await expectPaneClosed(page);
+});
+
 test("board: empty column space, gaps and toolbar close; cards and add keep the pane", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
   const f = await fixture(page);

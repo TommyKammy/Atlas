@@ -36,7 +36,17 @@ type PointerStart = {
   y: number;
   target: Element | null;
   suppress: boolean;
+  /**
+   * The gesture began while the pane showed a draft that already has a name.
+   * Pressing empty space blurs and commits that draft, and the commit hands the
+   * pane to the created task. That can finish before the button is released,
+   * so the whole gesture must not close the pane.
+   */
+  namedDraft: boolean;
 };
+
+/** Draft rows keep a negative id until the task is created. */
+const DRAFT_NAME_INPUT = '[data-quick-task^="-"] input';
 
 function asElement(target: EventTarget | null): Element | null {
   if (target instanceof Element) return target;
@@ -115,7 +125,16 @@ export function useClosePaneOnEmptyClick(
       return isInteractiveClickTarget(target);
     };
 
+    const hasNamedDraft = (pane: HTMLElement) =>
+      pane.hasAttribute("data-task-pane-draft") &&
+      [...document.querySelectorAll<HTMLInputElement>(DRAFT_NAME_INPUT)].some(
+        (input) => input.value.trim() !== "",
+      );
+
     const onPointerDown = (event: PointerEvent) => {
+      // A drag cancelled in dragstart never fires dragend/drop; a new press
+      // means any such drag is over, so never carry the flag into it.
+      dragging = false;
       const pane = currentPane();
       if (!pane) {
         start = null;
@@ -126,6 +145,7 @@ export function useClosePaneOnEmptyClick(
         y: event.clientY,
         target: asElement(event.target),
         suppress: shouldSuppress(event, pane),
+        namedDraft: hasNamedDraft(pane),
       };
     };
 
@@ -152,6 +172,7 @@ export function useClosePaneOnEmptyClick(
       if (window.getSelection()?.toString()) return;
       if (dragging || performance.now() - dragEndedAt < DRAG_SETTLE_MS) return;
       if (pressed?.suppress) return;
+      if (pressed?.namedDraft) return;
 
       const target = pressed?.target ?? asElement(event.target);
       if (!target) return;
@@ -172,9 +193,17 @@ export function useClosePaneOnEmptyClick(
       close();
     };
 
-    const onDragStart = () => {
-      dragging = true;
+    const onDragStart = (event: DragEvent) => {
       start = null;
+      // Capture runs before the target's handlers. Decide once dispatch is
+      // over: a cancelled dragstart (e.g. the draft name input) starts no drag
+      // and will never send dragend, so it must not leave the flag set. A
+      // microtask is not enough: for native events microtasks run between
+      // listeners, i.e. before the target's handler could cancel the drag.
+      dragging = true;
+      setTimeout(() => {
+        if (event.defaultPrevented) dragging = false;
+      }, 0);
     };
     const onDragEnd = () => {
       dragging = false;
