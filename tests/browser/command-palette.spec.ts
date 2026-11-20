@@ -18,9 +18,13 @@ async function login(request: APIRequestContext, email: string, pw = password) {
 }
 
 async function openPalette(page: Page) {
-  await page.keyboard.press("ControlOrMeta+K");
   const dialog = page.getByRole("dialog", { name: "コマンドパレット" });
-  await expect(dialog).toBeVisible();
+  // The shortcut listener attaches on hydration; a press that lands before it
+  // is lost, so repeat the shortcut until the palette opens.
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await page.keyboard.press("ControlOrMeta+K");
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
   const input = dialog.getByRole("combobox", { name: "コマンドを検索" });
   await expect(input).toBeFocused();
   return { dialog, input };
