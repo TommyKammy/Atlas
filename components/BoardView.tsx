@@ -1,6 +1,6 @@
 "use client";
 
-import { QuickTaskProvider, useQuickTasks, useQuickTask } from "@/components/task/QuickTaskContext";
+import { useQuickTasks, useQuickTask } from "@/components/task/QuickTaskContext";
 
 import ProjectTaskCreateButton from "@/components/task/ProjectTaskCreateButton";
 import { isImeComposing } from "@/lib/ime-keyboard";
@@ -828,7 +828,5 @@ function BoardViewContent({
 }
 
 export default function BoardView(props: Parameters<typeof BoardViewContent>[0]) {
-  return <QuickTaskProvider key={props.projectId} projectId={props.projectId} sections={props.sections} view="board" canEdit={props.canEdit}>
-    <BoardViewContent {...props} />
-  </QuickTaskProvider>;
+  return <BoardViewContent {...props} />;
 }

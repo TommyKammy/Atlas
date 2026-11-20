@@ -15,12 +15,18 @@ export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   active: boolean,
   onEscape?: () => void,
+  paused = false,
 ) {
   const escapeRef = useRef(onEscape);
+  const pausedRef = useRef(paused);
 
   useEffect(() => {
     escapeRef.current = onEscape;
   }, [onEscape]);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   useEffect(() => {
     if (!active) return;
@@ -32,10 +38,15 @@ export function useFocusTrap(
         (element) => element.getClientRects().length > 0 && element.tabIndex !== -1,
       );
 
-    const first = focusable()[0];
-    (first ?? container).focus({ preventScroll: true });
+    if (!pausedRef.current) {
+      const first = focusable()[0];
+      (first ?? container).focus({ preventScroll: true });
+    }
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // A quick-task draft owns the keyboard: Escape cancels the draft and Tab
+      // moves through the list while the pane shows its unsaved name.
+      if (pausedRef.current) return;
       if (isImeComposing(event)) return;
       // A nested native modal owns focus and dismissal while the pane is inert.
       if (document.querySelector("dialog:modal")) return;

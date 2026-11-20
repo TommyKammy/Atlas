@@ -1,6 +1,11 @@
 "use client";
 
 import { isImeComposing } from "@/lib/ime-keyboard";
+import {
+  initialDateRangeField,
+  pickDateRangeDay,
+  type DateRangeField,
+} from "@/lib/date-range-pick";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -52,14 +57,6 @@ function addDaysISO(iso: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-function daysBetweenISO(start: string, due: string) {
-  const a = parseISODate(start);
-  const b = parseISODate(due);
-  const aTime = Date.UTC(a.y, a.m - 1, a.d);
-  const bTime = Date.UTC(b.y, b.m - 1, b.d);
-  return Math.round((bTime - aTime) / 86400000);
-}
-
 function monthStartISO(iso: string) {
   return `${iso.slice(0, 7)}-01`;
 }
@@ -103,6 +100,7 @@ export default function DueDatePicker({
 }) {
   const [startText, setStartText] = useState(() => formatShortDate(start));
   const [dueText, setDueText] = useState(() => formatShortDate(due));
+  const [activeField, setActiveField] = useState<DateRangeField>(() => initialDateRangeField(start, due));
   const [viewMonth, setViewMonth] = useState(() => monthStartISO(due || start || today));
   const [position, setPosition] = useState<{
     left: number;
@@ -154,19 +152,28 @@ export default function DueDatePicker({
     const parsedDue = parseShortDate(dueText);
     const baseStart = parsedStart === null ? start : parsedStart;
     const baseDue = parsedDue === null ? due : parsedDue;
-    let nextStart = "";
-    if (baseStart && baseDue && baseStart !== baseDue) {
-      const duration = Math.max(0, daysBetweenISO(baseStart, baseDue));
-      nextStart = addDaysISO(iso, -duration);
-    }
+    const next = pickDateRangeDay(activeField, baseStart, baseDue, iso);
     setViewMonth(monthStartISO(iso));
-    applyRange(nextStart, iso);
+    setActiveField(next.active);
+    setStartText(formatShortDate(next.start));
+    setDueText(formatShortDate(next.due));
+    onApply(next.start, next.due);
   };
 
   const clearRange = () => {
     setStartText("");
     setDueText("");
     onApply("", "");
+  };
+
+  const clearStart = () => {
+    const nextDue = parseShortDate(dueText) ?? due;
+    setActiveField(nextDue === "" ? "start" : "due");
+    applyRange("", nextDue);
+  };
+
+  const clearDue = () => {
+    applyRange(parseShortDate(startText) ?? start, "");
   };
 
   const rangeText =
@@ -178,7 +185,7 @@ export default function DueDatePicker({
 
   return (
     <span ref={rootRef} data-due-picker className="relative z-[140] min-w-0">
-      <span className="flex h-8 w-full min-w-0 items-center truncate rounded border border-accent bg-surface px-2 text-[12px] text-secondary">
+      <span data-due-summary className="flex h-8 w-full min-w-0 items-center truncate rounded border border-accent bg-surface px-2 text-[12px] text-secondary">
         {rangeText || "期日"}
       </span>
       {position && (
@@ -186,6 +193,7 @@ export default function DueDatePicker({
           <div className="fixed inset-0 z-[139]" onClick={close} />
           <div
             data-due-menu
+            data-due-active-field={activeField}
             onKeyDown={(event) => {
               if (isImeComposing(event)) return;
               if (event.key === "Escape") {
@@ -203,9 +211,12 @@ export default function DueDatePicker({
             <div className="flex gap-2">
               <div className="relative min-w-0 flex-1">
                 <input
-                  autoFocus
+                  autoFocus={activeField === "start"}
                   value={startText}
                   onChange={(event) => setStartText(event.target.value)}
+                  onFocus={() => setActiveField("start")}
+                  data-due-field="start"
+                  data-due-active={activeField === "start" ? "true" : undefined}
                   onKeyDown={(event) => {
                     if (isImeComposing(event)) return;
                     if (event.key === "Enter" && !event.nativeEvent.isComposing) {
@@ -221,13 +232,15 @@ export default function DueDatePicker({
                   placeholder="開始日"
                   aria-label="開始日"
                   spellCheck={false}
-                  className="h-8 w-full rounded border border-field-line px-2 pr-6 text-[12px] text-text outline-none focus:border-accent"
+                  className={`h-8 w-full rounded border px-2 pr-6 text-[12px] text-text outline-none ${
+                    activeField === "start" ? "border-accent" : "border-field-line"
+                  }`}
                 />
                 {startText && (
                   <button
                     type="button"
                     aria-label="開始日をクリア"
-                    onClick={() => applyRange("", parseShortDate(dueText) ?? due)}
+                    onClick={clearStart}
                     className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-subtle hover:bg-hover hover:text-secondary"
                   >
                     ×
@@ -236,8 +249,12 @@ export default function DueDatePicker({
               </div>
               <div className="relative min-w-0 flex-1">
                 <input
+                  autoFocus={activeField === "due"}
                   value={dueText}
                   onChange={(event) => setDueText(event.target.value)}
+                  onFocus={() => setActiveField("due")}
+                  data-due-field="due"
+                  data-due-active={activeField === "due" ? "true" : undefined}
                   onKeyDown={(event) => {
                     if (isImeComposing(event)) return;
                     if (event.key === "Enter" && !event.nativeEvent.isComposing) {
@@ -253,13 +270,15 @@ export default function DueDatePicker({
                   placeholder="期日"
                   aria-label="期日"
                   spellCheck={false}
-                  className="h-8 w-full rounded border border-field-line px-2 pr-6 text-[12px] text-text outline-none focus:border-accent"
+                  className={`h-8 w-full rounded border px-2 pr-6 text-[12px] text-text outline-none ${
+                    activeField === "due" ? "border-accent" : "border-field-line"
+                  }`}
                 />
                 {dueText && (
                   <button
                     type="button"
                     aria-label="期日をクリア"
-                    onClick={() => applyRange(parseShortDate(startText) ?? start, "")}
+                    onClick={clearDue}
                     className="absolute top-1/2 right-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-subtle hover:bg-hover hover:text-secondary"
                   >
                     ×

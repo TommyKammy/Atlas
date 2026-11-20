@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuickTask } from "@/components/task/QuickTaskContext";
-import { QuickTaskProvider, useQuickTasks } from "@/components/task/QuickTaskContext";
+import { useQuickTasks } from "@/components/task/QuickTaskContext";
 
 import ProjectTaskCreateButton from "@/components/task/ProjectTaskCreateButton";
 import { resolveTimelineKeyboardDrop, timelineInsertionPlacements, type TimelineRowPlacement } from "@/lib/timeline-row-drop";
@@ -1015,7 +1015,5 @@ function TimelineViewContent({
 }
 
 export default function TimelineView(props: Parameters<typeof TimelineViewContent>[0]) {
-  return <QuickTaskProvider key={props.projectId} projectId={props.projectId} sections={props.sections} view="timeline" canEdit={props.canEdit}>
-    <TimelineViewContent {...props} />
-  </QuickTaskProvider>;
+  return <TimelineViewContent {...props} />;
 }
