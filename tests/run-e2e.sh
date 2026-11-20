@@ -20,6 +20,15 @@ case "$suite" in
     ;;
   *) e2e_abort "$usage" ;;
 esac
+# Optional CI sharding of the full browser suite, e.g. ATLAS_E2E_SHARD=2/4.
+# Each shard runs on its own fresh stack, so shards never share data.
+browser_shard=()
+if [[ -n "${ATLAS_E2E_SHARD:-}" ]]; then
+  [[ "$suite" == browser ]] || e2e_abort 'ATLAS_E2E_SHARD is only supported for the browser suite'
+  [[ "$ATLAS_E2E_SHARD" =~ ^([1-9][0-9]?)/([1-9][0-9]?)$ ]] && (( BASH_REMATCH[1] <= BASH_REMATCH[2] )) \
+    || e2e_abort 'ATLAS_E2E_SHARD must look like 1/4 (index/total)'
+  browser_shard=(--shard "$ATLAS_E2E_SHARD")
+fi
 for program in docker node python3 curl openssl shasum; do
   command -v "$program" >/dev/null || e2e_abort "missing test dependency: $program"
 done
@@ -143,7 +152,7 @@ if [[ "$suite" == browser || "$suite" == ui-contrast || "$suite" == toolbar || "
   elif [[ "$suite" == sidebar ]]; then
     E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- tests/browser/sidebar.spec.ts tests/browser/sidebar-project-order.spec.ts --workers 1 --output "$browser_output"
   else
-    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- --output "$browser_output"
+    E2E_BASE_URL="$ATLAS_E2E_BASE" npm run test:browser -- ${browser_shard[@]+"${browser_shard[@]}"} --output "$browser_output"
   fi
 elif [[ "$suite" == critical-performance ]]; then
   require_e2e_target

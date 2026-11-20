@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # PR branches are covered by pull_request; running push as well would run
+  # the whole suite twice for every commit on a PR.
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 concurrency:
@@ -80,9 +82,17 @@ jobs:
       - name: Re-run migrations (idempotent)
         run: npm run db:migrate
 
+  # The full browser suite runs one test at a time against a shared database,
+  # so split it into shards that each get their own fresh stack and run in
+  # parallel. The contrast audit runs in its own job alongside them.
   browser:
+    name: browser (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -90,10 +100,45 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       - name: Run browser tests on a disposable stack
+        env:
+          ATLAS_E2E_SHARD: ${{ matrix.shard }}/4
         run: bash tests/run-e2e.sh browser
+
+  contrast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       - name: Run contrast audit on a fresh seed-only stack
         run: bash tests/run-e2e.sh ui-contrast
 
