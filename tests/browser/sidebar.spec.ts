@@ -117,12 +117,36 @@ test("collapsed rail keeps create and search without duplicating expanded contro
   await expect(railFooter).toBeVisible();
   await expect(railFooter.locator("[data-theme-toggle]")).toBeVisible();
   await expect(railFooter.locator("[data-sidebar-help]")).toBeVisible();
-  await expect(railFooter.locator("[data-sidebar-user-menu]")).toBeVisible();
+  await expect(railFooter.locator("[data-sidebar-toggle]")).toBeVisible();
+  await expect(railFooter.locator("[data-sidebar-user-menu]")).toHaveCount(0);
 
+  // The account moved from the footer to the top of the rail, followed by
+  // search and create in the same order as the expanded header.
+  const account = rail.locator("[data-sidebar-user-menu]");
   const create = railActions.getByRole("button", { name: "作成", exact: true });
   const search = railActions.getByRole("button", { name: /^検索/ });
+  await expect(account).toBeVisible();
   await expect(create).toBeVisible();
   await expect(search).toBeVisible();
+
+  const [accountBox, searchBox, createBox] = await Promise.all([
+    account.boundingBox(),
+    search.boundingBox(),
+    create.boundingBox(),
+  ]);
+  if (!accountBox || !searchBox || !createBox) {
+    throw new Error("rail account controls have no visible bounds");
+  }
+  expect(accountBox.y + accountBox.height, "account sits above search").toBeLessThanOrEqual(searchBox.y);
+  expect(searchBox.y + searchBox.height, "search sits above create").toBeLessThanOrEqual(createBox.y);
+
+  await account.click();
+  const accountMenu = page.locator("[data-user-menu]");
+  await expect(accountMenu).toBeVisible();
+  await expect(accountMenu.locator("[data-user-menu-profile]")).toBeVisible();
+  await expect(accountMenu.locator("[data-user-logout]")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(accountMenu).toHaveCount(0);
 
   await create.click();
   await expect(projectOption).toBeVisible();
@@ -144,6 +168,114 @@ test("collapsed rail keeps create and search without duplicating expanded contro
   await expect(railFooter).toHaveCount(0);
   await expect(footer).toBeVisible();
   await expect(footer.locator("[data-theme-toggle]")).toBeVisible();
+});
+
+test("linear-style header puts the account, search and create on one row", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const header = page.locator("[data-sidebar-header]");
+  const account = header.locator("[data-sidebar-user-menu]");
+  const search = header.locator("[data-command-palette-open]");
+  const create = header.locator("[data-create-menu]");
+  const footer = page.locator("[data-sidebar-footer]");
+
+  await expect(header).toBeVisible();
+  await expect(account).toBeVisible();
+  await expect(search).toBeVisible();
+  await expect(create).toBeVisible();
+  // The trigger shows only the avatar and the user's name, not the workspace.
+  await expect(account).not.toContainText("Atlas Demo");
+
+  const [headerBox, accountBox, searchBox, createBox] = await Promise.all([
+    header.boundingBox(),
+    account.boundingBox(),
+    search.boundingBox(),
+    create.boundingBox(),
+  ]);
+  if (!headerBox || !accountBox || !searchBox || !createBox) {
+    throw new Error("sidebar header controls have no visible bounds");
+  }
+  // All three controls share the header row, with the account on the left and
+  // the search/create icons on the right in that order.
+  for (const box of [accountBox, searchBox, createBox]) {
+    expect(box.y, "control starts inside the header row").toBeGreaterThanOrEqual(headerBox.y);
+    expect(box.y + box.height, "control ends inside the header row").toBeLessThanOrEqual(headerBox.y + headerBox.height);
+  }
+  expect(accountBox.y + accountBox.height, "account overlaps search vertically").toBeGreaterThan(searchBox.y);
+  expect(searchBox.y + searchBox.height, "search overlaps create vertically").toBeGreaterThan(createBox.y);
+  expect(accountBox.x + accountBox.width, "account sits left of search").toBeLessThanOrEqual(searchBox.x);
+  expect(searchBox.x + searchBox.width, "search sits left of create").toBeLessThanOrEqual(createBox.x);
+
+  // The large create/search row is gone, and the footer is preferences only.
+  await expect(footer.locator("[data-create-menu]")).toHaveCount(0);
+  await expect(footer.locator("[data-command-palette-open]")).toHaveCount(0);
+  await expect(footer.locator("[data-sidebar-user-menu]")).toHaveCount(0);
+  await expect(footer.locator("[data-sidebar-toggle]")).toBeVisible();
+
+  await create.click();
+  const projectOption = page.getByRole("button", { name: "プロジェクト", exact: true });
+  await expect(projectOption).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(projectOption).toBeHidden();
+
+  await account.click();
+  const menu = page.locator("[data-user-menu]");
+  await expect(menu).toBeVisible();
+  await expect(menu.locator("[data-user-menu-workspace]")).toHaveCount(0);
+  await expect(menu.locator("[data-user-menu-profile]")).toBeVisible();
+  await expect(menu.locator("[data-user-menu-settings]")).toBeVisible();
+  await expect(menu.locator("[data-user-logout]")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+
+  await search.click();
+  const dialog = page.getByRole("dialog", { name: "コマンドパレット" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("combobox", { name: "コマンドを検索" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(search).toBeFocused();
+});
+
+test("375px mobile bar keeps the account, search and create available", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/");
+
+  const bar = page.locator("[data-mobile-bar]");
+  const account = bar.locator("[data-sidebar-user-menu]");
+  const search = bar.locator("[data-command-palette-open]");
+  const create = bar.locator("[data-create-menu]");
+
+  await expect(bar).toBeVisible();
+  await expect(account).toBeVisible();
+  await expect(search).toBeVisible();
+  await expect(create).toBeVisible();
+
+  await account.click();
+  const menu = page.locator("[data-user-menu]");
+  await expect(menu).toBeVisible();
+  await expect(menu.locator("[data-user-menu-profile]")).toBeVisible();
+  await expect(menu.locator("[data-user-logout]")).toBeVisible();
+  const box = await menu.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(375);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(812);
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+
+  await search.click();
+  const dialog = page.getByRole("dialog", { name: "コマンドパレット" });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+
+  await create.click();
+  const projectOption = page.getByRole("button", { name: "プロジェクト", exact: true });
+  await expect(projectOption).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(projectOption).toBeHidden();
 });
 
 test.describe("resizable sidebar", () => {

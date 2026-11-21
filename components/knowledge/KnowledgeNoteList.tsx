@@ -20,7 +20,7 @@ export default function KnowledgeNoteList({ notes, selectedId, disabled, canReor
     <div ref={listRef} role="navigation" data-reorder-scroll className="flex max-h-64 flex-col gap-1 overflow-y-auto overscroll-contain px-0.5 py-1 lg:max-h-[65vh]" aria-label="ノートを選択">
       {notes.map((note) => {
         const target = drag?.active && drag.target?.id === note.id && drag.id !== note.id ? drag.target.placement : null;
-        return <div key={note.id} data-note-row={note.id} data-reorder-id={note.id} className={`group relative flex shrink-0 items-center rounded-md ${selectedId === note.id ? "bg-sidebar-active text-sidebar-text-strong" : "hover:bg-hover"} ${drag?.active && drag.id === note.id ? "opacity-40" : ""}`}>
+        return <div key={note.id} data-note-row={note.id} data-reorder-id={note.id} className={`group relative flex shrink-0 items-center rounded-md ${selectedId === note.id ? "bg-nav-active text-sidebar-text-strong" : "hover:bg-hover"} ${drag?.active && drag.id === note.id ? "opacity-40" : ""}`}>
           {target && <span data-note-drop={target} className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded bg-accent ${target === "before" ? "-top-0.5" : "-bottom-0.5"}`} />}
           <button {...(canReorder ? itemProps<HTMLButtonElement>(note.id, note.title) : {})}
             type="button" data-knowledge-note={note.id} data-note-reorder={canReorder ? note.id : undefined}

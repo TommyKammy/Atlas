@@ -138,7 +138,7 @@ test("knowledge, forms and dashboard follow the C workbench treatment", async ({
       return { background: style.backgroundColor, color: style.color, shadow: style.boxShadow };
     });
     expect(selectedStyle).toEqual({
-      background: await tokenColor(page, "--atlas-sidebar-active"),
+      background: await tokenColor(page, "--atlas-nav-active"),
       color: await tokenColor(page, "--atlas-sidebar-text-strong"),
       shadow: "none",
     });

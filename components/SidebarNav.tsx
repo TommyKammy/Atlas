@@ -8,9 +8,10 @@ import { getSidebarProjects } from "@/lib/repositories/sidebar-projects";
 import SidebarAddProject from "./SidebarAddProject";
 import SidebarInviteButton from "./SidebarInviteButton";
 import SidebarRailFooter from "./SidebarRailFooter";
-import SidebarToggle from "./SidebarToggle";
+import SidebarUserMenu from "./SidebarUserMenu";
 import CreateMenu from "./CreateMenu";
 import OpenCommandPaletteButton from "./OpenCommandPaletteButton";
+import type { SidebarUser } from "@/lib/sidebar-user";
 import {
   getUnreadCount,
   getUsers,
@@ -104,11 +105,13 @@ export default async function SidebarNav({
   showPortfolio,
   canCreateProject,
   showActions,
+  user,
 }: {
   theme: "light" | "dark";
   showPortfolio: boolean;
   canCreateProject: boolean;
   showActions: boolean;
+  user: SidebarUser | null;
 }) {
   const cuid = await getCurrentUserId();
   const ws = await getWorkspace();
@@ -124,18 +127,20 @@ export default async function SidebarNav({
   const label = "px-2 pt-4 pb-1 text-[12px] font-normal tracking-normal text-sidebar-muted";
   const favoriteIds = new Set(favorites.map((f) => f.id));
 
+  const headerIcon =
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-sidebar-line text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text-strong";
+
   return (
     <>
-      <div className="flex h-10 shrink-0 items-center gap-2 pl-3 pr-1 text-[14px] font-normal text-sidebar-text-strong">
-        <span className="min-w-0 flex-1 truncate">{ws?.name ?? "Atlas"}</span>
-        <SidebarToggle initialCollapsed={false} />
+      <div data-sidebar-header className="flex h-11 shrink-0 items-center gap-1 pl-2 pr-1.5">
+        {user && <SidebarUserMenu user={user} variant="header" />}
+        {showActions && (
+          <div data-sidebar-actions className="flex shrink-0 items-center gap-1">
+            <OpenCommandPaletteButton className={headerIcon} iconOnly />
+            <CreateMenu canCreateProject={canCreateProject} variant="icon" />
+          </div>
+        )}
       </div>
-      {showActions && (
-        <div data-sidebar-actions className="flex shrink-0 items-center gap-1.5 px-2 pb-2">
-          <CreateMenu canCreateProject={canCreateProject} variant="sidebar" />
-          <OpenCommandPaletteButton className={`${item} min-w-0 flex-1`} showShortcut />
-        </div>
-      )}
       <nav data-reorder-scroll data-sidebar-navigation className="flex-1 overflow-y-auto px-2 pb-4 text-sm">
         {visibleNavItems(MAIN_NAV, showPortfolio).map((entry) => (
           <NavLink key={entry.key} item={entry} className={item} unread={entry.key === "inbox" ? unread : 0} />

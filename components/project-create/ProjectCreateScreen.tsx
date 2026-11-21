@@ -126,7 +126,7 @@ export default function ProjectCreateScreen({
   const navClass = (active: boolean) =>
     `flex h-8 items-center whitespace-nowrap rounded-md px-2.5 text-left text-[13px] ${
       active
-        ? "bg-sidebar-active font-medium text-sidebar-text-strong"
+        ? "bg-nav-active font-medium text-sidebar-text-strong"
         : "text-secondary hover:bg-hover"
     }`;
   const primary = primaryButtonClass;

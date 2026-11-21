@@ -86,7 +86,8 @@ export default function HelpPage() {
                 左側の1つのサイドバーに、ホーム、受信トレイ、マイタスクとプロジェクトの一覧がまとまりました。
                 お気に入りや最近開いた項目がある場合は、プロジェクトの上に並びます。
                 ポートフォリオは閲覧権限がある人だけに表示されます。管理者には「管理」、全員に「削除済み」も表示されます。
-                上部の折りたたみボタンで、アイコンだけの表示に切り替えられます。狭い画面では、画面上部のナビゲーションに切り替わり、その右端にテーマとヘルプが並びます。
+                いちばん上はアカウントメニューで、右端に検索と作成のアイコンが並びます。折りたたみは下部のテーマ・ヘルプの隣のボタンです。
+                狭い画面では、画面上部のナビゲーションに切り替わり、その右端にテーマとヘルプが並びます。
               </p>
             </div>
 
@@ -101,7 +102,7 @@ export default function HelpPage() {
             <div>
               <h3 className="text-[13px] font-semibold text-text">検索とコマンドパレット</h3>
               <p className="mt-0.5">
-                サイドバー上部の「検索」、または <kbd className="rounded border border-line bg-surface-muted px-1.5 py-0.5 font-mono text-xs">⌘K / Ctrl+K</kbd>{" "}
+                サイドバー上部の検索アイコン、または <kbd className="rounded border border-line bg-surface-muted px-1.5 py-0.5 font-mono text-xs">⌘K / Ctrl+K</kbd>{" "}
                 で開きます。タスク、プロジェクト、メッセージ、知識、ファイルを検索でき、候補を選ぶとその画面へ移動します。
                 「すべての結果で検索」を選ぶと検索画面が開きます。狭い画面では上部バーの検索アイコンから開けます。
               </p>
