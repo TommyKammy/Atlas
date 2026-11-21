@@ -45,18 +45,24 @@
   --atlas-inverse-favorite: #f5c04a;
   --atlas-on-strong: #ffffff;
 
-  /* Sidebar follows the theme (C: side surface) */
-  --atlas-sidebar: #fafafb;
+  /* Sidebar follows the theme. Light is deliberately one step darker than the
+     C side surface (#efeff0) for the Linear-style header; dark is unchanged.
+     Text tokens keep WCAG AA on the surface, hover and active rows. */
+  --atlas-sidebar: #e9eaec;
   --atlas-sidebar-text: #3a4049;
   --atlas-sidebar-text-strong: #1a1d21;
-  --atlas-sidebar-muted: #5c6470;
-  --atlas-sidebar-line: #e4e6ea;
-  --atlas-sidebar-line-subtle: #eff0f2;
-  --atlas-sidebar-hover: #f5f5f7;
-  --atlas-sidebar-active: #eff0f2;
+  --atlas-sidebar-muted: #59606c;
+  --atlas-sidebar-line: #c9ced6;
+  --atlas-sidebar-line-subtle: #d5d9df;
+  --atlas-sidebar-hover: #e1e3e7;
+  --atlas-sidebar-active: #dcdfe4;
+  /* Selected item in content-area navs (admin, project settings, project
+     create, knowledge list). Kept apart from the sidebar so the sidebar can
+     use its own, darker surface. */
+  --atlas-nav-active: #eff0f2;
   --atlas-sidebar-accent: #3f6b00;
-  --atlas-sidebar-danger: #b83228;
-  --atlas-sidebar-favorite: #9a6700;
+  --atlas-sidebar-danger: #b12f26;
+  --atlas-sidebar-favorite: #7d5200;
 
   /* Lines */
   --atlas-line: #e4e6ea;
@@ -145,6 +151,7 @@
   --color-sidebar-line-subtle: var(--atlas-sidebar-line-subtle);
   --color-sidebar-hover: var(--atlas-sidebar-hover);
   --color-sidebar-active: var(--atlas-sidebar-active);
+  --color-nav-active: var(--atlas-nav-active);
   --color-sidebar-accent: var(--atlas-sidebar-accent);
   --color-sidebar-danger: var(--atlas-sidebar-danger);
   --color-sidebar-favorite: var(--atlas-sidebar-favorite);
@@ -239,6 +246,7 @@ html[data-theme="dark"] {
   --atlas-sidebar-line-subtle: #1d2229;
   --atlas-sidebar-hover: #191d23;
   --atlas-sidebar-active: #1d2229;
+  --atlas-nav-active: #1d2229;
   --atlas-sidebar-accent: #b9f227;
   --atlas-sidebar-danger: #ff9c8f;
   --atlas-sidebar-favorite: #f5c04a;

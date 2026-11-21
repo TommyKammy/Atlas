@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import CreateMenu from "./CreateMenu";
 import NavPending from "./NavPending";
 import OpenCommandPaletteButton from "./OpenCommandPaletteButton";
-import SidebarToggle from "./SidebarToggle";
+import SidebarUserMenu from "./SidebarUserMenu";
+import type { SidebarUser } from "@/lib/sidebar-user";
 import { RAIL_FLYOUTS, RAIL_ITEMS, visibleNavItems, type SidebarIconName } from "@/lib/navigation";
 
 const RAIL_BUTTON = "flex h-9 w-9 items-center justify-center rounded-lg";
@@ -68,11 +69,13 @@ export default function SidebarRail({
   showPortfolio,
   canCreateProject,
   showActions,
+  user,
 }: {
   collapsed: boolean;
   showPortfolio: boolean;
   canCreateProject: boolean;
   showActions: boolean;
+  user: SidebarUser | null;
 }) {
   const pathname = usePathname();
   const [openHref, setOpenHref] = useState<string | null>(null);
@@ -94,11 +97,11 @@ export default function SidebarRail({
 
   return (
     <div data-sidebar-rail className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-visible py-2">
-      <SidebarToggle initialCollapsed={collapsed} />
+      {user && <SidebarUserMenu user={user} variant="rail" />}
       {collapsed && showActions && (
         <div data-sidebar-rail-actions className="flex flex-col items-center gap-1">
-          <CreateMenu canCreateProject={canCreateProject} variant="rail" />
           <OpenCommandPaletteButton className={`${RAIL_BUTTON} ${RAIL_IDLE}`} iconOnly />
+          <CreateMenu canCreateProject={canCreateProject} variant="rail" />
         </div>
       )}
       {visibleNavItems(RAIL_ITEMS, showPortfolio).map((item) => {

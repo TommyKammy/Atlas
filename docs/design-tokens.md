@@ -4,6 +4,7 @@
 - ステータス: **第3段階 S3-2 完了**。第1段階（T11〜T24）、第2段階（S2）、S3-1 に続き、トークンの値を承認済みの C 案（workbench）へ切り替えた。`app/`・`components/`・`lib/` に UI 色の直書きはなく、`check-color-literals` の件数は 0。残る直書きはデータ色モジュール `lib/data-colors.ts` だけ。
 - 第1段階の受け入れ条件は「見た目を一切変えないこと」。S2・S3-1 では、ダークで色が漏れていた箇所と、暗幕を `scrim` に揃えた箇所だけが見た目に現れた。S3-2 は全画面で配色が意図的に変わる（レイアウトは変えない）。
 - 旧ダーク上書き（unlayered の `html[data-theme="dark"] .<クラス>`）はすべて削除した。サイドバーはテーマに追従する `sidebar-*` トークンへ移し、`inverse-*` はトースト・ツールチップ・一括操作バーなど、両テーマで暗いままが自然な浮遊物だけに残した。
+- S9-1 で、ライトのサイドバーだけ Linear 風の上部ヘッダーに合わせて一段濃い面（`#e9eaec`）へ変更した。ダークの `sidebar-*` は C 案のまま変更していない。
 - Tailwind CSS v4 の `@theme inline` を使っている。
 
 ## 1. 定義場所とテーマ切替
@@ -72,7 +73,7 @@ Tailwind の `text-*` ユーティリティと自然に組み合わせるため�
 
 ## 3. トークン一覧
 
-すべての値は C 案（`C-Workbench.dc.html`）のモックアップ定義を正とする。ライト・ダークとも hex が実装値。モックアップにない中間値は、同じ寒色グレーの系列で補った（色相は青みのグレー、明度は前後の段の間）。
+すべての値は C 案（`C-Workbench.dc.html`）のモックアップ定義を正とする。ライト・ダークとも hex が実装値。モックアップにない中間値は、同じ寒色グレーの系列で補った（色相は青みのグレー、明度は前後の段の間）。例外的に、ライトの `sidebar-*` だけは S9-1 の Linear 風ヘッダーに合わせて C 案の `side` より一段濃い系列を使う（10.3）。
 
 | トークン | ユーティリティ例 | ライト | ダーク | 用途 |
 |---|---|---|---|---|
@@ -102,17 +103,18 @@ Tailwind の `text-*` ユーティリティと自然に組み合わせるため�
 | `--atlas-inverse-danger` | `text-inverse-danger` | `#ff9c8f` | `#ff9c8f` | 暗いクローム上のエラー文字 |
 | `--atlas-inverse-favorite` | `text-inverse-favorite` | `#f5c04a` | `#f5c04a` | 暗いクローム上のお気に入り星（予備） |
 | `--atlas-on-strong` | `text-on-strong` | `#ffffff` | `#ffffff` | 暗いクローム・強い塗り・データ色の面の上の文字 |
-| `--atlas-sidebar` | `bg-sidebar` | `#fafafb` | `#0f1216` | サイドバーの面（テーマに追従） |
-| `--atlas-sidebar-text` | `text-sidebar-text` | `#3a4049` | `#c9cfd8` | サイドバーの通常文字 |
+| `--atlas-sidebar` | `bg-sidebar` | `#e9eaec` | `#0f1216` | サイドバーの面（ライトは Linear の `#efeff0` より一段濃い。テーマに追従） |
+| `--atlas-sidebar-text` | `text-sidebar-text` | `#3a4049` | `#c9cfd8` | サイドバーの通常文字。面・ホバー・選択面で AA |
 | `--atlas-sidebar-text-strong` | `text-sidebar-text-strong` | `#1a1d21` | `#e8eaed` | サイドバーの見出し・強調・選択中 |
-| `--atlas-sidebar-muted` | `text-sidebar-muted` | `#5c6470` | `#a3acb8` | サイドバーの補助文字・アイコン |
-| `--atlas-sidebar-line` | `border-sidebar-line` | `#e4e6ea` | `#252b33` | サイドバーの罫線 |
-| `--atlas-sidebar-line-subtle` | `border-sidebar-line-subtle` | `#eff0f2` | `#1d2229` | サイドバーの弱い罫線 |
-| `--atlas-sidebar-hover` | `hover:bg-sidebar-hover` | `#f5f5f7` | `#191d23` | サイドバーのホバー面 |
-| `--atlas-sidebar-active` | `bg-sidebar-active` | `#eff0f2` | `#1d2229` | サイドバーの選択面（C の raised） |
-| `--atlas-sidebar-accent` | `text-sidebar-accent` / `bg-sidebar-accent` | `#3f6b00` | `#b9f227` | サイドバーのアクセント（未読数、ドロップ位置） |
-| `--atlas-sidebar-danger` | `text-sidebar-danger` | `#b83228` | `#ff9c8f` | サイドバーのエラー文字 |
-| `--atlas-sidebar-favorite` | `text-sidebar-favorite` | `#9a6700` | `#f5c04a` | サイドバーのお気に入り星 |
+| `--atlas-sidebar-muted` | `text-sidebar-muted` | `#59606c` | `#a3acb8` | サイドバーの補助文字・アイコン。面・ホバー・選択面で AA |
+| `--atlas-sidebar-line` | `border-sidebar-line` | `#c9ced6` | `#252b33` | サイドバーの罫線 |
+| `--atlas-sidebar-line-subtle` | `border-sidebar-line-subtle` | `#d5d9df` | `#1d2229` | サイドバーの弱い罫線 |
+| `--atlas-sidebar-hover` | `hover:bg-sidebar-hover` | `#e1e3e7` | `#191d23` | サイドバーのホバー面（面より一段濃い） |
+| `--atlas-sidebar-active` | `bg-sidebar-active` | `#dcdfe4` | `#1d2229` | サイドバーの選択面（ホバーよりさらに一段濃い） |
+| `--atlas-nav-active` | `bg-nav-active` | `#eff0f2` | `#1d2229` | 本文側の縦ナビ・一覧の選択面（管理画面、プロジェクト設定・作成の左ナビ、ナレッジ一覧）。サイドバーを濃くしても本文の選択面は変えないため、`sidebar-active` と分けている |
+| `--atlas-sidebar-accent` | `text-sidebar-accent` / `bg-sidebar-accent` | `#3f6b00` | `#b9f227` | サイドバーのアクセント（未読数、ドロップ位置、フォーカス） |
+| `--atlas-sidebar-danger` | `text-sidebar-danger` | `#b12f26` | `#ff9c8f` | サイドバーのエラー文字。面・ホバー・選択面で AA |
+| `--atlas-sidebar-favorite` | `text-sidebar-favorite` | `#7d5200` | `#f5c04a` | サイドバーのお気に入り星。面・ホバー・選択面で AA |
 | `--atlas-line` | `border-line` / `divide-line` / `bg-line` | `#e4e6ea` | `#252b33` | 既定の罫線・区切り線。`@layer base` の `border-color` に適用済み |
 | `--atlas-line-strong` | `border-line-strong` | `#cdd1d8` | `#3a424e` | 強調罫線（カード・ボタン・ポップオーバーの境界）。入力欄は `field-line` |
 | `--atlas-line-subtle` | `border-line-subtle` / `divide-line-subtle` | `#eff0f2` | `#1d2229` | 行の区切りなど弱い罫線 |
@@ -797,20 +799,20 @@ node scripts/check-color-literals.mjs --summary  # 全体・種類別・上位20
 | C 案の名前 | ライト | ダーク | 主な対応トークン |
 |---|---|---|---|
 | `bg` | `#FFFFFF` | `#0F1216` | `bg` |
-| `side` | `#FAFAFB` | `#0F1216` | `sidebar` |
+| `side` | `#FAFAFB` → `#E9EAEC` | `#0F1216` | `sidebar`（ライトのみ S9-1 で変更） |
 | `panel` | `#FAFAFB` | `#14181D` | `surface`（ダーク）/ `surface-subtle` / `field`（ダーク） |
-| `raised` | `#EFF0F2` | `#1D2229` | `surface-muted` / `accent-soft` / `sidebar-active` |
-| `line` | `#E4E6EA` | `#252B33` | `line` / `surface-strong` / `sidebar-line` |
+| `raised` | `#EFF0F2` | `#1D2229` | `surface-muted` / `accent-soft` |
+| `line` | `#E4E6EA` | `#252B33` | `line` / `surface-strong` |
 | `line2` | `#CDD1D8` | `#3A424E` | `line-strong` / `accent-line`（ダーク）/ `inverse-line` |
 | `fg` | `#1A1D21` | `#E8EAED` | `text` / `accent`（ライト） |
 | `body` | `#3A4049` | `#C9CFD8` | `text-secondary` / `sidebar-text` |
-| `sub` | `#5C6470` | `#A3ACB8` | `text-muted` / `sidebar-muted` |
+| `sub` | `#5C6470` | `#A3ACB8` | `text-muted`（ライトの `sidebar-muted` は `#59606C`） |
 | `accent` | `#1A1D21` | `#B9F227` | `accent` |
 | `accentInk` | `#FFFFFF` | `#10140A` | `on-accent` |
 | `accentText` | `#3F6B00` | `#B9F227` | `accent-text` / `focus-ring`（ライト）/ `sidebar-accent` |
 | `ok` | `#1B7F4B` | `#7EE2A8` | `success` |
-| `warn` | `#8A5D00` | `#F5C04A` | `warning` / `favorite`（ダーク） |
-| `bad` | `#B83228` | `#FF9C8F` | `danger` / `sidebar-danger` |
+| `warn` | `#8A5D00` | `#F5C04A` | `warning` / `favorite`（ダーク。ライトの `sidebar-favorite` は `#7D5200`） |
+| `bad` | `#B83228` | `#FF9C8F` | `danger`（ライトの `sidebar-danger` は `#B12F26`） |
 | `badLine` | `#E9B6B0` | `#7A3A33` | `danger-line` |
 | 選択面（ユーザー決定） | `#EFF0F2` | `#1D2229` | `accent-soft` |
 
@@ -869,13 +871,25 @@ WCAG の相対輝度で計算した。太字は 4.5:1 以上、`*` は非テキ�
 
 `text-subtle` はプレースホルダ・無効・装飾専用で、本文には使わない。ライトの 3.11 は AA 未満だが、旧値 2.58 より高く、コントラスト監査のベースラインには装飾用途だけを残している。
 
+S9-1 のライト `sidebar-*` は、面 `#e9eaec`・ホバー `#e1e3e7`・選択面 `#dcdfe4` のいずれでも文字が 4.5:1 以上になる。最小値は選択面に対する値。
+
+| 組み合わせ | `sidebar` | `sidebar-hover` | `sidebar-active` |
+|---|---|---|---|
+| `sidebar-text` `#3a4049` | 8.68 | 8.13 | 7.82 |
+| `sidebar-text-strong` `#1a1d21` | 14.05 | 13.16 | 12.66 |
+| `sidebar-muted` `#59606c` | 5.26 | 4.93 | 4.74 |
+| `sidebar-accent` `#3f6b00` | 5.26 | 4.93 | 4.74 |
+| `sidebar-danger` `#b12f26` | 5.28 | 4.95 | 4.76 |
+| `sidebar-favorite` `#7d5200` | 5.67 | 5.31 | 5.11 |
+
 ### 10.3 サイドバーと inverse
 
-サイドバーは C 案どおりテーマに追従する（ライト `#FAFAFB`、ダーク `#0F1216`）。次のコンポーネントの `inverse-*` を `sidebar-*` または通常トークンへ移した。
+サイドバーはテーマに追従する。ライトは S9-1 で Linear の `#efeff0` より一段濃い `#E9EAEC`、ダークは C 案の `#0F1216`。次のコンポーネントの `inverse-*` を `sidebar-*` または通常トークンへ移した。
 
 - `ResizableSidebar`（面・文字・罫線）
 - `SidebarNav` / `SidebarProjectLink` / `SidebarProjectList`（文字・お気に入り・ドロップ位置・フォーカス）
-- `SidebarRail` / `SidebarToggle` / `SidebarAddProject` / `SidebarInviteButton` / `SidebarHelpButton` / `SidebarUserMenu`（アイドル・ホバー・選択・招待ボタン）
+- `SidebarRail` / `SidebarAddProject` / `SidebarInviteButton` / `SidebarHelpButton` / `SidebarUserMenu`（アイドル・ホバー・選択・招待ボタン）
+- S9-1 で、`SidebarUserMenu` はサイドバー上部（展開時はアバター＋ワークスペース名＋▾、レール時はアバターのみ）と狭い画面の上部バーへ移した。折りたたみの `SidebarToggle` は下部の `SidebarRailFooter`（テーマ・ヘルプの隣）へ移した。
 - `ThemeToggle`（サイドバー下部、狭い画面では上部バー）と `SidebarHelpButton`（サイドバーのほか、狭い画面では上部バー）は、上部バーでは `sidebar-*` ではなく通常の `text-muted` / `hover:bg-hover` / `hover:text-text` を使う
 - `InboxButtons` の「すべて既読にする」と `CreateMenu` の作成ボタンは、通常の `accent` / `on-accent` へ移した（サイドバー専用ではないため）
 - `Shortcuts` / `SidebarHelpButton` のダイアログの「閉じる」も通常の `accent` へ移した

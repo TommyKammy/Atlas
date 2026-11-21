@@ -6,6 +6,7 @@ import OpenCommandPaletteButton from "./OpenCommandPaletteButton";
 import SidebarNav from "./SidebarNav";
 import SidebarRail from "./SidebarRail";
 import SidebarRailFooter from "./SidebarRailFooter";
+import SidebarUserMenu from "./SidebarUserMenu";
 import SidebarHelpButton from "./SidebarHelpButton";
 import ThemeToggle from "./ThemeToggle";
 import { MOBILE_NAV, visibleNavItems } from "@/lib/navigation";
@@ -14,6 +15,7 @@ import CommandPalette from "./CommandPalette";
 import ResizableSidebar from "./ResizableSidebar";
 import { parseSidebarWidth, SIDEBAR_WIDTH_COOKIE } from "@/lib/sidebar-width";
 import { getMfaServerSession, getServerSession } from "@/lib/api/session";
+import { getSidebarUser } from "@/lib/sidebar-user";
 import { getWorkspace } from "@/lib/data";
 import { canUsePortfolio } from "@/lib/repositories/portfolios";
 import { hasPermission } from "@/lib/permissions";
@@ -53,6 +55,7 @@ export default async function AppShell({
 
   const isAdmin = session?.isAdmin === true;
   const workspace = currentUserId === null ? undefined : await getWorkspace();
+  const sidebarUser = await getSidebarUser();
   // One server-side decision shared by every portfolio entry point.
   const showPortfolio =
     currentUserId !== null && workspace !== undefined
@@ -61,6 +64,8 @@ export default async function AppShell({
   const showActions = currentUserId !== null;
   const canCreateProject =
     currentUserId !== null && (await hasPermission(currentUserId, "projects.create"));
+  const topbarIcon =
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-muted hover:bg-hover hover:text-text";
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-bg text-text">
       <div className="flex min-h-0 flex-1">
@@ -72,6 +77,7 @@ export default async function AppShell({
                 showPortfolio={showPortfolio}
                 canCreateProject={canCreateProject}
                 showActions={showActions}
+                user={sidebarUser}
               />
               <SidebarRailFooter theme={theme} />
             </div>
@@ -83,6 +89,7 @@ export default async function AppShell({
                   showPortfolio={showPortfolio}
                   canCreateProject={canCreateProject}
                   showActions={showActions}
+                  user={sidebarUser}
                 />
               </Suspense>
             </div>
@@ -90,6 +97,9 @@ export default async function AppShell({
         </ResizableSidebar>
         <div className="flex min-w-0 flex-1 flex-col">
           <div data-mobile-bar className="flex items-center gap-1 border-b bg-surface px-2 py-1.5 text-sm md:hidden">
+            {sidebarUser && (
+              <SidebarUserMenu user={sidebarUser} variant="mobile" />
+            )}
             <nav aria-label="モバイルナビゲーション" className="flex min-w-0 flex-1 gap-1 overflow-x-auto p-1 whitespace-nowrap">
               {visibleNavItems(MOBILE_NAV, showPortfolio).map((entry) => (
                 <Link key={entry.href} href={entry.href} className="rounded px-2 py-1 hover:bg-hover">
@@ -99,8 +109,8 @@ export default async function AppShell({
             </nav>
             {showActions && (
               <div data-mobile-actions className="flex shrink-0 items-center gap-1">
+                <OpenCommandPaletteButton className={topbarIcon} iconOnly />
                 <CreateMenu canCreateProject={canCreateProject} variant="mobile" />
-                <OpenCommandPaletteButton className="flex h-8 shrink-0 items-center justify-center rounded-md px-2 text-[13px] text-secondary hover:bg-surface-muted hover:text-text" />
               </div>
             )}
             <div data-mobile-preferences className="flex shrink-0 items-center gap-0.5">

@@ -192,7 +192,7 @@ grep -q 'data-list-completed-only="true"' "$TMPD/list-saved-toolbar.html" && gre
 api DELETE "/api/saved-views/$SVID2" >/dev/null
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/tasks" -H 'Content-Type: application/json' -d '{"project_id":1,"section_id":2,"name":"   "}')
 [[ "$C" == "400" ]] && ok "empty task name rejected" || bad "empty task name rejected ($C)"
-grep -Fq 'bg-accent text-on-accent' "$TMPD/p-list.html" && grep -q -- '--atlas-on-accent:' app/globals.css && ok "contrast tokens" || bad "contrast tokens"
+grep -Fq 'bg-accent' "$TMPD/p-list.html" && grep -Fq 'text-on-accent' "$TMPD/p-list.html" && grep -q -- '--atlas-on-accent:' app/globals.css && ok "contrast tokens" || bad "contrast tokens"
 grep -q 'focus-visible' app/globals.css && grep -Fq 'outline: 2px solid var(--atlas-focus-ring)' app/globals.css && grep -Fq 'box-shadow: 0 0 0 4px color-mix(in srgb, var(--atlas-focus-ring) 25%, transparent)' app/globals.css && ok "global focus-visible styles" || bad "global focus-visible styles"
 
 echo "== sidebar rail =="
@@ -1484,12 +1484,13 @@ purge_task "$CT1" >/dev/null
 purge_task "$CT2" >/dev/null
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=list" -o "$TMPD/sadd.html"
 grep -q 'data-sidebar-add-project' "$TMPD/sadd.html" && ok "sidebar add project" || bad "sidebar add project"
-grep -q 'data-sidebar-footer' "$TMPD/sadd.html" && grep -q 'data-sidebar-user-menu' "$TMPD/sadd.html" && grep -q 'data-sidebar-help' "$TMPD/sadd.html" && grep -q 'data-theme-toggle' "$TMPD/sadd.html" && grep -q 'data-sidebar-invite' "$TMPD/sadd.html" && ! grep -q 'data-sidebar-rail' "$TMPD/sadd.html" && ok "sidebar footer controls" || bad "sidebar footer controls"
+grep -q 'data-sidebar-header' "$TMPD/sadd.html" && grep -q 'data-sidebar-user-menu' "$TMPD/sadd.html" && grep -q 'data-sidebar-actions' "$TMPD/sadd.html" && ok "sidebar header account and actions" || bad "sidebar header account and actions"
+grep -q 'data-sidebar-footer' "$TMPD/sadd.html" && grep -q 'data-sidebar-toggle' "$TMPD/sadd.html" && grep -q 'data-sidebar-help' "$TMPD/sadd.html" && grep -q 'data-theme-toggle' "$TMPD/sadd.html" && grep -q 'data-sidebar-invite' "$TMPD/sadd.html" && ! grep -q 'data-sidebar-rail' "$TMPD/sadd.html" && ok "sidebar footer controls" || bad "sidebar footer controls"
 cp "$JAR" "$TMPD/jar-collapsed"
 printf '127.0.0.1\tFALSE\t/\tFALSE\t0\tatlas_sidebar\tcollapsed\n' >> "$TMPD/jar-collapsed"
 curl -s -m 15 -b "$TMPD/jar-collapsed" "$BASE/projects/1?view=list" -o "$TMPD/scollapse.html"
 grep -q 'サイドバーを展開' "$TMPD/scollapse.html" && grep -q 'data-sidebar-rail-actions' "$TMPD/scollapse.html" && grep -q 'data-command-palette-open' "$TMPD/scollapse.html" && grep -q 'data-sidebar-rail-footer' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-footer' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-actions' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-add-project' "$TMPD/scollapse.html" && ok "sidebar collapsed SSR" || bad "sidebar collapsed SSR"
-grep -q 'data-sidebar-rail-footer' "$TMPD/scollapse.html" && grep -q 'data-sidebar-user-menu' "$TMPD/scollapse.html" && grep -q 'data-sidebar-help' "$TMPD/scollapse.html" && grep -q 'data-theme-toggle' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-invite' "$TMPD/scollapse.html" && ok "collapsed rail footer" || bad "collapsed rail footer"
+grep -q 'data-sidebar-rail-footer' "$TMPD/scollapse.html" && grep -q 'data-sidebar-user-menu' "$TMPD/scollapse.html" && grep -q 'data-sidebar-toggle' "$TMPD/scollapse.html" && grep -q 'data-sidebar-help' "$TMPD/scollapse.html" && grep -q 'data-theme-toggle' "$TMPD/scollapse.html" && ! grep -q 'data-sidebar-invite' "$TMPD/scollapse.html" && ok "collapsed rail footer" || bad "collapsed rail footer"
 curl -s -m 15 -b "$JAR" "$BASE/projects/1?view=calendar&zoom=week&week=bogus" -o "$TMPD/cw2.html"
 grep -q '2026年' "$TMPD/cw2.html" && ok "week fallback" || bad "week fallback"
 

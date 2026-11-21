@@ -192,7 +192,7 @@ export default function ProjectSettingsDialog({
                 onClick={() => setTab(entry.key)}
                 className={`flex h-8 w-auto shrink-0 items-center rounded-md px-2.5 text-left text-[13px] sm:w-full sm:px-3 ${
                   tab === entry.key
-                    ? "bg-sidebar-active font-medium text-sidebar-text-strong"
+                    ? "bg-nav-active font-medium text-sidebar-text-strong"
                     : "text-secondary hover:bg-hover"
                 }`}
               >

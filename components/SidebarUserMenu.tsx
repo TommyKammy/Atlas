@@ -8,19 +8,33 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import UserAvatar from "./UserAvatar";
 import InviteUserDialog from "./InviteUserDialog";
+import type { SidebarUser } from "@/lib/sidebar-user";
 
-type MenuUser = {
-  id: number;
-  name: string;
-  email: string | null;
-  title: string | null;
-  avatar_url: string | null;
-  is_guest: boolean;
-  is_admin: boolean;
-  out_of_office_from?: string | null;
-  out_of_office_to?: string | null;
-  out_of_office_note?: string | null;
+export type SidebarUserMenuVariant = "header" | "rail" | "mobile";
+
+const TRIGGER: Record<SidebarUserMenuVariant, string> = {
+  header:
+    "flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 text-left text-[13px] font-medium text-sidebar-text-strong hover:bg-sidebar-hover",
+  rail: "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg hover:bg-sidebar-hover",
+  mobile: "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted hover:bg-hover hover:text-text",
 };
+
+function ChevronDown() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="h-3 w-3 shrink-0 text-sidebar-muted"
+    >
+      <path d="m4 6 4 4 4-4" />
+    </svg>
+  );
+}
 
 function MenuIcon({ name }: { name: string }) {
   const common = {
@@ -84,7 +98,13 @@ function MenuIcon({ name }: { name: string }) {
   );
 }
 
-export default function SidebarUserMenu({ user }: { user: MenuUser }) {
+export default function SidebarUserMenu({
+  user,
+  variant = "header",
+}: {
+  user: SidebarUser;
+  variant?: SidebarUserMenuVariant;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -93,15 +113,20 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
   const [oooTo, setOooTo] = useState(user.out_of_office_to ?? "");
   const [oooNote, setOooNote] = useState(user.out_of_office_note ?? "");
   const [oooSaving, setOooSaving] = useState(false);
-  const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
   const ref = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const openMenu = () => {
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
-    setPos({ left: rect.right + 8, bottom: window.innerHeight - rect.bottom });
-    setOpen(true);
+    const width = 256;
+    const margin = 8;
+    const anchor = variant === "rail" ? rect.right + margin : rect.left;
+    const left = Math.min(Math.max(margin, anchor), Math.max(margin, window.innerWidth - margin - width));
+    const top = variant === "rail" ? rect.top : rect.bottom + 4;
+    setPos({ left, top, maxHeight: Math.max(240, window.innerHeight - top - margin) });
+    setOpen((current) => !current);
   };
 
   useEffect(() => {
@@ -160,13 +185,29 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
         ref={ref}
         type="button"
         data-sidebar-user-menu
+        data-sidebar-user-menu-variant={variant}
         data-user-out-of-office={oooLabel}
         onClick={openMenu}
         aria-label="ユーザー設定"
+        aria-haspopup="menu"
+        aria-expanded={open}
         title="ユーザー設定"
-        className="flex h-7 w-7 items-center justify-center rounded-full hover:ring-2 hover:ring-sidebar-muted"
+        className={TRIGGER[variant]}
       >
-        <UserAvatar name={user.name} url={user.avatar_url} className="h-7 w-7" />
+        {variant === "header" ? (
+          <>
+            <UserAvatar name={user.name} url={user.avatar_url} className="h-6 w-6" textClassName="text-[10px]" />
+            <span className="min-w-0 flex-1 truncate">{user.name}</span>
+            <ChevronDown />
+          </>
+        ) : (
+          <UserAvatar
+            name={user.name}
+            url={user.avatar_url}
+            className={variant === "rail" ? "h-7 w-7" : "h-6 w-6"}
+            textClassName="text-[10px]"
+          />
+        )}
       </button>
 
       {open &&
@@ -177,25 +218,27 @@ export default function SidebarUserMenu({ user }: { user: MenuUser }) {
             ref={menuRef}
             role="menu"
             data-user-menu
-            className="fixed z-[130] w-64 rounded-lg border border-line bg-surface py-1 text-text shadow-xl"
-            style={{ left: pos.left, bottom: pos.bottom }}
+            className="fixed z-[130] w-64 overflow-y-auto rounded-lg border border-line bg-surface py-1 text-text shadow-xl"
+            style={{ left: pos.left, top: pos.top, maxHeight: pos.maxHeight }}
           >
-            <div className="flex items-center gap-2 border-b border-line-subtle px-3 py-2.5">
-              <UserAvatar name={user.name} url={user.avatar_url} className="h-10 w-10" textClassName="text-sm" />
-              <div className="min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="truncate text-sm font-semibold">{user.name}</span>
-                  {user.is_guest && (
-                    <span className="rounded bg-warning-soft px-1 text-[10px] text-warning">ゲスト</span>
+            <div className="border-b border-line-subtle px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <UserAvatar name={user.name} url={user.avatar_url} className="h-10 w-10" textClassName="text-sm" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="truncate text-sm font-semibold">{user.name}</span>
+                    {user.is_guest && (
+                      <span className="rounded bg-warning-soft px-1 text-[10px] text-warning">ゲスト</span>
+                    )}
+                  </div>
+                  <div className="truncate text-[11px] text-muted">{user.email ?? ""}</div>
+                  {user.title && <div className="truncate text-[11px] text-muted">{user.title}</div>}
+                  {oooLabel && (
+                    <div data-user-ooo-status className="mt-0.5 truncate text-[11px] text-accent-text">
+                      {oooLabel}
+                    </div>
                   )}
                 </div>
-                <div className="truncate text-[11px] text-muted">{user.email ?? ""}</div>
-                {user.title && <div className="truncate text-[11px] text-muted">{user.title}</div>}
-                {oooLabel && (
-                  <div data-user-ooo-status className="mt-0.5 truncate text-[11px] text-accent-text">
-                    {oooLabel}
-                  </div>
-                )}
               </div>
             </div>
             <button

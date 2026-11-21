@@ -3,21 +3,24 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-export type CreateMenuVariant = "sidebar" | "mobile" | "rail";
+export type CreateMenuVariant = "sidebar" | "icon" | "mobile" | "rail";
 
 const ACTION = "bg-accent text-on-accent hover:bg-accent-hover";
+const ICON_BUTTON = "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border";
 const MENU_PANEL = "absolute z-50 w-48 rounded-lg border bg-surface py-1 text-sm text-text shadow-xl";
 const MENU_ITEM = "block w-full px-3 py-1.5 text-left hover:bg-hover";
 
 const BUTTON: Record<CreateMenuVariant, string> = {
   sidebar: `flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-md px-1.5 text-[13px] font-medium ${ACTION}`,
-  mobile: `flex h-8 shrink-0 items-center justify-center gap-1 rounded-full px-2.5 text-[13px] font-medium ${ACTION}`,
+  icon: `${ICON_BUTTON} border-sidebar-line text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-text-strong`,
+  mobile: `${ICON_BUTTON} border-line text-muted hover:bg-hover hover:text-text`,
   rail: `flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${ACTION}`,
 };
 
 const MENU_POSITION: Record<CreateMenuVariant, string> = {
   sidebar: "top-9 left-0",
-  mobile: "top-9 right-0",
+  icon: "top-8 right-0",
+  mobile: "top-8 right-0",
   rail: "top-0 left-full ml-2",
 };
 
@@ -70,6 +73,7 @@ export default function CreateMenu({
   };
 
   const rail = variant === "rail";
+  const iconOnly = rail || variant === "icon" || variant === "mobile";
 
   return (
     <div ref={ref} className="relative shrink-0">
@@ -77,8 +81,8 @@ export default function CreateMenu({
         type="button"
         data-create-menu
         onClick={() => setOpen((o) => !o)}
-        aria-label={rail ? "作成" : undefined}
-        title={rail ? "作成" : undefined}
+        aria-label={iconOnly ? "作成" : undefined}
+        title={iconOnly ? "作成" : undefined}
         aria-expanded={open}
         className={BUTTON[variant]}
       >
@@ -93,6 +97,20 @@ export default function CreateMenu({
             className="h-[18px] w-[18px]"
           >
             <path d="M12 5v14M5 12h14" />
+          </svg>
+        ) : iconOnly ? (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className="h-[15px] w-[15px]"
+          >
+            <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4Z" />
           </svg>
         ) : (
           <>
