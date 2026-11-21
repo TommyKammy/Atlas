@@ -35,7 +35,15 @@ export function finishScimLogPage<T>(
   result: ScimLogPageResult<T>,
 ): ScimLogPageState<T> {
   if (requestId !== state.requestId) return state;
-  if (!result.ok) return { ...state, loading: false };
+  // A failed reset means the filter has already changed, so the old rows and
+  // cursor belong to another list. Drop them so "load more" cannot append the
+  // new filter's page to them; refresh starts over. A failed append keeps the
+  // current list and cursor so it can be retried.
+  if (!result.ok) {
+    return result.reset
+      ? { ...state, logs: [], nextCursor: null, loading: false }
+      : { ...state, loading: false };
+  }
   return {
     logs: result.reset ? result.rows : [...state.logs, ...result.rows],
     nextCursor: result.nextCursor,

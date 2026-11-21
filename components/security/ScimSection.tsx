@@ -221,9 +221,10 @@ export function ScimSection({
     if (next) {
       const ok = await confirmAction(
         "SCIM を有効にすると、次の動作になります。\n\n"
-        + "・SAML の自動作成（JIT）は停止します。未登録のユーザーは SAML でサインインできません。\n"
-        + "・IdP でアプリに割り当てたユーザーだけが Atlas に入れるようになります。\n"
-        + "・既存のユーザーは IdP からの同期で結び付けられます。\n\n"
+        + "・SAML の自動作成（JIT）は停止します。新しいアカウントは IdP からの同期でだけ作られます。\n"
+        + "・既存のアカウントとセッションはそのまま残ります。IdP で割り当てていない人も、今までどおりサインインできます。\n"
+        + "・割り当てていない人を止めるには、メンバーの管理で無効にするか、SAML を必須にしてください。\n"
+        + "・既存のアカウントは、IdP からの同期で同じメールアドレスのものに結び付けられます。\n\n"
         + "続行しますか？",
         { title: "SCIM を有効にしますか？", confirmLabel: "有効にする" },
       );
@@ -319,8 +320,9 @@ export function ScimSection({
       <div className="mt-4 max-w-3xl rounded-lg bg-surface-subtle p-4">
         <div className={formSectionTitleClass}>SCIM プロビジョニング</div>
         <p className="mt-1 text-[12px] leading-5 text-muted">
-          有効にすると、IdP が Atlas のユーザーを作成・更新・無効化します。IdP で割り当てたユーザーだけが
-          Atlas に入れるようになり、SAML の自動作成（JIT）は停止します。
+          有効にすると、IdP が Atlas のユーザーを作成・更新・無効化し、SAML の自動作成（JIT）は停止します。
+          既存のアカウントとセッションはそのまま残るため、IdP で割り当てていない人を止めるには、メンバーの管理で無効にするか
+          SAML を必須にしてください。
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button
@@ -506,7 +508,7 @@ export function ScimSection({
         </div>
         {logsError && <p role="alert" className="mt-2 text-[12px] text-danger">{logsError}</p>}
         <div className="mt-2">
-          {logs.length === 0 && !logsLoading && (
+          {logs.length === 0 && !logsLoading && !logsError && (
             <p className="text-[13px] text-muted">
               {onlyFailures ? "失敗した同期はありません。" : "まだ同期の記録はありません。"}
             </p>

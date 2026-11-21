@@ -165,7 +165,8 @@ export default function HelpPage() {
           <p>
             Entra ID や Okta からユーザーの作成・更新・無効化を自動化するときは、管理者コンソールの
             「セキュリティ」→「プロビジョニング（SCIM）」を使います。SCIM を有効にすると SAML の自動作成（JIT）が止まり、
-            IdP で割り当てたユーザーだけが Atlas に入れるようになります。
+            新しいアカウントは IdP からだけ作られます。既存のアカウントとセッションはそのまま残るので、IdP で割り当てていない人を
+            止めるには、メンバーの管理で無効にするか、SAML を必須にしてください。
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>「IdP に設定するテナント URL」と、発行したトークンを IdP に設定します。</li>

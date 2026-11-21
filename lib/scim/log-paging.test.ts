@@ -61,6 +61,22 @@ test("a latest failure stops loading without replacing rows or the cursor", () =
   assert.equal(failed.loading, false);
 });
 
+test("a failed reset drops the previous filter's rows and cursor", () => {
+  const all = finishScimLogPage(beginScimLogPage(empty, 1), 1,
+    result({ reset: true, rows: [{ id: 9 }, { id: 8 }], nextCursor: 8 }));
+  // The failures-only toggle starts a reset that fails.
+  const failedReset = finishScimLogPage(beginScimLogPage(all, 2), 2,
+    result({ reset: true, ok: false }));
+  assert.deepEqual(failedReset.logs, []);
+  assert.equal(failedReset.nextCursor, null);
+  assert.equal(failedReset.loading, false);
+  // With no cursor, "load more" cannot append the new filter to the old list;
+  // the next successful reset rebuilds it.
+  const retried = finishScimLogPage(beginScimLogPage(failedReset, 3), 3,
+    result({ reset: true, rows: [{ id: 7 }], nextCursor: null }));
+  assert.deepEqual(retried.logs.map((row) => row.id), [7]);
+});
+
 test("an old request id cannot take ownership of newer state", () => {
   const current = finishScimLogPage(beginScimLogPage(empty, 2), 2,
     result({ reset: true, rows: [{ id: 5 }], nextCursor: null }));

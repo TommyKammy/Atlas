@@ -96,7 +96,10 @@ test("super administrator enables SCIM, sees the tenant URL and issues a one-tim
   await section.locator("[data-scim-toggle]").click();
   const confirm = page.locator("[data-confirm-message]");
   await expect(confirm).toContainText("SAML の自動作成（JIT）は停止");
-  await expect(confirm).toContainText("IdP でアプリに割り当てたユーザーだけ");
+  // Enabling SCIM stops JIT creation only; it must not promise to lock out
+  // existing accounts that the IdP has not assigned.
+  await expect(confirm).toContainText("既存のアカウントとセッションはそのまま残ります");
+  await expect(confirm).not.toContainText("割り当てたユーザーだけ");
   await page.locator("[data-confirm-ok]").click();
   await expect(section.locator("[data-scim-status]")).toHaveText("有効");
   await expect(section.locator("[data-scim-toggle]")).toHaveText("SCIM を無効にする");
