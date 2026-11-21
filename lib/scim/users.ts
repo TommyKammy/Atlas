@@ -290,6 +290,32 @@ async function applyActive(
     `${active ? "でユーザーを有効化" : "でユーザーを無効化"}: ${email}`);
 }
 
+/**
+ * userName is unique across what SCIM exposes: an active binding's user_name,
+ * and the email of an Atlas account that has no binding (the list and filter
+ * use that email as its userName). The account being bound or updated is
+ * excluded.
+ */
+async function assertUserNameAvailable(
+  q: Queryable,
+  workspaceId: number,
+  userName: string,
+  excludeUserId: number | null,
+) {
+  const conflict = await q.query(
+    `SELECT 1 FROM scim_identities
+       WHERE workspace_id = $1 AND user_name = $2 AND deleted_at IS NULL
+         AND ($3::bigint IS NULL OR user_id <> $3)
+     UNION ALL
+     SELECT 1 FROM users u
+       WHERE u.email = $2 AND ($3::bigint IS NULL OR u.id <> $3)
+         AND NOT EXISTS (SELECT 1 FROM scim_identities i WHERE i.user_id = u.id AND i.workspace_id = $1)
+     LIMIT 1`,
+    [workspaceId, userName, excludeUserId],
+  );
+  if (conflict.rowCount) throw uniqueness("userName is already used by another user");
+}
+
 export async function createScimUser(
   q: Queryable,
   auth: ScimAuthContext,
@@ -326,6 +352,7 @@ export async function createScimUser(
     .some((row) => row.deleted_at === null)) {
     throw uniqueness("userName is already linked to an active SCIM identity");
   }
+  await assertUserNameAvailable(q, auth.workspaceId, userName, existing?.id ?? null);
 
   let userId: number;
   if (existing) {
@@ -406,13 +433,7 @@ export async function updateScimUser(
   const identityUserName = fields.userName ?? oldUserName
     ?? (email || currentEmail || identityUserNameFallback(user));
   if (identity === null || (fields.userName !== undefined && fields.userName !== oldUserName)) {
-    const userNameConflict = await q.query(
-      `SELECT 1 FROM scim_identities
-       WHERE workspace_id = $1 AND user_name = $2 AND user_id <> $3 AND deleted_at IS NULL
-       LIMIT 1`,
-      [auth.workspaceId, identityUserName, id],
-    );
-    if (userNameConflict.rowCount) throw uniqueness("userName is already linked to an active SCIM identity");
+    await assertUserNameAvailable(q, auth.workspaceId, identityUserName, id);
   }
   if (email !== "" && email !== currentEmail) {
     const conflict = await q.query(

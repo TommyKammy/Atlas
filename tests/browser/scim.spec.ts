@@ -401,6 +401,38 @@ test("PATCH name.familyName keeps the stored givenName and updates the full disp
   });
 });
 
+test("userName cannot reuse an unmanaged account's email on POST or PATCH", async () => {
+  const unmanagedEmail = `scim-unmanaged-${run}@example.test`;
+  const unmanaged = await expectStatus(await api.post("/api/admin/users", {
+    data: { name: "Unmanaged Member", email: unmanagedEmail, password, role: "member" },
+  }), 201);
+  cleanupUserIds.add((await json<{ id: number }>(unmanaged)).id);
+
+  const posted = await expectStatus(await scim("/Users", {
+    method: "POST",
+    data: {
+      userName: unmanagedEmail,
+      emails: [{ value: `scim-other-work-${run}@example.test`, type: "work", primary: true }],
+      active: true,
+    },
+  }), 409);
+  expect((await json<{ scimType: string }>(posted)).scimType).toBe("uniqueness");
+
+  const other = await createScimUser({
+    userName: `scim-rename-target-${run}@example.test`,
+    emails: [{ value: `scim-rename-work-${run}@example.test`, type: "work", primary: true }],
+    active: true,
+  });
+  const patched = await expectStatus(await scim(`/Users/${other.id}`, {
+    method: "PATCH",
+    data: { Operations: [{ op: "replace", path: "userName", value: unmanagedEmail }] },
+  }), 409);
+  expect((await json<{ scimType: string }>(patched)).scimType).toBe("uniqueness");
+
+  const filtered = await expectStatus(await filterUsers(`userName eq "${unmanagedEmail}"`), 200);
+  expect((await json<{ totalResults: number }>(filtered)).totalResults).toBe(1);
+});
+
 test("a duplicate POST for an active SCIM binding is 409 uniqueness", async () => {
   const email = `scim-duplicate-${run}@example.test`;
   const upn = `scim-duplicate-${run}@corp.onmicrosoft.com`;
