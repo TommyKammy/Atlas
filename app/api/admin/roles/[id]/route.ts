@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { withAdminPermission } from "@/lib/api/route";
 import { getAdminRoles } from "@/lib/admin-data";
@@ -84,14 +84,19 @@ export const PATCH = withAdminPermission("roles.manage", async (req, { uid, para
   }
   if (sets.length === 0) return NextResponse.json({ error: "nothing to update" }, { status: 400 });
   values.push(id);
-  const updated = await db.query(
-    `UPDATE workspace_roles SET ${sets.join(", ")} WHERE id = $${values.length} RETURNING id, name, base_level`,
-    values,
-  );
-  await db.query(
-    "UPDATE users SET is_admin = $2, is_guest = $3 WHERE role_id = $1",
-    [id, nextBase === "admin", nextBase === "guest"],
-  );
+  // The role and its users' legacy flags must change together; otherwise a
+  // failed second write would leave the two sources of truth disagreeing.
+  const updated = await withTransaction(async (q) => {
+    const roleUpdate = await q.query(
+      `UPDATE workspace_roles SET ${sets.join(", ")} WHERE id = $${values.length} RETURNING id, name, base_level`,
+      values,
+    );
+    await q.query(
+      "UPDATE users SET is_admin = $2, is_guest = $3 WHERE role_id = $1",
+      [id, nextBase === "admin", nextBase === "guest"],
+    );
+    return roleUpdate;
+  });
   await audit(uid, "role.update", {
     entity: "role",
     entityId: id,

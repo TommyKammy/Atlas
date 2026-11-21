@@ -82,6 +82,15 @@ E2E_DB_ID=$(e2e_container db) || e2e_abort 'test database did not start'
 db_sql -q < db/init.sql
 db_sql -q < db/seed.sql
 db_sql -q < tests/e2e-seed.sql
+# Simulate legacy drift, then prove migration 0037 repairs it and is repeatable.
+db_sql -q -c 'UPDATE users SET is_admin = FALSE, is_guest = TRUE WHERE id = 1'
+db_sql -q < db/migrations/0037_sync_role_flags.sql
+db_sql -q < db/migrations/0037_sync_role_flags.sql
+[[ "$(db_sql -qAtc "SELECT count(*) FROM users u JOIN workspace_roles r ON r.id = u.role_id
+  WHERE u.is_admin IS DISTINCT FROM (r.base_level = 'admin')
+     OR u.is_guest IS DISTINCT FROM (r.base_level = 'guest')")" == 0 ]] \
+  || e2e_abort 'user role flags disagree with workspace_roles after migration 0037'
+printf 'ok   migration 0037 aligns user role flags idempotently\n'
 [[ "$(db_sql -qAtc 'SELECT count(*) FROM project_tabs WHERE project_id = 1 AND NOT is_custom')" == 10 ]] \
   || e2e_abort 'default project tabs were not seeded'
 db_sql -q -v marker="$ATLAS_E2E_MARKER" <<'SQL'

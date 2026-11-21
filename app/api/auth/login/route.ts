@@ -24,10 +24,11 @@ async function login(req: Request) {
   if (!email || !password || email.length > 320) return NextResponse.json({ error: "email and password are required" }, { status: 400 });
   const attempt = await reserveAuthAttempt("login-account", email, POLICIES["login-account"]);
   try {
-    const r = await db.query(`SELECT id,name,password_hash,deactivated_at,is_admin,is_guest,totp_enabled,totp_secret
-      FROM users WHERE email=$1`, [email]);
+    const r = await db.query(`SELECT u.id,u.name,u.password_hash,u.deactivated_at,u.is_admin,u.is_guest,
+        r.base_level,u.totp_enabled,u.totp_secret
+      FROM users u LEFT JOIN workspace_roles r ON r.id=u.role_id WHERE u.email=$1`, [email]);
     const row = r.rows[0] as { id: number; name: string; password_hash: string | null;
-      deactivated_at: string | null; is_admin: boolean; is_guest: boolean;
+      deactivated_at: string | null; is_admin: boolean; is_guest: boolean; base_level: string | null;
       totp_enabled: boolean; totp_secret: string | null } | undefined;
     if (row?.deactivated_at) return NextResponse.json({ error: "account is deactivated" }, { status: 403 });
     if (!row?.password_hash || !verifyPassword(password, row.password_hash)) {
@@ -44,8 +45,10 @@ async function login(req: Request) {
         // The final decision must use current MFA/password state, including
         // enrollment or resets that completed while the first factor was checked.
         await lockSessionPolicy(q);
-        const current = await q.query(`SELECT id,name,password_hash,is_admin,is_guest,totp_enabled,totp_secret
-          FROM users WHERE id=$1 AND deactivated_at IS NULL FOR UPDATE`, [row.id]);
+        const current = await q.query(`SELECT u.id,u.name,u.password_hash,u.is_admin,u.is_guest,
+            r.base_level,u.totp_enabled,u.totp_secret
+          FROM users u LEFT JOIN workspace_roles r ON r.id=u.role_id
+          WHERE u.id=$1 AND u.deactivated_at IS NULL FOR UPDATE OF u`, [row.id]);
         const live = current.rows[0] as typeof row | undefined;
         if (!live || live.password_hash !== row.password_hash) return { kind: "credentials" as const };
         const policy = await q.query(`SELECT saml_mode,two_factor_policy FROM workspace_security

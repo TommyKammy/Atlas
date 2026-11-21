@@ -734,6 +734,16 @@ UPDATE users u SET role_id = CASE
 END
 WHERE u.role_id IS NULL;
 
+-- The assigned role is authoritative, so align the legacy flags with it.
+-- Keep this in sync with db/migrations/0037_sync_role_flags.sql.
+UPDATE users u
+SET is_admin = (r.base_level = 'admin'),
+    is_guest = (r.base_level = 'guest')
+FROM workspace_roles r
+WHERE u.role_id = r.id
+  AND (u.is_admin IS DISTINCT FROM (r.base_level = 'admin')
+    OR u.is_guest IS DISTINCT FROM (r.base_level = 'guest'));
+
 -- Explicit seed ids above must not collide with the BIGSERIAL sequence.
 SELECT setval('workspace_roles_id_seq', (SELECT MAX(id) FROM workspace_roles));
 
