@@ -245,6 +245,7 @@ Entra は主に PATCH でユーザーを更新します。`userName`、`name`、
 3. **Base URL** に管理画面の「テナント URL」（`https://<ホスト>/scim/v2`）を設定します。
 4. **Authentication Mode** を **HTTP Header** にし、**API Token** に Atlas で発行したトークンを設定します。
 5. 「Create Users」「Update User Attributes」「Deactivate Users」を有効にします。Okta は主に PUT でユーザーを更新します。
+   Okta の公式 SCIM 2.0 ガイド（https://developer.okta.com/docs/api/openapi/okta-scim/guides/scim-20/ 、2026-11-21 確認）では、OIN の新しい連携はプロフィール更新を PUT、有効化・無効化を PATCH で送り、AIW のカスタム連携はすべての更新を PUT で送り、ユーザーに DELETE は送りません。Atlas は通常 AIW のカスタム連携として登録する想定です。
 6. 属性の対応を確認します。目安は次のとおりです。
 
 | Okta の属性 | SCIM の属性 | 備考 |
@@ -277,3 +278,7 @@ Entra は主に PATCH でユーザーを更新します。`userName`、`name`、
 - `name.givenName` / `name.familyName` は `scim_identities` に個別保存し、表示名は「given family」で連結します。Atlas の `users` には個別の姓名列はありません。
 - 監査一覧では SCIM の操作を操作者 `SCIM` として表示します（`actor_id` は NULL）。
 - 同期の記録にリクエスト本文・レスポンス本文は残りません。属性の値を調べる必要がある場合は、IdP 側のプロビジョニング ログを確認してください。
+
+## 実テナント接続の確認（Phase 3）
+
+Entra ID と Okta の実テナントに接続する前の事前条件、3-1 / 3-2 / 3-3 の手順、`scripts/scim-conformance.mjs` の使い方、結果の記録欄は [scim-phase3-checklist.md](./scim-phase3-checklist.md) を参照してください。チェッカーは本番に対して実行すると prefix 付きのテストユーザーを無効化状態で残すため、検証専用のワークスペースか、実施後の完全削除を前提にしてください。
