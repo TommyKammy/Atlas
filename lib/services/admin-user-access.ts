@@ -2,10 +2,33 @@ import { withTransaction, type Queryable } from "../db";
 import { badRequest, forbidden, notFound } from "../api/errors";
 import { canGrantRole, getEffectiveRole, type EffectiveRole, type Permission } from "../permissions";
 
+type ManagedUserProfile = {
+  name: string;
+  email: string | null;
+  title: string;
+  scimEnabled: boolean;
+  scimManaged: boolean;
+  scimDeleted: boolean;
+  scimIdp: string | null;
+};
+
 type ManagedUser = {
   actor: EffectiveRole;
   target: EffectiveRole;
   active: boolean;
+  profile: ManagedUserProfile;
+};
+
+type LockedUser = {
+  id: number;
+  deactivated_at: string | null;
+  name: string;
+  email: string | null;
+  title: string;
+  scim_enabled: boolean;
+  scim_managed: boolean;
+  scim_deleted: boolean;
+  scim_idp: string | null;
 };
 
 /**
@@ -25,7 +48,16 @@ export function withManagedUser<T>(
   return withTransaction(async (q) => {
     await lockSuperRoles(q);
     const locked = await q.query(
-      "SELECT id, deactivated_at FROM users WHERE id = ANY($1::bigint[]) ORDER BY id FOR UPDATE",
+      `SELECT u.id, u.deactivated_at, u.name, u.email, u.title,
+         (si.id IS NOT NULL) AS scim_managed,
+         (si.deleted_at IS NOT NULL) AS scim_deleted, si.idp AS scim_idp,
+         COALESCE(
+           (SELECT scim_enabled FROM workspace_security ORDER BY workspace_id LIMIT 1),
+           false
+         ) AS scim_enabled
+       FROM users u
+       LEFT JOIN scim_identities si ON si.user_id = u.id
+       WHERE u.id = ANY($1::bigint[]) ORDER BY u.id FOR UPDATE OF u`,
       [[actorId, targetId]],
     );
     const actor = await getEffectiveRole(actorId, q);
@@ -33,8 +65,22 @@ export function withManagedUser<T>(
     const target = await getEffectiveRole(targetId, q, true);
     if (!target) throw notFound();
     if (!canGrantRole(actor, target)) throw forbidden("cannot manage a more privileged account");
-    const row = locked.rows.find((u) => u.id === targetId);
-    return change(q, { actor, target, active: row.deactivated_at === null });
+    const row = (locked.rows as LockedUser[]).find((u) => u.id === targetId);
+    if (!row) throw notFound();
+    return change(q, {
+      actor,
+      target,
+      active: row.deactivated_at === null,
+      profile: {
+        name: row.name,
+        email: row.email,
+        title: row.title,
+        scimEnabled: row.scim_enabled === true,
+        scimManaged: row.scim_managed === true,
+        scimDeleted: row.scim_deleted === true,
+        scimIdp: row.scim_idp,
+      },
+    });
   });
 }
 

@@ -13,6 +13,10 @@ export type ScimAuthContext = {
   idp: ScimIdp;
 };
 
+export type ScimAuthResult =
+  | { ok: true; auth: ScimAuthContext }
+  | { ok: false; reason: "invalid" | "disabled"; auth: ScimAuthContext | null };
+
 type TokenRow = {
   id: number;
   workspace_id: number;
@@ -31,12 +35,12 @@ async function recordAuthenticationFailure(req: Request, store: Queryable) {
   await reserveAuthAttempt("scim-auth", ip, POLICIES["scim-auth"], store);
 }
 
-/** Resolve a bearer token to its workspace and IdP, or null for any failure. */
-export async function authenticateScim(req: Request, store: Queryable = db): Promise<ScimAuthContext | null> {
+/** Resolve a bearer token to its workspace and IdP, or describe why it failed. */
+export async function authenticateScim(req: Request, store: Queryable = db): Promise<ScimAuthResult> {
   const token = bearerToken(req.headers.get("authorization"));
   if (!token || !isScimToken(token)) {
     await recordAuthenticationFailure(req, store);
-    return null;
+    return { ok: false, reason: "invalid", auth: null };
   }
   const hash = hashScimToken(token);
   const result = await store.query(
@@ -48,9 +52,19 @@ export async function authenticateScim(req: Request, store: Queryable = db): Pro
     [hash],
   );
   const row = result.rows[0] as TokenRow | undefined;
-  if (!row || !row.scim_enabled || !scimTokenMatchesHash(row.token_hash, hash)) {
+  if (!row || !scimTokenMatchesHash(row.token_hash, hash)) {
     await recordAuthenticationFailure(req, store);
-    return null;
+    return { ok: false, reason: "invalid", auth: null };
+  }
+  const auth: ScimAuthContext = {
+    tokenId: Number(row.id),
+    workspaceId: Number(row.workspace_id),
+    idp: row.idp,
+  };
+  if (!row.scim_enabled) {
+    await recordAuthenticationFailure(req, store);
+    // The response stays a generic 401; only the record explains the cause.
+    return { ok: false, reason: "disabled", auth };
   }
   if (shouldTouchLastUsed(row.last_used_at)) {
     // Advisory only. The timestamp moves at most once a minute per token.
@@ -60,5 +74,5 @@ export async function authenticateScim(req: Request, store: Queryable = db): Pro
       [row.id],
     ).catch(() => undefined);
   }
-  return { tokenId: Number(row.id), workspaceId: Number(row.workspace_id), idp: row.idp };
+  return { ok: true, auth };
 }

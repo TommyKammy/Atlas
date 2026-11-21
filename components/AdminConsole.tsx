@@ -39,6 +39,7 @@ export default function AdminConsole({
   initialSecurity,
   initialTotpUsers,
   permissions,
+  isSuper,
   passwordPolicyText,
 }: {
   currentUserId: number;
@@ -49,6 +50,7 @@ export default function AdminConsole({
   initialSecurity: SecuritySettings;
   initialTotpUsers: TotpUserRow[];
   permissions: string[];
+  isSuper: boolean;
   passwordPolicyText: string;
 }) {
   const tabs: Tab[] = [
@@ -73,7 +75,7 @@ export default function AdminConsole({
     {
       key: "security",
       label: "セキュリティ",
-      description: "RBAC、2FA、SAML、パスワード",
+      description: "RBAC、2FA、SAML、SCIM、パスワード",
       allowed: permissions.includes("security.manage") || permissions.includes("roles.manage"),
     },
     {
@@ -185,6 +187,7 @@ export default function AdminConsole({
               initialTotpUsers={initialTotpUsers}
               permissions={permissions}
               currentUserId={currentUserId}
+              isSuper={isSuper}
             />
           )}
         {active === "insights" && permissions.includes("insights.view") && (

@@ -6,13 +6,29 @@ import { hashPassword } from "@/lib/auth";
 import { withAdminPermission } from "@/lib/api/route";
 import { validatePassword } from "@/lib/password-policy";
 import { canGrantRole, getRoleByKey } from "@/lib/permissions";
+import { scimManagedChangeError } from "@/lib/scim/managed-user";
 
 export const PATCH = withAdminPermission("members.manage", async (req, { uid: admin, params }) => {
   const id = Number(params.id);
   const body = await req.json().catch(() => null);
   const password = typeof body?.password === "string" ? body.password : "";
   const currentSession = admin === id && password ? await getMfaRequestSession(req) : null;
-  return withManagedUser(admin, id, "members.manage", async (q, { actor, target, active }) => {
+  return withManagedUser(admin, id, "members.manage", async (q, { actor, target, active, profile }) => {
+    const scimError = scimManagedChangeError(
+      {
+        scimEnabled: profile.scimEnabled,
+        scimManaged: profile.scimManaged,
+        scimDeleted: profile.scimDeleted,
+        deactivated: !active,
+        name: profile.name,
+        email: profile.email,
+        title: profile.title,
+      },
+      body && typeof body === "object" ? body : {},
+    );
+    if (scimError) {
+      return NextResponse.json({ error: scimError, code: "scim_managed" }, { status: 409 });
+    }
     let roleKey = typeof body?.role === "string" && body.role !== "" ? body.role : null;
     const legacyFlags = typeof body?.is_admin === "boolean" || typeof body?.is_guest === "boolean";
     if (roleKey === null && legacyFlags) {

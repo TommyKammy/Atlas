@@ -161,6 +161,29 @@ export default function HelpPage() {
           </Link>
         </HelpSection>
 
+        <HelpSection id="scim" title="SCIM プロビジョニング">
+          <p>
+            Entra ID や Okta からユーザーの作成・更新・無効化を自動化するときは、管理者コンソールの
+            「セキュリティ」→「プロビジョニング（SCIM）」を使います。SCIM を有効にすると SAML の自動作成（JIT）が止まり、
+            新しいアカウントは IdP からだけ作られます。既存のアカウントとセッションはそのまま残るので、IdP で割り当てていない人を
+            止めるには、メンバーの管理で無効にするか、SAML を必須にしてください。
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>「IdP に設定するテナント URL」と、発行したトークンを IdP に設定します。</li>
+            <li>トークンの平文は発行時に一度だけ表示されます。閉じると再表示できません。</li>
+            <li>「最近の同期」で成功・失敗を確認でき、「失敗だけ表示」で絞り込めます。「更新」で最新の状態を取り直せます。</li>
+            <li>作り直すときは、新しいトークンを発行して IdP に設定してから、古いトークンを失効させます。</li>
+            <li>SCIM で管理しているユーザーの名前・メールアドレス・役職は IdP で変更します。Atlas では無効化だけすぐに行えます。</li>
+            <li>SCIM を無効にすると保護は外れ、Atlas で名前などを編集できます。IdP で削除済みのユーザーは一覧で区別され、SCIM 有効中は再有効化できません。</li>
+          </ul>
+          <p className="mt-2">
+            SCIM の設定は super 管理者だけが変更できます。通常の管理者には読み取り専用の案内が表示されます。
+          </p>
+          <Link href="/admin#security" className={`mt-2 inline-block ${linkClass}`}>
+            セキュリティ設定を開く
+          </Link>
+        </HelpSection>
+
         <HelpSection id="videos" title="動画チュートリアル">
           <p>
             画面共有用のチュートリアル動画は現在準備中です。操作手順はこのヘルプとキーボードショートカット一覧を参照してください。
