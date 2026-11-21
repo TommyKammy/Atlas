@@ -142,6 +142,38 @@ jobs:
       - name: Run contrast audit on a fresh seed-only stack
         run: bash tests/run-e2e.sh ui-contrast
 
+  nginx:
+    name: nginx (${{ matrix.nginx }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        nginx: ["1.30.7", "1.31.9"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: Run NGINX front-proxy suite
+        env:
+          ATLAS_NGINX_VERSION: ${{ matrix.nginx }}
+        run: bash tests/run-e2e.sh nginx
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30

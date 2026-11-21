@@ -103,16 +103,37 @@ app.prepare().then(async () => {
   const { reconcileAttachmentFiles } = await import("./lib/attachment-files.mjs");
   const { startNotificationEmailWorker } = await import("./lib/notification-email-worker.mjs");
   const { installServerShutdown } = await import("./lib/server-shutdown.mjs");
-  const { stampAuthClientIp } = await import("./lib/auth-client-ip.mjs");
+  const { parseTrustedProxies, stampAuthClientIp } = await import("./lib/auth-client-ip.mjs");
+  const { keepAliveTimeouts } = await import("./lib/server-keepalive.mjs");
+  const trustedProxies = parseTrustedProxies(process.env.ATLAS_TRUSTED_PROXIES);
+  if (trustedProxies.invalid.length > 0) {
+    // Fail closed: invalid entries never grant trust. Refuse to hide the typo,
+    // because silently trusting nothing makes every client share the proxy's
+    // rate-limit identity. Boot continues with whichever entries did parse.
+    console.error(
+      `ATLAS_TRUSTED_PROXIES ignored invalid ${trustedProxies.invalid.length === 1 ? "entry" : "entries"}: `
+      + `${trustedProxies.invalid.join(", ")}; `
+      + (trustedProxies.list
+        ? `trusting only ${trustedProxies.entries.join(", ")}`
+        : "no proxy addresses are trusted"),
+    );
+  } else if (trustedProxies.list) {
+    console.log(`trusted proxies: ${trustedProxies.entries.join(", ")}`);
+  }
+  const { keepAliveTimeout, headersTimeout } = keepAliveTimeouts(process.env.ATLAS_KEEPALIVE_TIMEOUT_MS);
   const bus = createLiveRooms(loadLiveAccess);
   const notificationWorker = startNotificationEmailWorker(dbPool);
 
   const server = createServer((req, res) => {
-    stampAuthClientIp(req, process.env.ATLAS_INTERNAL_AUTH_IP_KEY);
+    stampAuthClientIp(req, process.env.ATLAS_INTERNAL_AUTH_IP_KEY, trustedProxies);
     const u = new URL(req.url, "http://internal");
     handle(req, res, { pathname: u.pathname, query: Object.fromEntries(u.searchParams) });
   });
   server.on("close", () => { void notificationWorker.stop(); });
+  // Outlive NGINX's upstream keepalive_timeout (60s) so a reused connection is
+  // never one Node is already closing. Invalid values fall back to 65s.
+  server.keepAliveTimeout = keepAliveTimeout;
+  server.headersTimeout = headersTimeout;
 
   const wss = new WebSocketServer({ noServer: true });
   installServerShutdown({ server, sockets: wss, worker: notificationWorker, pool: dbPool });
@@ -257,6 +278,7 @@ app.prepare().then(async () => {
 
   server.listen(port, () => {
     console.log(`Atlas ready on :${port} (${dev ? "development / Fast Refresh" : "production"}, http + ws /api/ws)`);
+    console.log(`keep-alive ${keepAliveTimeout}ms, headers ${headersTimeout}ms`);
     startLiveSubscriber(bus);
   });
 });
