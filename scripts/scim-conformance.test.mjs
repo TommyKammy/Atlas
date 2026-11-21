@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { createServer } from "node:http";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { runConformance } from "./scim-conformance.mjs";
@@ -10,6 +11,7 @@ const LIST_SCHEMA = "urn:ietf:params:scim:api:messages:2.0:ListResponse";
 const ERROR_SCHEMA = "urn:ietf:params:scim:api:messages:2.0:Error";
 const RESOURCE_TYPE_SCHEMA = "urn:ietf:params:scim:schemas:core:2.0:ResourceType";
 const TOKEN = `atlas_scim_${"t".repeat(43)}`;
+const SCRIPT_PATH = fileURLToPath(new URL("./scim-conformance.mjs", import.meta.url));
 
 function createMockAtlas({
   token = TOKEN,
@@ -17,10 +19,12 @@ function createMockAtlas({
   failDetail = null,
   echoAuth = false,
   ignorePatchActive = false,
+  noopDeleteNumber = null,
 } = {}) {
   const users = new Map();
   const requests = [];
   let nextId = 1;
+  let deleteCount = 0;
 
   function response(status, body, extraHeaders = {}) {
     const headers = new Headers({
@@ -397,6 +401,8 @@ function createMockAtlas({
         return response(200, resource(user));
       }
       if (method === "DELETE") {
+        deleteCount += 1;
+        if (deleteCount === noopDeleteNumber) return response(204);
         user.active = false;
         user.deleted = true;
         return response(204);
@@ -418,19 +424,77 @@ function failedRows(results) {
   return results.filter((row) => !row.ok);
 }
 
+function startMockServer(atlas) {
+  const server = createServer(async (req, res) => {
+    try {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const body = Buffer.concat(chunks).toString("utf8");
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        throw new Error("mock server is not listening");
+      }
+      const response = await atlas.fetchImpl(
+        `http://127.0.0.1:${address.port}${req.url}`,
+        {
+          method: req.method,
+          headers: { ...req.headers },
+          body: body === "" ? undefined : body,
+        },
+      );
+      res.statusCode = response.status;
+      for (const [name, value] of response.headers.entries()) res.setHeader(name, value);
+      res.end(await response.text());
+    } catch (error) {
+      res.statusCode = 500;
+      res.end(error instanceof Error ? error.message : String(error));
+    }
+  });
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        reject(new Error("mock server did not bind to a port"));
+        return;
+      }
+      resolve({ server, baseUrl: `http://127.0.0.1:${address.port}` });
+    });
+  });
+}
+
+function runCli(args, env = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [SCRIPT_PATH, ...args], {
+      env: { ...process.env, ...env },
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.once("error", reject);
+    child.once("close", (status) => resolve({ status, stdout, stderr }));
+  });
+}
+
 test("Entra profile passes and leaves the test user deactivated", async () => {
   const atlas = createMockAtlas();
   const logs = [];
+  let observedPrefix = "";
   const results = await runConformance({
     ...BASE,
     profile: "entra",
     prefix: "conformance-entra",
     fetchImpl: atlas.fetchImpl,
     log: (message) => logs.push(message),
+    onPrefix: (value) => { observedPrefix = value; },
   });
 
   assert.equal(failedRows(results).length, 0, JSON.stringify(failedRows(results), null, 2));
   assert.ok(results.length >= 19);
+  assert.equal(observedPrefix, "conformance-entra");
   assert.ok(results.every((row) => typeof row.profile === "string"
     && typeof row.name === "string"
     && typeof row.expected === "string"
@@ -442,6 +506,43 @@ test("Entra profile passes and leaves the test user deactivated", async () => {
   assert.equal(created[0].deleted, true);
   assert.equal(JSON.stringify(results).includes(TOKEN), false);
   assert.equal(logs.join("\n").includes(TOKEN), false);
+});
+
+test("onPrefix receives the generated default prefix", async () => {
+  const atlas = createMockAtlas();
+  let observedPrefix = "";
+  const results = await runConformance({
+    ...BASE,
+    profile: "entra",
+    fetchImpl: atlas.fetchImpl,
+    onPrefix: (value) => { observedPrefix = value; },
+  });
+
+  assert.equal(failedRows(results).length, 0, JSON.stringify(failedRows(results), null, 2));
+  assert.match(observedPrefix, /^scim-conformance-[a-f0-9]{8}$/);
+  assert.ok([...atlas.users.values()].some((user) => user.email.startsWith(observedPrefix)));
+});
+
+test("Entra retries cleanup when a no-op final DELETE is not followed by a 404", async () => {
+  const atlas = createMockAtlas({ noopDeleteNumber: 2 });
+  const results = await runConformance({
+    ...BASE,
+    profile: "entra",
+    prefix: "conformance-entra-delete-retry",
+    fetchImpl: atlas.fetchImpl,
+  });
+
+  const failed = failedRows(results);
+  assert.equal(results.length, 19);
+  assert.equal(failed.length, 1);
+  assert.ok(failed[0].name.includes("final DELETE"));
+  const deletes = atlas.requests.filter((request) => request.method === "DELETE");
+  assert.equal(deletes.length, 3);
+  const created = [...atlas.users.values()]
+    .find((user) => user.email.startsWith("conformance-entra-delete-retry"));
+  assert.ok(created);
+  assert.equal(created.active, false);
+  assert.equal(created.deleted, true);
 });
 
 test("Okta profile passes, never sends DELETE, and leaves the test user deactivated", async () => {
@@ -634,9 +735,41 @@ test("token, profile, prefix and base URL are validated", async () => {
   );
 });
 
+test("CLI prints the actual prefix and test user names without the token", async () => {
+  const atlas = createMockAtlas();
+  const { server, baseUrl } = await startMockServer(atlas);
+  try {
+    const prefix = "cli-prefix-review";
+    const result = await runCli([
+      "--base", baseUrl,
+      "--profile", "all",
+      "--prefix", prefix,
+      "--allow-http",
+    ], { SCIM_TOKEN: TOKEN });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(result.stdout.includes(`Test user prefix: ${prefix}`));
+    assert.ok(result.stdout.includes("Test users left deactivated:"));
+    assert.ok(result.stdout.includes(`Entra UPN: ${prefix}-entra@example.org`));
+    assert.ok(result.stdout.includes(`Okta userName: ${prefix}-okta@example.com`));
+    assert.equal(`${result.stdout}${result.stderr}`.includes(TOKEN), false);
+    assert.equal(result.stdout.includes("atlas_scim_"), false);
+    const users = [...atlas.users.values()];
+    const entra = users.find((user) => user.email.startsWith(`${prefix}-entra`));
+    const okta = users.find((user) => user.email.startsWith(`${prefix}-okta`));
+    assert.ok(entra);
+    assert.equal(entra.active, false);
+    assert.equal(entra.deleted, true);
+    assert.ok(okta);
+    assert.equal(okta.active, false);
+    assert.equal(okta.deleted, false);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 test("CLI help works without a token and --token is rejected without echoing the secret", () => {
-  const script = fileURLToPath(new URL("./scim-conformance.mjs", import.meta.url));
-  const help = spawnSync(process.execPath, [script, "--help"], {
+  const help = spawnSync(process.execPath, [SCRIPT_PATH, "--help"], {
     encoding: "utf8",
     env: { ...process.env, SCIM_TOKEN: "" },
   });
@@ -646,14 +779,14 @@ test("CLI help works without a token and --token is rejected without echoing the
 
   const secret = `atlas_scim_${"z".repeat(43)}`;
   const rejected = spawnSync(process.execPath, [
-    script, "--base", "https://example.test", "--token", secret,
+    SCRIPT_PATH, "--base", "https://example.test", "--token", secret,
   ], { encoding: "utf8" });
   assert.equal(rejected.status, 2);
   assert.equal(`${rejected.stdout}${rejected.stderr}`.includes(secret), false);
   assert.match(rejected.stderr, /SCIM_TOKEN/);
 
   const missing = spawnSync(process.execPath, [
-    script, "--base", "https://example.test", "--profile", "entra",
+    SCRIPT_PATH, "--base", "https://example.test", "--profile", "entra",
   ], { encoding: "utf8", env: { ...process.env, SCIM_TOKEN: "" } });
   assert.equal(missing.status, 2);
   assert.match(missing.stderr, /SCIM_TOKEN is required/);

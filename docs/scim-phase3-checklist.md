@@ -81,7 +81,7 @@ node scripts/scim-conformance.mjs --base https://atlas.tmcast.net --profile all
 | Entra | `<prefix>-entra@example.org`（UPN）、`<prefix>-entra@example.com`（work メール） | DELETE で無効化し、`scim_identities.deleted_at` を設定。チェッカーは同じ userName で POST して同じ id が復元されることも確認し、最後にもう一度 DELETE する |
 | Okta | `<prefix>-okta@example.com` | DELETE は送らず、最後の PUT `active=false` で無効化する。SCIM の結び付けは残る |
 
-Atlas は SCIM の DELETE でアカウントを完全削除しません。チェッカーを本番に対して実行すると、prefix 付きのテストユーザーが無効化状態でメンバー一覧に残ります。パスワードは設定されず、IdP の割り当ても外れるためサインインはできませんが、不要になったら管理画面のメンバー管理から完全削除してください。SCIM が有効な間は管理画面から再有効化できませんが、完全削除はできます。
+Atlas は SCIM の DELETE でアカウントを完全削除しません。チェッカーを本番に対して実行すると、prefix 付きのテストユーザーが無効化状態でメンバー一覧に残ります。パスワードは設定されず、IdP の割り当ても外れるためサインインはできませんが、不要になったら管理画面のメンバー管理から完全削除してください。SCIM が有効な間は管理画面から再有効化できませんが、完全削除はできます。CLI は実行時に使った prefix と、Entra の UPN / Okta の userName を出力するので、その prefix でメンバー一覧を探して削除してください。
 
 同じ prefix を再利用すると、Okta の無効化済みユーザーが残っているため POST が 409 `uniqueness` になることがあります。既定のランダム prefix を使うか、実行ごとに新しい prefix を指定してください。
 

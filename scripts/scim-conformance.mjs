@@ -96,6 +96,18 @@ function resolvePrefix(prefix) {
   return prefix.toLowerCase();
 }
 
+function entraUpn(prefix) {
+  return `${prefix}-entra@example.org`;
+}
+
+function entraWorkEmail(prefix) {
+  return `${prefix}-entra@example.com`;
+}
+
+function oktaUserName(prefix) {
+  return `${prefix}-okta@example.com`;
+}
+
 function withQuery(path, params) {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -273,8 +285,8 @@ async function runEntraProfile({ record, request, prefix }) {
   const local = `${prefix}-entra`;
   // UPN is deliberately separate from the work email, and both domains are
   // reserved for documentation and testing.
-  const upn = `${local}@example.org`;
-  const email = `${local}@example.com`;
+  const upn = entraUpn(prefix);
+  const email = entraWorkEmail(prefix);
   const updatedEmail = `${local}-updated@example.com`;
   const externalId = `${local}-ext`;
   const reboundExternalId = `${local}-rebound`;
@@ -525,10 +537,10 @@ async function runEntraProfile({ record, request, prefix }) {
 
     const finalDelete = await request("DELETE", `Users/${encodeURIComponent(id)}`);
     const finalGet = await request("GET", `Users/${encodeURIComponent(id)}`);
-    if (finalDelete.status === 204) finalizedIds.add(id);
     const finalOk = finalDelete.status === 204
       && isScimContentType(finalDelete)
       && isErrorResponse(finalGet, 404);
+    if (finalOk) finalizedIds.add(id);
     record(
       "entra",
       "Entra: final DELETE leaves the test user deactivated",
@@ -557,7 +569,7 @@ async function runEntraProfile({ record, request, prefix }) {
 
 async function runOktaProfile({ record, request, prefix }) {
   const local = `${prefix}-okta`;
-  const email = `${local}@example.com`;
+  const email = oktaUserName(prefix);
   const externalId = `${local}-ext`;
   const createdIds = new Set();
   const userNames = new Map();
@@ -837,6 +849,7 @@ async function runOktaProfile({ record, request, prefix }) {
  *   prefix?: string,
  *   log?: (message: string) => void,
  *   allowHttp?: boolean,
+ *   onPrefix?: (prefix: string) => void,
  * }} options
  * @returns {Promise<Array<{
  *   profile: string,
@@ -855,6 +868,7 @@ export async function runConformance(options = {}) {
     prefix,
     log,
     allowHttp = false,
+    onPrefix,
   } = options;
 
   if (typeof token !== "string" || token.trim() === "") {
@@ -871,6 +885,13 @@ export async function runConformance(options = {}) {
   const root = resolveRoot(baseUrl, allowHttp);
   const runPrefix = resolvePrefix(prefix);
   const results = [];
+  if (typeof onPrefix === "function") {
+    try {
+      onPrefix(runPrefix);
+    } catch {
+      // Reporting the prefix must never change the conformance outcome.
+    }
+  }
 
   function emit(message) {
     if (typeof log !== "function") return;
@@ -957,7 +978,18 @@ function truncateCell(value, width) {
   return text.length <= width ? text.padEnd(width) : `${text.slice(0, Math.max(0, width - 3))}...`;
 }
 
-function printResults(results) {
+function printResults(results, { prefix = "", profile = "all" } = {}) {
+  if (prefix) {
+    console.log(`Test user prefix: ${prefix}`);
+    console.log("Test users left deactivated:");
+    if (profile === "entra" || profile === "all") {
+      console.log(`  Entra UPN: ${entraUpn(prefix)}`);
+    }
+    if (profile === "okta" || profile === "all") {
+      console.log(`  Okta userName: ${oktaUserName(prefix)}`);
+    }
+    console.log("");
+  }
   const nameWidth = Math.min(
     76,
     Math.max(5, ...results.map((row) => String(row.name).length)),
@@ -1088,6 +1120,7 @@ async function main() {
     console.error("SCIM_TOKEN is required. Export the token in the environment; do not pass it as an argument.");
     return 2;
   }
+  let runPrefix = "";
   try {
     const results = await runConformance({
       baseUrl: options.baseUrl,
@@ -1095,12 +1128,15 @@ async function main() {
       profile: options.profile,
       prefix: options.prefix,
       allowHttp: options.allowHttp,
+      onPrefix: (value) => { runPrefix = value; },
     });
-    printResults(results);
+    printResults(results, { prefix: runPrefix, profile: options.profile });
     return results.some((row) => !row.ok) ? 1 : 0;
   } catch (error) {
     const message = redact(error instanceof Error ? error.message : String(error), token);
     console.error(`SCIM conformance failed: ${message}`);
+    // Test users may already exist, so still say which prefix to clean up.
+    if (runPrefix) console.error(`Test user prefix: ${runPrefix}`);
     if (error instanceof ConformanceConfigError) {
       console.error("Run with --help for usage.");
       return 2;
