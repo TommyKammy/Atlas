@@ -195,8 +195,9 @@ test("admin, profile, login and invite follow the C workbench treatment", async 
     });
     const emailLabel = form.getByText("メールアドレス", { exact: true }).first();
     expect(await css(emailLabel)).toMatchObject({ fontSize: "12px", fontWeight: "500", color: "rgb(58, 64, 73)" });
-    await expect(form.getByPlaceholder("メールアドレス", { exact: true })).toBeVisible();
-    await expect(form.getByText("開発用初期値：admin@example.com / atlas-dev-2026", { exact: true })).toBeVisible();
+    await expect(form.getByPlaceholder("メールアドレス", { exact: true })).toHaveValue("");
+    // Default development credentials must never be shown on the login page.
+    await expect(form.getByText(/開発用初期値|atlas-dev-2026/)).toHaveCount(0);
 
     // The rate-limit error keeps its role and data hook and uses danger text
     // on the faint danger surface.
@@ -206,6 +207,7 @@ test("admin, profile, login and invite follow the C workbench treatment", async 
       headers: { "Retry-After": "30" },
       body: JSON.stringify({ error: "too_many_attempts", retry_after_seconds: 30 }),
     }));
+    await form.getByPlaceholder("メールアドレス", { exact: true }).fill("visual-rate@example.test");
     await form.getByPlaceholder("パスワード", { exact: true }).fill("Retained-Visual-Fixture-2026!");
     await form.getByRole("button", { name: "ログイン", exact: true }).click();
     const feedback = form.locator("[data-auth-feedback]");
