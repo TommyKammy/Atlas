@@ -1,10 +1,54 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction, type Queryable } from "@/lib/db";
 import { withUser } from "@/lib/api/route";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { validatePassword } from "@/lib/password-policy";
 import { scimManagedChangeError } from "@/lib/scim/managed-user";
 import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES } from "@/lib/auth-rate-limit";
+
+type ProfileRow = {
+  id: number;
+  name: string;
+  email: string | null;
+  password_hash: string | null;
+  title: string;
+  deactivated_at: string | null;
+  scim_managed: boolean;
+  scim_deleted: boolean;
+  scim_enabled: boolean;
+};
+
+const PROFILE_ROW_SQL = `SELECT u.id, u.name, u.email, u.password_hash, u.title, u.deactivated_at,
+       (si.id IS NOT NULL) AS scim_managed,
+       (si.deleted_at IS NOT NULL) AS scim_deleted,
+       COALESCE(
+         (SELECT scim_enabled FROM workspace_security ORDER BY workspace_id LIMIT 1),
+         false
+       ) AS scim_enabled
+     FROM users u
+     LEFT JOIN scim_identities si ON si.user_id = u.id
+     WHERE u.id = $1 AND u.deactivated_at IS NULL`;
+
+async function loadProfileRow(q: Queryable, id: number, lock: boolean): Promise<ProfileRow | null> {
+  const r = await q.query(lock ? `${PROFILE_ROW_SQL} FOR UPDATE OF u` : PROFILE_ROW_SQL, [id]);
+  return (r.rows[0] as ProfileRow | undefined) ?? null;
+}
+
+function profileScimError(row: ProfileRow, body: unknown): string | null {
+  if (row.scim_managed !== true) return null;
+  return scimManagedChangeError(
+    {
+      scimEnabled: row.scim_enabled === true,
+      scimManaged: true,
+      scimDeleted: row.scim_deleted === true,
+      deactivated: row.deactivated_at !== null,
+      name: row.name,
+      email: row.email,
+      title: row.title,
+    },
+    (body ?? {}) as Record<string, unknown>,
+  );
+}
 
 export const GET = withUser(async (_req, { uid: id }) => {
   const r = await db.query(
@@ -24,48 +68,12 @@ export const PATCH = withUser(async (req, { uid: id }) => {
     if (limited) return limited;
     throw error;
   }
-  const me = await db.query(
-    `SELECT u.id, u.name, u.email, u.password_hash, u.title, u.deactivated_at,
-       (si.id IS NOT NULL) AS scim_managed,
-       (si.deleted_at IS NOT NULL) AS scim_deleted,
-       COALESCE(
-         (SELECT scim_enabled FROM workspace_security ORDER BY workspace_id LIMIT 1),
-         false
-       ) AS scim_enabled
-     FROM users u
-     LEFT JOIN scim_identities si ON si.user_id = u.id
-     WHERE u.id = $1 AND u.deactivated_at IS NULL`,
-    [id],
-  );
-  if (me.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const me = await loadProfileRow(db, id, false);
+  if (!me) return NextResponse.json({ error: "not found" }, { status: 404 });
   const body = await req.json().catch(() => null);
-  const meRow = me.rows[0] as {
-    id: number;
-    name: string;
-    email: string | null;
-    password_hash: string | null;
-    title: string;
-    deactivated_at: string | null;
-    scim_managed: boolean;
-    scim_deleted: boolean;
-    scim_enabled: boolean;
-  };
-  if (meRow.scim_managed === true) {
-    const scimError = scimManagedChangeError(
-      {
-        scimEnabled: meRow.scim_enabled === true,
-        scimManaged: true,
-        scimDeleted: meRow.scim_deleted === true,
-        deactivated: meRow.deactivated_at !== null,
-        name: meRow.name,
-        email: meRow.email,
-        title: meRow.title,
-      },
-      body ?? {},
-    );
-    if (scimError) {
-      return NextResponse.json({ error: scimError, code: "scim_managed" }, { status: 409 });
-    }
+  const scimError = profileScimError(me, body);
+  if (scimError) {
+    return NextResponse.json({ error: scimError, code: "scim_managed" }, { status: 409 });
   }
   const sets: string[] = [];
   const values: unknown[] = [];
@@ -113,7 +121,7 @@ export const PATCH = withUser(async (req, { uid: id }) => {
       return NextResponse.json({ error: passwordError }, { status: 400 });
     }
     const current = typeof body?.current_password === "string" ? body.current_password : "";
-    const stored = me.rows[0].password_hash as string | null;
+    const stored = me.password_hash;
     if (!stored || !verifyPassword(current, stored)) {
       return NextResponse.json({ error: "current password mismatch" }, { status: 401 });
     }
@@ -132,7 +140,20 @@ export const PATCH = withUser(async (req, { uid: id }) => {
   }
   values.push(id);
   try {
-    await db.query(`UPDATE users SET ${sets.join(", ")} WHERE id = $${values.length}`, values);
+    // SCIM may bind this account between the first check and this write.
+    // Lock the user row (SCIM locks it before binding) and check the SCIM
+    // state again in the transaction that writes the profile.
+    const blocked = await withTransaction(async (q) => {
+      const locked = await loadProfileRow(q, id, true);
+      if (!locked) return NextResponse.json({ error: "not found" }, { status: 404 });
+      const lockedError = profileScimError(locked, body);
+      if (lockedError) {
+        return NextResponse.json({ error: lockedError, code: "scim_managed" }, { status: 409 });
+      }
+      await q.query(`UPDATE users SET ${sets.join(", ")} WHERE id = $${values.length}`, values);
+      return null;
+    });
+    if (blocked) return blocked;
   } catch (e) {
     if ((e as { code?: string }).code === "23505") {
       return NextResponse.json({ error: "email already used" }, { status: 409 });
