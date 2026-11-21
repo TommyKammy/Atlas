@@ -83,6 +83,7 @@ export default async function AdminPage() {
           initialSecurity={security}
           initialTotpUsers={totpUsers}
           permissions={[...(role?.permissions ?? [])]}
+          isSuper={role?.isSuper === true}
           passwordPolicyText={passwordPolicyText}
         />
       </div>

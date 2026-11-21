@@ -83,6 +83,10 @@ export type AdminUser = {
   role_key?: string | null;
   role_name?: string | null;
   totp_enabled?: boolean;
+  scim_managed?: boolean;
+  scim_deleted?: boolean;
+  scim_enabled?: boolean;
+  scim_idp?: string | null;
 };
 
 type TargetRoleRow = {
@@ -106,9 +110,17 @@ export async function getAdminUsers(actorId: number): Promise<AdminUser[]> {
     `SELECT u.id, u.name, u.email, u.title, u.avatar_url, u.is_guest, u.is_admin,
        u.role_id, u.totp_enabled, u.deactivated_at::text AS deactivated_at,
        r.permissions, r.is_super, r.key AS role_key, r.name AS role_name,
+       (si.id IS NOT NULL) AS scim_managed,
+       (si.deleted_at IS NOT NULL) AS scim_deleted,
+       si.idp AS scim_idp,
+       COALESCE(
+         (SELECT scim_enabled FROM workspace_security ORDER BY workspace_id LIMIT 1),
+         false
+       ) AS scim_enabled,
        (SELECT COUNT(*)::int FROM tasks t WHERE t.assignee_id = u.id AND t.deleted_at IS NULL AND NOT t.completed) AS open_tasks
      FROM users u
      LEFT JOIN workspace_roles r ON r.id = u.role_id
+     LEFT JOIN scim_identities si ON si.user_id = u.id
      ORDER BY u.id`,
   );
   return markManageable(r.rows as (AdminUser & TargetRoleRow)[], actorId);

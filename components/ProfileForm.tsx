@@ -4,6 +4,8 @@ import { authenticationFailureMessage } from "@/lib/auth-client-feedback";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { scimIdpLabel } from "@/lib/scim/log";
+import type { ScimUserState } from "@/lib/scim/managed-user";
 import {
   fieldControlClass,
   fieldHintClass,
@@ -34,6 +36,8 @@ export default function ProfileForm({
   isGuest,
   initialTotpEnabled,
   mfaPending,
+  scimState,
+  scimIdp,
   twoFactorPolicy,
   passwordMinLength,
   passwordPolicyText,
@@ -46,11 +50,14 @@ export default function ProfileForm({
   isGuest: boolean;
   initialTotpEnabled: boolean;
   mfaPending: boolean;
+  scimState: ScimUserState;
+  scimIdp: string | null;
   twoFactorPolicy: "optional" | "required";
   passwordMinLength: number;
   passwordPolicyText: string;
 }) {
   const router = useRouter();
+  const scimManaged = scimState === "active";
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [title, setTitle] = useState(initialTitle);
@@ -70,18 +77,26 @@ export default function ProfileForm({
 
   const saveProfile = async () => {
     setMsg("");
-    if (!name.trim()) {
-      setMsg("名前を入力してください");
-      return;
+    if (!scimManaged) {
+      if (!name.trim()) {
+        setMsg("名前を入力してください");
+        return;
+      }
+      if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        setMsg("有効なメールアドレスを入力してください");
+        return;
+      }
     }
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setMsg("有効なメールアドレスを入力してください");
-      return;
+    const profile: Record<string, unknown> = { avatar_url: avatarUrl };
+    if (!scimManaged) {
+      profile.name = name;
+      profile.email = email;
+      profile.title = title;
     }
     const res = await fetch("/api/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, title, avatar_url: avatarUrl }),
+      body: JSON.stringify(profile),
     });
     const data = await res.json().catch(() => null);
     if (res.ok) {
@@ -215,6 +230,15 @@ export default function ProfileForm({
     <div className="mt-2 divide-y divide-line-subtle">
       <section hidden={mfaPending} className={sectionClass}>
         <h2 className={sectionHeadingClass}>プロフィール{isGuest ? "（ゲスト）" : ""}</h2>
+        {scimManaged && (
+          <p
+            data-scim-managed-profile
+            className="mt-3 rounded-md bg-surface-subtle px-3 py-2 text-[12px] leading-5 text-secondary"
+          >
+            このアカウントは SCIM（{scimIdpLabel(scimIdp)}）で管理されています。
+            名前・メールアドレス・役職は IdP で変更してください。
+          </p>
+        )}
         <div className="mt-4 flex items-center gap-3">
           <UserAvatar name={name} url={avatarUrl} className="h-14 w-14" textClassName="text-lg" />
           <div className="min-w-0 flex-1">
@@ -235,7 +259,9 @@ export default function ProfileForm({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className={`mt-1.5 ${fieldControlClass}`}
+              readOnly={scimManaged}
+              data-scim-profile-field="name"
+              className={`mt-1.5 ${fieldControlClass} read-only:bg-surface-subtle`}
             />
           </label>
           <label className="block">
@@ -244,7 +270,9 @@ export default function ProfileForm({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="例: プロジェクトマネージャー"
-              className={`mt-1.5 ${fieldControlClass}`}
+              readOnly={scimManaged}
+              data-scim-profile-field="title"
+              className={`mt-1.5 ${fieldControlClass} read-only:bg-surface-subtle`}
             />
           </label>
           <label className="block sm:col-span-2">
@@ -253,7 +281,9 @@ export default function ProfileForm({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={`mt-1.5 ${fieldControlClass}`}
+              readOnly={scimManaged}
+              data-scim-profile-field="email"
+              className={`mt-1.5 ${fieldControlClass} read-only:bg-surface-subtle`}
             />
           </label>
         </div>

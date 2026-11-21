@@ -6,6 +6,8 @@ import { api } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { AdminRole, AdminUser } from "@/lib/admin-data";
+import { scimIdpLabel } from "@/lib/scim/log";
+import { scimUserState } from "@/lib/scim/managed-user";
 import {
   dialogCloseClass,
   dialogSubtitleClass,
@@ -16,6 +18,7 @@ import {
   formSectionTitleClass,
   pillClass,
   pillSuccessClass,
+  pillWarningClass,
   primaryButtonClass,
   secondaryButtonClass,
   SelectControl,
@@ -146,9 +149,19 @@ export default function AdminPanel({
   };
 
   const toggleActive = async (u: AdminUser) => {
+    const state = scimUserState(u);
+    const scimReactivationBlocked = state === "active" || state === "deleted";
+    if (scimReactivationBlocked && u.deactivated_at) return;
     try {
       await api(`/api/admin/users/${u.id}`, "PATCH", { deactivated: !u.deactivated_at });
-      setMsg(u.deactivated_at ? "ユーザーを有効化しました" : "ユーザーを無効化しました");
+      if (!u.deactivated_at && scimReactivationBlocked) {
+        setMsg(
+          "ユーザーを無効化しました。IdP 側でも割り当てを外すか無効にしてください。"
+          + "IdP からの次の同期で有効に戻ることがあります。",
+        );
+      } else {
+        setMsg(u.deactivated_at ? "ユーザーを有効化しました" : "ユーザーを無効化しました");
+      }
       reload();
     } catch (e) {
       setMsg(`失敗: ${e instanceof Error ? e.message : e}`);
@@ -176,13 +189,16 @@ export default function AdminPanel({
   const saveEdit = async () => {
     if (!editing) return;
     try {
-      await api(`/api/admin/users/${editing.id}`, "PATCH", {
-        name: editName,
-        email: editEmail,
-        title: editTitle,
+      const payload: Record<string, unknown> = {
         avatar_url: editAvatar,
         role: editRole,
-      });
+      };
+      if (scimUserState(editing) !== "active") {
+        payload.name = editName;
+        payload.email = editEmail;
+        payload.title = editTitle;
+      }
+      await api(`/api/admin/users/${editing.id}`, "PATCH", payload);
       setEditing(null);
       setMsg("ユーザーを更新しました");
       reload();
@@ -213,16 +229,24 @@ export default function AdminPanel({
     }
   };
 
-  const remove = async (id: number, userName: string) => {
-    if (!await confirmAction(`「${userName}」を削除しますか？ 担当は外れ、投稿は残ります。`)) return;
+  const remove = async (user: AdminUser) => {
+    const state = scimUserState(user);
+    const scimNote = state === "active" || state === "deleted"
+      ? " SCIM で管理されているため、IdP からの次の同期で作り直されることがあります。"
+      : "";
+    if (!await confirmAction(
+      `「${user.name}」を削除しますか？ 担当は外れ、投稿は残ります。${scimNote}`,
+    )) return;
     try {
-      await api(`/api/admin/users/${id}`, "DELETE");
+      await api(`/api/admin/users/${user.id}`, "DELETE");
       setMsg("削除しました");
       reload();
     } catch (e) {
       setMsg(`失敗: ${e instanceof Error ? e.message : e}`);
     }
   };
+
+  const editingScimState = editing ? scimUserState(editing) : null;
 
   return (
     <div className="mt-4">
@@ -235,81 +259,119 @@ export default function AdminPanel({
             <span>未完了</span>
             <span>操作</span>
           </div>
-          {users.map((u) => (
-            <div
-              key={u.id}
-              className={`${MEMBER_GRID} min-h-[44px] border-b border-line-subtle px-2 py-1.5 text-[13px] hover:bg-hover ${
-                u.deactivated_at ? "bg-surface-subtle opacity-60" : ""
-              }`}
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <UserAvatar name={u.name} url={u.avatar_url} className="h-7 w-7" />
-                <span className="min-w-0">
-                  <span className="flex flex-wrap items-center gap-1">
-                    <span className="truncate font-medium text-text">{u.name}</span>
-                    {u.deactivated_at && <span className={pillClass}>無効</span>}
-                    {u.totp_enabled && (
-                      <span className={pillSuccessClass} title="二要素認証が有効です">
-                        2FA
-                      </span>
-                    )}
+          {users.map((u) => {
+            const scimState = scimUserState(u);
+            const scimReactivationBlocked =
+              (scimState === "active" || scimState === "deleted") && Boolean(u.deactivated_at);
+            return (
+              <div
+                key={u.id}
+                data-admin-user-id={u.id}
+                className={`${MEMBER_GRID} min-h-[44px] border-b border-line-subtle px-2 py-1.5 text-[13px] hover:bg-hover ${
+                  u.deactivated_at ? "bg-surface-subtle opacity-60" : ""
+                }`}
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <UserAvatar name={u.name} url={u.avatar_url} className="h-7 w-7" />
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-1">
+                      <span className="truncate font-medium text-text">{u.name}</span>
+                      {u.deactivated_at && <span className={pillClass}>無効</span>}
+                      {u.totp_enabled && (
+                        <span className={pillSuccessClass} title="二要素認証が有効です">
+                          2FA
+                        </span>
+                      )}
+                      {scimState === "active" && (
+                        <span
+                          className={pillClass}
+                          data-scim-badge={scimState}
+                          title={`${scimIdpLabel(u.scim_idp)} で管理されています。名前・メールアドレス・役職は IdP で変更してください。`}
+                        >
+                          SCIM
+                        </span>
+                      )}
+                      {scimState === "deleted" && (
+                        <span
+                          className={pillWarningClass}
+                          data-scim-badge={scimState}
+                          title={`${scimIdpLabel(u.scim_idp)} で削除・割り当て解除されています。SCIM が有効な間は管理画面から有効化できません。`}
+                        >
+                          SCIM（IdP で削除済み）
+                        </span>
+                      )}
+                      {scimState === "disabled" && (
+                        <span
+                          className={`${pillClass} opacity-60`}
+                          data-scim-badge={scimState}
+                          title="SCIM は停止中です。Atlas で編集できます。"
+                        >
+                          SCIM（停止中）
+                        </span>
+                      )}
+                    </span>
+                    {u.title && <span className="block truncate text-[12px] text-muted">{u.title}</span>}
                   </span>
-                  {u.title && <span className="block truncate text-[12px] text-muted">{u.title}</span>}
                 </span>
-              </span>
-              <span className="truncate text-[12px] text-muted">{u.email ?? "–"}</span>
-              <span>
-                <SelectControl
-                  value={roleOf(u)}
-                  onChange={(e) => setRoleFor(u.id, e.target.value)}
-                  disabled={!u.can_manage || u.id === currentUserId}
-                  aria-label={`${u.name}の権限`}
-                  title={u.id === currentUserId ? "自分自身の権限は変更できません" : undefined}
-                >
-                  {roleOptions.map((r) => (
-                    <option key={r.key} value={r.key} disabled={r.can_assign === false}>
-                      {r.name}
-                    </option>
-                  ))}
-                </SelectControl>
-              </span>
-              <span className="text-[12px] tabular-nums text-secondary">{u.open_tasks ?? "–"}</span>
-              <span className="flex flex-wrap items-center gap-1">
-                <button
-                  disabled={!u.can_manage}
-                  onClick={() => openEdit(u)}
-                  aria-label={`${u.name} を編集`}
-                  className={smallQuietButtonClass}
-                >
-                  編集
-                </button>
-                <button
-                  disabled={!u.can_manage}
-                  onClick={() => openReset(u)}
-                  aria-label={`${u.name} のパスワードを再設定`}
-                  className={smallQuietButtonClass}
-                >
-                  PW
-                </button>
-                <button
-                  onClick={() => toggleActive(u)}
-                  disabled={!u.can_manage || u.id === currentUserId}
-                  aria-label={u.deactivated_at ? `${u.name} を有効化` : `${u.name} を無効化`}
-                  className={smallQuietButtonClass}
-                >
-                  {u.deactivated_at ? "有効化" : "無効化"}
-                </button>
-                <button
-                  onClick={() => remove(u.id, u.name)}
-                  disabled={!u.can_manage || u.id === currentUserId}
-                  aria-label={`${u.name} を削除`}
-                  className={smallQuietDangerButtonClass}
-                >
-                  削除
-                </button>
-              </span>
-            </div>
-          ))}
+                <span className="truncate text-[12px] text-muted">{u.email ?? "–"}</span>
+                <span>
+                  <SelectControl
+                    value={roleOf(u)}
+                    onChange={(e) => setRoleFor(u.id, e.target.value)}
+                    disabled={!u.can_manage || u.id === currentUserId}
+                    aria-label={`${u.name}の権限`}
+                    title={u.id === currentUserId ? "自分自身の権限は変更できません" : undefined}
+                  >
+                    {roleOptions.map((r) => (
+                      <option key={r.key} value={r.key} disabled={r.can_assign === false}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </SelectControl>
+                </span>
+                <span className="text-[12px] tabular-nums text-secondary">{u.open_tasks ?? "–"}</span>
+                <span className="flex flex-wrap items-center gap-1">
+                  <button
+                    disabled={!u.can_manage}
+                    onClick={() => openEdit(u)}
+                    aria-label={`${u.name} を編集`}
+                    className={smallQuietButtonClass}
+                  >
+                    編集
+                  </button>
+                  <button
+                    disabled={!u.can_manage}
+                    onClick={() => openReset(u)}
+                    aria-label={`${u.name} のパスワードを再設定`}
+                    className={smallQuietButtonClass}
+                  >
+                    PW
+                  </button>
+                  <button
+                    onClick={() => toggleActive(u)}
+                    disabled={!u.can_manage || u.id === currentUserId || scimReactivationBlocked}
+                    aria-label={u.deactivated_at ? `${u.name} を有効化` : `${u.name} を無効化`}
+                    title={scimReactivationBlocked
+                      ? scimState === "deleted"
+                        ? "IdP で削除・割り当て解除されています。IdP で割り当て直してください"
+                        : "SCIM で管理されているため、IdP から有効化してください"
+                      : undefined}
+                    className={smallQuietButtonClass}
+                  >
+                    {u.deactivated_at ? "有効化" : "無効化"}
+                  </button>
+                  <button
+                    onClick={() => remove(u)}
+                    disabled={!u.can_manage || u.id === currentUserId}
+                    aria-label={`${u.name} を削除`}
+                    className={smallQuietDangerButtonClass}
+                  >
+                    削除
+                  </button>
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -493,12 +555,22 @@ export default function AdminPanel({
               </button>
             </div>
             <div className="grid gap-3 p-5">
+              {editingScimState === "active" && (
+                <p
+                  data-scim-managed-edit
+                  className="rounded-md bg-surface-subtle px-3 py-2 text-[12px] leading-5 text-secondary"
+                >
+                  このユーザーは SCIM（{scimIdpLabel(editing.scim_idp)}）で管理されています。
+                  名前・メールアドレス・役職は IdP で変更してください。ロール・写真・パスワードは Atlas で変更できます。
+                </p>
+              )}
               <label className="block">
                 <span className={fieldLabelClass}>名前</span>
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className={`mt-1.5 ${fieldControlClass}`}
+                  readOnly={editingScimState === "active"}
+                  className={`mt-1.5 ${fieldControlClass} read-only:bg-surface-subtle`}
                 />
               </label>
               <label className="block">
@@ -507,7 +579,8 @@ export default function AdminPanel({
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
-                  className={`mt-1.5 ${fieldControlClass}`}
+                  readOnly={editingScimState === "active"}
+                  className={`mt-1.5 ${fieldControlClass} read-only:bg-surface-subtle`}
                 />
               </label>
               <label className="block">
@@ -515,7 +588,8 @@ export default function AdminPanel({
                 <input
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className={`mt-1.5 ${fieldControlClass}`}
+                  readOnly={editingScimState === "active"}
+                  className={`mt-1.5 ${fieldControlClass} read-only:bg-surface-subtle`}
                 />
               </label>
               <label className="block">

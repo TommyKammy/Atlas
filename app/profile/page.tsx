@@ -3,6 +3,8 @@ import { getMfaServerSession } from "@/lib/api/session";
 import { redirect } from "next/navigation";
 import ProfileForm from "@/components/ProfileForm";
 import { getSecuritySettings } from "@/lib/admin-data";
+import { db } from "@/lib/db";
+import { scimUserState } from "@/lib/scim/managed-user";
 import { passwordPolicySummary } from "@/lib/password-policy";
 import {
   pageContentInsetClass,
@@ -33,6 +35,28 @@ export default async function ProfilePage() {
     );
   }
   const security = await getSecuritySettings();
+  const scimIdentity = await db.query(
+    `SELECT si.idp, si.deleted_at,
+       COALESCE(
+         (SELECT scim_enabled FROM workspace_security ORDER BY workspace_id LIMIT 1),
+         false
+       ) AS scim_enabled
+     FROM scim_identities si
+     WHERE si.user_id = $1
+     LIMIT 1`,
+    [access.user.id],
+  );
+  const scimRow = scimIdentity.rows[0] as {
+    idp: string;
+    deleted_at: string | null;
+    scim_enabled: boolean;
+  } | undefined;
+  const scimState = scimUserState({
+    scim_managed: scimRow !== undefined,
+    scim_deleted: scimRow?.deleted_at !== null && scimRow?.deleted_at !== undefined,
+    scim_enabled: scimRow?.scim_enabled === true,
+  });
+  const scimIdp = typeof scimRow?.idp === "string" ? scimRow.idp : null;
   return (
     <div className={pageFrameClass}>
       <div data-page-fixed className={`${pageFixedClass} ${pageHeaderInsetClass}`}>
@@ -53,6 +77,8 @@ export default async function ProfilePage() {
             isGuest={access.user.isGuest}
             initialTotpEnabled={access.mfaEnabled}
             mfaPending={access.mfaPending}
+            scimState={scimState}
+            scimIdp={scimIdp}
             twoFactorPolicy={security.two_factor_policy}
             passwordMinLength={security.password_min_length}
             passwordPolicyText={passwordPolicySummary({

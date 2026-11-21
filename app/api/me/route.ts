@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { withUser } from "@/lib/api/route";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { validatePassword } from "@/lib/password-policy";
+import { scimManagedChangeError } from "@/lib/scim/managed-user";
 import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES } from "@/lib/auth-rate-limit";
 
 export const GET = withUser(async (_req, { uid: id }) => {
@@ -24,11 +25,48 @@ export const PATCH = withUser(async (req, { uid: id }) => {
     throw error;
   }
   const me = await db.query(
-    "SELECT id, name, email, password_hash FROM users WHERE id = $1 AND deactivated_at IS NULL",
+    `SELECT u.id, u.name, u.email, u.password_hash, u.title, u.deactivated_at,
+       (si.id IS NOT NULL) AS scim_managed,
+       (si.deleted_at IS NOT NULL) AS scim_deleted,
+       COALESCE(
+         (SELECT scim_enabled FROM workspace_security ORDER BY workspace_id LIMIT 1),
+         false
+       ) AS scim_enabled
+     FROM users u
+     LEFT JOIN scim_identities si ON si.user_id = u.id
+     WHERE u.id = $1 AND u.deactivated_at IS NULL`,
     [id],
   );
   if (me.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const body = await req.json().catch(() => null);
+  const meRow = me.rows[0] as {
+    id: number;
+    name: string;
+    email: string | null;
+    password_hash: string | null;
+    title: string;
+    deactivated_at: string | null;
+    scim_managed: boolean;
+    scim_deleted: boolean;
+    scim_enabled: boolean;
+  };
+  if (meRow.scim_managed === true) {
+    const scimError = scimManagedChangeError(
+      {
+        scimEnabled: meRow.scim_enabled === true,
+        scimManaged: true,
+        scimDeleted: meRow.scim_deleted === true,
+        deactivated: meRow.deactivated_at !== null,
+        name: meRow.name,
+        email: meRow.email,
+        title: meRow.title,
+      },
+      body ?? {},
+    );
+    if (scimError) {
+      return NextResponse.json({ error: scimError, code: "scim_managed" }, { status: 409 });
+    }
+  }
   const sets: string[] = [];
   const values: unknown[] = [];
   if (typeof body?.name === "string" && body.name.trim() !== "") {
