@@ -279,15 +279,31 @@ test("POST with an existing email binds the existing account instead of creating
   const existingId = (await json<{ id: number }>(existing)).id;
   cleanupUserIds.add(existingId);
 
+  await expectStatus(await api.patch(`/api/admin/users/${existingId}`, { data: { title: "Old Title" } }), 200);
+
   const bound = await createScimUser({
     userName: email,
     externalId: `okta-${run}`,
     name: { formatted: "Existing Member" },
+    title: "Account Manager",
     active: true,
   });
   expect(bound.id).toBe(existingId);
+  expect(bound.body.title).toBe("Account Manager");
   const filtered = await expectStatus(await filterUsers(`externalId eq "okta-${run}"`), 200);
   expect((await json<{ totalResults: number }>(filtered)).totalResults).toBe(1);
+
+  // A binding POST without title keeps the title already stored in Atlas.
+  const keepEmail = `scim-existing-keep-${run}@example.test`;
+  const keep = await expectStatus(await api.post("/api/admin/users", {
+    data: { name: "Keep Title", email: keepEmail, password, role: "member" },
+  }), 201);
+  const keepId = (await json<{ id: number }>(keep)).id;
+  cleanupUserIds.add(keepId);
+  await expectStatus(await api.patch(`/api/admin/users/${keepId}`, { data: { title: "Kept Title" } }), 200);
+  const kept = await createScimUser({ userName: keepEmail, externalId: `okta-keep-${run}`, active: true });
+  expect(kept.id).toBe(keepId);
+  expect(kept.body.title).toBe("Kept Title");
 });
 
 test("a UPN userName stays separate from the work email and survives renames", async () => {

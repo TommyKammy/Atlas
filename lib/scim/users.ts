@@ -336,13 +336,19 @@ export async function createScimUser(
     }
     const merged = mergeScimName(identityNameState(identity), namePatch, email);
     const nameChanged = Object.keys(namePatch).length > 0;
-    if (nameChanged) {
-      await q.query("UPDATE users SET name = $2 WHERE id = $1", [userId, merged.name]);
+    // Apply supplied profile fields the same way as a newly created account;
+    // omitted fields keep the value already stored in Atlas.
+    const titleChanged = title !== undefined && title !== existing.title;
+    if (nameChanged || titleChanged) {
+      await q.query(
+        "UPDATE users SET name = $2, title = $3 WHERE id = $1",
+        [userId, nameChanged ? merged.name : existing.name, titleChanged ? title : existing.title],
+      );
     }
     await upsertIdentity(q, auth, userId, userName, externalId, merged.state);
     await auditScim(q, auth, "scim.user.bind", userId,
       `で既存ユーザーを結び付け: ${email}${idpChangeNote(identity?.idp ?? null, auth.idp)}`);
-    if (nameChanged) {
+    if (nameChanged || titleChanged) {
       await auditScim(q, auth, "scim.user.update", userId, `でユーザーを更新: ${email}`);
     }
   } else {
