@@ -3,6 +3,7 @@ import { getWorkspace } from "@/lib/data";
 import { db } from "@/lib/db";
 import { withAdminPermission } from "@/lib/api/route";
 import { csvResponse, toCsv } from "@/lib/csv";
+import { auditActorCsvLabel } from "@/lib/audit-display";
 
 export const GET = withAdminPermission("audit.view", async (req) => {
   const { searchParams } = new URL(req.url);
@@ -43,7 +44,7 @@ export const GET = withAdminPermission("audit.view", async (req) => {
     rows.push([
       row.id,
       row.created_at,
-      row.actor_name ?? "",
+      auditActorCsvLabel(row.actor_name, row.action),
       row.action,
       row.entity,
       row.entity_id ?? "",

@@ -15,6 +15,7 @@ export const POLICIES = {
   invitation: { limit: 30, windowSeconds: 15 * 60 },
   "saml-start": { limit: 120, windowSeconds: 5 * 60 },
   "saml-callback": { limit: 120, windowSeconds: 5 * 60 },
+  "scim-auth": { limit: 60, windowSeconds: 15 * 60 },
   global: { limit: 6000, windowSeconds: 60 },
   peer: { limit: 500, windowSeconds: 60 },
 } as const satisfies Record<string, AuthRatePolicy>;

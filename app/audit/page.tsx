@@ -3,7 +3,7 @@ import { requirePageUser } from "@/lib/current-user";
 import { hasPermission } from "@/lib/permissions";
 import { getAuditLog } from "@/lib/audit";
 import { getWorkspace } from "@/lib/data";
-import { auditTimestampISO, formatAuditTimestamp } from "@/lib/audit-display";
+import { auditActorLabel, auditTimestampISO, formatAuditTimestamp } from "@/lib/audit-display";
 import { quietButtonClass } from "@/components/ui/form-controls";
 import {
   pageContentInsetClass,
@@ -65,6 +65,7 @@ export default async function AuditPage() {
             <tbody>
               {rows.map((r) => {
                 const target = [r.project_name, r.summary].filter(Boolean).join(" / ") || `${r.entity}#${r.entity_id ?? "–"}`;
+                const actor = auditActorLabel(r.actor_name, r.action);
                 return (
                   <tr key={r.id} data-audit-row={r.id} className="border-b border-line-subtle hover:bg-hover">
                     <td className="px-2 py-2 align-top">
@@ -77,8 +78,8 @@ export default async function AuditPage() {
                       </time>
                     </td>
                     <td className="px-2 py-2 align-top">
-                      <span className="block truncate text-[13px] text-secondary" title={r.actor_name ?? "–"}>
-                        {r.actor_name ?? "–"}
+                      <span className="block truncate text-[13px] text-secondary" title={actor}>
+                        {actor}
                       </span>
                     </td>
                     <td className="px-2 py-2 align-top">

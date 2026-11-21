@@ -49,3 +49,20 @@ export function auditTimestampISO(value: string): string {
   const date = parseTimestamp(value);
   return date ? date.toISOString() : value;
 }
+
+/**
+ * SCIM writes have no human actor (actor_id is NULL). Make those entries
+ * identifiable instead of showing an empty "–" in the audit table.
+ */
+export function auditActorLabel(actorName: string | null | undefined, action: string): string {
+  const name = actorName?.trim();
+  if (name) return name;
+  return action.startsWith("scim.") ? "SCIM" : "–";
+}
+
+/** CSV export keeps the historical blank cell for non-SCIM system rows. */
+export function auditActorCsvLabel(actorName: string | null | undefined, action: string): string {
+  const name = actorName?.trim();
+  if (name) return name;
+  return action.startsWith("scim.") ? "SCIM" : "";
+}

@@ -60,6 +60,7 @@ export async function proxy(req: NextRequest) {
     req.nextUrl.pathname.startsWith("/api/automation/webhook/") ||
     req.nextUrl.pathname.startsWith("/share/") ||
     req.nextUrl.pathname.startsWith("/invite/") ||
+    req.nextUrl.pathname.startsWith("/scim/v2/") ||
     req.nextUrl.pathname.startsWith("/api/invitations/");
 
   if (publicPath) {

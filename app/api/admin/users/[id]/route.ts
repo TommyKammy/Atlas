@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAnotherAdmin, withManagedUser } from "@/lib/services/admin-user-access";
+import { requireAnotherAdmin, setUserDeactivated, withManagedUser } from "@/lib/services/admin-user-access";
 import { getMfaRequestSession } from "@/lib/api/session";
 import { badRequest, forbidden } from "@/lib/api/errors";
 import { hashPassword } from "@/lib/auth";
@@ -28,10 +28,11 @@ export const PATCH = withAdminPermission("members.manage", async (req, { uid: ad
     if (id === admin && ((role && role.id !== actor.roleId) || legacyFlags || body?.deactivated === true)) {
       throw badRequest("cannot change your own role or deactivate yourself");
     }
-    if (active && target.baseLevel === "admin" && (body?.deactivated === true ||
-        (role && (!role.isAdmin || (target.isSuper && !role.isSuper))))) {
+    if (active && target.baseLevel === "admin" && role &&
+        (!role.isAdmin || (target.isSuper && !role.isSuper))) {
       await requireAnotherAdmin(q, id, target.isSuper);
     }
+    const deactivation = typeof body?.deactivated === "boolean" ? body.deactivated : null;
     const sets: string[] = [];
     const values: unknown[] = [];
     if (typeof body?.name === "string" && body.name.trim() !== "") {
@@ -54,9 +55,6 @@ export const PATCH = withAdminPermission("members.manage", async (req, { uid: ad
       values.push(body.avatar_url.trim().slice(0, 500) || null);
       sets.push(`avatar_url = $${values.length}`);
     }
-    if (typeof body?.deactivated === "boolean") {
-      sets.push(body.deactivated ? "deactivated_at = now()" : "deactivated_at = NULL");
-    }
     if (role) {
       values.push(role.id);
       sets.push(`role_id = $${values.length}`);
@@ -75,21 +73,32 @@ export const PATCH = withAdminPermission("members.manage", async (req, { uid: ad
       values.push(hashPassword(password));
       sets.push(`password_hash = $${values.length}`);
     }
-    if (sets.length === 0) {
+    if (sets.length === 0 && deactivation === null) {
       return NextResponse.json({ error: "nothing to update" }, { status: 400 });
     }
-    values.push(id);
-    const r = await q.query(
-      `UPDATE users SET ${sets.join(", ")} WHERE id = $${values.length}::bigint
-         RETURNING id, name, email, title, avatar_url, is_guest, is_admin, role_id,
-           totp_enabled, deactivated_at::text AS deactivated_at`,
-      values,
-    );
-    if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-    const updated = r.rows[0];
-    if (password || body?.deactivated === true) {
+    if (sets.length > 0) {
+      values.push(id);
+      const r = await q.query(
+        `UPDATE users SET ${sets.join(", ")} WHERE id = $${values.length}::bigint`,
+        values,
+      );
+      if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+    }
+    if (deactivation !== null) {
+      await setUserDeactivated(q, id, deactivation, {
+        preserveSessionTokenHash: currentSession?.tokenHash ?? null,
+      });
+    }
+    if (password) {
       await q.query("DELETE FROM user_sessions WHERE user_id = $1 AND token_hash IS DISTINCT FROM $2", [id, currentSession?.tokenHash ?? null]);
     }
+    const selected = await q.query(
+      `SELECT id, name, email, title, avatar_url, is_guest, is_admin, role_id,
+         totp_enabled, deactivated_at::text AS deactivated_at FROM users WHERE id = $1`,
+      [id],
+    );
+    if (selected.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
+    const updated = selected.rows[0];
     const roleRow = await q.query(
       "SELECT key, name FROM workspace_roles WHERE id = $1",
       [updated.role_id],

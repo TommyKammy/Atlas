@@ -2,7 +2,7 @@ import { db, type Queryable } from "./db";
 
 // Workspace audit trail. Transactional callers require the audit write to succeed.
 export async function audit(
-  actorId: number,
+  actorId: number | null,
   action: string,
   opts: { entity: string; entityId?: number | string | null; projectId?: number | string | null; workspaceId?: number; summary?: string },
   q?: Queryable,
