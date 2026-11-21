@@ -1,5 +1,7 @@
 import { canConfigureProject } from "@/lib/project-policy";
 import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { isRouterPrefetch } from "@/lib/router-prefetch";
 import type { TaskRow } from "@/lib/data";
 import {
   getProject,
@@ -157,7 +159,9 @@ export default async function ProjectPage(props: {
     savedView && savedView.project_id === projectId && savedView.view_type === "list" ? savedView : undefined;
 
   const task = taskId ? await getTaskForProject(taskId, projectId) : undefined;
-  await touchRecentProject(viewerId, projectId);
+  // Links to this project prefetch it from home and the sidebar; only a real
+  // visit may move it to the top of the viewer's recent projects.
+  if (!isRouterPrefetch(await headers())) await touchRecentProject(viewerId, projectId);
   const paneData = task ? await getTaskPaneData(task.id, projectId, viewerId) : null;
 
   const tabParam = qstr("tab");

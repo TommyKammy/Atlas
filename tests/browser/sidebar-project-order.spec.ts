@@ -52,19 +52,22 @@ async function drag(page: Page, id: number, target: number, placement: "before" 
   await expect(item(page, id)).toHaveAttribute("data-reorderable", "true");
 }
 
+// Opening a project records the visit, and the list view then replaces the URL
+// with a `list_state=1` snapshot, which is another real navigation that records
+// it again. Let both finish so a later visit cannot be overtaken by this one.
+async function visit(page: Page, id: number) {
+  await page.goto(`/projects/${id}`);
+  await expect(page).toHaveURL(/[?&]list_state=1(?:&|$)/);
+  await expect(page.locator("[data-project-view]")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+}
+
 test("dragging both ways persists personal order without navigation or changing recents", async ({ page, browser }) => {
   const f = await fixture(page);
-  await page.goto(`/projects/${f.ids[1]}`); await page.goto(`/projects/${f.ids[2]}`); await page.goto("/");
+  await visit(page, f.ids[1]); await visit(page, f.ids[2]); await page.goto("/");
   const recentLinks = page.locator("[data-sidebar-recents] a");
   const recentHrefs = () => recentLinks.evaluateAll(links => links.map(link => link.getAttribute("href")));
-  // Visits are recorded in the background, so the first home render can still
-  // show the order from before the last visit. Wait until both visits are in
-  // place before taking the snapshot the drag must not change.
-  await expect.poll(async () => {
-    const hrefs = await recentHrefs();
-    if (hrefs[0] !== `/projects/${f.ids[2]}`) await page.reload();
-    return hrefs.slice(0, 2);
-  }).toEqual([`/projects/${f.ids[2]}`, `/projects/${f.ids[1]}`]);
+  expect((await recentHrefs()).slice(0, 2)).toEqual([`/projects/${f.ids[2]}`, `/projects/${f.ids[1]}`]);
   const recents = await recentHrefs();
   await expect(page.locator("[data-sidebar-recents] [data-project-reorder]")).toHaveCount(0);
   const url = page.url();
@@ -82,6 +85,55 @@ test("dragging both ways persists personal order without navigation or changing 
     const serverPage = await ssr.newPage(); await serverPage.goto("/");
     expect(await visibleOrder(serverPage)).toEqual(expected);
   } finally { await ssr.close(); }
+});
+
+test("prefetching project links on home leaves recents alone; opening one still records it", async ({ page }) => {
+  const f = await fixture(page, 2);
+  const recentHrefs = () => page.locator("[data-sidebar-recents] a").evaluateAll(links => links.map(link => link.getAttribute("href")));
+  const projectPath = (id: number) => `/projects/${id}`;
+  // Route-tree requests (`/_tree`) never render the page; count only the
+  // prefetches that run its server code, like the one behind the bug.
+  const prefetched: string[] = [];
+  page.on("request", request => {
+    const headers = request.headers();
+    if (headers.rsc === "1" && headers["next-router-prefetch"] && headers["next-router-segment-prefetch"] !== "/_tree") prefetched.push(new URL(request.url()).pathname);
+  });
+  const homeAfterPrefetches = async () => {
+    prefetched.length = 0;
+    await page.reload();
+    // The router prefetches one project link per shell with `next-router-prefetch: 3`
+    // (in practice the seeded project's task link on home), so wait for it.
+    await expect.poll(() => prefetched.some(path => /^\/projects\/\d+$/.test(path))).toBe(true);
+    await page.waitForLoadState("networkidle");
+    await page.reload();
+    return recentHrefs();
+  };
+  await visit(page, f.ids[0]); await visit(page, f.ids[1]); await page.goto("/");
+  const visited = await recentHrefs();
+  expect(visited.slice(0, 2)).toEqual([projectPath(f.ids[1]), projectPath(f.ids[0])]);
+  expect(await homeAfterPrefetches()).toEqual(visited);
+  // Ask for the older project the way the router prefetches it. Runtime (2) and
+  // app-shell (3) prefetches run the page's server code until the shell is
+  // ready, so on a fast enough request they used to reach the visit write.
+  // (A bare static prefetch, 1, is answered 404 here without rendering.)
+  for (let round = 0; round < 3; round++) {
+    for (const kind of ["2", "3"]) {
+      const result = await page.request.get(projectPath(f.ids[0]), { headers: { rsc: "1", "next-router-prefetch": kind } });
+      expect(result.status()).toBeLessThan(500); await result.body();
+    }
+  }
+  // An aborted prerender can still finish its pending queries just after the
+  // response ends; give such a late write time to land before checking.
+  await page.waitForTimeout(500);
+  await page.reload();
+  expect(await recentHrefs()).toEqual(visited);
+  // A client-side navigation still counts as a visit.
+  await page.locator(`[data-sidebar-recents] a[href="${projectPath(f.ids[0])}"]`).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${f.ids[0]}\\?(?:.*&)?list_state=1`));
+  await expect(page.locator("[data-project-view]")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await page.goto("/");
+  expect((await recentHrefs()).slice(0, 2)).toEqual([projectPath(f.ids[0]), projectPath(f.ids[1])]);
 });
 
 test("project names retain clicks with small movement, modifier clicks and keyboard navigation", async ({ page }) => {
