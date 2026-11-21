@@ -26,7 +26,7 @@ export default function TaskCompletionToggle({
   onToggle,
   milestone = false,
   state,
-  size = "h-4 w-4",
+  size,
   className = "",
   title,
   ...rest
@@ -48,6 +48,9 @@ export default function TaskCompletionToggle({
   const stateLabel = state && !milestone ? LIST_ROW_STATE_LABELS[state] : null;
   const activeState = stateLabel ? state : null;
   const stateClass = state ? stateColor[state] : "";
+  // The four-state circle (list, board) uses Asana's larger ~16px circle in an
+  // 18px box; the bordered check keeps its 16px default.
+  const boxSize = size ?? (activeState ? "h-[18px] w-[18px]" : "h-4 w-4");
   return (
     <button
       type="button"
@@ -60,10 +63,10 @@ export default function TaskCompletionToggle({
       }}
       className={
         milestone
-          ? `${size} flex shrink-0 items-center justify-center ${className}`
+          ? `${boxSize} flex shrink-0 items-center justify-center ${className}`
           : stateLabel
-            ? `${size} flex shrink-0 items-center justify-center rounded-full ${stateClass} ${className}`
-            : `${size} flex shrink-0 items-center justify-center rounded-full border ${
+            ? `${boxSize} flex shrink-0 items-center justify-center rounded-full ${stateClass} ${className}`
+            : `${boxSize} flex shrink-0 items-center justify-center rounded-full border ${
                 completed
                   ? "border-success-strong bg-success-strong text-on-strong"
                   : "border-line-strong bg-surface/70 text-transparent hover:border-success-strong hover:text-success"
@@ -74,7 +77,7 @@ export default function TaskCompletionToggle({
       {milestone ? (
         <TaskMilestoneIcon completed={completed} sizeClassName="h-full w-full" />
       ) : activeState ? (
-        <TaskStateIcon state={activeState} />
+        <TaskStateIcon state={activeState} variant="large" sizeClassName="h-full w-full" />
       ) : (
         <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.6">
           <path d="M2.5 6.2 5 8.6l4.5-5" />

@@ -378,7 +378,7 @@ export default function TaskListRow({
             title={`${t.name} — クリックで名前を編集`}
             dir="auto"
             data-list-task-name={t.id}
-            className="min-w-[8ch] cursor-text truncate rounded hover:bg-hover"
+            className={`min-w-[8ch] cursor-text truncate rounded hover:bg-hover ${t.completed ? "text-muted" : ""}`}
           >
             {t.name || "タスク名を入力"}
           </span>
