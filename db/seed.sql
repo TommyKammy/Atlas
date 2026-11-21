@@ -2,11 +2,11 @@
 -- Apply: docker cp app/db/seed.sql atlas-db:/tmp/seed.sql && docker exec atlas-db psql -U atlas -d atlas -f /tmp/seed.sql
 
 -- Dev-only initial password for all seed users: atlas-dev-2026 (rotate before any exposure).
-INSERT INTO users (id, name, email, is_guest, role_id, password_hash) VALUES
-  (1, '管理者', 'admin@example.com', FALSE, 1, 'scrypt$16384$8$1$ab1bed03edea360c85720388e9ca9193$d11e6f4aacd3bb8f3f4a404abc2a915814661fadebc651e1a29a1bd3fb55ed97'),
-  (2, '田中 太郎', 'tanaka@example.com', FALSE, 3, 'scrypt$16384$8$1$ab1bed03edea360c85720388e9ca9193$d11e6f4aacd3bb8f3f4a404abc2a915814661fadebc651e1a29a1bd3fb55ed97'),
-  (3, '佐藤 花子', 'sato@example.com', FALSE, 3, 'scrypt$16384$8$1$ab1bed03edea360c85720388e9ca9193$d11e6f4aacd3bb8f3f4a404abc2a915814661fadebc651e1a29a1bd3fb55ed97'),
-  (4, 'Dan Yu', 'dan@example.com', TRUE, 4, 'scrypt$16384$8$1$ab1bed03edea360c85720388e9ca9193$d11e6f4aacd3bb8f3f4a404abc2a915814661fadebc651e1a29a1bd3fb55ed97')
+INSERT INTO users (id, name, email, is_admin, is_guest, role_id, password_hash) VALUES
+  (1, '管理者', 'admin@example.com', TRUE, FALSE, 1, 'scrypt$16384$8$1$ab1bed03edea360c85720388e9ca9193$d11e6f4aacd3bb8f3f4a404abc2a915814661fadebc651e1a29a1bd3fb55ed97'),
+  (2, '田中 太郎', 'tanaka@example.com', FALSE, FALSE, 3, 'scrypt$16384$8$1$ab1bed03edea360c85720388e9ca9193$d11e6f4aacd3bb8f3f4a404abc2a915814661fadebc651e1a29a1bd3fb55ed97'),
+  (3, '佐藤 花子', 'sato@example.com', FALSE, FALSE, 3, 'scrypt$16384$8$1$ab1bed03edea360c85720388e9ca9193$d11e6f4aacd3bb8f3f4a404abc2a915814661fadebc651e1a29a1bd3fb55ed97'),
+  (4, 'Dan Yu', 'dan@example.com', FALSE, TRUE, 4, 'scrypt$16384$8$1$ab1bed03edea360c85720388e9ca9193$d11e6f4aacd3bb8f3f4a404abc2a915814661fadebc651e1a29a1bd3fb55ed97')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO projects (id, workspace_id, name) VALUES

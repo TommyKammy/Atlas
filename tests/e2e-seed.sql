@@ -1,5 +1,4 @@
 -- Additional fixtures for the isolated shell and browser suites.
-UPDATE users SET is_admin = TRUE WHERE id = 1 AND email = 'admin@example.com';
 UPDATE tasks SET completed_at = now() WHERE project_id = 1 AND completed AND completed_at IS NULL;
 
 INSERT INTO project_tabs (project_id, tab_key, name, view_type, position)

@@ -167,7 +167,7 @@ test("R06 concurrent login requests can consume a recovery code only once", { ti
       const { rows: [{ n }] } = await db.query(
         `SELECT count(*)::int AS n FROM pg_stat_activity
          WHERE wait_event_type = 'Lock' AND (query LIKE '%totp_recovery_codes%'
-           OR (query LIKE '%FROM users WHERE id=%' AND query LIKE '%FOR UPDATE%'))`,
+           OR (query LIKE '%FROM users u%' AND query LIKE '%WHERE u.id=%' AND query LIKE '%FOR UPDATE%'))`,
       );
       waiting = n;
       if (waiting >= 2) break;

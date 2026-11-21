@@ -14,6 +14,16 @@ test.beforeEach(async ({ page }) => {
   await login(page);
 });
 
+test("seeded administrator sees the administrator console in the user menu", async ({ page }) => {
+  await page.goto("/");
+  const account = page.locator("[data-sidebar-header] [data-sidebar-user-menu]");
+  await expect(account).toBeVisible();
+  await account.click();
+  const menu = page.locator("[data-user-menu]");
+  await expect(menu.locator("[data-user-menu-admin]")).toBeVisible();
+  await expect(menu.getByRole("link", { name: "管理者コンソール" })).toBeVisible();
+});
+
 test("sidebar invite button centers its icon and label", async ({ page }) => {
   await page.goto("/");
   const button = page.locator("[data-sidebar-invite]");

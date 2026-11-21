@@ -24,11 +24,14 @@ export const getSidebarUser = cache(async (): Promise<SidebarUser | null> => {
   const uid = await getCurrentUserId();
   if (uid === null) return null;
   const result = await db.query(
-    `SELECT id, name, email, title, avatar_url, is_guest, is_admin,
-       out_of_office_from::text AS out_of_office_from,
-       out_of_office_to::text AS out_of_office_to,
-       out_of_office_note
-     FROM users WHERE id = $1 AND deactivated_at IS NULL`,
+    `SELECT u.id, u.name, u.email, u.title, u.avatar_url,
+       COALESCE(r.base_level = 'guest', u.is_guest) AS is_guest,
+       COALESCE(r.base_level = 'admin', u.is_admin) AS is_admin,
+       u.out_of_office_from::text AS out_of_office_from,
+       u.out_of_office_to::text AS out_of_office_to,
+       u.out_of_office_note
+     FROM users u LEFT JOIN workspace_roles r ON r.id = u.role_id
+     WHERE u.id = $1 AND u.deactivated_at IS NULL`,
     [uid],
   );
   return (result.rows[0] as SidebarUser | undefined) ?? null;

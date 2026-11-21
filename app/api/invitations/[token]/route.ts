@@ -102,7 +102,11 @@ async function acceptInvitation(
         [name, row.email, role.isGuest, role.isAdmin, role.id, hashPassword(password)],
       );
       await q.query("UPDATE invitations SET accepted_at = now() WHERE id = $1", [row.id]);
-      let samlRequired = requiresSaml(security.saml_mode, user.rows[0]);
+      let samlRequired = requiresSaml(security.saml_mode, {
+        is_admin: user.rows[0].is_admin === true,
+        is_guest: user.rows[0].is_guest === true,
+        base_level: role.baseLevel,
+      });
       let mfaPending = !samlRequired && security.two_factor_policy === "required";
       let sessionToken = null;
       if (!samlRequired) {

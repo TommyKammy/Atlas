@@ -52,8 +52,12 @@ function profileScimError(row: ProfileRow, body: unknown): string | null {
 
 export const GET = withUser(async (_req, { uid: id }) => {
   const r = await db.query(
-    `SELECT id, name, email, title, avatar_url, is_guest, is_admin, role_id, totp_enabled
-     FROM users WHERE id = $1 AND deactivated_at IS NULL`,
+    `SELECT u.id, u.name, u.email, u.title, u.avatar_url,
+       COALESCE(r.base_level = 'guest', u.is_guest) AS is_guest,
+       COALESCE(r.base_level = 'admin', u.is_admin) AS is_admin,
+       u.role_id, u.totp_enabled
+     FROM users u LEFT JOIN workspace_roles r ON r.id = u.role_id
+     WHERE u.id = $1 AND u.deactivated_at IS NULL`,
     [id],
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -161,8 +165,12 @@ export const PATCH = withUser(async (req, { uid: id }) => {
     throw e;
   }
   const r = await db.query(
-    `SELECT id, name, email, title, avatar_url, is_guest, is_admin, role_id, totp_enabled
-     FROM users WHERE id = $1 AND deactivated_at IS NULL`,
+    `SELECT u.id, u.name, u.email, u.title, u.avatar_url,
+       COALESCE(r.base_level = 'guest', u.is_guest) AS is_guest,
+       COALESCE(r.base_level = 'admin', u.is_admin) AS is_admin,
+       u.role_id, u.totp_enabled
+     FROM users u LEFT JOIN workspace_roles r ON r.id = u.role_id
+     WHERE u.id = $1 AND u.deactivated_at IS NULL`,
     [id],
   );
   return NextResponse.json(r.rows[0]);

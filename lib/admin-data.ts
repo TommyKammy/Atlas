@@ -30,9 +30,17 @@ export type SecuritySettings = {
 
 export function requiresSaml(
   mode: SecuritySettings["saml_mode"],
-  user: { is_admin: boolean; is_guest: boolean },
+  user: { is_admin?: boolean | null; is_guest?: boolean | null; base_level?: string | null },
 ): boolean {
-  return !isSamlSessionAllowed(mode, { isAdmin: user.is_admin, isGuest: user.is_guest }, "password");
+  return !isSamlSessionAllowed(
+    mode,
+    {
+      isAdmin: user.is_admin === true,
+      isGuest: user.is_guest === true,
+      baseLevel: user.base_level,
+    },
+    "password",
+  );
 }
 
 export type TeamMember = {
