@@ -16,7 +16,7 @@ type SamlMode = "off" | "optional" | "required" | "members_only";
 export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
   const router = useRouter();
   const formId = useId();
-  const [email, setEmail] = useState("admin@example.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
@@ -209,9 +209,7 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
         <p className="text-[12px] leading-5 text-muted">
           SAML SSO が必須です。ゲストと管理者の扱いはワークスペースの設定に従います。
         </p>
-      ) : (
-        <p className="text-[12px] leading-5 text-muted">開発用初期値：admin@example.com / atlas-dev-2026</p>
-      )}
+      ) : null}
     </form>
   );
 }
