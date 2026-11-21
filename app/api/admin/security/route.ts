@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { withTransaction } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { forbidden } from "@/lib/api/errors";
 import { withAdminPermission } from "@/lib/api/route";
+import { getEffectiveRole } from "@/lib/permissions";
 import { getSecuritySettings, getTotpUsers, type SecuritySettings } from "@/lib/admin-data";
 
 const TWO_FACTOR = new Set(["optional", "required"]);
@@ -17,6 +19,10 @@ export const GET = withAdminPermission("security.manage", async (_req, { uid }) 
 
 export const PATCH = withAdminPermission("security.manage", async (req, { uid }) => {
   const body = await req.json().catch(() => null);
+  if (body?.scim_enabled !== undefined) {
+    const role = await getEffectiveRole(uid);
+    if (role?.isSuper !== true) throw forbidden("super administrator required to change SCIM");
+  }
   const workspaceId = (await getSecuritySettings()).workspace_id;
   const outcome = await withTransaction(async (q) => {
     // Merge and validate under the same lock used by the session policy trigger.
@@ -81,6 +87,14 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       values.push(next.saml_jit_provisioning);
       sets.push(`saml_jit_provisioning = $${values.length}`);
     }
+    if (body?.scim_enabled !== undefined) {
+      if (typeof body.scim_enabled !== "boolean") {
+        return NextResponse.json({ error: "invalid SCIM setting" }, { status: 400 });
+      }
+      next.scim_enabled = body.scim_enabled;
+      values.push(next.scim_enabled);
+      sets.push(`scim_enabled = $${values.length}`);
+    }
     if (body?.password_min_length !== undefined) {
       const length = Number(body.password_min_length);
       if (!Number.isInteger(length) || length < 8 || length > 64) {
@@ -127,6 +141,13 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       entityId: current.workspace_id,
       summary: sets.join(", "),
     }, q);
+    if (body?.scim_enabled !== undefined && body.scim_enabled !== current.scim_enabled) {
+      await audit(uid, body.scim_enabled ? "security.scim_enable" : "security.scim_disable", {
+        entity: "workspace_security",
+        entityId: current.workspace_id,
+        summary: body.scim_enabled ? "SCIM プロビジョニングを有効化" : "SCIM プロビジョニングを無効化",
+      }, q);
+    }
     return updated.rows[0] as SecuritySettings;
   });
   if (outcome instanceof Response) return outcome;

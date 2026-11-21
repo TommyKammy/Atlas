@@ -8,7 +8,7 @@ import {
   type ProjectPermission,
 } from "@/lib/api-project-auth";
 import type { ProjectRole } from "@/lib/project-roles";
-import { hasPermission, type Permission } from "@/lib/permissions";
+import { hasPermission, getEffectiveRole, type Permission } from "@/lib/permissions";
 import { ApiError, badRequest, jsonError, notFound } from "./errors";
 
 type Params = Record<string, string>;
@@ -111,6 +111,20 @@ export function withAdminPermission<P extends Params = Params>(
   return withAdmin<P>(async (req, ctx) => {
     if (!(await hasPermission(ctx.uid, permission))) {
       throw new ApiError(403, "permission denied", "forbidden");
+    }
+    return handler(req, ctx);
+  });
+}
+
+/** Reserve workspace-wide security controls for the super administrator. */
+export function withSuperAdminPermission<P extends Params = Params>(
+  permission: Permission,
+  handler: (req: NextRequest, ctx: UserContext<P>) => Promise<Response>,
+) {
+  return withAdminPermission<P>(permission, async (req, ctx) => {
+    const role = await getEffectiveRole(ctx.uid);
+    if (role?.isSuper !== true) {
+      throw new ApiError(403, "super administrator required", "forbidden");
     }
     return handler(req, ctx);
   });

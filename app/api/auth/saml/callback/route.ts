@@ -9,6 +9,7 @@ import {
   samlProfileEmail, samlProfileName,
 } from "@/lib/saml";
 import { getDefaultRole } from "@/lib/permissions";
+import { shouldProvisionSamlUser } from "@/lib/saml-provisioning";
 import { isSessionToken } from "@/lib/session-token";
 
 function redirectAfterPost(location: string) {
@@ -57,7 +58,7 @@ async function finishSaml(req: NextRequest) {
   if (user?.deactivated_at) return loginError("deactivated");
 
   if (!user) {
-    if (!settings.saml_jit_provisioning) return loginError("user_not_found");
+    if (!shouldProvisionSamlUser(settings)) return loginError("user_not_found");
     const role = await getDefaultRole();
     if (!role) return loginError("no_default_role");
     const created = await db.query(

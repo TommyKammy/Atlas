@@ -617,6 +617,7 @@ CREATE TABLE IF NOT EXISTS workspace_security (
   saml_session_days       INTEGER NOT NULL DEFAULT 7
                           CHECK (saml_session_days BETWEEN 1 AND 30),
   saml_jit_provisioning   BOOLEAN NOT NULL DEFAULT TRUE,
+  scim_enabled            BOOLEAN NOT NULL DEFAULT FALSE,
   password_min_length     INTEGER NOT NULL DEFAULT 8
                           CHECK (password_min_length BETWEEN 8 AND 64),
   password_require_upper  BOOLEAN NOT NULL DEFAULT FALSE,
@@ -625,6 +626,47 @@ CREATE TABLE IF NOT EXISTS workspace_security (
   password_require_symbol BOOLEAN NOT NULL DEFAULT FALSE,
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- SCIM 2.0 provisioning tokens (hashes only) and IdP bindings.
+CREATE TABLE IF NOT EXISTS scim_tokens (
+  id           BIGSERIAL PRIMARY KEY,
+  workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  idp          TEXT NOT NULL DEFAULT 'generic'
+               CHECK (idp IN ('entra', 'okta', 'generic')),
+  token_hash   TEXT NOT NULL CHECK (token_hash ~ '^[0-9a-f]{64}$'),
+  created_by   BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_used_at TIMESTAMPTZ,
+  revoked_at   TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX IF NOT EXISTS scim_tokens_hash_uidx ON scim_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_scim_tokens_workspace ON scim_tokens(workspace_id, id);
+
+CREATE TABLE IF NOT EXISTS scim_identities (
+  id           BIGSERIAL PRIMARY KEY,
+  workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  user_id      BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  idp          TEXT NOT NULL DEFAULT 'generic'
+               CHECK (idp IN ('entra', 'okta', 'generic')),
+  external_id  TEXT,
+  user_name    CITEXT NOT NULL,
+  given_name   TEXT,
+  family_name  TEXT,
+  formatted_name TEXT,
+  display_name TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at   TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX IF NOT EXISTS scim_identities_external_uidx
+  ON scim_identities(workspace_id, idp, external_id)
+  WHERE external_id IS NOT NULL AND deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS scim_identities_user_name_active_uidx
+  ON scim_identities(workspace_id, user_name)
+  WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_scim_identities_workspace
+  ON scim_identities(workspace_id, deleted_at);
 
 CREATE TABLE IF NOT EXISTS saml_cache (
   workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
