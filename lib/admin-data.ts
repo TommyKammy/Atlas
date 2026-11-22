@@ -74,6 +74,15 @@ export type AdminRole = {
   is_system: boolean;
   is_super: boolean;
   member_count: number;
+  /** Active users holding this role, by name. */
+  members: AdminRoleMember[];
+};
+
+export type AdminRoleMember = {
+  id: number;
+  name: string;
+  email: string | null;
+  avatar_url: string | null;
 };
 
 export type AdminUser = {
@@ -199,7 +208,13 @@ export async function getAdminRoles(workspaceId: number, actor?: EffectiveRole |
   const r = await db.query(
     `SELECT r.id, r.key, r.name, r.description, r.base_level, r.permissions,
        r.is_system, r.is_super,
-       (SELECT COUNT(*)::int FROM users u WHERE u.role_id = r.id AND u.deactivated_at IS NULL) AS member_count
+       (SELECT COUNT(*)::int FROM users u WHERE u.role_id = r.id AND u.deactivated_at IS NULL) AS member_count,
+       COALESCE(
+         (SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'email', u.email, 'avatar_url', u.avatar_url)
+                   ORDER BY u.name, u.id)
+            FROM users u WHERE u.role_id = r.id AND u.deactivated_at IS NULL),
+         '[]'::json
+       ) AS members
      FROM workspace_roles r
      WHERE r.workspace_id = $1
      ORDER BY r.is_super DESC, r.is_system DESC, r.id`,

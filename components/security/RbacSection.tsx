@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { confirmAction } from "@/lib/ui-feedback";
 import { api } from "@/lib/api-client";
@@ -23,6 +23,7 @@ import {
   smallQuietButtonClass,
   smallQuietDangerButtonClass,
 } from "../ui/form-controls";
+import UserAvatar from "../UserAvatar";
 import { SectionHeader } from "./SectionHeader";
 
 const BASE_LABEL: Record<AdminRole["base_level"], string> = {
@@ -53,6 +54,7 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
+  const [detailId, setDetailId] = useState<number | null>(null);
 
   const openCreate = () => {
     setEditing(null);
@@ -134,48 +136,88 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
             <span>権限</span>
             <span>操作</span>
           </div>
-          {roles.map((role) => (
-            <div
-              key={role.id}
-              data-role={role.key}
-              className={`${ROLE_GRID} min-h-[44px] border-b border-line-subtle px-2 py-2 text-[13px] hover:bg-hover`}
-            >
-              <span className="min-w-0">
-                <span className="flex flex-wrap items-center gap-1.5">
-                  <span className="font-medium text-text">{role.name}</span>
-                  {role.is_super && <span className={pillWarningClass}>特権</span>}
-                  {role.is_system && !role.is_super && <span className={pillClass}>標準</span>}
-                </span>
-                <span className="block truncate text-[12px] text-muted">{role.description}</span>
-              </span>
-              <span className="text-[12px] tabular-nums text-secondary">{role.member_count} 人</span>
-              <span className="text-[12px] text-secondary">
-                {role.is_system ? "標準" : "カスタム"} / {BASE_LABEL[role.base_level]}
-              </span>
-              <span className="text-[12px] tabular-nums text-secondary">{role.permissions.length} 件</span>
-              <span className="flex flex-wrap items-center gap-1">
-                {!role.is_system && (
-                  <>
+          {roles.map((role) => {
+            const detailOpen = detailId === role.id;
+            const detailDomId = `role-detail-${role.id}`;
+            return (
+              <Fragment key={role.id}>
+                <div
+                  data-role={role.key}
+                  className={`${ROLE_GRID} min-h-[44px] border-b border-line-subtle px-2 py-2 text-[13px] hover:bg-hover ${
+                    detailOpen ? "bg-surface-subtle" : ""
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-medium text-text">{role.name}</span>
+                      {role.is_super && <span className={pillWarningClass}>特権</span>}
+                      {role.is_system && !role.is_super && <span className={pillClass}>標準</span>}
+                    </span>
+                    {role.description && (
+                      <span title={role.description} className="block truncate text-[12px] text-muted">
+                        {role.description}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex min-w-0 items-center gap-1.5" data-role-members>
+                    {role.members.length > 0 && (
+                      <span
+                        className="flex shrink-0 -space-x-1.5"
+                        title={role.members.map((member) => member.name).join("、")}
+                      >
+                        {role.members.slice(0, 3).map((member) => (
+                          <UserAvatar
+                            key={member.id}
+                            name={member.name}
+                            url={member.avatar_url}
+                            className="h-5 w-5 ring-2 ring-surface"
+                            textClassName="text-[8px]"
+                          />
+                        ))}
+                      </span>
+                    )}
+                    <span className="text-[12px] tabular-nums text-secondary">{role.member_count} 人</span>
+                  </span>
+                  <span className="text-[12px] text-secondary">
+                    {role.is_system ? "標準" : "カスタム"} / {BASE_LABEL[role.base_level]}
+                  </span>
+                  <span className="text-[12px] tabular-nums text-secondary">{role.permissions.length} 件</span>
+                  <span className="flex flex-wrap items-center gap-1">
                     <button
-                      onClick={() => openEdit(role)}
-                      title={`${role.name}を編集`}
+                      onClick={() => setDetailId(detailOpen ? null : role.id)}
+                      aria-expanded={detailOpen}
+                      aria-controls={detailDomId}
+                      title={`${role.name}の権限とメンバーを${detailOpen ? "閉じる" : "表示"}`}
                       className={smallQuietButtonClass}
+                      data-role-detail-toggle
                     >
-                      編集
+                      {detailOpen ? "閉じる" : "詳細"}
                     </button>
-                    <button
-                      onClick={() => remove(role)}
-                      title={`${role.name}を削除`}
-                      className={smallQuietDangerButtonClass}
-                    >
-                      削除
-                    </button>
-                  </>
-                )}
-                {role.is_system && <span className="text-[12px] text-muted">変更不可</span>}
-              </span>
-            </div>
-          ))}
+                    {!role.is_system && (
+                      <>
+                        <button
+                          onClick={() => openEdit(role)}
+                          title={`${role.name}を編集`}
+                          className={smallQuietButtonClass}
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() => remove(role)}
+                          title={`${role.name}を削除`}
+                          className={smallQuietDangerButtonClass}
+                        >
+                          削除
+                        </button>
+                      </>
+                    )}
+                    {role.is_system && <span className="text-[12px] text-muted">変更不可</span>}
+                  </span>
+                </div>
+                {detailOpen && <RoleDetail role={role} id={detailDomId} />}
+              </Fragment>
+            );
+          })}
         </div>
       </div>
 
@@ -287,6 +329,78 @@ export function RbacSection({ initialRoles }: { initialRoles: AdminRole[] }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function RoleDetail({ role, id }: { role: AdminRole; id: string }) {
+  const granted = new Set(role.permissions);
+  const groups = [...new Set(PERMISSION_CATALOG.map((permission) => permission.group))];
+  return (
+    <div
+      id={id}
+      data-role-detail={role.key}
+      className="grid gap-5 border-b border-line-subtle bg-surface-subtle px-4 py-4 text-[12px] md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]"
+    >
+      <section aria-label={`${role.name}の権限`}>
+        <h4 className="font-semibold text-secondary">
+          権限 <span className="font-normal tabular-nums text-muted">{role.permissions.length} / {PERMISSION_CATALOG.length}</span>
+        </h4>
+        {role.description && <p className="mt-1 leading-5 text-secondary">{role.description}</p>}
+        <p className="mt-1 text-muted">
+          基本の役割: {BASE_LABEL[role.base_level]}（{BASE_LEVEL_HINT[role.base_level]}）
+          {role.is_system && " ・ 標準の役割のため、権限は変更できません。"}
+        </p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          {groups.map((group) => (
+            <div key={group}>
+              <div className="text-[11px] font-medium text-muted">{group}</div>
+              <ul className="mt-1 grid gap-0.5">
+                {PERMISSION_CATALOG.filter((permission) => permission.group === group).map((permission) => {
+                  const on = granted.has(permission.key);
+                  return (
+                    <li
+                      key={permission.key}
+                      title={permission.description}
+                      data-permission={permission.key}
+                      data-granted={on ? "true" : "false"}
+                      className={`flex items-start gap-1.5 ${on ? "text-text" : "text-muted line-through decoration-line"}`}
+                    >
+                      <span aria-hidden className={`w-3 shrink-0 text-center ${on ? "text-success" : "text-muted"}`}>
+                        {on ? "✓" : "–"}
+                      </span>
+                      <span>
+                        {permission.label}
+                        <span className="sr-only">{on ? "（許可）" : "（なし）"}</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section aria-label={`${role.name}のメンバー`}>
+        <h4 className="font-semibold text-secondary">
+          メンバー <span className="font-normal tabular-nums text-muted">{role.members.length} 人</span>
+        </h4>
+        {role.members.length === 0 ? (
+          <p className="mt-2 text-muted">この役割のメンバーはいません。</p>
+        ) : (
+          <ul className="mt-2 grid max-h-64 gap-1 overflow-y-auto pr-1">
+            {role.members.map((member) => (
+              <li key={member.id} className="flex min-w-0 items-center gap-2" data-role-member={member.id}>
+                <UserAvatar name={member.name} url={member.avatar_url} className="h-6 w-6" textClassName="text-[9px]" />
+                <span className="min-w-0">
+                  <span className="block truncate text-text">{member.name}</span>
+                  {member.email && <span className="block truncate text-[11px] text-muted">{member.email}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
