@@ -99,16 +99,14 @@ function Kpi({
   unit: string;
   dotClassName?: string;
   href: string;
-  tone?: "plain" | "alert" | "inverse";
+  tone?: "plain" | "alert";
   meter?: number;
   name: string;
 }) {
   const toneClass =
-    tone === "inverse"
-      ? "border-inverse-surface bg-inverse-surface text-inverse-text-strong"
-      : tone === "alert"
-        ? "border-danger-line bg-surface text-text"
-        : "border-line bg-surface text-text hover:border-line-strong";
+    tone === "alert"
+      ? "border-danger-line bg-surface text-text"
+      : "border-line bg-surface text-text hover:border-line-strong";
   return (
     <Link
       href={href}
@@ -116,9 +114,7 @@ function Kpi({
       className={`relative flex min-w-0 flex-col overflow-hidden rounded-[10px] border px-3.5 py-3 shadow-card ${toneClass}`}
     >
       {tone === "alert" && <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-danger" />}
-      <span
-        className={`flex items-center gap-1.5 text-[12px] ${tone === "inverse" ? "text-inverse-text" : "text-muted"}`}
-      >
+      <span className="flex items-center gap-1.5 text-[12px] text-muted">
         {dotClassName && <span aria-hidden className={`h-[7px] w-[7px] rounded-full ${dotClassName}`} />}
         {label}
       </span>
@@ -128,15 +124,11 @@ function Kpi({
         }`}
       >
         {value}
-        <span
-          className={`ml-1 text-[12px] font-medium ${tone === "inverse" ? "text-inverse-text" : "text-muted"}`}
-        >
-          {unit}
-        </span>
+        <span className="ml-1 text-[12px] font-medium text-muted">{unit}</span>
       </span>
       {meter !== undefined && (
-        <span aria-hidden className="mt-2 h-1 overflow-hidden rounded-full bg-inverse-line">
-          <span className="block h-full rounded-full bg-inverse-accent" style={{ width: `${meter}%` }} />
+        <span aria-hidden className="mt-2 h-1 overflow-hidden rounded-full bg-surface-strong">
+          <span className="block h-full rounded-full bg-success" style={{ width: `${meter}%` }} />
         </span>
       )}
     </Link>
@@ -192,7 +184,7 @@ export default function HomeAgenda({
             label="今週の完了"
             value={week.done}
             unit={`/ ${week.total} 件`}
-            tone="inverse"
+            dotClassName="bg-success"
             meter={weekPercent}
             href="/my-tasks"
           />
