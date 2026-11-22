@@ -171,14 +171,25 @@ Linearの命名に合わせ、作成と更新を `save_*` にまとめる（`id`
 
 成果物: 本ドキュメントの「決定事項」欄の更新
 
-### Phase 1: 認可とサービス層の分離（2〜3日）
+### Phase 1: 認可とサービス層の分離（2〜3日）— 完了（2026-11-22、ブランチ `feat/mcp-phase1-authz`）
 
-MCPとRESTが同じ判定・同じ処理を通るようにする下準備。挙動は変えない。
+MCPとRESTが同じ判定・同じ処理を通るようにする下準備。RESTの挙動は変えていない（エラー応答に標準の `code` 項目が加わったのみ）。
 
-- [ ] `lib/api-project-auth.ts` を「セッション解決」と「権限判定」に分ける: `authorizeProject(uid, projectId, level, q?)`、`authorizeTask(uid, taskId, level, scope?)`。既存の `requireProjectPermission(req, …)` は内部でこれを呼ぶ
-- [ ] ツール対象の操作をサービス関数に切り出す（未分離のもの）: タスク作成・更新・完了・移動、コメント作成、セクション作成、プロジェクト作成・更新、タスク一覧・検索
-- [ ] 実行者情報の型 `Actor = { uid, source: "web" | "mcp", tokenId?, clientName? }` を導入し、監査・履歴に渡す
-- [ ] 既存RESTルートを新しいサービス関数経由に置き換え、既存テスト（`test:p0`、`test:p1`）で回帰がないことを確認
+- [x] `lib/api-project-auth.ts` を「セッション解決」と「権限判定」に分離: `AuthActor`、`authorizeProject` / `authorizeTask` / `authorizeWorkspaceAdmin`（`cdffa10`）
+- [x] 実行者 `Actor = { uid, source: "web" | "mcp", tokenId?, clientName? }` と、毎回ユーザーの最新状態を読む `requireProjectAccess` / `requireTaskAccess` / `requireWorkspacePermission` / `requireNotGuest`（`lib/services/actor.ts`、`709fa74`）
+- [x] 書き込みサービス: `createTask`・`addComment`（`e92b927`）、`updateTaskForActor`・`trashTaskForActor`（論理削除のみ）・`setTaskCustomValue`（`b9a8cf6`）、`createProject`・`createProjectFromTemplate`・`updateProject`・`createSection`（`092ca93`）。該当RESTルートはこれらを呼ぶ形に置き換え
+- [x] 参照サービス: `lib/services/queries.ts`（プロジェクト・セクション・タスク検索・タスク詳細・コメント・自分のタスク・ユーザー・メンバー・カスタムフィールド。閲覧権限で絞り込み、カーソル方式のページング）（`c244678`）
+- [x] 検証: ユニットテスト586件→653件すべて成功、`typecheck`・ESLint成功、`test:p0`・`test:p1`（Docker上の実DB）成功
+- [ ] 監査ログへの `source=mcp`・トークンID・クライアント名の記録はPhase 2/3（DB列の追加が必要）
+
+Phase 1で判明し、Phase 2〜3で決めること:
+
+- `save_project` の状態変更: `PATCH /api/projects/[id]`（`projects.status` を直接更新、イベントなし）と `POST /api/projects/[id]/status-updates`（履歴と `project.status_changed` を記録）のどちらに合わせるか
+- `move_task` は単体更新（`updateTaskForActor`）を使う。一括移動（`/api/tasks/bulk`）は副ホームのセクションを更新しない既存の不具合があるため使わない
+- `list_my_tasks` にサブタスクを含めるか（既存画面はトップレベルのみ、新サービスは含む）
+- 主プロジェクトがアーカイブ済みのマルチホームタスクは参照で404になる
+- ページングはオフセット方式（取得中の追加・削除で境界がずれうる）
+- `requireNotGuest` のエラーメッセージ（`guest users cannot use MCP`）の文言を確定する
 
 ### Phase 2: MCPエンドポイント＋PAT＋参照ツール（3〜4日）
 
