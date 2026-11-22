@@ -11,5 +11,7 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? process.env.ATLAS_E2E_BASE,
     headless: true,
     trace: "retain-on-failure",
+    // The NGINX suite terminates TLS with a disposable self-signed CA.
+    ignoreHTTPSErrors: process.env.E2E_IGNORE_HTTPS_ERRORS === "1",
   },
 });

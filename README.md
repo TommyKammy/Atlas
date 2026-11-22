@@ -21,6 +21,14 @@ For reliable Fast Refresh in a Docker development environment, see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Production deployment
+
+Atlas supports two production topologies: the Next.js custom server alone, or
+the custom server behind NGINX. See
+[production deployment](docs/deploy-production.md) for required environment
+variables, `ATLAS_TRUSTED_PROXIES`, keep-alive settings, the NGINX configuration
+in `deploy/nginx/`, Ubuntu package migration, and verification steps.
+
 For the production server, set `APP_ORIGIN` to the browser-facing URL when Atlas
 is served on a public hostname. WebSocket upgrades use `WS_ALLOWED_ORIGINS` (a
 comma-separated list), then `APP_ORIGIN`, then `APP_URL`. Without those settings,

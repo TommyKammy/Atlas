@@ -1,0 +1,49 @@
+name: ${ATLAS_E2E_STACK:?Run bash tests/run-e2e.sh}
+
+# Overlay for `bash tests/run-e2e.sh nginx`. It puts the official NGINX image in
+# front of the disposable Atlas app and gives the app a private proxy network
+# whose subnet it trusts for X-Forwarded-For.
+services:
+  app:
+    environment:
+      APP_ORIGIN: ${ATLAS_E2E_BASE:?Run bash tests/run-e2e.sh}
+      WS_ALLOWED_ORIGINS: ${ATLAS_E2E_BASE:?Run bash tests/run-e2e.sh}
+      ATLAS_TRUSTED_PROXIES: ${ATLAS_NGINX_SUBNET:?Run bash tests/run-e2e.sh}
+      ATLAS_KEEPALIVE_TIMEOUT_MS: ${ATLAS_KEEPALIVE_TIMEOUT_MS:-65000}
+    networks:
+      - default
+      - proxy
+
+  nginx:
+    image: nginx:${ATLAS_NGINX_VERSION:?Run bash tests/run-e2e.sh}
+    labels:
+      io.atlas.e2e-marker: ${ATLAS_E2E_MARKER:?Run bash tests/run-e2e.sh}
+    ports:
+      - "127.0.0.1:${ATLAS_E2E_HTTP_PORT:?Run bash tests/run-e2e.sh}:80"
+      - "127.0.0.1:${ATLAS_E2E_HTTPS_PORT:?Run bash tests/run-e2e.sh}:443"
+    volumes:
+      - "${ATLAS_NGINX_CONF:?Run bash tests/run-e2e.sh}:/etc/nginx/conf.d/atlas.conf:ro"
+      - "${ATLAS_NGINX_SNIPPET:?Run bash tests/run-e2e.sh}:/etc/nginx/snippets/atlas-proxy-headers.conf:ro"
+      - "${ATLAS_NGINX_TLS_DIR:?Run bash tests/run-e2e.sh}:/etc/nginx/atlas-tls:ro"
+      - "${ATLAS_NGINX_ACME_DIR:?Run bash tests/run-e2e.sh}:/var/www/atlas-acme:ro"
+    # The image ships a default server on :80. Remove it so the atlas.conf
+    # server is the only listener for both ports.
+    command: ["sh", "-c", "rm -f /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+    networks:
+      - proxy
+      - clients
+    depends_on:
+      app:
+        condition: service_started
+
+networks:
+  proxy:
+    name: ${ATLAS_E2E_STACK}-proxy
+    ipam:
+      config:
+        - subnet: ${ATLAS_NGINX_SUBNET:?Run bash tests/run-e2e.sh}
+  clients:
+    name: ${ATLAS_E2E_STACK}-clients
+    ipam:
+      config:
+        - subnet: ${ATLAS_NGINX_CLIENT_SUBNET:?Run bash tests/run-e2e.sh}
