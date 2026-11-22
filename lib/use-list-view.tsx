@@ -692,6 +692,7 @@ export function useListView({
           onClearColumnDrop: clearColumnDrop,
           onEndColumnDrag: endColumnDrag,
           onAddField: (event) => openFieldAdd(event.currentTarget.getBoundingClientRect()),
+          menuOpen: menuCol !== null,
         },
         headers: {
           layout: {

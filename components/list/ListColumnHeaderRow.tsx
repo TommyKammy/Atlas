@@ -13,6 +13,7 @@ export default function ListColumnHeaderRow({
   onEndColumnDrag,
   headers,
   onAddField,
+  menuOpen,
 }: {
   gridCols: string;
   compactCells: string;
@@ -23,11 +24,13 @@ export default function ListColumnHeaderRow({
   onEndColumnDrag: () => void;
   headers: ReactNode;
   onAddField: (event: MouseEvent<HTMLButtonElement>) => void;
+  /** A column menu is open: lift the sticky row above the page-level menu backdrop (z-30). */
+  menuOpen: boolean;
 }) {
   return (
     <div
       data-list-column-header
-      className={`sticky top-0 z-10 grid h-[38px] items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-line border-b border-line bg-bg px-2 text-xs font-normal text-muted ${compactCells}`}
+      className={`sticky top-0 ${menuOpen ? "z-40" : "z-10"} grid h-[38px] items-center [&>*:nth-child(n+3)]:border-l [&>*:nth-child(n+3)]:border-line border-b border-line bg-bg px-2 text-xs font-normal text-muted ${compactCells}`}
       style={{ gridTemplateColumns: gridCols }}
       onDragOver={(event) => {
         if (!columnDragging) return;
