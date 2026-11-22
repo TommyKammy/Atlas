@@ -1,4 +1,5 @@
 import { shiftDay } from "./calendar";
+import { todayISO } from "./dates";
 import type { HomeTask } from "./home-widgets";
 
 /** The home agenda shows a few rows per group; the rest are one link away. */
@@ -76,6 +77,31 @@ export function homeDueSummaryText(summary: HomeDueSummary): string {
   if (summary.today > 0) parts.push(`今日が期日 ${summary.today}件`);
   if (summary.week > 0) parts.push(`今週 ${summary.week}件`);
   return parts.join(" ・ ");
+}
+
+export type HomeWeekCompletion = { done: number; total: number };
+
+/**
+ * This week's pace for the home KPI: tasks completed in the last seven days
+ * (today and the six days before, by JST date) against those plus everything
+ * still open in the agenda (overdue, today and this week).
+ */
+export function homeWeekCompletion(
+  tasks: readonly Pick<HomeTask, "completed" | "completed_at" | "due_on">[],
+  today: string,
+): HomeWeekCompletion {
+  const since = shiftDay(today, -6);
+  let done = 0;
+  let open = 0;
+  for (const task of tasks) {
+    if (task.completed) {
+      const day = task.completed_at ? todayISO(new Date(task.completed_at)) : null;
+      if (day !== null && day >= since && day <= today) done += 1;
+    } else if (homeDueGroupKey(task, today) !== null) {
+      open += 1;
+    }
+  }
+  return { done, total: done + open };
 }
 
 /** Parent-task completion as a whole percentage; null when there is no task. */

@@ -8,6 +8,7 @@ import {
   homeDueGroups,
   homeDueSummary,
   homeDueSummaryText,
+  homeWeekCompletion,
   homeProjectProgressPercent,
   homeProjectProgressText,
   formatProposalSubmittedDate,
@@ -111,4 +112,22 @@ test("relative notification time crosses minute, hour, day and year boundaries",
   assert.equal(formatRelativeTime("2026-11-10T10:00:00+09:00", now), "7日前");
   assert.equal(formatRelativeTime("2024-11-17T10:00:00+09:00", now), "2年前");
   assert.equal(formatRelativeTime("not-a-date", now), "");
+});
+
+test("week completion counts the last seven JST days against the open agenda", () => {
+  const today = "2026-11-22";
+  const tasks = [
+    { completed: true, completed_at: "2026-11-22T01:00:00Z", due_on: null },
+    // 2026-11-15 23:30 UTC is 11-16 in JST: inside the window.
+    { completed: true, completed_at: "2026-11-15T15:30:00Z", due_on: null },
+    // 11-15 in JST: outside the window.
+    { completed: true, completed_at: "2026-11-15T14:00:00Z", due_on: null },
+    { completed: true, completed_at: null, due_on: "2026-11-20" },
+    { completed: false, completed_at: null, due_on: "2026-11-01" },
+    { completed: false, completed_at: null, due_on: "2026-11-22" },
+    { completed: false, completed_at: null, due_on: "2026-11-30" },
+    { completed: false, completed_at: null, due_on: null },
+  ];
+  assert.deepEqual(homeWeekCompletion(tasks, today), { done: 2, total: 4 });
+  assert.deepEqual(homeWeekCompletion([], today), { done: 0, total: 0 });
 });

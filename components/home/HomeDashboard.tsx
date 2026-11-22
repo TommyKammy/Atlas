@@ -198,55 +198,71 @@ export default function HomeDashboard({
 
   return (
     <div data-home-dashboard className="flex h-full min-h-0 flex-col">
-      <div data-page-fixed className="shrink-0 px-4 pt-6 md:px-8 md:pt-8">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h1 className="text-[15px] font-bold text-text">ホーム</h1>
-        <span className="text-[13px] text-muted">{dateLine}</span>
-        <span className="hidden flex-1 sm:block" />
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
-          <Link href="/my-tasks" className="rounded px-1 py-0.5 hover:bg-hover hover:text-text">
-            マイタスク（担当 {myTaskCount}）
-          </Link>
-          <Link href="/inbox" className="rounded px-1 py-0.5 hover:bg-hover hover:text-text">
-            受信トレイ（未読 {unreadCount}）
-          </Link>
+      <div data-page-fixed className="shrink-0 border-b border-line bg-bg px-4 py-3.5 md:px-8">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-[15px] font-bold text-text">ホーム</h1>
+          <span className="text-[13px] text-muted">{dateLine}</span>
+          <span className="sr-only">
+            マイタスク（担当 {myTaskCount}） ・ 受信トレイ（未読 {unreadCount}）
+          </span>
         </div>
       </div>
-      </div>
 
-      <div data-page-scroll className="min-h-0 flex-1 overflow-auto px-4 pb-16 md:px-8">
-      <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-8 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <section aria-labelledby="home-agenda-title" className="flex min-w-0 flex-col gap-8">
-          <HomeAgenda
-            userName={userName}
-            tasks={myTasks}
-            today={today}
-            busyTaskId={busyTaskId}
-            onToggle={(task) => void toggleTask(task)}
-          />
-          <HomeProjectProgress projects={projects} />
-        </section>
-        <HomeWaiting proposals={waitingProposals} inboxItems={inboxItems} now={now} />
-      </div>
+      <div data-page-scroll className="min-h-0 flex-1 overflow-auto bg-canvas px-4 pb-16 md:px-8">
+      <div className="mx-auto max-w-[1320px]">
+      <section aria-labelledby="home-agenda-title" className="mt-6 flex min-w-0 flex-col gap-5">
+        <HomeAgenda
+          userName={userName}
+          tasks={myTasks}
+          today={today}
+          unreadCount={unreadCount}
+          busyTaskId={busyTaskId}
+          onToggle={(task) => void toggleTask(task)}
+          aside={
+            <HomeWaiting
+              proposals={waitingProposals}
+              inboxItems={inboxItems}
+              now={now}
+              viewerId={userId}
+              users={users}
+            />
+          }
+        />
+        <HomeProjectProgress projects={projects} />
+      </section>
 
       <section className="mt-10" aria-labelledby="home-widgets-title">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px] text-muted">
-          <h2 id="home-widgets-title" className="text-[13px] font-bold text-text">
+          <h2 id="home-widgets-title" className="text-[16px] font-bold text-text">
             ウィジェット
           </h2>
-          <label className="flex items-center gap-1">
-            <span>期間</span>
-            <select
-              data-home-period
-              value={period}
-              onChange={(event) => setPeriod(event.target.value as "week" | "month")}
-              className="rounded border border-field-line bg-field px-1.5 py-0.5 text-[12px]"
+          <span className="hidden flex-1 sm:block" />
+          <div className="flex items-center gap-1.5">
+            <span id="home-period-label">期間</span>
+            <div
+              role="radiogroup"
+              aria-labelledby="home-period-label"
+              data-home-period={period}
+              className="inline-flex rounded-md bg-surface-muted p-0.5"
             >
-              <option value="week">週</option>
-              <option value="month">月</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-1">
+              {(["week", "month"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={period === value}
+                  data-home-period-option={value}
+                  onClick={() => setPeriod(value)}
+                  className={`rounded px-2.5 py-0.5 text-[12px] ${
+                    period === value ? "bg-surface font-semibold text-text shadow-card" : "text-muted hover:text-text"
+                  }`}
+                >
+                  {value === "week" ? "週" : "月"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-1">
             <input
               type="checkbox"
               data-home-show-completed
@@ -255,13 +271,13 @@ export default function HomeDashboard({
             />
             完了済みのタスク
           </label>
-          <label className="flex items-center gap-1">
+          <label className="flex items-center gap-1 rounded-md border border-line bg-surface py-0.5 pl-2 pr-1">
             <span>コラボレーター</span>
             <select
               data-home-collaborator
               value={collaborator}
               onChange={(event) => setCollaborator(event.target.value)}
-              className="max-w-[180px] rounded border border-field-line bg-field px-1.5 py-0.5 text-[12px]"
+              className="max-w-[180px] rounded bg-transparent px-1 py-0.5 text-[12px] text-secondary outline-none"
             >
               <option value="">全員</option>
               {users
@@ -273,18 +289,17 @@ export default function HomeDashboard({
                 ))}
             </select>
           </label>
-          <span className="flex-1" />
           <button
             type="button"
             data-home-add-widget-button
             onClick={() => setAddOpen(true)}
-            className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-medium text-secondary hover:bg-hover"
+            className="rounded-md border border-line-strong bg-surface px-2.5 py-1 text-[12px] font-medium text-secondary shadow-card hover:bg-hover"
           >
             ＋ ウィジェットを追加
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
           {widgets.map((widget) => (
             <HomeWidgetCard
               key={widget.id}
@@ -345,6 +360,7 @@ export default function HomeDashboard({
           ))}
         </div>
       </section>
+      </div>
       </div>
 
       <AddWidgetPanel
