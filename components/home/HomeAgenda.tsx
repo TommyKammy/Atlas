@@ -144,6 +144,7 @@ export default function HomeAgenda({
   tasks,
   today,
   unreadCount,
+  weekCompleted,
   busyTaskId,
   onToggle,
   aside,
@@ -152,6 +153,7 @@ export default function HomeAgenda({
   tasks: HomeTask[];
   today: string;
   unreadCount: number;
+  weekCompleted: number;
   busyTaskId: number | null;
   onToggle: (task: HomeTask) => void;
   aside: ReactNode;
@@ -159,7 +161,7 @@ export default function HomeAgenda({
   const groups = homeDueGroups(tasks, today);
   const summary = homeDueSummary(tasks, today);
   const summaryText = homeDueSummaryText(summary);
-  const week = homeWeekCompletion(tasks, today);
+  const week = homeWeekCompletion(tasks, today, weekCompleted);
   const weekPercent = week.total === 0 ? 0 : Math.round((week.done / week.total) * 100);
 
   return (

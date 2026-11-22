@@ -45,6 +45,7 @@ export default function HomeDashboard({
   userName,
   today,
   dateLine,
+  weekCompleted,
   myTaskCount,
   unreadCount,
   widgets,
@@ -69,6 +70,8 @@ export default function HomeDashboard({
   userName: string;
   today: string;
   dateLine: string;
+  /** Server count of tasks completed this week; see getHomeWeekCompletedCount. */
+  weekCompleted: number;
   myTaskCount: number;
   unreadCount: number;
   widgets: HomeWidget[];
@@ -216,6 +219,7 @@ export default function HomeDashboard({
           tasks={myTasks}
           today={today}
           unreadCount={unreadCount}
+          weekCompleted={weekCompleted}
           busyTaskId={busyTaskId}
           onToggle={(task) => void toggleTask(task)}
           aside={

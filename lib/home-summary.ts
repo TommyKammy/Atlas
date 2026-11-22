@@ -1,5 +1,4 @@
 import { shiftDay } from "./calendar";
-import { todayISO } from "./dates";
 import type { HomeTask } from "./home-widgets";
 
 /** The home agenda shows a few rows per group; the rest are one link away. */
@@ -81,26 +80,22 @@ export function homeDueSummaryText(summary: HomeDueSummary): string {
 
 export type HomeWeekCompletion = { done: number; total: number };
 
+/** First JST date of the home "this week" completion window (today - 6). */
+export function homeWeekCompletionSince(today: string): string {
+  return shiftDay(today, -6);
+}
+
 /**
- * This week's pace for the home KPI: tasks completed in the last seven days
- * (today and the six days before, by JST date) against those plus everything
- * still open in the agenda (overdue, today and this week).
+ * This week's pace for the home KPI: `done` is the server-side count of tasks
+ * completed from homeWeekCompletionSince(today) through today, measured against
+ * those plus everything still open in the agenda (overdue, today, this week).
  */
 export function homeWeekCompletion(
-  tasks: readonly Pick<HomeTask, "completed" | "completed_at" | "due_on">[],
+  tasks: readonly Pick<HomeTask, "completed" | "due_on">[],
   today: string,
+  done: number,
 ): HomeWeekCompletion {
-  const since = shiftDay(today, -6);
-  let done = 0;
-  let open = 0;
-  for (const task of tasks) {
-    if (task.completed) {
-      const day = task.completed_at ? todayISO(new Date(task.completed_at)) : null;
-      if (day !== null && day >= since && day <= today) done += 1;
-    } else if (homeDueGroupKey(task, today) !== null) {
-      open += 1;
-    }
-  }
+  const open = homeDueSummary(tasks, today).total;
   return { done, total: done + open };
 }
 
