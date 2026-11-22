@@ -56,6 +56,8 @@ export async function proxy(req: NextRequest) {
   const next = () => NextResponse.next({ request: { headers: requestHeaders } });
   const publicPath =
     req.nextUrl.pathname === "/login" ||
+    req.nextUrl.pathname === "/mcp" ||
+    req.nextUrl.pathname === "/mcp/readonly" ||
     req.nextUrl.pathname === "/api/automation/process" ||
     req.nextUrl.pathname.startsWith("/api/automation/webhook/") ||
     req.nextUrl.pathname.startsWith("/share/") ||
