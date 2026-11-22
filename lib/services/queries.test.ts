@@ -23,10 +23,14 @@ type MockOptions = {
   isAdmin?: boolean;
   /** Effective project role. `null` means no project access. */
   role?: string | null;
+  /** Per-project roles; projects without an entry fall back to `role`. */
+  rolesByProject?: Record<number, string | null>;
   /** `undefined` uses the default task, `null` means the task does not exist. */
   taskContext?: { default_project_id: number | null; project_ids: number[] } | null;
   /** `undefined` uses the default project, `null` means the project does not exist. */
   project?: Record<string, unknown> | null;
+  /** Per-project rows for getProject; projects without an entry fall back to `project`. */
+  projectsById?: Record<number, Record<string, unknown> | null>;
   projects?: Record<string, unknown>[];
   sections?: Record<string, unknown>[];
   users?: Record<string, unknown>[];
@@ -37,6 +41,8 @@ type MockOptions = {
   values?: Record<string, unknown>[];
   parent?: Record<string, unknown> | null;
   sectionName?: Record<string, unknown> | null;
+  /** Project that owns `sectionName`; mismatched section lookups return nothing. */
+  sectionProjectId?: number;
   searchItems?: Record<string, unknown>[];
   searchTotal?: number;
   searchPage?: number;
@@ -126,7 +132,12 @@ function mockQueries(options: MockOptions, calls: Call[] = []) {
         ? []
         : [{ is_admin: options.isAdmin ?? false, is_guest: false, deactivated_at: null }];
     } else if (sql.includes("LEFT JOIN project_members")) {
-      rows = [{ is_admin: options.isAdmin ?? false, deactivated_at: null, role: options.role ?? null }];
+      const projectId = Number(params?.[1]);
+      const role =
+        options.rolesByProject && Object.prototype.hasOwnProperty.call(options.rolesByProject, projectId)
+          ? options.rolesByProject[projectId]
+          : options.role ?? null;
+      rows = [{ is_admin: options.isAdmin ?? false, deactivated_at: null, role }];
     } else if (sql.includes("AS default_project_id")) {
       const context = options.taskContext === undefined ? DEFAULT_TASK_CONTEXT : options.taskContext;
       rows = context ? [{ ...context }] : [];
@@ -135,7 +146,13 @@ function mockQueries(options: MockOptions, calls: Call[] = []) {
     } else if (sql.includes("FROM projects p") && sql.includes("ORDER BY p.name, p.id")) {
       rows = options.projects ?? [];
     } else if (sql.includes("SELECT id, workspace_id, name, description")) {
-      rows = options.project === null ? [] : [options.project ?? defaultProject];
+      const projectId = Number(params?.[0]);
+      if (options.projectsById && Object.prototype.hasOwnProperty.call(options.projectsById, projectId)) {
+        const project = options.projectsById[projectId];
+        rows = project ? [project] : [];
+      } else {
+        rows = options.project === null ? [] : [options.project ?? defaultProject];
+      }
     } else if (sql.includes("FROM sections WHERE project_id")) {
       rows = options.sections ?? [];
     } else if (sql.includes("FROM project_members m JOIN users u")) {
@@ -156,7 +173,12 @@ function mockQueries(options: MockOptions, calls: Call[] = []) {
     } else if (sql.includes("SELECT pt.id, pt.name")) {
       rows = options.parent ? [options.parent] : [];
     } else if (sql.includes("SELECT id, name FROM sections WHERE id = $1")) {
-      rows = options.sectionName ? [options.sectionName] : [];
+      const projectId = params?.[1];
+      rows =
+        options.sectionName &&
+        (options.sectionProjectId === undefined || Number(projectId) === options.sectionProjectId)
+          ? [options.sectionName]
+          : [];
     } else if (sql.includes("FROM task_custom_values v")) {
       rows = options.values ?? [];
     } else if (sql.includes("FROM comments c")) {
@@ -454,4 +476,184 @@ test("listUsers keeps directory visibility and clamps the limit", async (t) => {
   const query = lastCall(calls, "NOT viewer.is_guest");
   assert.ok(query.sql.includes("u.deactivated_at IS NULL"));
   assert.deepEqual(query.params?.slice(-2), [2, 0]);
+});
+
+test("listSections resumes after the cursor instead of repeating the first page", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    role: "viewer",
+    sections: [
+      { id: 3, name: "To do", position: 0 },
+      { id: 4, name: "Doing", position: 1 },
+      { id: 5, name: "Done", position: 2 },
+    ],
+  }, calls));
+
+  const first = await listSections(actor, 7, { limit: 2 });
+  assert.deepEqual(first.items.map((section) => section.id), [3, 4]);
+  assert.ok(first.nextCursor);
+
+  const second = await listSections(actor, 7, { limit: 2, cursor: first.nextCursor });
+  assert.deepEqual(second.items.map((section) => section.id), [5]);
+  assert.equal(second.nextCursor, null);
+});
+
+test("listProjectMembers resumes after the cursor instead of repeating the first page", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    role: "viewer",
+    members: [
+      { id: 1, name: "Alice", is_guest: false, role: "admin" },
+      { id: 2, name: "Bob", is_guest: false, role: "viewer" },
+      { id: 3, name: "Cara", is_guest: false, role: null },
+    ],
+  }, calls));
+
+  const first = await listProjectMembers(actor, 7, { limit: 2 });
+  assert.deepEqual(first.items.map((member) => member.id), [1, 2]);
+  assert.ok(first.nextCursor);
+
+  const second = await listProjectMembers(actor, 7, { limit: 2, cursor: first.nextCursor });
+  assert.deepEqual(second.items.map((member) => member.id), [3]);
+  assert.equal(second.items[0].role, null);
+  assert.equal(second.nextCursor, null);
+});
+
+test("listCustomFields resumes after the cursor instead of repeating the first page", async (t) => {
+  const calls: Call[] = [];
+  const field = (id: number, name: string, position: number) => ({
+    id,
+    name,
+    field_type: "text",
+    options: [],
+    description: "",
+    config: {},
+    access_level: "everyone",
+    editor_ids: [],
+    position,
+  });
+  t.mock.method(db, "query", mockQueries({
+    role: "viewer",
+    fields: [field(9, "Notes", 0), field(10, "Owner", 1), field(11, "Risk", 2)],
+  }, calls));
+
+  const first = await listCustomFields(actor, 7, { limit: 2 });
+  assert.deepEqual(first.items.map((entry) => entry.id), [9, 10]);
+  assert.ok(first.nextCursor);
+
+  const second = await listCustomFields(actor, 7, { limit: 2, cursor: first.nextCursor });
+  assert.deepEqual(second.items.map((entry) => entry.id), [11]);
+  assert.equal(second.nextCursor, null);
+});
+
+test("a secondary-home task keeps the primary project's section hidden", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    role: null,
+    rolesByProject: { 8: "viewer" },
+    projectsById: { 8: { ...defaultProject, id: 8, name: "Beta" } },
+    taskContext: { default_project_id: 7, project_ids: [7, 8] },
+    task: { ...defaultTask, section_id: 3, eff_section_id: null },
+  }, calls));
+
+  const detail = await getTaskDetail(actor, 42);
+  assert.equal(detail.project?.id, 8);
+  assert.equal(detail.section, null);
+  assert.equal(detail.task.section_id, null);
+  assert.equal(detail.task.eff_section_id, null);
+  assert.ok(!calls.some((call) => call.sql.includes("SELECT id, name FROM sections WHERE id = $1")));
+});
+
+test("getTaskDetail drops a section id that belongs to another project", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    role: null,
+    rolesByProject: { 8: "viewer" },
+    projectsById: { 8: { ...defaultProject, id: 8, name: "Beta" } },
+    taskContext: { default_project_id: 7, project_ids: [7, 8] },
+    task: { ...defaultTask, eff_section_id: 99 },
+    sectionName: { id: 99, name: "Other project section", project_id: 55 },
+    sectionProjectId: 55,
+  }, calls));
+
+  const detail = await getTaskDetail(actor, 42);
+  assert.equal(detail.project?.id, 8);
+  assert.equal(detail.section, null);
+  assert.equal(detail.task.section_id, null);
+  assert.equal(detail.task.eff_section_id, null);
+  const section = lastCall(calls, "SELECT id, name FROM sections WHERE id = $1");
+  assert.deepEqual(section.params, [99, 8]);
+});
+
+test("task detail and comments fall through an archived primary home", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    role: "viewer",
+    taskContext: { default_project_id: 7, project_ids: [7, 8] },
+    projectsById: {
+      7: { ...defaultProject, archived_at: "2026-01-03T00:00:00Z" },
+      8: { ...defaultProject, id: 8, name: "Beta" },
+    },
+    task: { ...defaultTask, eff_section_id: 4 },
+    sectionName: { id: 4, name: "Beta section", project_id: 8 },
+    sectionProjectId: 8,
+    comments: [{
+      id: 1,
+      author_id: 12,
+      author_name: "Actor",
+      body: "Visible through the secondary home",
+      created_at: "2026-01-01",
+      edited_at: null,
+    }],
+  }, calls));
+
+  const detail = await getTaskDetail(actor, 42);
+  assert.equal(detail.project?.id, 8);
+  assert.equal(detail.project?.name, "Beta");
+  assert.equal(detail.task.project_id, 8);
+  assert.equal(detail.task.project_name, "Beta");
+  assert.equal(detail.section?.id, 4);
+  assert.equal(detail.section?.name, "Beta section");
+  assert.equal(detail.task.section_id, 4);
+  assert.equal(detail.task.eff_section_id, 4);
+
+  const comments = await listComments(actor, 42, { limit: 10 });
+  assert.equal(comments.items.length, 1);
+  assert.equal(comments.items[0].id, 1);
+});
+
+test("task detail and comments stay hidden when every home is archived", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    role: "viewer",
+    taskContext: { default_project_id: 7, project_ids: [7, 8] },
+    projectsById: {
+      7: { ...defaultProject, archived_at: "2026-01-03T00:00:00Z" },
+      8: {
+        ...defaultProject,
+        id: 8,
+        name: "Beta",
+        archived_at: "2026-01-04T00:00:00Z",
+      },
+    },
+  }, calls));
+
+  await assertApiError(getTaskDetail(actor, 42), 404, "project not found", "not_found");
+  await assertApiError(listComments(actor, 42), 404, "project not found", "not_found");
+});
+
+test("task detail and comments stay forbidden without a viewable home", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    role: null,
+    taskContext: { default_project_id: 7, project_ids: [7, 8] },
+    projectsById: {
+      7: defaultProject,
+      8: { ...defaultProject, id: 8, name: "Beta" },
+    },
+  }, calls));
+
+  await assertApiError(getTaskDetail(actor, 42), 403, "project access denied", "forbidden");
+  await assertApiError(listComments(actor, 42), 403, "project access denied", "forbidden");
+  assert.ok(!calls.some((call) => call.sql.includes("FROM projects WHERE id = $1")));
 });

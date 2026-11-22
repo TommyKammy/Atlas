@@ -7,6 +7,11 @@
  * returned as ISO text by the repositories and ids are normalized to numbers.
  */
 import { badRequest, forbidden, notFound } from "../api/errors";
+import {
+  authorizeProject,
+  getTaskProjectContext,
+  orderTaskProjectIds,
+} from "../api-project-auth";
 import { db } from "../db";
 import { projectDataAccess } from "../data-actor";
 import type { CommentRow, User } from "../data";
@@ -32,7 +37,6 @@ import type { SearchPage } from "../search-pagination";
 import {
   loadAuthActor,
   requireProjectAccess,
-  requireTaskAccess,
   type Actor,
 } from "./actor";
 
@@ -363,7 +367,7 @@ export async function listSections(
   const limit = queryLimit(options.limit);
   const offset = decodeCursor(options.cursor);
   const sections = await getSections(projectId);
-  return pageResult(sections.map(plainSection), limit, offset);
+  return pageResult(sections.map(plainSection).slice(offset), limit, offset);
 }
 
 /** Authorized task search. Project-scoped searches re-check project access first. */
@@ -398,23 +402,52 @@ export async function listMyTasks(
 }
 
 /**
- * Resolve a task through the project that granted view access. Workspace
- * admins can also read projectless tasks, matching `authorizeTask`.
+ * Resolve a task through the first home that grants view access and is still
+ * visible. The default project comes first, but an archived primary must not
+ * hide an active multi-home project. Workspace admins can also read
+ * projectless tasks, matching `authorizeTask`.
  */
 async function loadAuthorizedTask(
   actor: Actor,
   taskId: number,
-  projectId: number | null,
 ): Promise<{ task: TaskDetail; project: Project | null }> {
-  if (projectId !== null) {
-    const project = await loadVisibleProject(projectId);
-    const task = await getTaskForProject(taskId, projectId);
+  const authActor = await loadAuthActor(actor);
+  if (!authActor) throw forbidden("unknown or inactive user");
+  const context = await getTaskProjectContext(taskId);
+  if (!context) throw notFound("task not found");
+  const projectIds = orderTaskProjectIds(context);
+  if (projectIds.length === 0) {
+    if (!authActor.isAdmin) throw notFound("task not found");
+    const task = await getTaskById(taskId);
     if (!task) throw notFound("task not found");
+    return { task, project: null };
+  }
+
+  let lastError: { status: 403 | 404; error: string } = {
+    status: 403,
+    error: "project access denied",
+  };
+  let authorized = false;
+  let taskMissing = false;
+  for (const projectId of projectIds) {
+    const auth = await authorizeProject(authActor, projectId, "view");
+    if (!auth.ok) {
+      lastError = auth;
+      continue;
+    }
+    authorized = true;
+    const project = await getProject(projectId);
+    if (!project || project.deleted_at != null || project.archived_at != null) continue;
+    const task = await getTaskForProject(taskId, projectId);
+    if (!task) {
+      taskMissing = true;
+      continue;
+    }
     return { task, project };
   }
-  const task = await getTaskById(taskId);
-  if (!task) throw notFound("task not found");
-  return { task, project: null };
+  if (taskMissing) throw notFound("task not found");
+  if (authorized) throw notFound("project not found");
+  throw lastError.status === 404 ? notFound(lastError.error) : forbidden(lastError.error);
 }
 
 async function loadParent(
@@ -443,9 +476,15 @@ async function loadParent(
 
 async function loadTaskSection(
   sectionId: number | null,
+  projectId: number | null,
 ): Promise<{ id: number; name: string } | null> {
   if (sectionId === null) return null;
-  const result = await db.query("SELECT id, name FROM sections WHERE id = $1", [sectionId]);
+  const result = projectId === null
+    ? await db.query("SELECT id, name FROM sections WHERE id = $1", [sectionId])
+    : await db.query(
+        "SELECT id, name FROM sections WHERE id = $1 AND project_id = $2",
+        [sectionId, projectId],
+      );
   const row = result.rows[0];
   return row ? { id: Number(row.id), name: String(row.name) } : null;
 }
@@ -484,15 +523,26 @@ async function loadTaskCustomFieldValues(
  */
 export async function getTaskDetail(actor: Actor, taskId: number): Promise<TaskDetailView> {
   await requireActiveActor(actor);
-  const access = await requireTaskAccess(actor, taskId, "view");
-  const { task, project } = await loadAuthorizedTask(actor, taskId, access.projectId);
-  const effectiveSectionId =
-    task.eff_section_id == null ? task.section_id : Number(task.eff_section_id);
+  const { task, project } = await loadAuthorizedTask(actor, taskId);
+  // With access granted through a secondary home, only that home's effective
+  // section is allowed. The primary project's section must not leak, and a
+  // missing secondary section stays null instead of falling back to it.
+  const sourceSectionId = project ? task.eff_section_id : task.section_id;
   const [section, parent, customFieldValues] = await Promise.all([
-    loadTaskSection(effectiveSectionId),
+    loadTaskSection(
+      sourceSectionId == null ? null : Number(sourceSectionId),
+      project ? Number(project.id) : null,
+    ),
     loadParent(actor, task.parent_task_id),
     loadTaskCustomFieldValues(actor, taskId),
   ]);
+  const sectionId = project
+    ? section
+      ? section.id
+      : null
+    : task.section_id == null
+      ? null
+      : Number(task.section_id);
   return {
     task: {
       ...task,
@@ -501,8 +551,8 @@ export async function getTaskDetail(actor: Actor, taskId: number): Promise<TaskD
       // authorized surface so inaccessible ids are not leaked.
       project_id: project ? Number(project.id) : null,
       project_name: project ? project.name : null,
-      section_id: effectiveSectionId,
-      eff_section_id: effectiveSectionId,
+      section_id: sectionId,
+      eff_section_id: sectionId,
       parent_task_id: parent ? parent.id : null,
     },
     project: project ? { id: Number(project.id), name: project.name } : null,
@@ -519,8 +569,7 @@ export async function listComments(
   options: QueryListOptions = {},
 ): Promise<QueryPage<CommentRow>> {
   await requireActiveActor(actor);
-  const access = await requireTaskAccess(actor, taskId, "view");
-  await loadAuthorizedTask(actor, taskId, access.projectId);
+  await loadAuthorizedTask(actor, taskId);
   const limit = queryLimit(options.limit);
   const offset = decodeCursor(options.cursor);
   const comments = await getCommentsPage(taskId, limit + 1, offset);
@@ -567,7 +616,9 @@ export async function listProjectMembers(
   const offset = decodeCursor(options.cursor);
   const members = await getProjectMembers(projectId);
   return pageResult(
-    members.map((member) => ({ ...plainUser(member), role: member.role ?? null })),
+    members
+      .map((member) => ({ ...plainUser(member), role: member.role ?? null }))
+      .slice(offset),
     limit,
     offset,
   );
@@ -584,5 +635,5 @@ export async function listCustomFields(
   const limit = queryLimit(options.limit);
   const offset = decodeCursor(options.cursor);
   const fields = await getCustomFields(projectId);
-  return pageResult(fields.map(plainField), limit, offset);
+  return pageResult(fields.map(plainField).slice(offset), limit, offset);
 }
