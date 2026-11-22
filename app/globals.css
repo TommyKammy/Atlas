@@ -17,6 +17,9 @@
   --atlas-surface-subtle: #fafafb;
   --atlas-surface-muted: #eff0f2;
   --atlas-surface-strong: #e4e6ea;
+  /* Page canvas behind cards (home). Lets white cards read as raised. */
+  --atlas-canvas: #f5f6f8;
+  --atlas-shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
   --atlas-field: #ffffff;
   /* Input borders: same blue-grey hue as line-strong, dark enough for 3:1
      against field, surface and bg (see docs/design-tokens.md). */
@@ -122,6 +125,8 @@
   --color-surface-subtle: var(--atlas-surface-subtle);
   --color-surface-muted: var(--atlas-surface-muted);
   --color-surface-strong: var(--atlas-surface-strong);
+  --color-canvas: var(--atlas-canvas);
+  --shadow-card: var(--atlas-shadow-card);
   --color-field: var(--atlas-field);
   --color-field-line: var(--atlas-field-line);
   --color-field-line-hover: var(--atlas-field-line-hover);
@@ -211,6 +216,8 @@ html[data-theme="dark"] {
   --atlas-surface-subtle: #14181d;
   --atlas-surface-muted: #1d2229;
   --atlas-surface-strong: #252b33;
+  --atlas-canvas: #0f1216;
+  --atlas-shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
   --atlas-field: #14181d;
   --atlas-field-line: #586577;
   --atlas-field-line-hover: #728197;

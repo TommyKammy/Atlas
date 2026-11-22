@@ -66,13 +66,22 @@ export default function AssignedTasksWidget({
               onClick={() => setTab(item.key)}
               data-home-tab={item.key}
               aria-pressed={active === item.key}
-              className={`rounded-full px-2 py-0.5 text-[12px] ${
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[12px] ${
                 active === item.key
                   ? "bg-accent-soft font-medium text-accent-text"
                   : "text-muted hover:bg-hover"
               }`}
             >
-              {item.label} ({item.count})
+              {item.label}
+              <span
+                className={`ml-1 inline-flex min-w-[18px] justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums ${
+                  item.key === "overdue" && item.count > 0
+                    ? "bg-danger text-on-accent"
+                    : "bg-surface-muted text-secondary"
+                }`}
+              >
+                {item.count}
+              </span>
             </button>
           ))}
         <span className="flex-1" />

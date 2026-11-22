@@ -67,11 +67,11 @@ export default function HomeWidgetCard({
       data-home-widget-size={size}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`relative flex min-w-0 flex-col rounded-lg border border-line bg-surface ${
+      className={`relative flex min-w-0 flex-col rounded-[10px] border border-line bg-surface shadow-card ${
         dragging ? "opacity-50" : ""
       } ${className}`}
     >
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-4">
+      <header className="flex h-12 shrink-0 items-center gap-2 px-4">
         <span
           draggable
           data-home-widget-drag-handle
@@ -86,7 +86,7 @@ export default function HomeWidgetCard({
         >
           ⠿
         </span>
-        <h3 className="min-w-0 truncate text-[14px] font-semibold text-text">{title}</h3>
+        <h3 className="min-w-0 truncate text-[14px] font-bold text-text">{title}</h3>
         {locked && (
           <span title="非公開" className="text-[11px] text-subtle">
             🔒

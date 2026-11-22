@@ -159,6 +159,23 @@ export async function getHomeMyTasks(userId: number): Promise<HomeTask[]> {
   return r.rows.map((row) => ({ ...toTaskRow(row as never), project_name: row.project_name ?? null }));
 }
 
+/**
+ * Parent tasks assigned to the user and completed from `since` through `today`
+ * (JST dates). Counted in SQL because getHomeMyTasks is capped at 300 rows and
+ * sorts completed tasks by due date, so recent completions can fall outside it.
+ */
+export async function getHomeWeekCompletedCount(userId: number, since: string, today: string): Promise<number> {
+  const r = await db.query(
+    `SELECT count(*)::int AS n
+       FROM tasks t
+      WHERE t.assignee_id = $1 AND t.deleted_at IS NULL AND t.parent_task_id IS NULL
+        AND t.completed AND t.completed_at IS NOT NULL
+        AND (t.completed_at AT TIME ZONE 'Asia/Tokyo')::date BETWEEN $2::date AND $3::date`,
+    [userId, since, today],
+  );
+  return Number(r.rows[0]?.n ?? 0);
+}
+
 export async function getHomeAssignedTasks(userId: number): Promise<HomeTask[]> {
   const r = await db.query(
     `SELECT ${TASK_SELECT_COLS} ${TASK_FROM}

@@ -78,6 +78,27 @@ export function homeDueSummaryText(summary: HomeDueSummary): string {
   return parts.join(" ・ ");
 }
 
+export type HomeWeekCompletion = { done: number; total: number };
+
+/** First JST date of the home "this week" completion window (today - 6). */
+export function homeWeekCompletionSince(today: string): string {
+  return shiftDay(today, -6);
+}
+
+/**
+ * This week's pace for the home KPI: `done` is the server-side count of tasks
+ * completed from homeWeekCompletionSince(today) through today, measured against
+ * those plus everything still open in the agenda (overdue, today, this week).
+ */
+export function homeWeekCompletion(
+  tasks: readonly Pick<HomeTask, "completed" | "due_on">[],
+  today: string,
+  done: number,
+): HomeWeekCompletion {
+  const open = homeDueSummary(tasks, today).total;
+  return { done, total: done + open };
+}
+
 /** Parent-task completion as a whole percentage; null when there is no task. */
 export function homeProjectProgressPercent(total: number, done: number): number | null {
   if (total <= 0) return null;

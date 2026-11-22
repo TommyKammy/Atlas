@@ -82,6 +82,8 @@ Tailwind の `text-*` ユーティリティと自然に組み合わせるため�
 | `--atlas-surface-subtle` | `bg-surface-subtle` | `#fafafb` | `#14181d` | ごく薄い面。ゼブラ、弱い下地 |
 | `--atlas-surface-muted` | `bg-surface-muted` | `#eff0f2` | `#1d2229` | 弱い面。入力欄の下地、選択行、ボードの列 |
 | `--atlas-surface-strong` | `bg-surface-strong` | `#e4e6ea` | `#252b33` | 強い面。押下状態、無効化された面 |
+| `--atlas-canvas` | `bg-canvas` | `#f5f6f8` | `#0f1216` | カードの下地。ホームなど、白いカードを浮かせて見せる画面の背景 |
+| `--atlas-shadow-card` | `shadow-card` | 薄い2段の影 | 黒 30% の影 | 下地の上に置くカードの影 |
 | `--atlas-field` | `bg-field` | `#ffffff` | `#14181d` | 入力欄（`input` / `select` / `textarea`）の面 |
 | `--atlas-field-line` | `border-field-line` | `#8c95a5` | `#586577` | 入力欄の枠線。`field` / `surface` / `bg` のいずれに対しても 3:1 以上 |
 | `--atlas-field-line-hover` | `hover:border-field-line-hover` | `#6c778b` | `#728197` | 入力欄のホバー枠線。`field-line` より強い（4.5:1 以上） |

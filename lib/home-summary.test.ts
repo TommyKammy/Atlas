@@ -8,6 +8,8 @@ import {
   homeDueGroups,
   homeDueSummary,
   homeDueSummaryText,
+  homeWeekCompletion,
+  homeWeekCompletionSince,
   homeProjectProgressPercent,
   homeProjectProgressText,
   formatProposalSubmittedDate,
@@ -111,4 +113,20 @@ test("relative notification time crosses minute, hour, day and year boundaries",
   assert.equal(formatRelativeTime("2026-11-10T10:00:00+09:00", now), "7日前");
   assert.equal(formatRelativeTime("2024-11-17T10:00:00+09:00", now), "2年前");
   assert.equal(formatRelativeTime("not-a-date", now), "");
+});
+
+test("week completion measures the server count against the open agenda", () => {
+  const today = "2026-11-22";
+  assert.equal(homeWeekCompletionSince(today), "2026-11-16");
+  const tasks = [
+    // Completed rows in the capped list are ignored; the count comes from SQL.
+    { completed: true, due_on: "2026-11-20" },
+    { completed: false, due_on: "2026-11-01" },
+    { completed: false, due_on: "2026-11-22" },
+    { completed: false, due_on: "2026-11-28" },
+    { completed: false, due_on: "2026-11-30" },
+    { completed: false, due_on: null },
+  ];
+  assert.deepEqual(homeWeekCompletion(tasks, today, 5), { done: 5, total: 8 });
+  assert.deepEqual(homeWeekCompletion([], today, 0), { done: 0, total: 0 });
 });

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import HomeDashboard from "@/components/home/HomeDashboard";
 import { getCurrentUserId } from "@/lib/current-user";
 import { todayISO } from "@/lib/dates";
+import { homeWeekCompletionSince } from "@/lib/home-summary";
 import { getInboxPage, getUnreadCount, getUsers, getWorkspace } from "@/lib/data";
 import { getHomeWaitingProposals } from "@/lib/planning/home-waiting";
 import {
@@ -16,6 +17,7 @@ import {
   getHomeProjects,
   getHomeStatusProjects,
   getHomeStatusUpdates,
+  getHomeWeekCompletedCount,
   getHomeWidgets,
   getUserNotepad,
 } from "@/lib/repositories/home";
@@ -37,6 +39,7 @@ export default async function Home() {
   const uid = await getCurrentUserId();
   if (!uid) redirect("/login");
 
+  const today = todayISO();
   const [
     users,
     widgets,
@@ -54,6 +57,7 @@ export default async function Home() {
     unread,
     inbox,
     waitingProposals,
+    weekCompleted,
   ] = await Promise.all([
     getUsers(uid),
     getHomeWidgets(ws.id, uid),
@@ -71,10 +75,10 @@ export default async function Home() {
     getUnreadCount(uid, ws.id),
     getInboxPage(uid, ws.id, { filter: "all", limit: 3 }),
     getHomeWaitingProposals(ws.id, uid),
+    getHomeWeekCompletedCount(uid, homeWeekCompletionSince(today), today),
   ]);
 
   const me = users.find((user) => user.id === uid) ?? null;
-  const today = todayISO();
   const now = new Date();
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
   const dateLine = `${now.getMonth() + 1}月 ${now.getDate()}日 ${weekdays[now.getDay()]}曜日`;
@@ -87,6 +91,7 @@ export default async function Home() {
         userName={me?.name ?? ""}
         today={today}
         dateLine={dateLine}
+        weekCompleted={weekCompleted}
         myTaskCount={myTasks.filter((task) => !task.completed).length}
         unreadCount={unread}
         widgets={widgets}
