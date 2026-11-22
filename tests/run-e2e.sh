@@ -37,7 +37,7 @@ done
 export MFA_ENCRYPTION_KEY_ID=regression
 MFA_ENCRYPTION_KEYS=$(node -e 'process.stdout.write(JSON.stringify({regression:require("node:crypto").randomBytes(32).toString("base64")}))')
 export MFA_ENCRYPTION_KEYS
-if [[ "$suite" == knowledge-ai || "$suite" == browser ]]; then
+if [[ "$suite" == knowledge-ai || "$suite" == browser || "$suite" == nginx ]]; then
   export LLM_ENCRYPTION_KEY="$(openssl rand -base64 32)"
   export LLM_ALLOWED_LOCAL_ORIGINS="http://llm-mock:8080"
   export COMPOSE_PROFILES=ai
@@ -84,7 +84,7 @@ cleanup() {
   local status=$?
   if (( status != 0 )); then
     if [[ "$suite" == nginx ]]; then
-      "${compose[@]}" logs --tail 50 app db nginx >&2 || true
+      "${compose[@]}" logs --tail 50 app db nginx llm-mock >&2 || true
     else
       "${compose[@]}" logs --tail 50 app db >&2 || true
     fi
@@ -241,7 +241,7 @@ CREATE TABLE atlas_e2e_identity (marker text PRIMARY KEY);
 INSERT INTO atlas_e2e_identity VALUES (:'marker');
 SQL
 
-if [[ "$suite" == knowledge-ai || "$suite" == browser ]]; then "${compose[@]}" up -d --build llm-mock; fi
+if [[ "$suite" == knowledge-ai || "$suite" == browser || "$suite" == nginx ]]; then "${compose[@]}" up -d --build llm-mock; fi
 if [[ "$suite" == nginx ]]; then
   "${compose[@]}" up -d --build app nginx
   E2E_NGINX_ID=$(e2e_container nginx) || e2e_abort 'test nginx did not start'

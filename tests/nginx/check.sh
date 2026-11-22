@@ -200,6 +200,101 @@ else
   bad "SCIM conformance (profile all) over HTTPS" "$SCIM_OUT"
 fi
 
+echo "== AI read timeouts =="
+# A live control for the 60s default would take another minute. Instead, inspect
+# the running configuration: the two AI locations must pin 200s, while the
+# catch-all still inherits 60s and /api/ws keeps 3600s.
+NGINX_T="$TMPD/nginx-T.txt"
+if docker exec "$E2E_NGINX_ID" nginx -T > "$NGINX_T" 2>&1; then
+  if AI_CONFIG_OUT=$(python3 - "$NGINX_T" 2>&1 <<'PY'
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+lines = text.splitlines()
+locations = []
+for index, line in enumerate(lines):
+    match = re.match(r'^\s*location\s+~\s+(\S+)\s*\{\s*$', line)
+    if not match:
+        continue
+    pattern = match.group(1)
+    if len(pattern) >= 2 and pattern[0] == pattern[-1] and pattern[0] in "\"'":
+        pattern = pattern[1:-1]
+    block = []
+    for following in lines[index + 1:]:
+        block.append(following)
+        if following.strip() == "}":
+            break
+    locations.append((pattern, "\n".join(block)))
+
+
+def find(path):
+    for pattern, block in locations:
+        try:
+            compiled = re.compile(pattern)
+        except re.error:
+            continue
+        if compiled.fullmatch(path):
+            return compiled, block
+    return None
+
+
+knowledge = find("/api/knowledge/123/ai")
+assert knowledge is not None, "knowledge AI regex location not found"
+knowledge_re, knowledge_block = knowledge
+assert knowledge_re.fullmatch("/api/knowledge/7/ai")
+assert not knowledge_re.fullmatch("/api/knowledge/123/aiX")
+assert not knowledge_re.fullmatch("/api/knowledge/abc/ai")
+assert not knowledge_re.fullmatch("/api/knowledge/123/ai/extra")
+assert re.search(r"proxy_read_timeout\s+200s;", knowledge_block), "knowledge AI timeout is not 200s"
+
+admin_path = "/api/admin/llm/123e4567-e89b-12d3-a456-426614174000/test"
+admin = find(admin_path)
+assert admin is not None, "admin LLM test regex location not found"
+admin_re, admin_block = admin
+assert admin_re.fullmatch("/api/admin/llm/123E4567-E89B-12D3-A456-426614174000/test")
+assert not admin_re.fullmatch("/api/admin/llm/not-a-uuid/test")
+assert not admin_re.fullmatch("/api/admin/llm/123e4567-e89b-12d3-a456-426614174000/testX")
+assert re.search(r"proxy_read_timeout\s+200s;", admin_block), "admin LLM test timeout is not 200s"
+
+partner = find("/api/projects/123/partner")
+assert partner is not None, "project partner regex location not found"
+partner_re, partner_block = partner
+assert partner_re.fullmatch("/api/projects/7/partner")
+assert not partner_re.fullmatch("/api/projects/123/partner/actions")
+assert not partner_re.fullmatch("/api/projects/abc/partner")
+assert not partner_re.fullmatch("/api/projects/123/partnerX")
+assert re.search(r"proxy_read_timeout\s+200s;", partner_block), "project partner timeout is not 200s"
+
+assert re.search(r"proxy_read_timeout\s+60s;", text), "default 60s timeout is missing"
+assert re.search(r"proxy_read_timeout\s+3600s;", text), "WebSocket 3600s timeout is missing"
+catch_index = text.rfind("location / {")
+assert catch_index >= 0, "catch-all location is missing"
+assert "proxy_read_timeout 200s;" not in text[catch_index:catch_index + 400], "catch-all must keep the 60s default"
+PY
+  ); then
+    ok "AI locations match only their routes and pin 200s (other paths keep 60s)"
+  else
+    bad "AI location/timeout configuration" "$AI_CONFIG_OUT"
+  fi
+else
+  bad "nginx -T for AI locations" "$(tail -20 "$NGINX_T")"
+fi
+
+if AI_OUT=$(ATLAS_E2E_BASE="$BASE" NODE_EXTRA_CA_CERTS="$CA" \
+  node tests/nginx/ai-delay-check.mjs 2>&1); then
+  AI_COUNT=$(printf '%s\n' "$AI_OUT" | grep -c '^ok   ' || true)
+  if [[ "$AI_COUNT" == "4" ]]; then
+    while IFS= read -r line; do
+      [[ "$line" == "ok   "* ]] && ok "${line#ok   }"
+    done <<<"$AI_OUT"
+  else
+    bad "AI checks reported both passes" "$AI_OUT"
+  fi
+else
+  bad "delayed AI request through NGINX" "$AI_OUT"
+fi
+
 echo "== upstream keep-alive =="
 # 6s is just above Node's old 5s keepAliveTimeout default. NGINX's upstream
 # keepalive_timeout is 60s, so a stale connection would surface as 502 here.

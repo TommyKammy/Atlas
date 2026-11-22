@@ -315,6 +315,7 @@ ATLAS_NGINX_VERSION=1.30.7 bash tests/run-e2e.sh nginx
 - 25 MiB の添付が通り、27 MiB が 413 で拒否されること
 - ログイン失敗の IP 単位制限がクライアントごとに独立し、偽の `X-Forwarded-For` で回避・他人のロックができないこと
 - SCIM 適合性チェッカー（`--profile all`）が HTTPS で全件通ること
+- 65 秒遅延する LLM モックで AI 生成と管理画面の接続テストが（並行実行で）60 秒を超えても 200 で完了し、プロジェクトパートナーも含めた AI 3 経路の location が 200 秒であること、対象外の経路は 60 秒のままであること
 - Node の `keepAliveTimeout` を超える待ち時間を挟んでも 502 が出ないこと
 - Playwright のサイドバー 15 テストが NGINX 経由の HTTPS で通ること
 
@@ -327,6 +328,7 @@ ATLAS_NGINX_VERSION=1.30.7 bash tests/run-e2e.sh nginx
 | 全員が同じログイン制限に巻き込まれる | `ATLAS_TRUSTED_PROXIES` が NGINX のアドレスを含むか。起動ログの `trusted proxies:` と invalid entry の警告を見る。 |
 | 特定のユーザーだけ制限が共有される | `X-Forwarded-For` の右端が NGINX の付けた実アドレスか。多段プロキシなら全ホップを列挙しているか。 |
 | アイドル後に 502 | `ATLAS_KEEPALIVE_TIMEOUT_MS` が 65000 以上か。NGINX の upstream `keepalive_timeout` が 60s か。 |
+| AI 生成・接続テストが 504 | `nginx -T` で `location ~ "^/api/knowledge/[0-9]+/ai$"`、`location ~ "^/api/admin/llm/<UUID>/test$"`、`location ~ "^/api/projects/[0-9]+/partner$"` に `proxy_read_timeout 200s;` があるか。LLM 接続の `timeout_seconds`（最大 180）が 200 秒を超えていないか。AI 以外の経路は 60s のままなので、大きなエクスポートなどで 504 になる場合は同じ location を追加する。 |
 | 25 MiB の添付が 413 | NGINX の `client_max_body_size`（26m）と Atlas の 25 MiB 上限を確認する。multipart の `task_id` を `file` より前に送っているか。 |
 | WebSocket がつながらない | `WS_ALLOWED_ORIGINS` が公開オリジンと一致するか。`/api/ws` で `Upgrade` / `Connection "upgrade"` が設定されているか。HTTP/2 ではなく HTTP/1.1 で接続しているか。 |
 | HSTS が二重になる | Atlas は HSTS を付けない。ロードバランサーや NGINX のどちらか一方だけが付ける。 |
@@ -337,6 +339,8 @@ ATLAS_NGINX_VERSION=1.30.7 bash tests/run-e2e.sh nginx
 
 - `client_max_body_size 26m`: Atlas の添付上限は 25 MiB。multipart の境界・パートヘッダー・`task_id` フィールドに約 1 MiB の余白を確保しつつ、巨大な本文を Node に渡す前に NGINX で止める。
 - `proxy_request_buffering off;`（`/api/attachments` のみ）: 25 MiB のアップロードを NGINX の一時ディスクに全部書いてから転送せず、Node へストリーミングする。`client_max_body_size` は有効なままなので、上限超過は NGINX が 413 で拒否する。単一 upstream なので、バッファリング無効による再試行の制約は実運用上問題にならない。
+- AI の読み取りタイムアウト: `POST /api/knowledge/<id>/ai`、`POST /api/admin/llm/<id>/test`、`POST /api/projects/<id>/partner` だけ `proxy_read_timeout 200s;`。LLM の `timeout_seconds` は 5〜180 秒（`lib/services/knowledge-ai.ts`、`lib/services/project-partner.ts`、`db/migrations/0025_knowledge_ai.sql`）で、最大 180 秒に 20 秒の余裕を足している。正規表現 location は `^/api/knowledge/[0-9]+/ai$`、`^/api/admin/llm/<UUID>/test$`、`^/api/projects/[0-9]+/partner$` に限定し、`aiX`、非数値のノート/プロジェクト ID、UUID でない管理 ID、`/partner/actions` や `/partner/reports` などの深いパスは 60 秒の既定に残す。`= /api/attachments` と `= /api/ws` は完全一致なので影響を受けず、`location /` より前に評価される。正規表現は `{8}` などの量化子を含むため、NGINX の設定パーサー向けに二重引用符で囲んでいる。
+- 60 秒を超えうる他の API: 明示的に 180 秒待つのは上記 3 経路だけ（プロジェクトパートナーも同じ上限を持つため対象に含めている）。プロジェクトのエクスポート/インポート/複製、監査エクスポート、ダッシュボードエクスポートは DB/CPU 依存だが、行数・サイズ上限（監査 5000 行、インポート 1000 行・5 MiB、複製 5000 タスクなど）があり、外部応答の待機ではないため 60 秒のままにしている。招待メールは SMTP 待ちがあり得るが、管理者操作で再試行でき、SMTP 側のタイムアウト設定で対処する。必要になった場合だけ、同じ形式の location を追加する。
 - `gzip`: `text/*`、JSON、JavaScript、XML、SVG のみ。画像・フォント・既圧縮データは圧縮しない。
 - `$request_id`: 使用しない。1.31.2 の形式変更に依存しない。
 - セキュリティヘッダー: HSTS だけ NGINX。CSP、`X-Content-Type-Options`、`Referrer-Policy`、`X-Frame-Options`、`Permissions-Policy` は Atlas が付ける。
