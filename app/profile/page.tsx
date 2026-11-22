@@ -2,6 +2,7 @@ import { getUsers } from "@/lib/data";
 import { getMfaServerSession } from "@/lib/api/session";
 import { redirect } from "next/navigation";
 import ProfileForm from "@/components/ProfileForm";
+import { McpConnectionSection } from "@/components/profile/McpConnectionSection";
 import { getSecuritySettings } from "@/lib/admin-data";
 import { db } from "@/lib/db";
 import { scimUserState } from "@/lib/scim/managed-user";
@@ -89,6 +90,13 @@ export default async function ProfilePage() {
               require_symbol: security.password_require_symbol,
             })}
           />
+          {!access.mfaPending && !access.user.isGuest && (
+            <McpConnectionSection
+              isGuest={access.user.isGuest}
+              mcpEnabled={security.mcp_enabled === true}
+              mcpPatEnabled={security.mcp_pat_enabled === true}
+            />
+          )}
         </div>
       </div>
       </div>
