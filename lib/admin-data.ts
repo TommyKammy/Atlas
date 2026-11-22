@@ -20,6 +20,8 @@ export type SecuritySettings = {
   saml_session_days: number;
   saml_jit_provisioning: boolean;
   scim_enabled: boolean;
+  mcp_enabled: boolean;
+  mcp_pat_enabled: boolean;
   password_min_length: number;
   password_require_upper: boolean;
   password_require_lower: boolean;
@@ -161,7 +163,8 @@ export async function ensureSecuritySettings(workspaceId: number): Promise<Secur
   );
   const r = await db.query(
     `SELECT workspace_id, two_factor_policy, saml_mode, saml_signin_url, saml_certificate,
-       saml_session_days, saml_jit_provisioning, scim_enabled, password_min_length,
+       saml_session_days, saml_jit_provisioning, scim_enabled, mcp_enabled, mcp_pat_enabled,
+       password_min_length,
        password_require_upper, password_require_lower, password_require_number,
        password_require_symbol, updated_at::text AS updated_at
      FROM workspace_security WHERE workspace_id = $1`,

@@ -1,6 +1,7 @@
 import { withTransaction, type Queryable } from "../db";
 import { badRequest, forbidden, notFound } from "../api/errors";
 import { canGrantRole, getEffectiveRole, type EffectiveRole, type Permission } from "../permissions";
+import { revokeAllUserTokens } from "./mcp-tokens";
 
 type ManagedUserProfile = {
   name: string;
@@ -131,6 +132,8 @@ export async function setUserDeactivated(
       "DELETE FROM user_sessions WHERE user_id = $1 AND token_hash IS DISTINCT FROM $2",
       [targetId, options.preserveSessionTokenHash ?? null],
     );
+    // A disabled account must not keep a working PAT or OAuth token.
+    await revokeAllUserTokens(targetId, q);
   }
   return {
     id: targetId,
