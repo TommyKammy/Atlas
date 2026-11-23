@@ -158,12 +158,14 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
     await audit(uid, "security.update", {
       entity: "workspace_security",
       entityId: current.workspace_id,
+      workspaceId: current.workspace_id,
       summary: sets.join(", "),
     }, q);
     if (body?.scim_enabled !== undefined && body.scim_enabled !== current.scim_enabled) {
       await audit(uid, body.scim_enabled ? "security.scim_enable" : "security.scim_disable", {
         entity: "workspace_security",
         entityId: current.workspace_id,
+        workspaceId: current.workspace_id,
         summary: body.scim_enabled ? "SCIM プロビジョニングを有効化" : "SCIM プロビジョニングを無効化",
       }, q);
     }
@@ -171,6 +173,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       await audit(uid, body.mcp_enabled ? "security.mcp_enable" : "security.mcp_disable", {
         entity: "workspace_security",
         entityId: current.workspace_id,
+        workspaceId: current.workspace_id,
         summary: body.mcp_enabled ? "MCP 接続を有効化" : "MCP 接続を無効化",
       }, q);
     }
@@ -178,6 +181,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       await audit(uid, body.mcp_pat_enabled ? "security.mcp_pat_enable" : "security.mcp_pat_disable", {
         entity: "workspace_security",
         entityId: current.workspace_id,
+        workspaceId: current.workspace_id,
         summary: body.mcp_pat_enabled
           ? "MCP パーソナルアクセストークンを有効化"
           : "MCP パーソナルアクセストークンを無効化",
