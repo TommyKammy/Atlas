@@ -27,6 +27,8 @@ type MockOptions = {
   rolesByProject?: Record<number, string | null>;
   /** `undefined` uses the default task, `null` means the task does not exist. */
   taskContext?: { default_project_id: number | null; project_ids: number[] } | null;
+  /** Ordered homes from the read-home query; `null` means the task is missing. */
+  taskHomes?: number[] | null;
   /** `undefined` uses the default project, `null` means the project does not exist. */
   project?: Record<string, unknown> | null;
   /** Per-project rows for getProject; projects without an entry fall back to `project`. */
@@ -138,6 +140,21 @@ function mockQueries(options: MockOptions, calls: Call[] = []) {
           ? options.rolesByProject[projectId]
           : options.role ?? null;
       rows = [{ is_admin: options.isAdmin ?? false, deactivated_at: null, role }];
+    } else if (sql.includes("home_rank")) {
+      const homes =
+        options.taskHomes !== undefined
+          ? options.taskHomes
+          : options.taskContext === undefined
+            ? DEFAULT_TASK_CONTEXT.project_ids
+            : options.taskContext === null
+              ? null
+              : options.taskContext.project_ids;
+      rows =
+        homes === null
+          ? []
+          : homes.length === 0
+            ? [{ project_id: null, home_rank: null }]
+            : homes.map((projectId, rank) => ({ project_id: projectId, home_rank: rank }));
     } else if (sql.includes("AS default_project_id")) {
       const context = options.taskContext === undefined ? DEFAULT_TASK_CONTEXT : options.taskContext;
       rows = context ? [{ ...context }] : [];
@@ -656,4 +673,82 @@ test("task detail and comments stay forbidden without a viewable home", async (t
   await assertApiError(getTaskDetail(actor, 42), 403, "project access denied", "forbidden");
   await assertApiError(listComments(actor, 42), 403, "project access denied", "forbidden");
   assert.ok(!calls.some((call) => call.sql.includes("FROM projects WHERE id = $1")));
+});
+
+test("a compatible parent's secondary home authorizes task detail and comments", async (t) => {
+  const calls: Call[] = [];
+  // Child primary A=7 (same as the parent's primary); the parent's secondary
+  // home B=8 is the only home this actor can see.
+  t.mock.method(db, "query", mockQueries({
+    role: null,
+    rolesByProject: { 8: "viewer" },
+    taskHomes: [7, 8],
+    projectsById: {
+      7: defaultProject,
+      8: { ...defaultProject, id: 8, name: "Beta" },
+    },
+    task: { ...defaultTask, project_id: 7 },
+    comments: [{
+      id: 5,
+      author_id: 12,
+      author_name: "Actor",
+      body: "Visible through the parent's secondary home",
+      created_at: "2026-01-01",
+      edited_at: null,
+    }],
+  }, calls));
+
+  const detail = await getTaskDetail(actor, 42);
+  assert.equal(detail.project?.id, 8);
+  assert.equal(detail.project?.name, "Beta");
+  assert.equal(detail.task.project_id, 8);
+  assert.equal(detail.task.project_name, "Beta");
+
+  const comments = await listComments(actor, 42, { limit: 10 });
+  assert.equal(comments.items.length, 1);
+  assert.equal(comments.items[0].id, 5);
+
+  // The candidate SQL must mirror TASK_SEARCH_HOMES: own primary/memberships,
+  // then a compatible immediate parent's primary/memberships. Deleted tasks
+  // and deleted parents are excluded.
+  const homes = lastCall(calls, "home_rank");
+  assert.deepEqual(homes.params, [42]);
+  assert.ok(homes.sql.includes("LEFT JOIN LATERAL"));
+  assert.ok(homes.sql.includes("task_project_memberships membership"));
+  assert.ok(homes.sql.includes("task_project_memberships inherited_membership"));
+  assert.ok(homes.sql.includes("inherited_parent.deleted_at IS NULL"));
+  assert.ok(homes.sql.includes("t.deleted_at IS NULL"));
+  assert.ok(homes.sql.includes("(t.project_id IS NULL OR t.project_id = inherited_parent.project_id)"));
+  assert.ok(homes.sql.includes("ORDER BY candidates.home_rank, candidates.project_id"));
+});
+
+test("a non-compatible parent's homes are not read candidates", async (t) => {
+  const calls: Call[] = [];
+  // Child primary A=7 differs from the parent's primary. The actor can see
+  // both 7 and the parent's secondary home B=8, but B must not be a candidate.
+  t.mock.method(db, "query", mockQueries({
+    role: null,
+    rolesByProject: { 7: "viewer", 8: "viewer" },
+    taskHomes: [7],
+    projectsById: {
+      7: defaultProject,
+      8: { ...defaultProject, id: 8, name: "Beta" },
+    },
+    task: { ...defaultTask, project_id: 7 },
+  }, calls));
+
+  const detail = await getTaskDetail(actor, 42);
+  assert.equal(detail.project?.id, 7);
+
+  // Both parent sources are gated by compatibleTaskParent; a child primary
+  // that differs from the parent's primary cannot contribute parent homes.
+  const homes = lastCall(calls, "home_rank");
+  assert.match(
+    homes.sql,
+    /inherited_parent\.project_id IS NOT NULL\s+AND \(t\.project_id IS NULL OR t\.project_id = inherited_parent\.project_id\)/,
+  );
+  assert.match(
+    homes.sql,
+    /inherited_membership\.task_id = inherited_parent\.id\s+WHERE inherited_parent\.id = t\.parent_task_id\s+AND \(t\.project_id IS NULL OR t\.project_id = inherited_parent\.project_id\)/,
+  );
 });

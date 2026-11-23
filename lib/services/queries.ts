@@ -7,11 +7,7 @@
  * returned as ISO text by the repositories and ids are normalized to numbers.
  */
 import { badRequest, forbidden, notFound } from "../api/errors";
-import {
-  authorizeProject,
-  getTaskProjectContext,
-  orderTaskProjectIds,
-} from "../api-project-auth";
+import { authorizeProject } from "../api-project-auth";
 import { db } from "../db";
 import { projectDataAccess } from "../data-actor";
 import type { CommentRow, User } from "../data";
@@ -28,6 +24,7 @@ import {
 import { getCommentsPage } from "../repositories/comments";
 import { getTaskById, getTaskForProject } from "../repositories/tasks";
 import {
+  getTaskReadHomeProjectIds,
   searchTasksAdvanced,
   type AdvancedSearchFilters,
   type AdvancedTaskHit,
@@ -403,9 +400,10 @@ export async function listMyTasks(
 
 /**
  * Resolve a task through the first home that grants view access and is still
- * visible. The default project comes first, but an archived primary must not
- * hide an active multi-home project. Workspace admins can also read
- * projectless tasks, matching `authorizeTask`.
+ * visible. Homes follow `TASK_SEARCH_HOMES`: own primary, own memberships, then
+ * a compatible immediate parent's primary and memberships. The default project
+ * comes first, but an archived primary must not hide an active secondary home.
+ * Workspace admins can also read projectless tasks, matching `authorizeTask`.
  */
 async function loadAuthorizedTask(
   actor: Actor,
@@ -413,9 +411,8 @@ async function loadAuthorizedTask(
 ): Promise<{ task: TaskDetail; project: Project | null }> {
   const authActor = await loadAuthActor(actor);
   if (!authActor) throw forbidden("unknown or inactive user");
-  const context = await getTaskProjectContext(taskId);
-  if (!context) throw notFound("task not found");
-  const projectIds = orderTaskProjectIds(context);
+  const projectIds = await getTaskReadHomeProjectIds(taskId);
+  if (projectIds === null) throw notFound("task not found");
   if (projectIds.length === 0) {
     if (!authActor.isAdmin) throw notFound("task not found");
     const task = await getTaskById(taskId);
