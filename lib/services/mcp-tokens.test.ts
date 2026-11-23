@@ -5,9 +5,9 @@ import type { QueryResult } from "pg";
 import { ApiError } from "../api/errors";
 import { db, type Queryable } from "../db";
 import { hashMcpToken, isMcpToken } from "../mcp/token";
-import { setUserDeactivated } from "./admin-user-access";
+import { revokeSessionsAndMcpTokens, setUserDeactivated } from "./admin-user-access";
 import {
-  createPersonalToken,
+  createPersonalTokenInTransaction,
   listPersonalTokens,
   revokeAllUserTokens,
   revokePersonalToken,
@@ -71,7 +71,7 @@ function mockQueries(options: MockOptions, calls: Call[]): Queryable {
         return result([], options.revokeAllCount ?? 0);
       }
       if (sql.includes("UPDATE mcp_tokens SET revoked_at")) {
-        return result([{ id: Number(params?.[0]) }], options.revokeCount ?? 1);
+        return result([{ id: Number(params?.[0]), workspace_id: 1 }], options.revokeCount ?? 1);
       }
       if (sql.includes("SELECT id FROM mcp_tokens")) {
         return result(options.existingToken ? [{ id: Number(params?.[0]) }] : []);
@@ -135,22 +135,71 @@ async function assertApiError(
 
 test("guests cannot issue personal tokens", async (t) => {
   const calls: Call[] = [];
-  t.mock.method(db, "query", mockQueries({ guest: true }, calls).query);
+  const q = mockQueries({ guest: true }, calls);
+  t.mock.method(db, "query", q.query);
   await assertApiError(
-    createPersonalToken(actor, { name: "Laptop", access: "read" }),
+    createPersonalTokenInTransaction(q, actor, { name: "Laptop", access: "read" }),
     403,
     "guest users cannot use MCP",
     "forbidden",
   );
   assert.ok(!calls.some((call) => call.sql.includes("workspace_security")));
+  assert.ok(!calls.some((call) => call.sql.includes("INSERT INTO mcp_tokens")));
+});
+
+test("deactivated users cannot issue personal tokens after the row lock", async (t) => {
+  const calls: Call[] = [];
+  const q = mockQueries({ deactivated: true }, calls);
+  t.mock.method(db, "query", q.query);
+  await assertApiError(
+    createPersonalTokenInTransaction(q, actor, { name: "Laptop", access: "read" }),
+    403,
+    "unknown or inactive user",
+    "forbidden",
+  );
+  assert.match(calls[0].sql, /FROM users u[\s\S]*FOR UPDATE/);
+  assert.ok(!calls.some((call) => call.sql.includes("workspace_security")));
+  assert.ok(!calls.some((call) => call.sql.includes("INSERT INTO mcp_tokens")));
+});
+
+test("PAT issuance locks the user row before inserting the token", async (t) => {
+  const calls: Call[] = [];
+  const q = mockQueries({}, calls);
+  t.mock.method(db, "query", q.query);
+  await createPersonalTokenInTransaction(q, actor, { name: "Laptop", access: "read" });
+  const lockIndex = calls.findIndex(
+    (call) => call.sql.includes("FROM users u") && call.sql.includes("FOR UPDATE"),
+  );
+  const insertIndex = calls.findIndex((call) => call.sql.includes("INSERT INTO mcp_tokens"));
+  assert.equal(lockIndex, 0);
+  assert.ok(insertIndex > lockIndex);
+  assert.deepEqual(calls[lockIndex].params, [42]);
+});
+
+test("PAT issuance writes its audit row through the transaction Queryable", async (t) => {
+  const calls: Call[] = [];
+  const q = mockQueries({}, calls);
+  const dbCalls: Call[] = [];
+  t.mock.method(db, "query", async (sql: string, params?: unknown[]) => {
+    dbCalls.push({ sql, params });
+    throw new Error("PAT issuance must use the transaction Queryable");
+  });
+  await createPersonalTokenInTransaction(q, actor, { name: "Laptop", access: "read" });
+  const auditCall = calls.find((call) => call.sql.includes("INSERT INTO audit_log"));
+  assert.ok(auditCall);
+  assert.equal(auditCall.params?.[0], 1);
+  assert.equal(auditCall.params?.[1], 42);
+  assert.equal(auditCall.params?.[2], "mcp.token.create");
+  assert.equal(dbCalls.length, 0);
 });
 
 test("token issuance requires both MCP workspace switches", async (t) => {
   const calls: Call[] = [];
   const options: MockOptions = { mcpEnabled: false };
-  t.mock.method(db, "query", mockQueries(options, calls).query);
+  const q = mockQueries(options, calls);
+  t.mock.method(db, "query", q.query);
   await assertApiError(
-    createPersonalToken(actor, { name: "Laptop", access: "read" }),
+    createPersonalTokenInTransaction(q, actor, { name: "Laptop", access: "read" }),
     403,
     "MCP personal access tokens are disabled",
     "forbidden",
@@ -158,14 +207,14 @@ test("token issuance requires both MCP workspace switches", async (t) => {
   options.mcpEnabled = true;
   options.patEnabled = false;
   await assertApiError(
-    createPersonalToken(actor, { name: "Laptop", access: "read" }),
+    createPersonalTokenInTransaction(q, actor, { name: "Laptop", access: "read" }),
     403,
     "MCP personal access tokens are disabled",
     "forbidden",
   );
   options.hasSettings = false;
   await assertApiError(
-    createPersonalToken(actor, { name: "Laptop", access: "read" }),
+    createPersonalTokenInTransaction(q, actor, { name: "Laptop", access: "read" }),
     403,
     "MCP personal access tokens are disabled",
     "forbidden",
@@ -175,27 +224,28 @@ test("token issuance requires both MCP workspace switches", async (t) => {
 
 test("token issuance validates the name and access after the workspace switches", async (t) => {
   const calls: Call[] = [];
-  t.mock.method(db, "query", mockQueries({}, calls).query);
+  const q = mockQueries({}, calls);
+  t.mock.method(db, "query", q.query);
   await assertApiError(
-    createPersonalToken(actor, { access: "read" }),
+    createPersonalTokenInTransaction(q, actor, { access: "read" }),
     400,
     "name is required",
     "bad_request",
   );
   await assertApiError(
-    createPersonalToken(actor, { name: "   ", access: "read" }),
+    createPersonalTokenInTransaction(q, actor, { name: "   ", access: "read" }),
     400,
     "name is required",
     "bad_request",
   );
   await assertApiError(
-    createPersonalToken(actor, { name: "n".repeat(101), access: "read" }),
+    createPersonalTokenInTransaction(q, actor, { name: "n".repeat(101), access: "read" }),
     400,
     "name must be 100 characters or fewer",
     "bad_request",
   );
   await assertApiError(
-    createPersonalToken(actor, { name: "Laptop" }),
+    createPersonalTokenInTransaction(q, actor, { name: "Laptop" }),
     400,
     "access must be read or read_write",
     "bad_request",
@@ -204,8 +254,12 @@ test("token issuance validates the name and access after the workspace switches"
 
 test("createPersonalToken stores only the hash and returns the plaintext once", async (t) => {
   const calls: Call[] = [];
-  t.mock.method(db, "query", mockQueries({}, calls).query);
-  const created = await createPersonalToken(actor, { name: "  Laptop  ", access: "read_write" });
+  const q = mockQueries({}, calls);
+  t.mock.method(db, "query", q.query);
+  const created = await createPersonalTokenInTransaction(q, actor, {
+    name: "  Laptop  ",
+    access: "read_write",
+  });
   assert.equal(created.id, 9);
   assert.equal(created.name, "Laptop");
   assert.deepEqual(created.scopes, ["read", "write"]);
@@ -222,8 +276,13 @@ test("createPersonalToken stores only the hash and returns the plaintext once", 
 });
 
 test("read access issues only the read scope", async (t) => {
-  t.mock.method(db, "query", mockQueries({}, []).query);
-  const created = await createPersonalToken(actor, { name: "Phone", access: "read" });
+  const calls: Call[] = [];
+  const q = mockQueries({}, calls);
+  t.mock.method(db, "query", q.query);
+  const created = await createPersonalTokenInTransaction(q, actor, {
+    name: "Phone",
+    access: "read",
+  });
   assert.deepEqual(created.scopes, ["read"]);
 });
 
@@ -252,7 +311,12 @@ test("revokePersonalToken revokes only the actor's PAT and is idempotent", async
   t.mock.method(db, "query", mockQueries(options, calls).query);
   assert.deepEqual(await revokePersonalToken(actor, 9), { id: 9 });
   assert.deepEqual(calls[0].params, [9, 42]);
-  assert.ok(calls.some((call) => call.sql.includes("INSERT INTO audit_log")));
+  const revokeAudit = calls.find((call) => call.sql.includes("INSERT INTO audit_log"));
+  assert.ok(revokeAudit);
+  // The audit screen filters by workspace_id, so the revocation must carry it.
+  assert.equal(revokeAudit.params?.[0], 1);
+  assert.equal(revokeAudit.params?.[2], "mcp.token.revoke");
+  assert.equal(revokeAudit.params?.[4], 9);
 
   options.revokeCount = 0;
   options.existingToken = false;
@@ -292,6 +356,26 @@ test("setUserDeactivated revokes every MCP token in the same transaction", async
   const reactivateCalls: Call[] = [];
   await setUserDeactivated(deactivationQueryable(reactivateCalls), 7, false);
   assert.ok(!reactivateCalls.some((call) => call.sql.includes("UPDATE mcp_tokens SET revoked_at")));
+});
+
+test("password and 2FA resets revoke MCP tokens on the reset transaction", async () => {
+  const passwordCalls: Call[] = [];
+  await revokeSessionsAndMcpTokens(deactivationQueryable(passwordCalls), 7, {
+    preserveSessionTokenHash: "keep-this-session",
+  });
+  assert.match(passwordCalls[0].sql, /DELETE FROM user_sessions/);
+  assert.deepEqual(passwordCalls[0].params, [7, "keep-this-session"]);
+  assert.match(passwordCalls[1].sql, /UPDATE mcp_tokens SET revoked_at/);
+  assert.deepEqual(passwordCalls[1].params, [7]);
+
+  const mfaCalls: Call[] = [];
+  await revokeSessionsAndMcpTokens(deactivationQueryable(mfaCalls), 7, {
+    deleteAllSessions: true,
+  });
+  assert.match(mfaCalls[0].sql, /DELETE FROM user_sessions WHERE user_id = \$1$/);
+  assert.deepEqual(mfaCalls[0].params, [7]);
+  assert.match(mfaCalls[1].sql, /UPDATE mcp_tokens SET revoked_at/);
+  assert.deepEqual(mfaCalls[1].params, [7]);
 });
 
 test("npm test runs the MCP test files", () => {

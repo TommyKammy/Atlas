@@ -4,7 +4,12 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 import { GET as readonlyGet } from "@/app/mcp/readonly/route";
 import { GET as defaultGet } from "@/app/mcp/route";
 import type { McpAuthResult, McpAuthSuccess, McpEndpoint } from "./auth";
-import { handleMcpPost, type McpHttpDependencies } from "./http";
+import {
+  handleMcpPost,
+  MCP_MAX_REQUEST_BODY_BYTES,
+  readRpcMetadata,
+  type McpHttpDependencies,
+} from "./http";
 import type { McpRequestLogEntry } from "./request-log";
 import {
   DEFAULT_MCP_QUERY_SERVICES,
@@ -241,6 +246,105 @@ test("missing and invalid tokens return a generic 401 with WWW-Authenticate", as
     assert.equal(entries[0].outcome, "unauthenticated");
     assert.equal(entries[0].errorCode, "invalid");
   }
+});
+
+test("authentication failures log header metadata without reading the body", async () => {
+  const entries: McpRequestLogEntry[] = [];
+  const req = request("/mcp", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer valid-token",
+      "content-type": "application/json",
+      "mcp-method": "tools/call",
+      "mcp-name": "whoami",
+    },
+    body: jsonRpcBody("tools/call", { name: "whoami" }),
+  });
+  const originalClone = req.clone.bind(req);
+  let cloned = 0;
+  req.clone = () => {
+    cloned += 1;
+    return originalClone();
+  };
+  const response = await handleMcpPost(
+    req,
+    "default",
+    authenticatedDependencies(entries, async () => ({ ok: false, reason: "invalid" })),
+  );
+  assert.equal(response.status, 401);
+  assert.equal(cloned, 0);
+  assert.equal(req.bodyUsed, false);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].rpcMethod, "tools/call");
+  assert.equal(entries[0].toolName, "whoami");
+  assert.equal(entries[0].clientName, null);
+});
+
+test("readRpcMetadata stops at the shared limit when Content-Length is absent", async () => {
+  const body = JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "tools/call",
+    params: {
+      name: "body-tool",
+      clientInfo: { name: "body-client" },
+      padding: "x".repeat(MCP_MAX_REQUEST_BODY_BYTES + 1_024),
+    },
+  });
+  const req = request("/mcp", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "mcp-method": "tools/call",
+      "mcp-name": "header-tool",
+    },
+    body,
+  });
+  assert.equal(req.headers.get("content-length"), null);
+  assert.deepEqual(await readRpcMetadata(req), {
+    method: "tools/call",
+    toolName: "header-tool",
+    clientName: null,
+    isToolCall: true,
+  });
+  // Reading the log clone never consumes the request the SDK still receives.
+  assert.equal(req.bodyUsed, false);
+});
+
+test("an oversized body without Content-Length still gets the SDK's 413", async () => {
+  const entries: McpRequestLogEntry[] = [];
+  const response = await handleMcpPost(
+    request("/mcp", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer valid-token",
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-method": "tools/call",
+        "mcp-name": "whoami",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "whoami",
+          arguments: {},
+          padding: "x".repeat(MCP_MAX_REQUEST_BODY_BYTES + 1_024),
+        },
+      }),
+    }),
+    "default",
+    authenticatedDependencies(entries),
+  );
+  assert.equal(response.status, 413);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].rpcMethod, "tools/call");
+  assert.equal(entries[0].toolName, "whoami");
+  // The body's clientInfo was never read; the token's name is the fallback.
+  assert.equal(entries[0].clientName, "PAT client");
+  assert.equal(entries[0].outcome, "error");
+  assert.equal(entries[0].errorCode, "http_413");
 });
 
 test("a disabled or guest failure reason is not exposed in the response body", async () => {

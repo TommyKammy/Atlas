@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAnotherAdmin, setUserDeactivated, withManagedUser } from "@/lib/services/admin-user-access";
+import {
+  requireAnotherAdmin,
+  revokeSessionsAndMcpTokens,
+  setUserDeactivated,
+  withManagedUser,
+} from "@/lib/services/admin-user-access";
 import { revokeAllUserTokens } from "@/lib/services/mcp-tokens";
 import { getMfaRequestSession } from "@/lib/api/session";
 import { badRequest, forbidden } from "@/lib/api/errors";
@@ -113,7 +118,11 @@ export const PATCH = withAdminPermission("members.manage", async (req, { uid: ad
       await revokeAllUserTokens(id, q);
     }
     if (password) {
-      await q.query("DELETE FROM user_sessions WHERE user_id = $1 AND token_hash IS DISTINCT FROM $2", [id, currentSession?.tokenHash ?? null]);
+      // A password reset is a credential change; existing MCP tokens must stop
+      // working in the same transaction.
+      await revokeSessionsAndMcpTokens(q, id, {
+        preserveSessionTokenHash: currentSession?.tokenHash ?? null,
+      });
     }
     const selected = await q.query(
       `SELECT id, name, email, title, avatar_url, is_guest, is_admin, role_id,

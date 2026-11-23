@@ -1,9 +1,9 @@
 import { audit } from "../audit";
 import { badRequest, forbidden, notFound } from "../api/errors";
-import { db, type Queryable } from "../db";
+import { db, withTransaction, type Queryable } from "../db";
 import { generateMcpToken, hashMcpToken } from "../mcp/token";
 import type { McpScope } from "../mcp/auth";
-import { requireNotGuest, type Actor } from "./actor";
+import type { Actor } from "./actor";
 
 export type PersonalTokenAccess = "read" | "read_write";
 
@@ -39,16 +39,32 @@ function tokenScopes(access: PersonalTokenAccess): McpScope[] {
 }
 
 /**
- * Issue a personal access token for the actor. Guests cannot issue tokens and
- * both workspace switches must be on. The plaintext leaves this function once;
- * only its SHA-256 hash is persisted.
+ * Transaction body for PAT issuance. Exported so tests can drive the
+ * SQL-dependent branches with a Queryable.
+ *
+ * The user row is locked first, then checked for deactivation/guest status.
+ * Deactivation and guest-role changes take the same row lock, so a concurrent
+ * change either prevents this insert or revokes the token after it commits.
  */
-export async function createPersonalToken(
+export async function createPersonalTokenInTransaction(
+  q: Queryable,
   actor: Actor,
   input: { name?: unknown; access?: unknown },
 ): Promise<CreatedPersonalToken> {
-  await requireNotGuest(actor);
-  const settings = await db.query(
+  const locked = await q.query(
+    `SELECT u.id, u.deactivated_at, u.is_guest
+     FROM users u
+     WHERE u.id = $1::bigint
+     FOR UPDATE`,
+    [actor.uid],
+  );
+  const user = locked.rows[0] as
+    | { id: number; deactivated_at: string | Date | null; is_guest: boolean | null }
+    | undefined;
+  if (!user || user.deactivated_at != null) throw forbidden("unknown or inactive user");
+  if (user.is_guest === true) throw forbidden("guest users cannot use MCP");
+
+  const settings = await q.query(
     `SELECT workspace_id, mcp_enabled, mcp_pat_enabled
      FROM workspace_security ORDER BY workspace_id LIMIT 1`,
   );
@@ -66,7 +82,7 @@ export async function createPersonalToken(
     throw badRequest("access must be read or read_write");
   }
   const token = generateMcpToken();
-  const inserted = await db.query(
+  const inserted = await q.query(
     `INSERT INTO mcp_tokens (workspace_id, user_id, kind, name, token_hash, scopes)
      VALUES ($1, $2, 'pat', $3, $4, $5)
      RETURNING id, name, scopes, created_at::text AS created_at`,
@@ -81,7 +97,7 @@ export async function createPersonalToken(
     entityId: Number(row.id),
     workspaceId: Number(workspace.workspace_id),
     summary: `MCP パーソナルアクセストークンを発行: ${row.name}`,
-  });
+  }, q);
   return {
     id: Number(row.id),
     token,
@@ -89,6 +105,18 @@ export async function createPersonalToken(
     scopes: row.scopes,
     created_at: row.created_at,
   };
+}
+
+/**
+ * Issue a personal access token for the actor. Guests cannot issue tokens and
+ * both workspace switches must be on. The plaintext leaves this function once;
+ * only its SHA-256 hash is persisted.
+ */
+export async function createPersonalToken(
+  actor: Actor,
+  input: { name?: unknown; access?: unknown },
+): Promise<CreatedPersonalToken> {
+  return withTransaction((q) => createPersonalTokenInTransaction(q, actor, input));
 }
 
 /** List the actor's PATs. Hashes and plaintext values are never selected. */
@@ -112,7 +140,7 @@ export async function revokePersonalToken(actor: Actor, tokenId: number): Promis
   const updated = await db.query(
     `UPDATE mcp_tokens SET revoked_at = now()
      WHERE id = $1 AND user_id = $2 AND kind = 'pat' AND revoked_at IS NULL
-     RETURNING id`,
+     RETURNING id, workspace_id`,
     [tokenId, actor.uid],
   );
   if (updated.rowCount === 0) {
@@ -124,9 +152,12 @@ export async function revokePersonalToken(actor: Actor, tokenId: number): Promis
     // Already revoked: keep DELETE idempotent for retries.
     return { id: tokenId };
   }
+  const revoked = updated.rows[0] as { id: number; workspace_id: number } | undefined;
+  if (!revoked) throw new Error("failed to revoke MCP token");
   await audit(actor.uid, "mcp.token.revoke", {
     entity: "mcp_token",
     entityId: tokenId,
+    workspaceId: Number(revoked.workspace_id),
     summary: "MCP パーソナルアクセストークンを失効",
   });
   return { id: tokenId };

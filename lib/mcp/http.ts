@@ -1,6 +1,7 @@
 import {
   CLIENT_INFO_META_KEY,
   createMcpHandler,
+  DEFAULT_MAX_REQUEST_BODY_SIZE,
   hostHeaderValidationResponse,
   originValidationResponse,
   type AuthInfo,
@@ -18,6 +19,12 @@ import { buildMcpServer, type McpServerBuilder } from "./server";
 
 const ATLAS_AUTH_EXTRA = "atlas";
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+
+/**
+ * Upper bound on the request body read for the request log. The SDK handler
+ * receives the same value so logging can never accept more than the transport.
+ */
+export const MCP_MAX_REQUEST_BODY_BYTES = DEFAULT_MAX_REQUEST_BODY_SIZE;
 
 type AtlasAuthExtra = {
   actor: Actor;
@@ -60,7 +67,8 @@ function boundedText(value: unknown, maxLength: number): string | null {
 
 /**
  * Metadata that can be read without touching the body. Used for requests
- * rejected by the Host/Origin checks before the body is inspected.
+ * rejected before the body is inspected (Host/Origin/authentication) and for
+ * bodies that exceed the log's read limit.
  */
 function headerRpcMetadata(req: Request): RpcMetadata {
   const method = boundedText(req.headers.get("mcp-method"), 100);
@@ -74,17 +82,71 @@ function headerRpcMetadata(req: Request): RpcMetadata {
 }
 
 /**
- * Read only the routing metadata needed for the request log. The full body
- * and the tool arguments are never retained.
+ * Read a JSON body from a clone, stopping as soon as it exceeds `maxBytes`.
+ * Returns null for an unreadable, malformed or oversized body so the caller
+ * falls back to header metadata. The original request stays available to the
+ * SDK handler, which enforces the same bound and owns the final response.
  */
-export async function readRpcMetadata(req: Request): Promise<RpcMetadata> {
+async function readBoundedJson(req: Request, maxBytes: number): Promise<unknown | null> {
+  if (req.body === null) return null;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  try {
+    const clone = req.clone();
+    if (clone.body === null) return null;
+    reader = clone.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        // Stop buffering the clone. Its cancel promise only settles once the
+        // original branch is cancelled too, so the SDK request must not wait
+        // for it. Releasing the lock leaves the original body readable.
+        void reader.cancel().catch(() => undefined);
+        return null;
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    try {
+      return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+    } catch {
+      return null;
+    }
+  } catch {
+    return null;
+  } finally {
+    try {
+      reader?.releaseLock();
+    } catch {
+      // The stream may already be closed or cancelled.
+    }
+  }
+}
+
+/**
+ * Read only the routing metadata needed for the request log. The full body
+ * and the tool arguments are never retained, and the read is bounded.
+ */
+export async function readRpcMetadata(
+  req: Request,
+  maxBytes = MCP_MAX_REQUEST_BODY_BYTES,
+): Promise<RpcMetadata> {
   const header = headerRpcMetadata(req);
   // The SDK independently enforces this bound. Avoid parsing an oversized
   // body just to populate the log when the declared size is already too big.
   const declaredLength = Number(req.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > 4_194_304) return header;
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return header;
 
-  const body = await req.clone().json().catch(() => null) as unknown;
+  const body = await readBoundedJson(req, maxBytes);
   const message = Array.isArray(body) ? body[0] : body;
   const record = message !== null && typeof message === "object"
     ? message as { method?: unknown; params?: unknown }
@@ -186,6 +248,7 @@ function makeHandler(buildServer: McpServerBuilder): ReturnType<typeof createMcp
     },
     {
       responseMode: "json",
+      maxRequestBodySize: MCP_MAX_REQUEST_BODY_BYTES,
       // Keep the 2025 stateless fallback (legacy defaults to "stateless").
       onerror: (error) => console.error("[mcp] request failed:", error.message),
     },
@@ -316,7 +379,8 @@ function logEntry(
  *
  * Order is deliberate: reject a bad Host before anything else, then a present
  * and unparseable/cross-origin Origin, then authenticate the bearer token.
- * Only after authentication does the request reach the MCP handler.
+ * The body is inspected for routing metadata only after authentication, and
+ * the SDK handler still receives the untouched request.
  */
 export async function handleMcpPost(
   req: Request,
@@ -345,9 +409,6 @@ export async function handleMcpPost(
     return originRejected;
   }
 
-  // Body-derived routing metadata is for the request log only.
-  base = { ...base, rpc: await readRpcMetadata(req) };
-
   let auth: McpAuthResult;
   try {
     auth = await deps.authenticate(req, { endpoint });
@@ -374,6 +435,9 @@ export async function handleMcpPost(
     }));
     return invalidTokenResponse();
   }
+
+  // Body-derived routing metadata is for the request log only.
+  base = { ...base, rpc: await readRpcMetadata(req) };
 
   const clientName = base.rpc.clientName ?? auth.clientName;
   let response: Response;

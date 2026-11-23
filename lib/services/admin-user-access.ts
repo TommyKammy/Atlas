@@ -96,6 +96,28 @@ export async function requireAnotherAdmin(q: Queryable, targetId: number, superA
 }
 
 /**
+ * A password or two-factor reset invalidates existing sessions and MCP tokens
+ * in the caller's transaction. `preserveSessionTokenHash` keeps the acting
+ * administrator's own session when they change their own password;
+ * `deleteAllSessions` is used by the 2FA reset.
+ */
+export async function revokeSessionsAndMcpTokens(
+  q: Queryable,
+  userId: number,
+  options: { preserveSessionTokenHash?: string | null; deleteAllSessions?: boolean } = {},
+) {
+  if (options.deleteAllSessions) {
+    await q.query("DELETE FROM user_sessions WHERE user_id = $1", [userId]);
+  } else {
+    await q.query(
+      "DELETE FROM user_sessions WHERE user_id = $1 AND token_hash IS DISTINCT FROM $2",
+      [userId, options.preserveSessionTokenHash ?? null],
+    );
+  }
+  await revokeAllUserTokens(userId, q);
+}
+
+/**
  * Apply the admin console's deactivation semantics for any caller: lock in the
  * super-role -> user order, protect the last active administrator at the same
  * level, write deactivated_at, and revoke that user's sessions.
