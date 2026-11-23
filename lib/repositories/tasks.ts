@@ -75,6 +75,20 @@ export async function getTaskForProject(
   return r.rows[0] ? toTaskDetail(r.rows[0] as TaskRow) : undefined;
 }
 
+/**
+ * Task detail without project scoping. Callers must authorize the task first;
+ * this exists for tasks that have no governing project (workspace admins only).
+ */
+export async function getTaskById(taskId: number): Promise<TaskDetail | undefined> {
+  const r = await db.query(
+    `SELECT ${taskProjection("detail")}, t.section_id AS eff_section_id
+     ${TASK_FROM}
+     WHERE t.id = $1 AND t.deleted_at IS NULL`,
+    [taskId],
+  );
+  return r.rows[0] ? toTaskDetail(r.rows[0] as TaskRow) : undefined;
+}
+
 export async function getSubtasks(taskId: number, projectId: number): Promise<TaskRow[]> {
   const r = await db.query(
     `SELECT ${taskSelectColumns("$2")} ${TASK_FROM}

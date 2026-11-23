@@ -1,5 +1,5 @@
 import { db, type Queryable } from "./db";
-import { getRequestSession } from "./api/session";
+import { getRequestSession, type SessionUser } from "./api/session";
 import { getProjectAccess } from "./data";
 import { getProjectPolicyAccess } from "./project-policy-access";
 import {
@@ -16,18 +16,30 @@ export type ProjectAuth =
   | { ok: true; uid: number; role: ProjectRole; workspaceAdmin: boolean }
   | { ok: false; status: 403 | 404; error: string };
 
-/** Check a caller's effective project role before a project-scoped mutation. */
-export async function requireProjectPermission(
-  req: Request,
+/** Identity used by authorization checks that do not read an HTTP session. */
+export type AuthActor = { uid: number; isAdmin: boolean; isGuest: boolean };
+
+/** Build an authorization actor from a validated request session. */
+export function actorFromSession(session: SessionUser): AuthActor {
+  return { uid: session.id, isAdmin: session.isAdmin, isGuest: session.isGuest };
+}
+
+/** Resolve the request boundary once; authorization below only needs the actor. */
+async function requestActor(req: Request): Promise<AuthActor | null> {
+  const session = await getRequestSession(req);
+  return session ? actorFromSession(session) : null;
+}
+
+/** Check an actor's effective project role before a project-scoped mutation. */
+export async function authorizeProject(
+  actor: AuthActor,
   projectId: number,
   level: ProjectPermission,
   q: Queryable = db,
 ): Promise<ProjectAuth> {
-  const session = await getRequestSession(req);
-  if (!session) return { ok: false, status: 403, error: "unauthenticated" };
   const access = level === "configure" || level === "share"
-    ? await getProjectPolicyAccess(session.id, projectId, q)
-    : await getProjectAccess(session.id, projectId, q);
+    ? await getProjectPolicyAccess(actor.uid, projectId, q)
+    : await getProjectAccess(actor.uid, projectId, q);
   if (!access.role) return { ok: false, status: 403, error: "project access denied" };
   const allowed = level === "configure"
     ? "canConfigure" in access && access.canConfigure
@@ -41,27 +53,49 @@ export async function requireProjectPermission(
             ? canEditProject(access.role)
             : canManageProject(access.role);
   if (!allowed) return { ok: false, status: 403, error: "insufficient project role" };
-  return { ok: true, uid: session.id, role: access.role, workspaceAdmin: access.workspaceAdmin };
+  return { ok: true, uid: actor.uid, role: access.role, workspaceAdmin: access.workspaceAdmin };
+}
+
+/** Resolve the request's actor and check their effective project role. */
+export async function requireProjectPermission(
+  req: Request,
+  projectId: number,
+  level: ProjectPermission,
+  q: Queryable = db,
+): Promise<ProjectAuth> {
+  const actor = await requestActor(req);
+  if (!actor) return { ok: false, status: 403, error: "unauthenticated" };
+  return authorizeProject(actor, projectId, level, q);
 }
 
 /** Require a live (non-deactivated) user session. */
 export async function requireActiveUser(
   req: Request,
 ): Promise<{ ok: true; uid: number } | { ok: false; status: 403; error: string }> {
-  const session = await getRequestSession(req);
-  if (!session) return { ok: false, status: 403, error: "unknown or inactive user" };
-  return { ok: true, uid: session.id };
+  const actor = await requestActor(req);
+  if (!actor) return { ok: false, status: 403, error: "unknown or inactive user" };
+  return { ok: true, uid: actor.uid };
+}
+
+/** Check workspace administrator access without reading a request session. */
+export function authorizeWorkspaceAdmin(
+  actor: AuthActor,
+): { ok: true; uid: number } | { ok: false; status: 403; error: string } {
+  if (!actor.isAdmin) {
+    return { ok: false, status: 403, error: "workspace admin required" };
+  }
+  return { ok: true, uid: actor.uid };
 }
 
 /** Require a workspace administrator (used for shared resources such as bundles/templates). */
 export async function requireWorkspaceAdmin(
   req: Request,
 ): Promise<{ ok: true; uid: number } | { ok: false; status: 403; error: string }> {
-  const session = await getRequestSession(req);
-  if (!session || !session.isAdmin) {
+  const actor = await requestActor(req);
+  if (!actor) {
     return { ok: false, status: 403, error: "workspace admin required" };
   }
-  return { ok: true, uid: session.id };
+  return authorizeWorkspaceAdmin(actor);
 }
 
 /** Resolve the project that should govern a task (primary, multi-home, or parent). */
@@ -158,6 +192,39 @@ export async function getTaskProjectContext(taskId: number, q: Queryable = db): 
   };
 }
 
+function taskProjectCandidates(context: TaskProjectContext, scope: "any" | "primary"): number[] {
+  return scope === "primary"
+    ? context.defaultProjectId === null
+      ? []
+      : [context.defaultProjectId]
+    : orderTaskProjectIds(context);
+}
+
+async function authorizeTaskContext(
+  actor: AuthActor,
+  context: TaskProjectContext,
+  level: ProjectPermission,
+  scope: "any" | "primary",
+  q?: Queryable,
+): Promise<TaskAuth> {
+  const candidates = taskProjectCandidates(context, scope);
+  if (candidates.length > 0) {
+    let lastError: { status: 403 | 404; error: string } = {
+      status: 403,
+      error: "project access denied",
+    };
+    for (const projectId of candidates) {
+      const auth = await authorizeProject(actor, projectId, level, q);
+      if (auth.ok) return { ok: true, uid: auth.uid, projectId };
+      lastError = auth;
+    }
+    return { ok: false, ...lastError };
+  }
+  const admin = authorizeWorkspaceAdmin(actor);
+  if (!admin.ok) return { ok: false, status: 404, error: "task not found" };
+  return { ok: true, uid: admin.uid, projectId: null };
+}
+
 /**
  * Authorize a task-scoped operation. By default any project the task belongs to
  * may grant access (multi-home). Pass `scope: "primary"` for destructive
@@ -165,6 +232,18 @@ export async function getTaskProjectContext(taskId: number, q: Queryable = db): 
  * Tasks without a governing project are intentionally fail-closed: only
  * workspace admins may touch them.
  */
+export async function authorizeTask(
+  actor: AuthActor,
+  taskId: number,
+  level: ProjectPermission = "edit",
+  options?: { scope?: "any" | "primary"; queryable?: Queryable },
+): Promise<TaskAuth> {
+  const context = await getTaskProjectContext(taskId, options?.queryable);
+  if (!context) return { ok: false, status: 404, error: "task not found" };
+  return authorizeTaskContext(actor, context, level, options?.scope ?? "any", options?.queryable);
+}
+
+/** Resolve the request's actor once, then apply the same task authorization rules. */
 export async function requireTaskPermission(
   req: Request,
   taskId: number,
@@ -174,25 +253,13 @@ export async function requireTaskPermission(
   const context = await getTaskProjectContext(taskId, options?.queryable);
   if (!context) return { ok: false, status: 404, error: "task not found" };
   const scope = options?.scope ?? "any";
-  const candidates =
-    scope === "primary"
-      ? context.defaultProjectId === null
-        ? []
-        : [context.defaultProjectId]
-      : orderTaskProjectIds(context);
-  if (candidates.length > 0) {
-    let lastError: { status: 403 | 404; error: string } = {
-      status: 403,
-      error: "project access denied",
-    };
-    for (const projectId of candidates) {
-      const auth = await requireProjectPermission(req, projectId, level, options?.queryable);
-      if (auth.ok) return { ok: true, uid: auth.uid, projectId };
-      lastError = auth;
-    }
-    return { ok: false, ...lastError };
+  const actor = await requestActor(req);
+  if (!actor) {
+    // Preserve the existing split: a missing session is 403 for project-backed
+    // tasks, while projectless tasks stay hidden as 404 (as the old admin check was).
+    return taskProjectCandidates(context, scope).length > 0
+      ? { ok: false, status: 403, error: "unauthenticated" }
+      : { ok: false, status: 404, error: "task not found" };
   }
-  const admin = await requireWorkspaceAdmin(req);
-  if (!admin.ok) return { ok: false, status: 404, error: "task not found" };
-  return { ok: true, uid: admin.uid, projectId: null };
+  return authorizeTaskContext(actor, context, level, scope, options?.queryable);
 }

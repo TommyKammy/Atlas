@@ -240,6 +240,7 @@ test("context menu deletes a quick card immediately without confirmation and it 
   const f = await fixture(page); await page.goto(`/projects/${f.id}?view=board`);
   const input = await add(page, "board");
   await input.fill("削除するクイックカード"); await input.press("Enter");
+  await expect.poll(async () => (await tasks(page, f.id))[0]?.name).toBe("削除するクイックカード");
   const saved = await tasks(page, f.id);
   expect(saved).toHaveLength(1);
   const card = page.locator(`[data-board-card="${saved[0].id}"]`);
@@ -271,6 +272,7 @@ test("deleted task can be restored with Ctrl+Z and with the toast action", async
   const f = await fixture(page); await page.goto(`/projects/${f.id}?view=board`);
   const input = await add(page, "board");
   await input.fill("元に戻すカード"); await input.press("Enter");
+  await expect.poll(async () => (await tasks(page, f.id))[0]?.name).toBe("元に戻すカード");
   const saved = await tasks(page, f.id);
   expect(saved).toHaveLength(1);
   const card = page.locator(`[data-board-card="${saved[0].id}"]`);

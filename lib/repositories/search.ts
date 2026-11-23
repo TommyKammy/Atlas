@@ -29,25 +29,75 @@ async function searchRows<T>(sql: string, params: unknown[], order: string, limi
 }
 
 
+/**
+ * Project-home SELECT arms shared by task search and single-task reads. Every
+ * arm yields one candidate project; callers union them so duplicates disappear.
+ * The order is also the read preference: the task's own primary project, its
+ * multi-home memberships, then the same two sources on the immediate parent.
+ * Parent arms only contribute when `compatibleTaskParent` allows it.
+ */
+function taskHomeArms(
+  child: string,
+  parent: string,
+  options: { requireActiveParent?: boolean } = {},
+): string[] {
+  // Search predates the deleted-parent filter; task reads hide deleted parents.
+  const activeParent = options.requireActiveParent ? ` AND ${parent}.deleted_at IS NULL` : "";
+  return [
+    `SELECT ${child}.project_id AS project_id WHERE ${child}.project_id IS NOT NULL`,
+    `SELECT membership.project_id FROM task_project_memberships membership
+     WHERE membership.task_id = ${child}.id`,
+    `SELECT ${parent}.project_id FROM tasks ${parent}
+     WHERE ${parent}.id = ${child}.parent_task_id AND ${parent}.project_id IS NOT NULL
+       AND ${compatibleTaskParent(child, parent)}${activeParent}`,
+    `SELECT inherited_membership.project_id FROM tasks ${parent}
+     JOIN task_project_memberships inherited_membership ON inherited_membership.task_id = ${parent}.id
+     WHERE ${parent}.id = ${child}.parent_task_id
+       AND ${compatibleTaskParent(child, parent)}${activeParent}`,
+  ];
+}
+
 // A task is searchable through its own homes and a compatible parent's homes.
 // UNION removes duplicates; result queries choose one authorized return home.
 const TASK_SEARCH_HOMES = `
   JOIN LATERAL (
-    SELECT t.project_id AS project_id WHERE t.project_id IS NOT NULL
-    UNION
-    SELECT membership.project_id FROM task_project_memberships membership
-    WHERE membership.task_id = t.id
-    UNION
-    SELECT inherited_parent.project_id FROM tasks inherited_parent
-    WHERE inherited_parent.id = t.parent_task_id AND inherited_parent.project_id IS NOT NULL
-      AND ${compatibleTaskParent("t", "inherited_parent")}
-    UNION
-    SELECT inherited_membership.project_id FROM tasks inherited_parent
-    JOIN task_project_memberships inherited_membership ON inherited_membership.task_id = inherited_parent.id
-    WHERE inherited_parent.id = t.parent_task_id
-      AND ${compatibleTaskParent("t", "inherited_parent")}
+    ${taskHomeArms("t", "inherited_parent").join("\n    UNION\n    ")}
   ) task_home ON TRUE
   JOIN projects p ON p.id = task_home.project_id`;
+
+/**
+ * Ordered homes for reading one task: own primary, own memberships, compatible
+ * parent's primary, compatible parent's memberships. `null` means the task is
+ * missing or deleted; `[]` means it exists without a home (admin-only read).
+ * Deleted parents do not contribute a home.
+ */
+export async function getTaskReadHomeProjectIds(taskId: number): Promise<number[] | null> {
+  const arms = taskHomeArms("t", "inherited_parent", { requireActiveParent: true })
+    .map((arm, rank) => `SELECT home.project_id, ${rank} AS home_rank FROM (${arm}) home`)
+    .join("\n     UNION ALL\n     ");
+  const result = await db.query(
+    `SELECT candidates.project_id
+     FROM tasks t
+     LEFT JOIN LATERAL (
+       ${arms}
+     ) candidates ON TRUE
+     WHERE t.id = $1::bigint AND t.deleted_at IS NULL
+     ORDER BY candidates.home_rank, candidates.project_id`,
+    [taskId],
+  );
+  if (result.rows.length === 0) return null;
+  const projectIds: number[] = [];
+  const seen = new Set<number>();
+  for (const row of result.rows) {
+    if (row.project_id === null || row.project_id === undefined) continue;
+    const id = Number(row.project_id);
+    if (!seen.has(id)) {
+      seen.add(id);
+      projectIds.push(id);
+    }
+  }
+  return projectIds;
+}
 
 export { getDirectoryUsers as getSearchUsers } from "./users";
 
