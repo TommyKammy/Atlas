@@ -435,6 +435,40 @@ test("save_task passes the post-update stamp to simultaneous custom-field writes
   }]);
 });
 
+test("save_task mixed updates use the post-automation stamp for custom fields", async () => {
+  const seen: unknown[] = [];
+  const { services } = fakeServices({
+    updateTaskForActor: async (actor, taskId, input) => {
+      void actor;
+      void input;
+      // A synchronous automation (set_status / set_assignee) advanced the
+      // stamp after updateTask's UPDATE.
+      return { id: taskId, updated_at: "2026-06-06T00:00:00.000Z" };
+    },
+    setTaskCustomValue: async (actor, input) => {
+      void actor;
+      seen.push(input.expected_updated_at);
+      if (input.expected_updated_at !== "2026-06-06T00:00:00.000Z") {
+        throw new TaskMutationFailure("conflict", "conflict", {
+          current_updated_at: "2026-06-06T00:00:00.000Z",
+        });
+      }
+      return { cleared: false, updated_at: "2026-06-07T00:00:00.000Z" };
+    },
+  });
+
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("save_task", {
+      id: 100,
+      status: "Done",
+      custom_fields: [{ field_id: 5, value: "changed" }],
+    }));
+    assert.equal(result.isError, undefined);
+  });
+
+  assert.deepEqual(seen, ["2026-06-06T00:00:00.000Z"]);
+});
+
 test("creation tools pass their key and arguments through withIdempotency", async () => {
   const { services, calls } = fakeServices();
 

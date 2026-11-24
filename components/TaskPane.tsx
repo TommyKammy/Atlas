@@ -6,6 +6,7 @@ import type { Attachment, CommentRow, TaskRow, User } from "@/lib/data";
 import { PROGRESS_BAR_COLORS } from "@/lib/data-colors";
 import {
   customFieldDisplay,
+  customFieldInputKey,
   customValueToArray,
   customValueToIdArray,
   customValueToInput,
@@ -269,7 +270,7 @@ export default function TaskPane({
         <input
           type="number"
           defaultValue={customValueToInput(field, value)}
-          key={`cf-${task.id}-${field.id}`}
+          key={customFieldInputKey(task.id, field, value)}
           onBlur={(event) =>
             setCustomValue(field.id, event.target.value === "" ? null : Number(event.target.value))
           }
@@ -282,7 +283,7 @@ export default function TaskPane({
         <input
           type="date"
           defaultValue={value?.value_date ?? ""}
-          key={`cf-${task.id}-${field.id}`}
+          key={customFieldInputKey(task.id, field, value)}
           onBlur={(event) => setCustomValue(field.id, event.target.value || null)}
           className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
         />
@@ -320,7 +321,7 @@ export default function TaskPane({
       return (
         <select
           defaultValue={customValueToInput(field, value)}
-          key={`cf-${task.id}-${field.id}`}
+          key={customFieldInputKey(task.id, field, value)}
           onChange={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
           className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
         >
@@ -336,7 +337,7 @@ export default function TaskPane({
     return (
       <input
         defaultValue={customValueToInput(field, value)}
-        key={`cf-${task.id}-${field.id}`}
+        key={customFieldInputKey(task.id, field, value)}
         onBlur={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
         className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
       />

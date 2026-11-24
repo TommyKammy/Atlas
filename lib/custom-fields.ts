@@ -418,6 +418,18 @@ export function customValueToInput(f: CustomField, v?: CustomValue): string {
   return v.value_text ?? "";
 }
 
+/**
+ * Key for an uncontrolled custom-field editor. Changing it remounts the input,
+ * so a refreshed server value replaces a stale local value.
+ */
+export function customFieldInputKey(
+  taskId: number,
+  field: CustomField,
+  value?: CustomValue,
+): string {
+  return `cf-${taskId}-${field.id}-${customValueToInput(field, value)}`;
+}
+
 
 /** Fields whose value is derived from task metadata rather than stored. */
 const BUILTIN_FIELD_TYPES = new Set<CustomFieldType>([

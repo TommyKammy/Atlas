@@ -33,6 +33,27 @@ type TaskBeforePatch = {
   deleted_at: string | null;
 };
 
+/** Current task fields and stamp for a compare-and-set conflict response. */
+export async function taskConflictSnapshot(taskId: number): Promise<{
+  updated_at: string | null;
+  current: Record<string, unknown> | null;
+}> {
+  const snap = await db.query(
+    `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
+       t.start_on::text AS start_on, t.due_on::text AS due_on,
+       t.progress, t.status, t.description, t.section_id, t.is_milestone,
+       t.updated_at::text AS updated_at
+     FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
+     WHERE t.id = $1::bigint`,
+    [taskId],
+  );
+  const current = snap.rows[0] ?? null;
+  return {
+    updated_at: typeof current?.updated_at === "string" ? current.updated_at : null,
+    current,
+  };
+}
+
 const PATCHABLE = new Set([
   "name",
   "description",
@@ -214,17 +235,9 @@ export async function updateTask(
     if (cur.rows[0].project_id !== primaryProjectId) {
       throw new TaskMutationFailure("conflict", "task primary project changed");
     }
-    const snap = await db.query(
-      `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
-         t.start_on::text AS start_on, t.due_on::text AS due_on,
-         t.progress, t.status, t.description, t.section_id, t.is_milestone,
-         t.updated_at::text AS updated_at
-       FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
-       WHERE t.id = $1::bigint`,
-      [taskId],
-    );
+    const snapshot = await taskConflictSnapshot(taskId);
     throw new TaskMutationFailure("conflict", "conflict", {
-      updated_at: cur.rows[0].u, current: snap.rows[0] ?? null,
+      updated_at: cur.rows[0].u, current: snapshot.current,
     });
   };
   if (typeof expected === "string" && expected !== "") {
@@ -441,7 +454,17 @@ export async function updateTask(
     ...(primaryProjectId === null && !movesPrimary ? await auditScope(targetProjectId) : {}),
     summary: Object.keys(b).join(","),
   });
-  return { id: taskId, updated_at: result.updatedAt };
+  // Synchronous automations (set_status / set_assignee) can advance the stamp
+  // after the UPDATE above. Re-read so callers chain the value that is current
+  // when this function returns.
+  const stamped = await db.query(
+    "SELECT updated_at::text AS updated_at FROM tasks WHERE id = $1::bigint",
+    [taskId],
+  );
+  return {
+    id: taskId,
+    updated_at: (stamped.rows[0]?.updated_at as string | undefined) ?? result.updatedAt,
+  };
 }
 
 export async function deleteTask(

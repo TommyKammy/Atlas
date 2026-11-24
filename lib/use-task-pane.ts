@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { confirmAction, toast as toastMessage } from "./ui-feedback";
 import { ApiError, api } from "./api-client";
-import { patchTask, TaskConflictError } from "./task-client";
+import { patchTask, saveTaskCustomValue, TaskConflictError } from "./task-client";
 import { rememberTaskDeletion, undoLastTaskDeletion } from "./task-undo";
 import { copyTaskLink as copyTaskLinkAction, deleteTask } from "./task-actions";
 import type { TaskRow, User } from "./data";
@@ -57,6 +57,8 @@ export function useTaskPane({
     current: Record<string, string | number | boolean | null>;
     attempted: Record<string, unknown>;
     stamp: string;
+    /** Custom-field conflicts retry the value write instead of a field patch. */
+    retry?: () => Promise<boolean>;
   } | null>(null);
   const [inputRecovery, setInputRecovery] = useState<TaskInputRecovery | null>(null);
   const [saveStates, setSaveStates] = useState<Record<string, TaskSaveState>>({});
@@ -209,6 +211,9 @@ export function useTaskPane({
   const discardConflict = () => {
     if (!conflict) return;
     latestRequest.current[Object.keys(conflict.attempted).sort().join(",")] = ++requestId.current;
+    // Remount uncontrolled editors (custom fields, dates, description) so
+    // their local DOM values cannot outlive the discarded draft.
+    setReloadRevision((revision) => revision + 1);
     // The conflict snapshot is usable before the refreshed RSC response arrives.
     // Reset both the visible draft and its lock stamp, not just the warning.
     setInputRecovery((previous) => ({
@@ -224,6 +229,10 @@ export function useTaskPane({
 
   const retryOverwrite = async () => {
     if (!conflict) return;
+    if (conflict.retry) {
+      if (await conflict.retry()) setConflict((current) => current === conflict ? null : current);
+      return;
+    }
     if (await savePatch(conflict.attempted, conflict.stamp)) setConflict((current) => current === conflict ? null : current);
   };
 
@@ -382,26 +391,67 @@ export function useTaskPane({
     await mutate(`membership:${projectIdValue}`, "所属プロジェクトの削除", () => api(`/api/memberships?task_id=${task.id}&project_id=${projectIdValue}`, "DELETE"));
   };
 
+  const saveCustomValue = async (
+    fieldId: number,
+    value: string | number | string[] | number[] | null,
+    expectedStamp = updatedAt,
+  ): Promise<boolean> => {
+    const key = `custom:${fieldId}`;
+    const id = ++requestId.current;
+    const generation = saveGeneration.current;
+    latestRequest.current[key] = id;
+    const current = () => alive.current && generation === saveGeneration.current && latestRequest.current[key] === id;
+    const saveState = (state: Partial<TaskSaveState>) => {
+      if (current()) setSaveStates((previous) => updateTaskSaveState(previous, { id, key, label: "カスタムフィールド", phase: "saving", ...state }));
+    };
+    if (!canEdit) {
+      saveState({ phase: "failed", message: taskSaveErrorMessage(403) });
+      return false;
+    }
+    saveState({ phase: "saving" });
+    try {
+      const result = await saveTaskCustomValue(task.id, fieldId, value, expectedStamp);
+      if (!current()) return false;
+      saveState({ phase: "saved" });
+      if (typeof result.updated_at === "string") {
+        setCustomValueStamp({
+          taskId: task.id,
+          previous: task.updated_at,
+          updatedAt: result.updated_at,
+        });
+      }
+      refresh();
+      return true;
+    } catch (error) {
+      if (!current()) return false;
+      if (error instanceof TaskConflictError) {
+        saveState({ phase: "conflict" });
+        if (error.current && error.updatedAt) {
+          setConflict({
+            current: error.current as Record<string, string | number | boolean | null>,
+            attempted: { [`cf-${fieldId}`]: value },
+            stamp: error.updatedAt,
+            retry: () => saveCustomValue(fieldId, value, error.updatedAt as string),
+          });
+        } else {
+          toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+          refresh();
+        }
+        return false;
+      }
+      const status = error instanceof ApiError ? error.status : null;
+      saveState({ phase: "failed", message: taskSaveErrorMessage(status),
+        ...(status !== 401 && status !== 403 && status !== 404 ? { retry: async () => { await saveCustomValue(fieldId, value, expectedStamp); } } : {}),
+      });
+      return false;
+    }
+  };
+
   const setCustomValue = async (
     fieldId: number,
     value: string | number | string[] | number[] | null,
   ) => {
-    const response: { updated_at?: string } = {};
-    await mutate(`custom:${fieldId}`, "カスタムフィールド", async () => {
-      const result = await api<{ updated_at?: unknown }>(
-        "/api/task-values",
-        "POST",
-        { task_id: task.id, field_id: fieldId, value },
-      );
-      if (typeof result?.updated_at === "string") response.updated_at = result.updated_at;
-    });
-    if (alive.current && response.updated_at) {
-      setCustomValueStamp({
-        taskId: task.id,
-        previous: task.updated_at,
-        updatedAt: response.updated_at,
-      });
-    }
+    await saveCustomValue(fieldId, value);
   };
 
   const uploadFile = async (file: File) => {
