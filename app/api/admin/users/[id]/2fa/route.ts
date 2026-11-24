@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revokeSessionsAndMcpTokens, withManagedUser } from "@/lib/services/admin-user-access";
-import { audit } from "@/lib/audit";
+import { audit, defaultWorkspaceId } from "@/lib/audit";
 import { withAdminPermission } from "@/lib/api/route";
 
 /** Reset a member's two-factor enrollment (admin recovery path). */
@@ -21,6 +21,7 @@ export const DELETE = withAdminPermission("security.manage", async (_req, { uid:
     await audit(admin, "user.2fa.reset", {
       entity: "user",
       entityId: id,
+      workspaceId: await defaultWorkspaceId(q),
       summary: `2FA reset for ${r.rows[0].name}`,
     }, q);
     return NextResponse.json(r.rows[0]);

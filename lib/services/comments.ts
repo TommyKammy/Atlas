@@ -1,7 +1,7 @@
 import { badRequest } from "../api/errors";
 import { withTransaction } from "../db";
 import { notifyTask } from "../notify";
-import { audit } from "../audit";
+import { audit, auditScope } from "../audit";
 import { replaceCommentMentions } from "../mentions";
 import { parseCommentPayload } from "../comment-payload";
 import { emitTaskEvent } from "../domain/events";
@@ -43,6 +43,7 @@ export async function addComment(
   await audit(actor.uid, "comment.create", {
     entity: "comment",
     entityId: id,
+    ...(await auditScope(taskProjectId)),
     summary: parsed.text.slice(0, 120),
   });
   return { id };

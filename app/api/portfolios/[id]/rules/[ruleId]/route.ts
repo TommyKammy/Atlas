@@ -24,7 +24,7 @@ async function load(id: number, ruleId: number, uid: number) {
   }
   const rule = await getPortfolioRule(ruleId, id);
   if (!rule) return { error: NextResponse.json({ error: "rule not found" }, { status: 404 }) };
-  return { portfolio, rule };
+  return { portfolio, rule, workspaceId: ws.id };
 }
 
 export const PATCH = withUser(async (req, { uid, params }) => {
@@ -91,6 +91,7 @@ export const PATCH = withUser(async (req, { uid, params }) => {
   await audit(uid, "portfolio_rule.update", {
     entity: "portfolio_rule",
     entityId: ruleId,
+    workspaceId: loaded.workspaceId,
   });
   return NextResponse.json({ id: ruleId });
 });
@@ -104,6 +105,7 @@ export const DELETE = withUser(async (_req, { uid, params }) => {
   await audit(uid, "portfolio_rule.delete", {
     entity: "portfolio_rule",
     entityId: ruleId,
+    workspaceId: loaded.workspaceId,
   });
   return NextResponse.json({ deleted: ruleId });
 });

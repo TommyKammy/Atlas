@@ -60,6 +60,21 @@ export async function audit(
   }
 }
 
+/** The workspace for audit entries that belong to no project (Atlas runs one workspace). */
+export async function defaultWorkspaceId(q?: Queryable): Promise<number | undefined> {
+  const r = await (q ?? db).query("SELECT id FROM workspaces ORDER BY id LIMIT 1");
+  return r.rows[0]?.id == null ? undefined : Number(r.rows[0].id);
+}
+
+/** Scope an entry by its project when known, otherwise by the workspace, so it is never NULL. */
+export async function auditScope(
+  projectId: number | null | undefined,
+  q?: Queryable,
+): Promise<{ projectId: number } | { workspaceId?: number }> {
+  if (projectId != null) return { projectId };
+  return { workspaceId: await defaultWorkspaceId(q) };
+}
+
 export type AuditRow = {
   id: number;
   actor_name: string | null;

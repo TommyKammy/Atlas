@@ -6,7 +6,7 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { db, withTransaction } from "@/lib/db";
 import { notifyTask } from "@/lib/notify";
-import { audit } from "@/lib/audit";
+import { audit, auditScope } from "@/lib/audit";
 import { requireProjectPermission, requireTaskPermission } from "@/lib/api-project-auth";
 import { withUser } from "@/lib/api/route";
 import { ApiError, badRequest } from "@/lib/api/errors";
@@ -55,9 +55,11 @@ export const GET = withUser(async (req) => {
 });
 
 export const POST = withUser(async (req, { uid }) => {
+  let taskProjectId: number | null = null;
   const authorizeTask = async (taskId: number) => {
     const auth = await requireTaskPermission(req, taskId, "edit");
     if (!auth.ok) throw new ApiError(auth.status, auth.error);
+    taskProjectId = auth.projectId;
   };
   const fileId = randomUUID();
   const temporary = path.join(UPLOAD_DIR, `.upload-${fileId}.part`);
@@ -116,7 +118,12 @@ export const POST = withUser(async (req, { uid }) => {
       throw error;
     }
     await notifyTask(taskId);
-    await audit(uid, "attachment.create", { entity: "attachment", entityId: id, summary: file.original });
+    await audit(uid, "attachment.create", {
+      entity: "attachment",
+      entityId: id,
+      ...(await auditScope(taskProjectId)),
+      summary: file.original,
+    });
     return NextResponse.json({ id }, { status: 201 });
   } finally {
     if (staged) await unlinkIfPresent(temporary).catch((error) => console.error("attachment staging cleanup failed", error));

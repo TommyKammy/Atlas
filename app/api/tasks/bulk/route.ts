@@ -3,7 +3,7 @@ import { db, withTransaction, type Queryable } from "@/lib/db";
 import { notifyProject } from "@/lib/notify";
 import { getTaskProjectIds, requireProjectPermission, requireWorkspaceAdmin } from "@/lib/api-project-auth";
 import { withUser } from "@/lib/api/route";
-import { audit } from "@/lib/audit";
+import { audit, auditScope } from "@/lib/audit";
 import { conflict } from "@/lib/api/errors";
 import { runAutomations } from "@/lib/automation-runner";
 import { emitTaskEvent } from "@/lib/domain/events";
@@ -142,7 +142,13 @@ export const POST = withUser(async (req, { uid }) => {
     return NextResponse.json({ error: "unknown op" }, { status: 400 });
   }
   for (const projectId of projectIds) await notifyProject(projectId);
-  await audit(uid, "task.bulk", { entity: "task", summary: `${String(op)}:${updated}` });
+  // A bulk edit spanning projects (or touching projectless tasks) is a workspace event.
+  const singleProjectId = projectIds.size === 1 && !hasProjectless ? [...projectIds][0] : null;
+  await audit(uid, "task.bulk", {
+    entity: "task",
+    ...(await auditScope(singleProjectId)),
+    summary: `${String(op)}:${updated}`,
+  });
   // Deleted tasks have no rows left; notify their sections' projects best-effort is skipped.
   return NextResponse.json({ updated });
 });

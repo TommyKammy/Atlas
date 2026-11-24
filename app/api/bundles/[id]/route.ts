@@ -45,18 +45,26 @@ export const PATCH = withAdmin(async (req, { uid, params }) => {
   if (sets.length === 0) return NextResponse.json({ error: "no fields to update" }, { status: 400 });
   values.push(id);
   const r = await db.query(
-    `UPDATE bundles SET ${sets.join(", ")}, updated_at = now() WHERE id = $${values.length}::bigint`,
+    `UPDATE bundles SET ${sets.join(", ")}, updated_at = now() WHERE id = $${values.length}::bigint RETURNING workspace_id`,
     values,
   );
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  await audit(uid, "bundle.update", { entity: "bundle", entityId: Number(id) });
+  await audit(uid, "bundle.update", {
+    entity: "bundle",
+    entityId: Number(id),
+    workspaceId: Number(r.rows[0].workspace_id),
+  });
   return NextResponse.json({ id: Number(id) });
 });
 
 export const DELETE = withAdmin(async (_req, { uid, params }) => {
   const id = params.id;
-  const r = await db.query("DELETE FROM bundles WHERE id = $1::bigint", [id]);
+  const r = await db.query("DELETE FROM bundles WHERE id = $1::bigint RETURNING workspace_id", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  await audit(uid, "bundle.delete", { entity: "bundle", entityId: Number(id) });
+  await audit(uid, "bundle.delete", {
+    entity: "bundle",
+    entityId: Number(id),
+    workspaceId: Number(r.rows[0].workspace_id),
+  });
   return NextResponse.json({ deleted: Number(id) });
 });

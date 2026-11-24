@@ -4,7 +4,7 @@ import { Readable } from "node:stream";
 import path from "node:path";
 import { db, withTransaction } from "@/lib/db";
 import { notifyTask } from "@/lib/notify";
-import { audit } from "@/lib/audit";
+import { audit, auditScope } from "@/lib/audit";
 import { withAttachmentTask } from "@/lib/api/route";
 import { pruneUnreferencedAttachment, UPLOAD_DIR } from "@/lib/attachment-files.mjs";
 
@@ -72,7 +72,7 @@ export const GET = withAttachmentTask("view", async (req, { params }) => {
   });
 });
 
-export const DELETE = withAttachmentTask("edit", async (_req, { uid, taskId, params }) => {
+export const DELETE = withAttachmentTask("edit", async (_req, { uid, taskId, projectId, params }) => {
   const id = params.id;
   const r = await db.query(
     "DELETE FROM task_attachments WHERE id = $1::bigint RETURNING stored_name",
@@ -82,6 +82,6 @@ export const DELETE = withAttachmentTask("edit", async (_req, { uid, taskId, par
   await withTransaction((client) => pruneUnreferencedAttachment(client, r.rows[0].stored_name))
     .catch((error) => console.error("attachment delete cleanup failed", error));
   await notifyTask(taskId);
-  await audit(uid, "attachment.delete", { entity: "attachment", entityId: id });
+  await audit(uid, "attachment.delete", { entity: "attachment", entityId: id, ...(await auditScope(projectId)) });
   return NextResponse.json({ deleted: Number(id) });
 });

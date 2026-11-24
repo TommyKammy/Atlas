@@ -31,6 +31,7 @@ export const POST = withUser(async (req, { uid }) => {
   await audit(uid, "portfolio.create", {
     entity: "portfolio",
     entityId: id,
+    workspaceId: ws.id,
     summary: name,
   });
   return NextResponse.json({ id }, { status: 201 });
