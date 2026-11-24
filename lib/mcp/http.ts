@@ -7,6 +7,11 @@ import {
   type AuthInfo,
 } from "@modelcontextprotocol/server";
 import { authRateLimitResponse } from "@/lib/auth-rate-limit";
+import {
+  MissingPublicBaseUrlError,
+  protectedResourceMetadataUrlFromBase,
+  requestBaseUrl,
+} from "@/lib/oauth/resources";
 import type { Actor } from "@/lib/services/actor";
 import { authenticateMcpToken, type McpAuthResult, type McpEndpoint, type McpScope } from "./auth";
 import {
@@ -16,6 +21,7 @@ import {
   type McpRequestOutcome,
 } from "./request-log";
 import { buildMcpServer, type McpServerBuilder } from "./server";
+import { bearerToken } from "./token";
 
 const ATLAS_AUTH_EXTRA = "atlas";
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
@@ -178,13 +184,33 @@ export async function readRpcMetadata(
   };
 }
 
-function invalidTokenResponse(): Response {
+function invalidTokenResponse(req: Request, endpoint: McpEndpoint): Response {
+  let resourceMetadata: string;
+  try {
+    resourceMetadata = protectedResourceMetadataUrlFromBase(requestBaseUrl(req), endpoint);
+  } catch (error) {
+    // A production deployment without APP_URL/APP_ORIGIN must fail closed;
+    // never advertise a metadata URL derived from the request Host header.
+    if (error instanceof MissingPublicBaseUrlError) return internalErrorResponse();
+    throw error;
+  }
+  const scope = endpoint === "readonly" ? "read" : "read write";
+  // RFC 6750: when the request carried no Bearer credential there is no
+  // invalid_token error to report; the challenge still points at the
+  // protected-resource metadata so the client can start authorization.
+  const params = [
+    ...(bearerToken(req.headers.get("authorization")) === null
+      ? []
+      : ['error="invalid_token"']),
+    `resource_metadata="${resourceMetadata}"`,
+    `scope="${scope}"`,
+  ];
   return new Response(JSON.stringify({ error: "invalid_token" }), {
     status: 401,
     headers: {
       "content-type": "application/json",
       "cache-control": "no-store",
-      "www-authenticate": 'Bearer error="invalid_token"',
+      "www-authenticate": `Bearer ${params.join(", ")}`,
     },
   });
 }
@@ -446,7 +472,7 @@ export async function handleMcpPost(
     await safeRecord(deps, logEntry(base, "unauthenticated", {
       errorCode: auth.reason,
     }));
-    return invalidTokenResponse();
+    return invalidTokenResponse(req, endpoint);
   }
 
   // Body-derived routing metadata is for the request log only.

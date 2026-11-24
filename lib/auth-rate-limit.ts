@@ -18,6 +18,8 @@ export const POLICIES = {
   "scim-auth": { limit: 60, windowSeconds: 15 * 60 },
   "mcp-auth": { limit: 60, windowSeconds: 15 * 60 },
   "mcp-write": { limit: 20, windowSeconds: 60 },
+  "oauth-token": { limit: 30, windowSeconds: 60 },
+  "oauth-register": { limit: 10, windowSeconds: 60 * 60 },
   global: { limit: 6000, windowSeconds: 60 },
   peer: { limit: 500, windowSeconds: 60 },
 } as const satisfies Record<string, AuthRatePolicy>;

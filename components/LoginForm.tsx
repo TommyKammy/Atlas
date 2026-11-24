@@ -73,7 +73,8 @@ export default function LoginForm({ samlMode }: { samlMode: SamlMode }) {
       if (data?.two_factor_setup_required) {
         router.push("/profile#two-factor");
       } else {
-        router.push("/");
+        const redirectTo = typeof data?.redirect_to === "string" ? data.redirect_to : "/";
+        router.push(redirectTo);
       }
       router.refresh();
       return;

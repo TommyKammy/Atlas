@@ -1,6 +1,8 @@
 import { db, type Queryable } from "@/lib/db";
 import { POLICIES, reserveAuthAttempt } from "@/lib/auth-rate-limit";
 import { verifiedAuthClientIp } from "@/lib/auth-client-ip.mjs";
+import { isOAuthAccessToken } from "@/lib/oauth/tokens";
+import { resourceMatchesEndpoint } from "@/lib/oauth/resources";
 import type { Actor } from "@/lib/services/actor";
 import {
   bearerToken, hashMcpToken, isMcpToken, mcpTokenMatchesHash, shouldTouchLastUsed,
@@ -16,7 +18,8 @@ export type McpAuthFailureReason =
   | "inactive_user"
   | "guest"
   | "expired"
-  | "revoked";
+  | "revoked"
+  | "audience";
 
 export type McpAuthSuccess = {
   ok: true;
@@ -44,6 +47,7 @@ type TokenRow = {
   expires_at: Date | string | null;
   last_used_at: Date | string | null;
   revoked_at: Date | string | null;
+  resource: string | null;
   mcp_enabled: boolean | null;
   mcp_pat_enabled: boolean | null;
   user_exists: boolean | null;
@@ -90,14 +94,14 @@ export async function authenticateMcpToken(
   q: Queryable = db,
 ): Promise<McpAuthResult> {
   const token = bearerToken(req.headers.get("authorization"));
-  if (!token || !isMcpToken(token)) {
+  if (!token || (!isMcpToken(token) && !isOAuthAccessToken(token))) {
     await recordAuthenticationFailure(req, q);
     return { ok: false, reason: "invalid" };
   }
   const hash = hashMcpToken(token);
   const result = await q.query(
     `SELECT t.id, t.workspace_id, t.user_id, t.kind, t.token_hash, t.scopes,
-       t.client_name, t.expires_at, t.revoked_at, t.last_used_at,
+       t.client_name, t.expires_at, t.revoked_at, t.last_used_at, t.resource,
        COALESCE(w.mcp_enabled, false) AS mcp_enabled,
        COALESCE(w.mcp_pat_enabled, false) AS mcp_pat_enabled,
        (u.id IS NOT NULL) AS user_exists,
@@ -130,6 +134,12 @@ export async function authenticateMcpToken(
   if (isExpired(row)) {
     await recordAuthenticationFailure(req, q);
     return { ok: false, reason: "expired" };
+  }
+  // OAuth access tokens are audience-bound to one MCP endpoint. PATs have no
+  // resource and keep their previous behaviour.
+  if (row.kind === "oauth" && !resourceMatchesEndpoint(row.resource, opts.endpoint)) {
+    await recordAuthenticationFailure(req, q);
+    return { ok: false, reason: "audience" };
   }
   if (row.mcp_enabled !== true || (row.kind === "pat" && row.mcp_pat_enabled !== true)) {
     await recordAuthenticationFailure(req, q);

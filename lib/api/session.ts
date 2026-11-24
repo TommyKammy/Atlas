@@ -8,6 +8,7 @@ import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
 } from "@/lib/session-token";
+import { sessionCookieSecure } from "@/lib/cookie-security";
 import { SamlSessionRequiredError, type SessionAuthMethod } from "@/lib/session-policy";
 
 export { SESSION_COOKIE, SESSION_TTL_SECONDS };
@@ -32,12 +33,6 @@ type SessionAccess = {
   mfaEnabled: boolean;
   tokenHash: string;
 };
-
-function sessionCookieSecure(): boolean {
-  return process.env.SESSION_COOKIE_SECURE === "1"
-    || process.env.APP_URL?.startsWith("https://") === true
-    || process.env.APP_ORIGIN?.startsWith("https://") === true;
-}
 
 /** Cookie options used by login and logout. */
 export function sessionCookieOptions(maxAge = SESSION_TTL_SECONDS) {

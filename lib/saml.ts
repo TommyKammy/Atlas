@@ -2,10 +2,39 @@ import { SAML, ValidateInResponseTo, type CacheProvider } from "@node-saml/node-
 import { createHash } from "node:crypto";
 import type { SecuritySettings } from "./admin-data";
 import { db, type Queryable } from "./db";
+import { safePostLoginPath } from "./post-login";
+import { isSessionToken } from "./session-token";
 
 const SAML_REQUEST_TTL_MS = 10 * 60 * 1000;
 
 type SamlBrowserFlow = { state: string; secret: string };
+
+type SamlFlowProof = { secret: string; returnTo?: string };
+
+/**
+ * The SAML callback is a cross-site POST, so a SameSite=Lax post-login cookie
+ * is not sent. The start request (same-site GET) copies the already-validated
+ * destination into this SameSite=None flow cookie instead.
+ */
+export function encodeSamlFlowProof(proof: SamlFlowProof): string {
+  return Buffer.from(JSON.stringify(proof), "utf8").toString("base64url");
+}
+
+export function decodeSamlFlowProof(value: string): SamlFlowProof | null {
+  // Accept the pre-existing raw-secret cookie during a rolling deployment.
+  if (isSessionToken(value)) return { secret: value };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const record = parsed as Record<string, unknown>;
+  if (typeof record.secret !== "string" || !isSessionToken(record.secret)) return null;
+  const returnTo = safePostLoginPath(record.returnTo);
+  return returnTo === null ? { secret: record.secret } : { secret: record.secret, returnTo };
+}
 
 export const SAML_FLOW_COOKIE_OPTIONS = {
   path: "/",

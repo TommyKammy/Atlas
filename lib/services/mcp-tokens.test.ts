@@ -25,6 +25,7 @@ type MockOptions = {
   revokeCount?: number;
   existingToken?: boolean;
   revokeAllCount?: number;
+  deletedCodes?: number;
 };
 
 function result(rows: Record<string, unknown>[], rowCount = rows.length): QueryResult {
@@ -73,6 +74,12 @@ function mockQueries(options: MockOptions, calls: Call[]): Queryable {
       if (sql.includes("UPDATE mcp_tokens SET revoked_at")) {
         return result([{ id: Number(params?.[0]), workspace_id: 1 }], options.revokeCount ?? 1);
       }
+      if (sql.includes("UPDATE oauth_refresh_tokens SET revoked_at")) {
+        return result([], options.revokeAllCount ?? 0);
+      }
+      if (sql.includes("DELETE FROM oauth_authorization_codes")) {
+        return result([], options.deletedCodes ?? 0);
+      }
       if (sql.includes("SELECT id FROM mcp_tokens")) {
         return result(options.existingToken ? [{ id: Number(params?.[0]) }] : []);
       }
@@ -113,6 +120,8 @@ function deactivationQueryable(calls: Call[]): Queryable {
       }
       if (sql.includes("DELETE FROM user_sessions")) return result([]);
       if (sql.includes("UPDATE mcp_tokens SET revoked_at")) return result([{ id: 3 }], 1);
+      if (sql.includes("UPDATE oauth_refresh_tokens SET revoked_at")) return result([], 1);
+      if (sql.includes("DELETE FROM oauth_authorization_codes")) return result([], 1);
       throw new Error(`unexpected query: ${sql}`);
     },
   };
@@ -343,6 +352,24 @@ test("revokeAllUserTokens revokes PAT and OAuth rows for one user", async () => 
   assert.ok(!calls[0].sql.includes("kind ="));
 });
 
+test("revokeAllUserTokens also revokes OAuth refresh tokens", async () => {
+  const calls: Call[] = [];
+  await revokeAllUserTokens(7, mockQueries({}, calls));
+  const refresh = calls.find((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at"));
+  assert.ok(refresh);
+  assert.deepEqual(refresh.params, [7]);
+});
+
+test("revokeAllUserTokens deletes unused authorization codes and keeps used ones", async () => {
+  const calls: Call[] = [];
+  await revokeAllUserTokens(7, mockQueries({ deletedCodes: 2 }, calls));
+  const deleted = calls.find((call) => call.sql.includes("DELETE FROM oauth_authorization_codes"));
+  assert.ok(deleted);
+  assert.match(deleted.sql, /user_id = \$1/);
+  assert.match(deleted.sql, /used_at IS NULL/);
+  assert.deepEqual(deleted.params, [7]);
+});
+
 test("setUserDeactivated revokes every MCP token in the same transaction", async () => {
   const calls: Call[] = [];
   const result = await setUserDeactivated(deactivationQueryable(calls), 7, true);
@@ -376,6 +403,12 @@ test("password and 2FA resets revoke MCP tokens on the reset transaction", async
   assert.deepEqual(mfaCalls[0].params, [7]);
   assert.match(mfaCalls[1].sql, /UPDATE mcp_tokens SET revoked_at/);
   assert.deepEqual(mfaCalls[1].params, [7]);
+  for (const calls of [passwordCalls, mfaCalls]) {
+    const codes = calls.find((call) => call.sql.includes("DELETE FROM oauth_authorization_codes"));
+    assert.ok(codes, "admin resets must delete unused authorization codes");
+    assert.deepEqual(codes.params, [7]);
+    assert.match(codes.sql, /used_at IS NULL/);
+  }
 });
 
 test("npm test runs the MCP test files", () => {

@@ -7,6 +7,7 @@ import { verifyTotp } from "@/lib/totp";
 import { requiresSaml } from "@/lib/admin-data";
 import { decryptMfaSecret, MfaSecretUnavailableError } from "@/lib/mfa-secret";
 import { SamlSessionRequiredError } from "@/lib/session-policy";
+import { POST_LOGIN_COOKIE, postLoginCookieOptions, postLoginPathFromCookieHeader } from "@/lib/post-login";
 import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES } from "@/lib/auth-rate-limit";
 
 function samlRequired() {
@@ -74,10 +75,22 @@ async function login(req: Request) {
     if (outcome.kind === "challenge") return NextResponse.json({ error: "two-factor code required", two_factor_required: true }, { status: 401 });
     if (outcome.kind === "credentials") { if (mfa) await mfa.release(); return NextResponse.json({ error: "invalid credentials" }, { status: 401 }); }
     if (outcome.kind === "invalid") return NextResponse.json({ error: "invalid two-factor code" }, { status: 401 });
-    const res = NextResponse.json({ id: row.id, name: outcome.name, two_factor_setup_required: outcome.mfaPending },
-      { headers: { "Cache-Control": "no-store" } });
+    const redirectTo = outcome.mfaPending
+      ? null
+      : postLoginPathFromCookieHeader(req.headers.get("cookie"));
+    const res = NextResponse.json({
+      id: row.id,
+      name: outcome.name,
+      two_factor_setup_required: outcome.mfaPending,
+      ...(redirectTo === null ? {} : { redirect_to: redirectTo }),
+    }, { headers: { "Cache-Control": "no-store" } });
     res.cookies.set(SESSION_COOKIE, outcome.token, sessionCookieOptions());
     res.cookies.set("atlas_uid", "", { path: "/", maxAge: 0 });
+    if (!outcome.mfaPending) {
+      // Consumed (or stale) once the session is established. MFA keeps it for
+      // the verification request after the profile page completes MFA.
+      res.cookies.set(POST_LOGIN_COOKIE, "", { ...postLoginCookieOptions(), maxAge: 0 });
+    }
     return res;
   } catch (error) {
     await attempt.release();

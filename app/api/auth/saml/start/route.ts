@@ -2,7 +2,11 @@ import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES }
 import { verifiedAuthClientIp } from "@/lib/auth-client-ip.mjs";
 import { NextResponse } from "next/server";
 import { getSecuritySettings } from "@/lib/admin-data";
-import { allowsSamlFlowCookie, appOrigin, buildSaml, SAML_FLOW_COOKIE_OPTIONS, samlFlowCookieName } from "@/lib/saml";
+import {
+  allowsSamlFlowCookie, appOrigin, buildSaml, encodeSamlFlowProof,
+  SAML_FLOW_COOKIE_OPTIONS, samlFlowCookieName,
+} from "@/lib/saml";
+import { postLoginPathFromCookieHeader } from "@/lib/post-login";
 import { generateSessionToken } from "@/lib/session-token";
 
 async function startSaml(req: Request) {
@@ -16,9 +20,14 @@ async function startSaml(req: Request) {
     const flow = { state: generateSessionToken(), secret: generateSessionToken() };
     const saml = buildSaml(req, settings, flow);
     const url = await saml.getAuthorizeUrlAsync(flow.state, {});
+    const returnTo = postLoginPathFromCookieHeader(req.headers.get("cookie"));
     const res = NextResponse.redirect(url);
     res.headers.set("Cache-Control", "no-store");
-    res.cookies.set(samlFlowCookieName(flow.state), flow.secret, SAML_FLOW_COOKIE_OPTIONS);
+    res.cookies.set(
+      samlFlowCookieName(flow.state),
+      encodeSamlFlowProof({ secret: flow.secret, ...(returnTo === null ? {} : { returnTo }) }),
+      SAML_FLOW_COOKIE_OPTIONS,
+    );
     return res;
   } catch {
     return NextResponse.redirect(new URL("/login?saml=error", origin));

@@ -218,15 +218,20 @@ Phase 1で判明し、Phase 2〜3で決めること:
 - 既存コードの監査ログ（`comment.create`、`project.update` など）にワークスペースが入らず監査画面に出ない問題がある（MCP以前からの既存の不具合。別作業）
 - 作成と追加反映は1つのトランザクションではない（失敗時は `failed_updates` で通知）
 
-### Phase 4: OAuth 2.1（4〜6日）
+### Phase 4: OAuth 2.1（4〜6日）— 完了（2026-11-24、ブランチ `feat/mcp-phase4-oauth`）
 
-- [ ] メタデータエンドポイント（RFC 9728 / RFC 8414）
-- [ ] クライアント登録（CIMD または DCR。Phase 0の決定に従う）、`oauth_clients` テーブル
-- [ ] `/oauth/authorize`（承認画面。SAML必須・MFAを含む既存ログインを再利用。ゲストは拒否）、`/oauth/token`（PKCE S256、`resource` 検証、アクセス24時間・リフレッシュ30日、リフレッシュのローテーション）、`/oauth/revoke`
-- [ ] 発行トークンは `mcp_tokens`（kind=`oauth`）に保存し、Phase 2の検証処理を共用
-- [ ] プロフィール画面に「接続済みアプリ」一覧と連携解除
-- [ ] テスト: PKCE不一致、redirect_uri不一致、別resource向けトークンの拒否、リフレッシュ再利用の検出（ファミリー全失効）、期限切れ（24時間・30日）の拒否、ゲストの拒否
-- [ ] 実機確認: Claude Code `/mcp` と `codex mcp login` でブラウザー承認からツール実行まで
+- [x] マイグレーション `0040_mcp_oauth.sql`: `oauth_clients`・`oauth_authorization_codes`（10分）・`oauth_refresh_tokens`（30日）、`mcp_tokens` に `resource`・`oauth_client_id`・`oauth_family_id`（`1015d36`）
+- [x] `lib/oauth`: PKCE（S256のみ）、ループバックのポートを除いたリダイレクト照合、CIMD（Webhookと同じSSRF対策: 公開IPのみ・接続固定・リダイレクトなし・5秒・64KB、24時間キャッシュ）とDCR、使い捨ての認可コード、アクセス24時間・リフレッシュ30日のローテーション（再利用で系列全失効）。`authenticateMcpToken` が OAuth のトークンと audience（`/mcp` / `/mcp/readonly`）を検証
+- [x] メタデータ（RFC 9728 / RFC 8414）、`/oauth/register`・`/oauth/token`（コードの消費と発行は同一トランザクション）・`/oauth/revoke`、`/mcp` の401に `resource_metadata`（`47a5f26`）
+- [x] 承認画面 `/oauth/authorize`（クライアント不明・リダイレクト不一致は画面でエラー、その他は state と iss 付きで戻す。ゲスト拒否、MCP無効時は案内）。未ログイン時はパスワード・SAML・MFAの後に戻る短命Cookie。承認のPOSTは同一オリジンのみ、すべて再検証し、no-store・no-referrer の中継画面（meta refresh）で戻す（CSP の form-action は緩めない）。プロフィールの「接続済みアプリ」と連携解除。本番では基準URLにリクエストのHostを使わない（`6d1a3a6`）
+- [x] 検証: ユニットテスト919件、`typecheck`、ESLint、色トークン検査。CodexとClaude CodeのCIMDを実取得（私的アドレスは拒否）。使い捨てのDBで、Codex 0.171.0-alpha.13 の `codex mcp login` → 未ログインからログイン → 承認画面 → コールバック → `whoami` と `save_task` の実行まで成功（監査ログに `via=mcp`、クライアント名「Codex」）。トークンエンドポイントの実測: PKCE不一致・コード再利用（系列失効）・別クライアントのリフレッシュ・リフレッシュの再利用（系列失効）を拒否、ローテーション成功、audience不一致で401、他オリジンからの承認POSTは403。接続済みアプリからの解除でCodexが401になることを確認
+
+確認で見つけて直した点: 承認後の303がCSPの `form-action 'self'` で止まり、ローカルのアプリに戻れなかった（中継画面に変更）。承認画面の事前描画で `Date.now()` のエラーが出ていた。
+
+既知の制約・Phase 5以降:
+- Claude Code の OAuth（`/mcp` からの対話的な承認）は、この環境では実行できず未確認。CIMDの取得とメタデータは確認済み
+- CIMD は任意の https のクライアントIDを受け付けるため、承認画面でクライアントと戻り先を確認することが前提。必要なら管理画面でクライアントIDのドメインを許可リストで制限する（Phase 5の候補）
+- 本番では `APP_URL`（または `APP_ORIGIN`）の設定が必須
 
 ### Phase 5: 管理機能・ドキュメント（2〜3日）
 

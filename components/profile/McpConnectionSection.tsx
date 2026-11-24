@@ -39,6 +39,17 @@ type CreatedToken = {
   created_at: string;
 };
 
+type OAuthAppRow = {
+  family_id: string;
+  client_name: string;
+  client_host: string | null;
+  scopes: string[];
+  endpoint: "default" | "readonly";
+  resource: string;
+  first_authorized_at: string;
+  last_used_at: string | null;
+};
+
 const sectionClass = "mt-2 border-t border-line-subtle py-6";
 const sectionHeadingClass = "text-[16px] font-semibold leading-6 text-text";
 const sectionDescriptionClass = "mt-1 text-[13px] leading-5 text-muted";
@@ -63,6 +74,68 @@ function formatTimestamp(value: string | null): string {
 
 function accessLabel(scopes: string[]): string {
   return Array.isArray(scopes) && scopes.includes("write") ? "読み取りと書き込み" : "読み取りのみ";
+}
+
+function OAuthConnectionSnippets({
+  origin,
+  onCopy,
+}: {
+  origin: string;
+  onCopy: (value: string) => void;
+}) {
+  const claudeCommand = `claude mcp add --transport http atlas ${origin}/mcp`;
+  const codexConfig = `[mcp_servers.atlas]\nurl = "${origin}/mcp"`;
+
+  return (
+    <div className="mt-3 space-y-3">
+      <p className={fieldHintClass}>
+        Claude Code や Codex では URL を登録するだけで、ブラウザで承認すれば接続できます（トークンのコピーは不要）。
+      </p>
+      <div className="rounded-md border border-line bg-surface p-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 text-[12px] font-semibold text-text">Claude Code</div>
+          <button
+            type="button"
+            onClick={() => onCopy(claudeCommand)}
+            data-mcp-copy-oauth-claude
+            className={smallSecondaryButtonClass}
+          >
+            コピー
+          </button>
+        </div>
+        <pre
+          data-mcp-oauth-claude-command
+          className="mt-1.5 overflow-x-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-5 text-secondary"
+        >
+          {claudeCommand}
+        </pre>
+      </div>
+      <div className="rounded-md border border-line bg-surface p-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 text-[12px] font-semibold text-text">
+            Codex（~/.codex/config.toml）
+          </div>
+          <button
+            type="button"
+            onClick={() => onCopy(codexConfig)}
+            data-mcp-copy-oauth-codex
+            className={smallSecondaryButtonClass}
+          >
+            コピー
+          </button>
+        </div>
+        <pre
+          data-mcp-oauth-codex-config
+          className="mt-1.5 overflow-x-auto whitespace-pre font-mono text-[11px] leading-5 text-secondary"
+        >
+          {codexConfig}
+        </pre>
+        <p className="mt-2 text-[12px] leading-5 text-secondary">
+          Codex では <code className="font-mono">codex mcp login atlas</code> でブラウザの承認を開始できます。
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function ConnectionSnippets({
@@ -178,6 +251,10 @@ export function McpConnectionSection({
   const [issueError, setIssueError] = useState("");
   const [issued, setIssued] = useState<CreatedToken | null>(null);
   const [revokingId, setRevokingId] = useState<number | null>(null);
+  const [apps, setApps] = useState<OAuthAppRow[] | null>(null);
+  const [appsLoading, setAppsLoading] = useState(false);
+  const [appsError, setAppsError] = useState("");
+  const [revokingFamily, setRevokingFamily] = useState<string | null>(null);
 
   const canIssue = mcpEnabled && mcpPatEnabled;
   const activeTokens = tokens?.filter((token) => token.revoked_at === null) ?? [];
@@ -201,10 +278,25 @@ export function McpConnectionSection({
     }
   }
 
+  async function loadApps() {
+    setAppsLoading(true);
+    setAppsError("");
+    try {
+      const data = await api<{ apps: OAuthAppRow[] }>("/api/me/oauth-apps");
+      setApps(Array.isArray(data.apps) ? data.apps : []);
+    } catch (error) {
+      setApps((previous) => previous ?? []);
+      setAppsError(`接続済みアプリを取得できませんでした: ${error instanceof Error ? error.message : error}`);
+    } finally {
+      setAppsLoading(false);
+    }
+  }
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrigin(window.location.origin);
     void loadTokens();
+    void loadApps();
   }, []);
 
   if (isGuest) return null;
@@ -273,6 +365,27 @@ export function McpConnectionSection({
     }
   };
 
+  const revokeApp = async (app: OAuthAppRow) => {
+    const ok = await confirmAction(
+      `「${app.client_name}」との連携を解除しますか？\n`
+        + "このアプリのアクセストークンとリフレッシュトークンはすぐに失効し、元に戻せません。",
+      { title: "連携を解除", confirmLabel: "解除する" },
+    );
+    if (!ok) return;
+    setRevokingFamily(app.family_id);
+    setAppsError("");
+    setNotice("");
+    try {
+      await api(`/api/me/oauth-apps/${encodeURIComponent(app.family_id)}`, "DELETE");
+      setApps((previous) => previous?.filter((row) => row.family_id !== app.family_id) ?? previous);
+      setNotice("連携を解除しました");
+    } catch (error) {
+      setAppsError(`連携の解除に失敗しました: ${error instanceof Error ? error.message : error}`);
+    } finally {
+      setRevokingFamily(null);
+    }
+  };
+
   const disabledReason = !mcpEnabled
     ? "管理者が MCP 接続を有効にすると利用できます。"
     : "管理者が個人アクセストークンを有効にすると利用できます。";
@@ -281,9 +394,20 @@ export function McpConnectionSection({
     <section className={sectionClass} data-mcp-section>
       <h2 className={sectionHeadingClass}>MCP 接続</h2>
       <p className={sectionDescriptionClass}>
-        Claude Code や Codex から Atlas に接続するための個人アクセストークンを管理します。
-        トークンは本人の権限の範囲内でだけ使えます。
+        Claude Code や Codex から Atlas に接続するための設定と、接続済みのアプリを管理します。
+        付与される権限は本人の現在の権限の範囲内だけです。
       </p>
+
+      {mcpEnabled && (
+        <div className="mt-4 rounded-md border border-line bg-surface-subtle p-3" data-mcp-oauth>
+          <h3 className={formSectionTitleClass}>OAuth で接続</h3>
+          {origin ? (
+            <OAuthConnectionSnippets origin={origin} onCopy={copy} />
+          ) : (
+            <p className="mt-2 text-[13px] text-muted">接続先を準備しています…</p>
+          )}
+        </div>
+      )}
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -353,7 +477,59 @@ export function McpConnectionSection({
       )}
 
       <div className="mt-6 border-t border-line-subtle pt-4">
-        <h3 className={formSectionTitleClass}>接続設定</h3>
+        <h3 className={formSectionTitleClass}>接続済みアプリ</h3>
+        <p className={`mt-1 ${fieldHintClass}`}>
+          OAuth で承認したアプリです。使わなくなった接続は、ここからアクセストークンとリフレッシュトークンをまとめて失効できます。
+        </p>
+        {appsError && <p className="mt-2 text-[12px] text-danger" role="alert">{appsError}</p>}
+        {apps === null || appsLoading ? (
+          <p className="mt-2 text-[13px] text-muted">読み込み中…</p>
+        ) : apps.length === 0 ? (
+          <p className="mt-2 text-[13px] text-muted">接続済みのアプリはありません。</p>
+        ) : (
+          <div className="mt-2">
+            {apps.map((app) => (
+              <div
+                key={app.family_id}
+                data-oauth-app-row
+                data-oauth-app-family={app.family_id}
+                className="border-b border-line-subtle py-3 text-[12px]"
+              >
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="min-w-0 break-words font-medium text-text">{app.client_name}</span>
+                  <span className={pillClass}>{accessLabel(app.scopes)}</span>
+                  <span className={pillClass}>
+                    {app.endpoint === "readonly" ? "/mcp/readonly" : "/mcp"}
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-muted">
+                  <span>{app.client_host ?? "動的に登録されたアプリ"}</span>
+                  <span>
+                    初回承認: <span className="tabular-nums">{formatTimestamp(app.first_authorized_at)}</span>
+                  </span>
+                  <span>
+                    最終使用:{" "}
+                    <span className="tabular-nums">
+                      {app.last_used_at ? formatTimestamp(app.last_used_at) : "未使用"}
+                    </span>
+                  </span>
+                </div>
+                <button
+                  onClick={() => void revokeApp(app)}
+                  disabled={revokingFamily === app.family_id}
+                  data-oauth-app-revoke
+                  className={`mt-1.5 ${smallDangerButtonClass}`}
+                >
+                  {revokingFamily === app.family_id ? "解除中…" : "連携を解除"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 border-t border-line-subtle pt-4">
+        <h3 className={formSectionTitleClass}>接続設定（個人アクセストークン）</h3>
         <p className={`mt-1 ${fieldHintClass}`}>
           発行したトークンを Authorization ヘッダーに付けます。ここでは{" "}
           <code className="font-mono">{"<TOKEN>"}</code> をプレースホルダーとして表示しています。

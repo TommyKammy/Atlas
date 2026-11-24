@@ -54,10 +54,28 @@ export async function proxy(req: NextRequest) {
   }
 
   const next = () => NextResponse.next({ request: { headers: requestHeaders } });
+
+  // Next cannot co-locate page.tsx and route.ts, so the consent form targets
+  // /oauth/authorize/decision. Accept a POST to /oauth/authorize itself as
+  // well, as OAuth clients and tests expect that endpoint.
+  if (req.nextUrl.pathname === "/oauth/authorize" && req.method === "POST") {
+    const target = req.nextUrl.clone();
+    target.pathname = "/oauth/authorize/decision";
+    return withSecurityHeaders(NextResponse.rewrite(target), nonce);
+  }
+
   const publicPath =
     req.nextUrl.pathname === "/login" ||
     req.nextUrl.pathname === "/mcp" ||
     req.nextUrl.pathname === "/mcp/readonly" ||
+    req.nextUrl.pathname === "/.well-known/oauth-protected-resource" ||
+    req.nextUrl.pathname.startsWith("/.well-known/oauth-protected-resource/") ||
+    req.nextUrl.pathname === "/.well-known/oauth-authorization-server" ||
+    req.nextUrl.pathname === "/oauth/authorize" ||
+    req.nextUrl.pathname.startsWith("/oauth/authorize/") ||
+    req.nextUrl.pathname === "/oauth/register" ||
+    req.nextUrl.pathname === "/oauth/token" ||
+    req.nextUrl.pathname === "/oauth/revoke" ||
     req.nextUrl.pathname === "/api/automation/process" ||
     req.nextUrl.pathname.startsWith("/api/automation/webhook/") ||
     req.nextUrl.pathname.startsWith("/share/") ||
