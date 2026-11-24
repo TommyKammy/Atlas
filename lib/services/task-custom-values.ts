@@ -1,6 +1,7 @@
 import { audit, auditScope } from "../audit";
 import { badRequest, forbidden, notFound } from "../api/errors";
-import { withTransaction, type Queryable } from "../db";
+import { normalizeCustomFieldConfig } from "../custom-fields";
+import { db, withTransaction, type Queryable } from "../db";
 import { emitTaskEvent } from "../domain/events";
 import { canEditFieldValue } from "../field-access";
 import { notifyField, notifyTask } from "../notify";
@@ -110,6 +111,47 @@ export async function writeTaskCustomValue(
   return {
     cleared,
     updated_at: (updated.rows[0] as { updated_at: string }).updated_at,
+  };
+}
+
+/**
+ * Field metadata and current value for a custom-field 409. Scoped to the
+ * project that authorized the task edit so another project's field cannot be
+ * disclosed.
+ */
+export async function taskCustomFieldConflictSnapshot(
+  taskId: number,
+  projectId: number | null,
+  fieldId: unknown,
+) {
+  const id = Number(fieldId);
+  if (!Number.isInteger(id) || id <= 0 || projectId === null) return null;
+  const result = await db.query(
+    `SELECT f.id AS field_id, f.name, f.field_type, f.config,
+       v.value_text, v.value_number, v.value_date::text AS value_date, v.value_json
+     FROM custom_fields f
+     LEFT JOIN task_custom_values v
+       ON v.field_id = f.id AND v.task_id = $1::bigint
+     WHERE f.id = $2::bigint AND f.project_id = $3::bigint
+       AND f.deleted_at IS NULL`,
+    [taskId, id, projectId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  const valueNumber = row.value_number === null || row.value_number === undefined
+    ? null
+    : Number(row.value_number);
+  return {
+    field_id: Number(row.field_id),
+    name: String(row.name),
+    field_type: String(row.field_type),
+    config: normalizeCustomFieldConfig(row.config),
+    value: {
+      value_text: typeof row.value_text === "string" ? row.value_text : null,
+      value_number: valueNumber !== null && Number.isFinite(valueNumber) ? valueNumber : null,
+      value_date: typeof row.value_date === "string" ? row.value_date : null,
+      value_json: row.value_json ?? null,
+    },
   };
 }
 

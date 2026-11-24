@@ -419,15 +419,43 @@ export function customValueToInput(f: CustomField, v?: CustomValue): string {
 }
 
 /**
- * Key for an uncontrolled custom-field editor. Changing it remounts the input,
- * so a refreshed server value replaces a stale local value.
+ * Key for a custom-field draft editor. It deliberately excludes the value:
+ * remote updates flow through the editor's draft instead of remounting it, so
+ * typing and focus survive a live refresh. An explicit reload/discard bumps the
+ * revision and remounts the editor with the latest server value.
  */
 export function customFieldInputKey(
   taskId: number,
-  field: CustomField,
-  value?: CustomValue,
+  fieldId: number,
+  reloadRevision = 0,
 ): string {
-  return `cf-${taskId}-${field.id}-${customValueToInput(field, value)}`;
+  return `cf-${taskId}-${fieldId}-${reloadRevision}`;
+}
+
+/** Format the value an editor attempted to save, before it reaches the API shape. */
+export function formatCustomFieldInputValue(
+  field: Pick<CustomField, "field_type" | "config">,
+  value: unknown,
+  users: { id: number; name: string }[],
+): string {
+  if (value === null || value === undefined || value === "") return "–";
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "–";
+    if (field.field_type === "people") {
+      const ids = value.map(Number).filter((id) => Number.isInteger(id) && id > 0);
+      return formatPeopleValue(ids, users);
+    }
+    if (field.field_type === "reference") {
+      return value.map((id) => `ID:${String(id)}`).join(", ");
+    }
+    return value.map((item) => String(item)).join(", ");
+  }
+  if (field.field_type === "number") {
+    const number = Number(value);
+    if (Number.isFinite(number)) return formatNumberValue(number, field.config ?? {});
+  }
+  if (field.field_type === "date") return formatDateValue(String(value));
+  return String(value);
 }
 
 

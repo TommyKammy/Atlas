@@ -62,6 +62,18 @@ function outerQueries(calls: Call[]) {
     if (sql.includes("FROM tasks t LEFT JOIN users u")) {
       return result([currentTask()]);
     }
+    if (sql.includes("FROM custom_fields f") && sql.includes("LEFT JOIN task_custom_values")) {
+      return result([{
+        field_id: 5,
+        name: "Estimate",
+        field_type: "text",
+        config: null,
+        value_text: "current value",
+        value_number: null,
+        value_date: null,
+        value_json: null,
+      }]);
+    }
     if (sql.includes("SELECT project_id FROM tasks")) return result();
     if (sql.includes("SELECT project_id FROM custom_fields")) return result();
     throw new Error(`unexpected query: ${sql}`);
@@ -141,7 +153,7 @@ test("POST /api/task-values still succeeds without expected_updated_at", async (
   assert.deepEqual(body, { ok: true, updated_at: NEXT_STAMP });
 });
 
-test("POST /api/task-values returns the PATCH-shaped 409 for a stale stamp", async (t) => {
+test("POST /api/task-values returns the PATCH-shaped 409 plus the custom field", async (t) => {
   const { response, body } = await postTaskValue(
     t,
     { expected_updated_at: "2026-01-01T00:00:00.000Z" },
@@ -149,9 +161,21 @@ test("POST /api/task-values returns the PATCH-shaped 409 for a stale stamp", asy
   );
 
   assert.equal(response.status, 409);
-  assert.deepEqual(Object.keys(body).sort(), ["current", "error", "updated_at"]);
+  assert.deepEqual(Object.keys(body).sort(), ["current", "custom_field", "error", "updated_at"]);
   assert.equal(body.error, "conflict");
   assert.equal(body.updated_at, CURRENT_STAMP);
   assert.deepEqual(body.current, currentTask());
   assert.equal((body.current as { updated_at: string }).updated_at, body.updated_at);
+  assert.deepEqual(body.custom_field, {
+    field_id: 5,
+    name: "Estimate",
+    field_type: "text",
+    config: {},
+    value: {
+      value_text: "current value",
+      value_number: null,
+      value_date: null,
+      value_json: null,
+    },
+  });
 });

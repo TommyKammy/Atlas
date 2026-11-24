@@ -11,6 +11,7 @@ import type { TaskRow, User } from "./data";
 import type { RichTextDoc } from "./rich-text-types";
 import { todayISO } from "./dates";
 import { canEditCustomField, type CustomField } from "./custom-fields";
+import { parseCustomFieldConflict, type CustomFieldConflict } from "./task-conflict";
 import { useApiRefresh } from "./use-api-refresh";
 import { taskPaneCloseHref } from "./task-pane-navigation";
 import type { TaskInputRecovery } from "./task-input-draft";
@@ -57,6 +58,8 @@ export function useTaskPane({
     current: Record<string, string | number | boolean | null>;
     attempted: Record<string, unknown>;
     stamp: string;
+    /** The custom-field write that conflicted, including its server value. */
+    customField?: CustomFieldConflict;
     /** Custom-field conflicts retry the value write instead of a field patch. */
     retry?: () => Promise<boolean>;
   } | null>(null);
@@ -427,10 +430,12 @@ export function useTaskPane({
       if (error instanceof TaskConflictError) {
         saveState({ phase: "conflict" });
         if (error.current && error.updatedAt) {
+          const customField = parseCustomFieldConflict(error.customField, value);
           setConflict({
             current: error.current as Record<string, string | number | boolean | null>,
             attempted: { [`cf-${fieldId}`]: value },
             stamp: error.updatedAt,
+            ...(customField ? { customField } : {}),
             retry: () => saveCustomValue(fieldId, value, error.updatedAt as string),
           });
         } else {
@@ -450,8 +455,9 @@ export function useTaskPane({
   const setCustomValue = async (
     fieldId: number,
     value: string | number | string[] | number[] | null,
+    expectedUpdatedAt?: string,
   ) => {
-    await saveCustomValue(fieldId, value);
+    await saveCustomValue(fieldId, value, expectedUpdatedAt);
   };
 
   const uploadFile = async (file: File) => {

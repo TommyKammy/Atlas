@@ -3,11 +3,14 @@ import { ApiError, api } from "./api-client";
 export type TaskConflictPayload = {
   updated_at?: string;
   current?: unknown;
+  custom_field?: unknown;
 };
 
 export class TaskConflictError extends ApiError {
   updatedAt: string | null;
   current: unknown;
+  /** /api/task-values adds the conflicting field and its current value. */
+  customField: unknown;
 
   constructor(error: ApiError) {
     super(409, error.message, error.body);
@@ -15,6 +18,7 @@ export class TaskConflictError extends ApiError {
     const body = (error.body ?? null) as TaskConflictPayload | null;
     this.updatedAt = typeof body?.updated_at === "string" ? body.updated_at : null;
     this.current = body?.current ?? null;
+    this.customField = body?.custom_field ?? null;
   }
 }
 

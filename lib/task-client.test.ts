@@ -72,6 +72,38 @@ test("saveTaskCustomValue maps a 409 to TaskConflictError with the current task"
   );
 });
 
+test("a custom-field 409 keeps the field payload for the conflict comparison", async (t) => {
+  const calls: FetchCall[] = [];
+  mockFetch(t, calls, new Response(
+    JSON.stringify({
+      error: "conflict",
+      updated_at: "2026-02-02T00:00:00.000Z",
+      current: { name: "Current", updated_at: "2026-02-02T00:00:00.000Z" },
+      custom_field: {
+        field_id: 5,
+        name: "Estimate",
+        field_type: "text",
+        value: { value_text: "Server", value_number: null },
+      },
+    }),
+    { status: 409 },
+  ));
+
+  await assert.rejects(
+    saveTaskCustomValue(42, 5, "changed", "2026-01-01T00:00:00.000Z"),
+    (error: unknown) => {
+      assert.ok(error instanceof TaskConflictError, `expected TaskConflictError, got ${String(error)}`);
+      assert.deepEqual(error.customField, {
+        field_id: 5,
+        name: "Estimate",
+        field_type: "text",
+        value: { value_text: "Server", value_number: null },
+      });
+      return true;
+    },
+  );
+});
+
 test("both task editors pass their current stamp to custom-field saves", () => {
   const list = readFileSync(new URL("./use-list-task-actions.ts", import.meta.url), "utf8");
   assert.match(
@@ -86,4 +118,19 @@ test("both task editors pass their current stamp to custom-field saves", () => {
   );
   assert.match(pane, /expectedStamp = updatedAt/);
   assert.match(pane, /retry: \(\) => saveCustomValue\(fieldId, value, error\.updatedAt as string\)/);
+});
+
+test("buffered custom-field editors save with the stamp from when editing began", () => {
+  const taskPane = readFileSync(
+    new URL("../components/TaskPane.tsx", import.meta.url),
+    "utf8",
+  );
+  const draftSaves = taskPane.match(
+    /onSave=\{\(input, stamp\) => setCustomValue\(field\.id, .+, stamp\)\}/g,
+  ) ?? [];
+  assert.equal(draftSaves.length, 3, "number, date and text editors forward the draft stamp");
+
+  const pane = readFileSync(new URL("./use-task-pane.ts", import.meta.url), "utf8");
+  assert.match(pane, /expectedUpdatedAt\?: string/);
+  assert.match(pane, /await saveCustomValue\(fieldId, value, expectedUpdatedAt\)/);
 });

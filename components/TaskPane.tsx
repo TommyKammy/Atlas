@@ -15,6 +15,7 @@ import {
   type CustomValue,
 } from "@/lib/custom-fields";
 import { todayISO } from "@/lib/dates";
+import { taskConflictComparisonRows } from "@/lib/task-conflict";
 import {
   overdueBadgeText,
   overdueDays,
@@ -267,24 +268,32 @@ export default function TaskPane({
     }
     if (field.field_type === "number") {
       return (
-        <input
+        <TaskDraftInput
+          key={customFieldInputKey(task.id, field.id, reloadRevision)}
+          taskId={task.id}
+          field={`custom-${field.id}`}
+          value={customValueToInput(field, value)}
+          updatedAt={updatedAt}
+          recovery={null}
+          onSave={(input, stamp) => setCustomValue(field.id, input === "" ? null : Number(input), stamp)}
+          label={field.name}
           type="number"
-          defaultValue={customValueToInput(field, value)}
-          key={customFieldInputKey(task.id, field, value)}
-          onBlur={(event) =>
-            setCustomValue(field.id, event.target.value === "" ? null : Number(event.target.value))
-          }
           className="h-7 w-24 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
         />
       );
     }
     if (field.field_type === "date") {
       return (
-        <input
+        <TaskDraftInput
+          key={customFieldInputKey(task.id, field.id, reloadRevision)}
+          taskId={task.id}
+          field={`custom-${field.id}`}
+          value={customValueToInput(field, value)}
+          updatedAt={updatedAt}
+          recovery={null}
+          onSave={(input, stamp) => setCustomValue(field.id, input || null, stamp)}
+          label={field.name}
           type="date"
-          defaultValue={value?.value_date ?? ""}
-          key={customFieldInputKey(task.id, field, value)}
-          onBlur={(event) => setCustomValue(field.id, event.target.value || null)}
           className="h-7 w-40 rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
         />
       );
@@ -318,10 +327,12 @@ export default function TaskPane({
       );
     }
     if (field.field_type === "select") {
+      // Immediate-save selects keep remounting on server changes; buffered
+      // text/number/date drafts below must not.
       return (
         <select
           defaultValue={customValueToInput(field, value)}
-          key={customFieldInputKey(task.id, field, value)}
+          key={`cf-select-${task.id}-${field.id}-${customValueToInput(field, value)}`}
           onChange={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
           className="h-7 max-w-[220px] cursor-pointer rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
         >
@@ -335,10 +346,15 @@ export default function TaskPane({
       );
     }
     return (
-      <input
-        defaultValue={customValueToInput(field, value)}
-        key={customFieldInputKey(task.id, field, value)}
-        onBlur={(event) => setCustomValue(field.id, event.target.value === "" ? null : event.target.value)}
+      <TaskDraftInput
+        key={customFieldInputKey(task.id, field.id, reloadRevision)}
+        taskId={task.id}
+        field={`custom-${field.id}`}
+        value={customValueToInput(field, value)}
+        updatedAt={updatedAt}
+        recovery={null}
+        onSave={(input, stamp) => setCustomValue(field.id, input === "" ? null : input, stamp)}
+        label={field.name}
         className="h-7 w-full rounded border border-transparent bg-transparent px-1 text-[13px] outline-none hover:border-field-line-hover hover:bg-field focus:border-accent focus:bg-field"
       />
     );
@@ -369,6 +385,17 @@ export default function TaskPane({
       : "fixed inset-0 z-[80] md:sticky md:top-0 md:z-auto md:h-[100dvh] md:w-[560px] md:self-start md:border-l md:border-line xl:w-[680px] 2xl:w-[760px]"
   }`;
   const draftProjectName = memberships.find((membership) => membership.id === projectId)?.name ?? "";
+  const conflictRows = conflict ? taskConflictComparisonRows({
+    attempted: conflict.attempted,
+    current: conflict.current,
+    customField: conflict.customField,
+    labels: FIELD_LABELS,
+    describeValue,
+    users,
+    task,
+    customValues,
+    customFields,
+  }) : [];
 
   if (draftActive && paneDraft && quick) {
     return (
@@ -517,25 +544,21 @@ export default function TaskPane({
             <div className="mb-3 rounded-lg border border-danger-line bg-danger-soft p-3 text-sm">
               <div className="font-semibold text-danger">他のユーザーが先に更新しました</div>
               <div className="mt-1 space-y-0.5">
-                {Object.keys(conflict.attempted)
-                  .filter((key) => key in FIELD_LABELS)
-                  .map((key) => (
-                    <div key={key}>
-                      {FIELD_LABELS[key]}: {describeValue(key, conflict.attempted[key])} →{" "}
-                      {key === "assignee_id"
-                        ? ((conflict.current.assignee_name as string) ?? "–")
-                        : describeValue(key, conflict.current[key])}
-                      （現在値）
-                    </div>
-                  ))}
+                {conflictRows.map((row) => (
+                  <div key={row.key}>
+                    {row.label}: {row.attempted} → {row.current}（現在値）
+                  </div>
+                ))}
               </div>
               <div className="mt-2 flex gap-2">
-                <button
-                  onClick={retryOverwrite}
-                  className="rounded bg-danger-strong px-3 py-1 text-on-strong hover:bg-danger-strong-hover"
-                >
-                  最新で上書きする
-                </button>
+                {conflictRows.length > 0 && (
+                  <button
+                    onClick={retryOverwrite}
+                    className="rounded bg-danger-strong px-3 py-1 text-on-strong hover:bg-danger-strong-hover"
+                  >
+                    最新で上書きする
+                  </button>
+                )}
                 <button
                   onClick={discardConflict}
                   data-task-conflict-discard
