@@ -131,6 +131,12 @@ test("security settings PATCH records the workspace on all four audit rows", asy
     auditCalls.map((call) => call.params?.[2]),
     ["security.update", "security.scim_enable", "security.mcp_enable", "security.mcp_pat_enable"],
   );
+  // The update summary lists changed column names, never SQL assignments.
+  assert.equal(
+    auditCalls[0].params?.[6],
+    "two_factor_policy, scim_enabled, mcp_enabled, mcp_pat_enabled",
+  );
+  assert.doesNotMatch(String(auditCalls[0].params?.[6]), /\$\d| = /);
   for (const call of auditCalls) {
     // getAuditLog filters by audit_log.workspace_id, so every row must carry it.
     assert.equal(call.params?.[0], WORKSPACE_ID);

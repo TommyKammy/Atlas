@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { test } from "node:test";
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
 import { db } from "../db";
-import { updateTask } from "./task-update";
+import { updateTask, taskAuditSummary } from "./task-update";
 
 type Call = { sql: string; params?: unknown[] };
 
@@ -68,6 +68,9 @@ function outerQueries(calls: Call[]) {
     if (sql.includes("SELECT project_id, start_on::text AS start_on, due_on::text AS due_on")) {
       return result([{ project_id: 7, start_on: null, due_on: null }]);
     }
+    if (sql.includes("SELECT updated_at::text AS u FROM tasks WHERE id = $1::bigint")) {
+      return result([{ u: PRE_UPDATE_STAMP }]);
+    }
     if (sql.includes("FROM project_automations")) {
       return result([{
         id: 9,
@@ -113,4 +116,39 @@ test("updateTask returns its own UPDATE stamp instead of a post-automation re-re
   assert.equal(finalRead, -1, "the stamp is not re-read after the automation");
   assert.deepEqual(updated, { id: 42, updated_at: PRE_UPDATE_STAMP });
   assert.notEqual(updated.updated_at, POST_AUTOMATION_STAMP);
+});
+
+test("taskAuditSummary omits control keys but keeps real changes", () => {
+  assert.equal(
+    taskAuditSummary({
+      status: "Done",
+      expected_updated_at: PRE_UPDATE_STAMP,
+      placement: { project_id: 7, anchor_id: null, side: "after" },
+      section_id: 3,
+    }),
+    "status,placement,section_id",
+  );
+});
+
+test("updateTask audit summary excludes expected_updated_at", async (t) => {
+  const outerCalls: Call[] = [];
+  const clientCalls: Call[] = [];
+  t.mock.method(db, "query", outerQueries(outerCalls));
+  t.mock.method(Pool.prototype, "connect", async () => transactionClient(clientCalls));
+
+  // lib/db awaits next/server connection() before opening the pool client.
+  const nativeRequire = createRequire(import.meta.url);
+  const nextServer = nativeRequire("next/server") as { connection: () => Promise<void> };
+  t.mock.method(nextServer, "connection", async () => undefined);
+
+  const updated = await updateTask(
+    { status: "Done", expected_updated_at: PRE_UPDATE_STAMP },
+    { taskId: 42, uid: 13, projectId: 7, authorizeProject: async () => undefined },
+  );
+
+  assert.deepEqual(updated, { id: 42, updated_at: PRE_UPDATE_STAMP });
+  const auditCall = outerCalls.find((call) => call.sql.includes("INSERT INTO audit_log"));
+  assert.ok(auditCall, "the task update is audited");
+  assert.equal(auditCall.params?.[6], "status");
+  assert.ok(!String(auditCall.params?.[6]).includes("expected_updated_at"));
 });

@@ -7,8 +7,10 @@ import { GET as defaultGet } from "@/app/mcp/route";
 import { getRequestContext, type RequestContext } from "@/lib/request-context";
 import type { McpAuthResult, McpAuthSuccess, McpEndpoint } from "./auth";
 import {
+  classifyResponse,
   handleMcpPost,
   MCP_MAX_REQUEST_BODY_BYTES,
+  MCP_MAX_RESPONSE_LOG_BYTES,
   readRpcMetadata,
   type McpHttpDependencies,
 } from "./http";
@@ -55,6 +57,47 @@ const FAKE_SERVICES = {
 
 function buildTestServer(ctx: Parameters<typeof buildMcpServer>[0]) {
   return buildMcpServer(ctx, createReadTools(FAKE_SERVICES));
+}
+
+function testTool(name: string, handler: McpToolDefinition["handler"]): McpToolDefinition {
+  return {
+    name,
+    title: name,
+    description: "Test-only tool for legacy SSE request-log coverage.",
+    requiredScope: "read",
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    inputSchema: z.object({}),
+    handler,
+  };
+}
+
+const LEGACY_TOOLS: McpToolDefinition[] = [
+  testTool("legacy_ok", async () => ({ content: [{ type: "text", text: "ok" }] })),
+  testTool("legacy_error", async () => ({
+    content: [{ type: "text", text: "insufficient project role" }],
+    isError: true,
+  })),
+  testTool("legacy_large", async () => ({
+    content: [{ type: "text", text: "x".repeat(MCP_MAX_RESPONSE_LOG_BYTES + 1_024) }],
+  })),
+];
+
+function serverWithTools(tools: McpToolDefinition[]) {
+  return (ctx: Parameters<typeof buildMcpServer>[0]) => buildMcpServer(ctx, tools);
+}
+
+/** A 2025-era tools/call POST, which the SDK serves over SSE in legacy mode. */
+function legacyToolCall(name: string): Request {
+  return request("/mcp", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer valid-token",
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      "mcp-protocol-version": "2025-06-18",
+    },
+    body: jsonRpcBody("tools/call", { name, arguments: {} }),
+  });
 }
 
 function request(
@@ -211,6 +254,115 @@ test("a default 2025-era client still lists tools and calls whoami", async () =>
   } finally {
     await client.close();
   }
+});
+
+test("a legacy SSE tools/call error result is logged as a tool error", async () => {
+  const entries: McpRequestLogEntry[] = [];
+  const response = await handleMcpPost(legacyToolCall("legacy_error"), "default", {
+    ...authenticatedDependencies(entries),
+    buildServer: serverWithTools(LEGACY_TOOLS),
+  });
+  // The 2025-era stateless leg streams results as SSE.
+  assert.match(response.headers.get("content-type") ?? "", /text\/event-stream/);
+  // Logging reads a clone and must leave the client's response untouched.
+  const body = await response.text();
+  assert.match(body, /"isError":true/);
+  assert.match(body, /insufficient project role/);
+
+  const toolLog = entries.find((entry) => entry.rpcMethod === "tools/call");
+  assert.ok(toolLog);
+  assert.equal(toolLog.toolName, "legacy_error");
+  assert.equal(toolLog.outcome, "error");
+  assert.equal(toolLog.errorCode, "tool_error");
+});
+
+test("a legacy SSE JSON-RPC error is logged with its code", async () => {
+  const entries: McpRequestLogEntry[] = [];
+  const response = await handleMcpPost(legacyToolCall("unknown_legacy_tool"), "default", {
+    ...authenticatedDependencies(entries),
+    buildServer: serverWithTools(LEGACY_TOOLS),
+  });
+  assert.match(response.headers.get("content-type") ?? "", /text\/event-stream/);
+  const body = await response.text();
+  assert.match(body, /"error"/);
+
+  const toolLog = entries.find((entry) => entry.rpcMethod === "tools/call");
+  assert.ok(toolLog);
+  assert.equal(toolLog.toolName, "unknown_legacy_tool");
+  assert.equal(toolLog.outcome, "error");
+  // The SDK reports an unknown tool as JSON-RPC InvalidParams.
+  assert.equal(toolLog.errorCode, "-32602");
+});
+
+test("a legacy SSE tools/call success is logged as ok", async () => {
+  const entries: McpRequestLogEntry[] = [];
+  const response = await handleMcpPost(legacyToolCall("legacy_ok"), "default", {
+    ...authenticatedDependencies(entries),
+    buildServer: serverWithTools(LEGACY_TOOLS),
+  });
+  assert.match(response.headers.get("content-type") ?? "", /text\/event-stream/);
+  const body = await response.text();
+  assert.match(body, /"result"/);
+  assert.doesNotMatch(body, /"isError":true/);
+
+  const toolLog = entries.find((entry) => entry.rpcMethod === "tools/call");
+  assert.ok(toolLog);
+  assert.equal(toolLog.outcome, "ok");
+  assert.equal(toolLog.errorCode, null);
+});
+
+test("an oversized legacy SSE tool result stays ok and keeps the response intact", async () => {
+  const entries: McpRequestLogEntry[] = [];
+  const response = await handleMcpPost(legacyToolCall("legacy_large"), "default", {
+    ...authenticatedDependencies(entries),
+    buildServer: serverWithTools(LEGACY_TOOLS),
+  });
+  const body = await response.text();
+  assert.ok(body.length > MCP_MAX_RESPONSE_LOG_BYTES);
+
+  const toolLog = entries.find((entry) => entry.rpcMethod === "tools/call");
+  assert.ok(toolLog);
+  assert.equal(toolLog.outcome, "ok");
+  assert.equal(toolLog.errorCode, null);
+});
+
+test("SSE tool-result classification joins multiple data lines", async () => {
+  const response = new Response(
+    'event: message\ndata: {"jsonrpc":"2.0","id":1,\ndata: "result":{"content":[],"isError":true}}\n\n',
+    { headers: { "content-type": "text/event-stream; charset=utf-8" } },
+  );
+  assert.deepEqual(
+    await classifyResponse(response, {
+      method: "tools/call",
+      toolName: "multiline",
+      clientName: null,
+      isToolCall: true,
+    }),
+    { outcome: "error", errorCode: "tool_error" },
+  );
+});
+
+test("SSE responses for non-tools/call requests are not read", async () => {
+  let pulls = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulls += 1;
+      controller.enqueue(new TextEncoder().encode('event: message\ndata: {"jsonrpc":"2.0","id":1,"result":{}}\n\n'));
+      controller.close();
+    },
+  }, { highWaterMark: 0 });
+  const response = new Response(stream, { headers: { "content-type": "text/event-stream" } });
+  assert.deepEqual(
+    await classifyResponse(response, {
+      method: "subscriptions/listen",
+      toolName: null,
+      clientName: null,
+      isToolCall: false,
+    }),
+    { outcome: "ok", errorCode: null },
+  );
+  assert.equal(pulls, 0);
+  assert.equal(response.bodyUsed, false);
 });
 
 test("the readonly endpoint lists and executes only read tools", async () => {

@@ -32,6 +32,12 @@ const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
  */
 export const MCP_MAX_REQUEST_BODY_BYTES = DEFAULT_MAX_REQUEST_BODY_SIZE;
 
+/**
+ * Upper bound on the SSE body inspected for the request log. A tool result
+ * larger than this is logged as ok rather than buffering an unbounded stream.
+ */
+export const MCP_MAX_RESPONSE_LOG_BYTES = 1024 * 1024;
+
 type AtlasAuthExtra = {
   actor: Actor;
   scopes: McpScope[];
@@ -308,25 +314,25 @@ function handlerFor(buildServer: McpServerBuilder): ReturnType<typeof createMcpH
   return handler;
 }
 
-async function classifyResponse(
-  response: Response,
-  rpc: RpcMetadata,
-): Promise<{ outcome: McpRequestOutcome; errorCode: string | null }> {
-  if (response.status >= 400) {
-    return {
-      outcome: response.status === 401 || response.status === 403 ? "denied" : "error",
-      errorCode: `http_${response.status}`,
-    };
-  }
-  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-  if (!contentType.includes("application/json")) {
-    // SSE (subscriptions/listen) and empty notification responses are fine.
-    return { outcome: "ok", errorCode: null };
-  }
-  const payload = await response.clone().json().catch(() => null) as unknown;
+type ResponseClassification = {
+  outcome: McpRequestOutcome;
+  errorCode: string | null;
+};
+
+function okClassification(): ResponseClassification {
+  return { outcome: "ok", errorCode: null };
+}
+
+/** Apply the same JSON-RPC / tool-error checks used for JSON responses. */
+function classifyMessages(
+  payload: unknown,
+  isToolCall: boolean,
+): ResponseClassification | null {
   const messages = Array.isArray(payload) ? payload : [payload];
+  let sawResponse = false;
   for (const message of messages) {
     if (message === null || typeof message !== "object") continue;
+    if ("result" in message || "error" in message) sawResponse = true;
     const error = (message as { error?: unknown }).error;
     if (error !== null && typeof error === "object") {
       const code = (error as { code?: unknown }).code;
@@ -339,7 +345,7 @@ async function classifyResponse(
     }
     const result = (message as { result?: unknown }).result;
     if (
-      rpc.isToolCall
+      isToolCall
       && result !== null
       && typeof result === "object"
       && (result as { isError?: unknown }).isError === true
@@ -347,7 +353,131 @@ async function classifyResponse(
       return { outcome: "error", errorCode: "tool_error" };
     }
   }
-  return { outcome: "ok", errorCode: null };
+  // A response frame ends the exchange even when it carries a success. For
+  // JSON bodies this is the same ok outcome as no frame at all.
+  return sawResponse ? okClassification() : null;
+}
+
+/**
+ * Inspect a 2025-era tools/call response served as SSE. The SDK's legacy
+ * stateless path streams the JSON-RPC response as `event: message` /
+ * `data: {...}` frames, so a tool error would otherwise be logged as ok.
+ *
+ * Only SSE frames are read: data lines are concatenated with a newline (as
+ * the SSE format specifies) and parsed as JSON. Parsing stops at the first
+ * error frame, when the bound is exceeded, or when the stream ends.
+ * Malformed data, unreadable streams and oversized bodies are left as ok so
+ * logging never alters the response the client receives.
+ */
+async function classifySseResponse(
+  response: Response,
+  isToolCall: boolean,
+): Promise<ResponseClassification | null> {
+  if (response.body === null) return null;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  try {
+    const clone = response.clone();
+    if (clone.body === null) return null;
+    reader = clone.body.getReader();
+    const decoder = new TextDecoder();
+    let pending = "";
+    let dataLines: string[] = [];
+    let total = 0;
+
+    const dispatch = (): ResponseClassification | null => {
+      if (dataLines.length === 0) return null;
+      const data = dataLines.join("\n");
+      dataLines = [];
+      let payload: unknown;
+      try {
+        payload = JSON.parse(data) as unknown;
+      } catch {
+        return null;
+      }
+      return classifyMessages(payload, isToolCall);
+    };
+
+    const processLine = (line: string): ResponseClassification | null => {
+      if (line === "") return dispatch();
+      if (line.startsWith(":")) return null;
+      const colon = line.indexOf(":");
+      const field = colon === -1 ? line : line.slice(0, colon);
+      if (field !== "data") return null;
+      let value = colon === -1 ? "" : line.slice(colon + 1);
+      if (value.startsWith(" ")) value = value.slice(1);
+      dataLines.push(value);
+      return null;
+    };
+
+    const stop = (classification: ResponseClassification | null): ResponseClassification | null => {
+      // Releasing the clone must not wait for the original branch, which the
+      // caller still has to consume.
+      try {
+        void reader?.cancel().catch(() => undefined);
+      } catch {
+        // The stream may already be closed or errored.
+      }
+      return classification;
+    };
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > MCP_MAX_RESPONSE_LOG_BYTES) return stop(null);
+      pending += decoder.decode(value, { stream: true });
+      let newline = pending.indexOf("\n");
+      while (newline !== -1) {
+        let line = pending.slice(0, newline);
+        pending = pending.slice(newline + 1);
+        if (line.endsWith("\r")) line = line.slice(0, -1);
+        const classified = processLine(line);
+        if (classified) return stop(classified);
+        newline = pending.indexOf("\n");
+      }
+    }
+
+    pending += decoder.decode();
+    if (pending !== "") {
+      let line = pending;
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      const classified = processLine(line);
+      if (classified) return classified;
+    }
+    return dispatch();
+  } catch {
+    return null;
+  } finally {
+    try {
+      reader?.releaseLock();
+    } catch {
+      // The stream may already be closed or cancelled.
+    }
+  }
+}
+
+export async function classifyResponse(
+  response: Response,
+  rpc: RpcMetadata,
+): Promise<ResponseClassification> {
+  if (response.status >= 400) {
+    return {
+      outcome: response.status === 401 || response.status === 403 ? "denied" : "error",
+      errorCode: `http_${response.status}`,
+    };
+  }
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("application/json")) {
+    if (rpc.isToolCall && contentType.includes("text/event-stream")) {
+      const classified = await classifySseResponse(response, true);
+      if (classified) return classified;
+    }
+    // SSE (subscriptions/listen) and empty notification responses are fine.
+    return okClassification();
+  }
+  const payload = await response.clone().json().catch(() => null) as unknown;
+  return classifyMessages(payload, rpc.isToolCall) ?? okClassification();
 }
 
 export type McpHttpDependencies = {

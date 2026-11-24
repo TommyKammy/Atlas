@@ -72,6 +72,19 @@ const PATCHABLE = new Set([
   "is_milestone",
 ]);
 
+/**
+ * Input keys that control the write rather than describe a change. The
+ * optimistic-lock stamp authorizes the write; it is not a changed field.
+ */
+const AUDIT_CONTROL_KEYS = new Set(["expected_updated_at"]);
+
+/** Audit summary naming only the fields the patch actually changes. */
+export function taskAuditSummary(body: Record<string, unknown>): string {
+  return Object.keys(body)
+    .filter((key) => !AUDIT_CONTROL_KEYS.has(key))
+    .join(",");
+}
+
 export async function updateTask(
   input: Record<string, unknown>,
   { taskId, uid, projectId: currentProjectId, authorizeProject }: TaskUpdateContext,
@@ -452,7 +465,7 @@ export async function updateTask(
     entity: "task",
     entityId: taskId,
     ...(primaryProjectId === null && !movesPrimary ? await auditScope(targetProjectId) : {}),
-    summary: Object.keys(b).join(","),
+    summary: taskAuditSummary(b),
   });
   // Return the stamp produced by this UPDATE, not a later re-read. Synchronous
   // automations (set_status / set_assignee) may advance tasks.updated_at after
