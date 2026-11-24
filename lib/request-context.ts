@@ -27,3 +27,15 @@ export function runWithRequestContext<T>(context: RequestContext, fn: () => T): 
 export function getRequestContext(): RequestContext | undefined {
   return storage.getStore();
 }
+
+/**
+ * Attribution columns for task history. Direct task_events writers and
+ * logEvent share this so an MCP write is never recorded as a web write.
+ */
+export function taskEventAttribution(): { via: RequestVia; clientName: string | null } {
+  const context = getRequestContext();
+  return {
+    via: context?.via ?? "web",
+    clientName: context?.clientName ?? null,
+  };
+}

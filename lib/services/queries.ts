@@ -171,7 +171,7 @@ async function requireActiveActor(actor: Actor): Promise<void> {
   if (!(await loadAuthActor(actor))) throw forbidden("unknown or inactive user");
 }
 
-async function loadWorkspaceId(): Promise<number> {
+export async function loadWorkspaceId(): Promise<number> {
   const result = await db.query("SELECT id FROM workspaces ORDER BY id LIMIT 1");
   const id = Number(result.rows[0]?.id);
   if (!Number.isSafeInteger(id) || id <= 0) throw notFound("workspace not found");

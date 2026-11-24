@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withTransaction } from "@/lib/db";
+import { insertTaskEvents } from "@/lib/repositories/tasks";
 import { notifyProject } from "@/lib/notify";
 import { parseCsv } from "@/lib/csv";
 import { canEditCustomField, isReadOnlyFieldType, normalizeAccessLevel, type CustomFieldType } from "@/lib/custom-fields";
@@ -264,12 +265,12 @@ export async function importProject(
     }
 
     if (createdIds.length > 0) {
-      await q.query(
-        `INSERT INTO task_events (task_id, actor_id, kind, summary)
-         SELECT id, $2::bigint, 'created', 'タスクをインポートで作成しました'
-         FROM tasks WHERE id = ANY($1::bigint[])`,
-        [createdIds, uid],
-      );
+      await insertTaskEvents(q, {
+        taskIds: createdIds,
+        actorId: uid,
+        kind: "created",
+        summary: "タスクをインポートで作成しました",
+      });
     }
     return { created, skipped, errors: errors.slice(0, 20) };
   });

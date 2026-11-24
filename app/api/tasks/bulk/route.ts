@@ -7,6 +7,7 @@ import { audit } from "@/lib/audit";
 import { conflict } from "@/lib/api/errors";
 import { runAutomations } from "@/lib/automation-runner";
 import { emitTaskEvent } from "@/lib/domain/events";
+import { insertTaskEvents } from "@/lib/repositories/tasks";
 import { recordTaskCompletion, TASK_COMPLETION_COLUMNS, type TaskCompletionRow } from "@/lib/services/task-completion";
 import { mutateTaskTrees } from "@/lib/services/task-tree-mutation";
 import { assertOrdinaryTaskMutation } from "@/lib/services/task-approval-guard";
@@ -118,11 +119,12 @@ export const POST = withUser(async (req, { uid }) => {
         "UPDATE tasks SET assignee_id = $1::bigint, updated_at = now() WHERE id = ANY($2::bigint[])",
         [body.assignee_id ?? null, ids],
       );
-      await q.query(
-        `INSERT INTO task_events (task_id, actor_id, kind, summary)
-         SELECT id, $2::bigint, 'assignee_changed', '担当者を変更しました' FROM tasks WHERE id = ANY($1::bigint[])`,
-        [ids, uid],
-      );
+      await insertTaskEvents(q, {
+        taskIds: ids,
+        actorId: uid,
+        kind: "assignee_changed",
+        summary: "担当者を変更しました",
+      });
       for (const id of ids) {
         await emitTaskEvent({
           projectId: projects.get(id) ?? null,

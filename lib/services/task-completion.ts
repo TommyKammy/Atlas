@@ -1,5 +1,6 @@
 import type { Queryable } from "@/lib/db";
 import { emitTaskEvent } from "@/lib/domain/events";
+import { insertTaskEvent } from "@/lib/repositories/tasks";
 import { insertNextOccurrence, type RecurringTask } from "./task-write";
 
 export const TASK_COMPLETION_COLUMNS = `id, project_id, section_id, parent_task_id, name, description,
@@ -30,10 +31,12 @@ export async function recordTaskCompletion(
 ): Promise<void> {
   const { id: taskId, completed } = task;
   const kind = completed ? "completed" : "reopened";
-  await q.query(
-    "INSERT INTO task_events (task_id, actor_id, kind, summary) VALUES ($1, $2, $3, $4)",
-    [taskId, actorId, kind, completed ? "タスクを完了しました" : "タスクを未完了に戻しました"],
-  );
+  await insertTaskEvent(q, {
+    taskId,
+    actorId,
+    kind,
+    summary: completed ? "タスクを完了しました" : "タスクを未完了に戻しました",
+  });
   await emitTaskEvent({
     ...eventContext,
     projectId,
@@ -56,10 +59,12 @@ export async function recordTaskCompletion(
     "UPDATE task_recurrence_occurrences SET next_task_id = $2 WHERE source_task_id = $1",
     [taskId, nextTaskId],
   );
-  await q.query(
-    "INSERT INTO task_events (task_id, actor_id, kind, summary) VALUES ($1, $2, 'recurrence_spawned', $3)",
-    [taskId, actorId, "次回のタスクを生成しました"],
-  );
+  await insertTaskEvent(q, {
+    taskId,
+    actorId,
+    kind: "recurrence_spawned",
+    summary: "次回のタスクを生成しました",
+  });
   await emitTaskEvent({
     ...eventContext,
     projectId: task.project_id,
