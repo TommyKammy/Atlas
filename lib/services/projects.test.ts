@@ -159,3 +159,51 @@ test("updateProject rejects an invalid status_color", async (t) => {
   assert.equal(calls.length, 3);
   assert.ok(!calls.some((sql) => sql.includes("UPDATE projects")));
 });
+
+test("updateProject records the project's workspace on the audit row", async (t) => {
+  type Call = { sql: string; params?: unknown[] };
+  const result = (rows: Record<string, unknown>[]) =>
+    ({ rows, rowCount: rows.length, command: "SELECT", fields: [], oid: 0 });
+  const calls: Call[] = [];
+  const auth = mockAuthQueries({ role: "admin" }, []);
+  t.mock.method(db, "query", async (sql: string, params?: unknown[]) => {
+    calls.push({ sql, params });
+    if (sql.includes("SELECT workspace_id FROM projects")) return result([{ workspace_id: 3 }]);
+    if (sql.includes("INSERT INTO audit_log")) return result([]);
+    return auth(sql);
+  });
+
+  const { Pool } = await import("pg");
+  const { createRequire } = await import("node:module");
+  const nativeRequire = createRequire(import.meta.url);
+  t.mock.method(Pool.prototype, "connect", async () => ({
+    query: async (sql: string) => {
+      if (sql.includes("UPDATE projects")) return result([{ status_options_version: 1 }]);
+      return result([]);
+    },
+    release: () => undefined,
+  }));
+  // lib/db awaits next/server connection(); notifyProject publishes through Redis.
+  const nextServer = nativeRequire("next/server") as { connection: () => Promise<void> };
+  t.mock.method(nextServer, "connection", async () => undefined);
+  const redis = nativeRequire("redis") as { createClient: (...args: unknown[]) => unknown };
+  t.mock.method(redis, "createClient", () => ({
+    isReady: false,
+    on: () => undefined,
+    connect: async () => undefined,
+    destroy: () => undefined,
+  }));
+
+  assert.deepEqual(await updateProject(actor, 7, { name: "Renamed" }), { id: 7 });
+
+  const inserts = calls.filter((call) => call.sql.includes("INSERT INTO audit_log"));
+  assert.equal(inserts.length, 1);
+  // getAuditLog filters by audit_log.workspace_id, so the row must carry it.
+  const [workspaceId, actorId, action, entity, entityId, projectId] = inserts[0].params ?? [];
+  assert.equal(workspaceId, 3);
+  assert.equal(actorId, actor.uid);
+  assert.equal(action, "project.update");
+  assert.equal(entity, "project");
+  assert.equal(entityId, 7);
+  assert.equal(projectId, 7);
+});

@@ -69,6 +69,7 @@ export const POST = withUser(async (req, { uid, params }) => {
     await audit(uid, "portfolio_rule.create", {
       entity: "portfolio_rule",
       entityId: ruleId,
+      workspaceId: loaded.workspaceId,
       summary: name,
     });
     return NextResponse.json({ id: ruleId }, { status: 201 });

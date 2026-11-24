@@ -492,6 +492,7 @@ export async function updateProject(
   await audit(actor.uid, "project.update", {
     entity: "project",
     entityId: projectId,
+    projectId,
   });
   await notifyProject(projectId);
   return statusOptions ? { id: projectId, ...updated } : { id: projectId };

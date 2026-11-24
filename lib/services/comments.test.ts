@@ -144,3 +144,85 @@ test("addComment rejects an invalid rich-text document", async (t) => {
   );
   assert.equal(calls.length, 3);
 });
+
+type Call = { sql: string; params?: unknown[] };
+
+const WORKSPACE_ID = 3;
+
+function queryResult(rows: Record<string, unknown>[]) {
+  return { rows, rowCount: rows.length, command: "SELECT", fields: [], oid: 0 };
+}
+
+/** Mocks the transaction client and lib/db's next/server connection() for a successful addComment. */
+async function mockCommentWrite(t: import("node:test").TestContext) {
+  const { Pool } = await import("pg");
+  const { createRequire } = await import("node:module");
+  t.mock.method(Pool.prototype, "connect", async () => ({
+    query: async (sql: string) => {
+      if (sql.includes("INSERT INTO comments")) return queryResult([{ id: 501 }]);
+      // Mention writes and emitTaskEvent's lookups; no workspace skips the domain event.
+      return queryResult([]);
+    },
+    release: () => undefined,
+  }));
+  const nextServer = createRequire(import.meta.url)("next/server") as { connection: () => Promise<void> };
+  t.mock.method(nextServer, "connection", async () => undefined);
+}
+
+/** Auth queries plus notifyTask and the audit write, recorded in `calls`. */
+function mockCommentDb(options: AuthOptions, calls: Call[]) {
+  const auth = mockQueries(options, []);
+  return async (sql: string, params?: unknown[]) => {
+    calls.push({ sql, params });
+    // notifyTask: no project, so no Redis publish is attempted.
+    if (sql.includes("SELECT project_id FROM tasks")) return queryResult([{ project_id: null }]);
+    if (sql.includes("SELECT workspace_id FROM projects")) return queryResult([{ workspace_id: WORKSPACE_ID }]);
+    if (sql.includes("SELECT id FROM workspaces")) return queryResult([{ id: WORKSPACE_ID }]);
+    if (sql.includes("INSERT INTO audit_log")) return queryResult([]);
+    // Mention candidates: the plain-text body mentions nobody.
+    if (sql.includes("SELECT u.id, u.name FROM users u")) return queryResult([]);
+    return auth(sql);
+  };
+}
+
+function auditInsert(calls: Call[]): unknown[] {
+  const inserts = calls.filter((call) => call.sql.includes("INSERT INTO audit_log"));
+  assert.equal(inserts.length, 1);
+  return inserts[0].params ?? [];
+}
+
+test("addComment records the task's project and workspace on the audit row", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockCommentDb({
+    role: "commenter",
+    task: { default_project_id: 7, project_ids: [7] },
+  }, calls));
+  await mockCommentWrite(t);
+
+  assert.deepEqual(await addComment(actor, { task_id: 42, body: "hello" }), { id: 501 });
+
+  // getAuditLog filters by audit_log.workspace_id, so the row must carry it.
+  const [workspaceId, actorId, action, entity, entityId, projectId] = auditInsert(calls);
+  assert.equal(workspaceId, WORKSPACE_ID);
+  assert.equal(actorId, actor.uid);
+  assert.equal(action, "comment.create");
+  assert.equal(entity, "comment");
+  assert.equal(entityId, 501);
+  assert.equal(projectId, 7);
+});
+
+test("addComment on a task without any project still records the workspace", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockCommentDb({
+    isAdmin: true,
+    task: { default_project_id: null, project_ids: [] },
+  }, calls));
+  await mockCommentWrite(t);
+
+  assert.deepEqual(await addComment(actor, { task_id: 42, body: "hello" }), { id: 501 });
+
+  const [workspaceId, , action, , , projectId] = auditInsert(calls);
+  assert.equal(action, "comment.create");
+  assert.equal(workspaceId, WORKSPACE_ID);
+  assert.equal(projectId, null);
+});

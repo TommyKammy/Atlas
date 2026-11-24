@@ -92,7 +92,12 @@ export const PATCH = withAdminPermission("teams.manage", async (req, { uid, para
     throw e;
   }
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
-  await audit(uid, "team.update", { entity: "team", entityId: id, summary: updated.name });
+  await audit(uid, "team.update", {
+    entity: "team",
+    entityId: id,
+    workspaceId: updated.workspaceId,
+    summary: updated.name,
+  });
   const teams = await getAdminTeams(updated.workspaceId);
   return NextResponse.json({ teams, team: teams.find((t) => t.id === id) ?? null });
 });
@@ -104,6 +109,11 @@ export const DELETE = withAdminPermission("teams.manage", async (_req, { uid, pa
   }
   const r = await db.query("DELETE FROM teams WHERE id = $1 RETURNING id, name, workspace_id", [id]);
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-  await audit(uid, "team.delete", { entity: "team", entityId: id, summary: r.rows[0].name });
+  await audit(uid, "team.delete", {
+    entity: "team",
+    entityId: id,
+    workspaceId: Number(r.rows[0].workspace_id),
+    summary: r.rows[0].name,
+  });
   return NextResponse.json({ teams: await getAdminTeams(Number(r.rows[0].workspace_id)) });
 });

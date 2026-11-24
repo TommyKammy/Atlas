@@ -21,6 +21,7 @@ export const PATCH = withAdminPermission("workspace.manage", async (req, { uid }
   await audit(uid, "workspace.rename", {
     entity: "workspace",
     entityId: workspaceId,
+    workspaceId,
     summary: `organization name -> ${name}`,
   });
   return NextResponse.json({ workspace: await getAdminWorkspace() });

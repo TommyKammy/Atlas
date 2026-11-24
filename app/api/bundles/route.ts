@@ -50,6 +50,7 @@ export const POST = withAdmin(async (req, { uid }) => {
   await audit(uid, "bundle.create", {
     entity: "bundle",
     entityId: r.rows[0].id,
+    workspaceId,
   });
   return NextResponse.json({ id: r.rows[0].id }, { status: 201 });
 });
