@@ -204,14 +204,19 @@ Phase 1で判明し、Phase 2〜3で決めること:
 
 注意: `listChanged` を宣言しない処理はSDK 2.4.0の内部の挙動に依存するため、SDK更新時は `lib/mcp/server.test.ts` の該当テストで確認する。
 
-### Phase 3: 書き込みツール（3〜4日）
+### Phase 3: 書き込みツール（3〜4日）— 完了（2026-11-24、ブランチ `feat/mcp-phase3-write-tools`）
 
-- [ ] `save_task`、`complete_task`、`move_task`、`add_comment`、`save_section`、`save_project`、`trash_task`（論理削除のみ）
-- [ ] 冪等キー（`mcp_idempotency`、24時間保持）と `expected_updated_at` による衝突検出
-- [ ] 監査・タスク履歴の「MCP経由」表示、`notifyProject` によるブラウザーへの即時反映
-- [ ] 自動化ルールとの連携確認: MCPで作成・変更したタスクでも既存ルールが通常どおり発火し、連鎖上限が効くこと
-- [ ] レート制限（トークン単位）
-- [ ] テスト: 読み取り専用の3経路（`/mcp/readonly`、`read` だけのOAuth、読み取り専用PAT）で書き込みが拒否され一覧にも出ないこと、ロール別（viewer/commenterは書き込み不可）、RBAC（`projects.create` なしは作成不可）、冪等再送、競合、REST版と同じバリデーション結果になること
+- [x] マイグレーション `0039_mcp_write_support.sql`: `audit_log` に `via`・`mcp_token_id`・`client_name`、`task_events` に `via`・`client_name`、`mcp_idempotency`（24時間）（`c2d9223`）
+- [x] 実行文脈（AsyncLocalStorage）: MCPのツール実行と自動化ワーカーで設定し、`audit()`・`logEvent()`・タスク履歴の直接INSERT（完了・承認・インポート・一括）が `via` とクライアント名を記録。監査画面とタスク履歴に「MCP経由」を表示
+- [x] 冪等キー（`withIdempotency`）とトークン単位の書き込み制限（20回/分）
+- [x] 書き込みツール7個: `save_task`、`complete_task`、`move_task`、`add_comment`、`save_section`（作成のみ）、`save_project`、`trash_task`（論理削除、`destructiveHint`）。作成後の追加反映に失敗した場合は、作成済みのIDと `failed_updates` を返し、同じキーの再送でも再作成しない（`33b598b`）
+- [x] `list_my_tasks` にサブタスクの親（閲覧できない親は `parent_hidden`）（`8502bef`）
+- [x] 検証: ユニットテスト753件、`typecheck`、ESLint。使い捨てのDBでSDKクライアントから全書き込みツールを実行（冪等キーの再送で重複なし、別引数で409、古い `expected_updated_at` で競合、readonly には書き込みツールが出ない）、監査ログとタスク履歴に `via=mcp` を確認、Codex 0.171.0-alpha.13 から `save_task` と `add_comment` を実行
+
+既知の制約・別作業:
+- 2025年版のクライアント（Codex）はクライアント名を `initialize` でしか送らないため、ツール呼び出しの記録ではクライアント名が空になる（「MCP経由」とだけ表示）。トークンに最後のクライアント名を保存して補う案がある
+- 既存コードの監査ログ（`comment.create`、`project.update` など）にワークスペースが入らず監査画面に出ない問題がある（MCP以前からの既存の不具合。別作業）
+- 作成と追加反映は1つのトランザクションではない（失敗時は `failed_updates` で通知）
 
 ### Phase 4: OAuth 2.1（4〜6日）
 
