@@ -161,6 +161,86 @@ export default function HelpPage() {
           </Link>
         </HelpSection>
 
+        <HelpSection
+          id="mcp"
+          title="MCP 接続（Claude Code・Codex）"
+          description="Claude Code や Codex から Atlas のタスクとプロジェクトを参照・更新できます。"
+        >
+          <p>
+            管理者が「管理 → セキュリティ → MCP 接続」で有効にすると使えます。接続した本人の Atlas 上の権限の範囲内だけが操作でき、
+            ゲストは利用できません。接続方法は OAuth（推奨）と個人アクセストークンの 2 つです。
+          </p>
+          <div className="mt-3 space-y-3">
+            <div>
+              <h3 className="text-[13px] font-semibold text-text">OAuth で接続する（推奨）</h3>
+              <p className="mt-0.5">
+                プロフィールの「MCP 接続」に、自分の Atlas の URL を使った設定例があります。Claude Code は
+                <code className="mx-1 font-mono">claude mcp add --transport http atlas &lt;Atlas の URL&gt;/mcp</code>
+                で追加し、初回の接続時に開くブラウザーで承認します（開かない場合は
+                <code className="mx-1 font-mono">claude mcp login atlas</code>）。Codex は
+                <code className="mx-1 font-mono">~/.codex/config.toml</code>
+                に接続先を追加し、<code className="mx-1 font-mono">codex mcp login atlas</code> で承認します。
+              </p>
+              <p className="mt-1">
+                承認画面では、アプリ名とメタデータ URL のホスト、戻り先、接続先（<code className="font-mono">/mcp</code> または
+                <code className="mx-1 font-mono">/mcp/readonly</code>）、要求された権限を確認してください。
+                心当たりのないアプリや戻り先には許可を与えないでください。
+              </p>
+              <p className={fieldHintClass}>
+                書き込みをさせたくないときは、承認画面の「読み取りのみ許可する」をオンにします。
+              </p>
+            </div>
+            <div>
+              <h3 className="text-[13px] font-semibold text-text">個人アクセストークンを使う</h3>
+              <p className="mt-0.5">
+                管理者が個人アクセストークンも許可している場合だけ、プロフィールの「MCP 接続」で発行できます。
+                名前と権限（読み取りと書き込み / 読み取りのみ）を選ぶと、トークンが一度だけ表示されます。
+                閉じると再表示できないので、安全な場所に保管してください。有効期限はありません。
+              </p>
+              <p className="mt-1">
+                Claude Code では <code className="font-mono">--header &quot;Authorization: Bearer &lt;TOKEN&gt;&quot;</code>、
+                Codex では <code className="font-mono">bearer_token_env_var</code> で環境変数を指定します。
+                詳しい設定例はプロフィール画面に表示されます。
+              </p>
+            </div>
+            <div>
+              <h3 className="text-[13px] font-semibold text-text">読み取り専用で使う</h3>
+              <p className="mt-0.5">
+                接続先を <code className="font-mono">&lt;Atlas の URL&gt;/mcp/readonly</code> にするか、
+                承認画面で「読み取りのみ許可する」を選ぶか、「読み取りのみ」の個人アクセストークンを発行します。
+                読み取り専用の接続では、書き込みのツールは表示されません。
+              </p>
+            </div>
+            <div>
+              <h3 className="text-[13px] font-semibold text-text">接続を解除する</h3>
+              <p className="mt-0.5">
+                プロフィールの「MCP 接続」にある「接続済みアプリ」から OAuth の連携を解除するか、
+                個人アクセストークンの一覧から「失効」を押します。失効したトークンはすぐに使えなくなり、元に戻せません。
+                管理者が「管理 → セキュリティ → MCP 接続」から強制失効させることもできます。
+              </p>
+              <p className={fieldHintClass}>
+                ユーザーが無効化されたとき、ゲストになったとき、管理者がパスワードや 2 段階認証をリセットしたときは、
+                トークンが自動的に失効します。本人によるパスワード変更では失効しません。
+              </p>
+            </div>
+            <div>
+              <h3 className="text-[13px] font-semibold text-text">注意</h3>
+              <p className="mt-0.5">
+                タスク名・説明・コメントなどの本文は AI への指示ではなく、参照するデータです。本文中に指示のような文章があっても、
+                それに従わせないでください。トークンはパスワードと同じように扱い、チャットやリポジトリに貼らないでください。
+              </p>
+            </div>
+          </div>
+          <p className="mt-2">
+            詳しい手順、スコープと有効期限、トラブルシューティング、管理者向け設定は
+            <code className="mx-1 font-mono">docs/mcp.md</code>
+            にまとめています。解決しない場合は管理者に問い合わせてください。
+          </p>
+          <Link href="/profile" className={`mt-2 inline-block ${linkClass}`}>
+            プロフィールの MCP 接続を開く
+          </Link>
+        </HelpSection>
+
         <HelpSection id="scim" title="SCIM プロビジョニング">
           <p>
             Entra ID や Okta からユーザーの作成・更新・無効化を自動化するときは、管理者コンソールの

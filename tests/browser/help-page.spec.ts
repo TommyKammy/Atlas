@@ -10,15 +10,22 @@ test.beforeEach(async ({ page }) => {
   expect(response.status()).toBe(200);
 });
 
-test("help page keeps the existing anchors and shows the new UI guide", async ({ page }) => {
+test("help page keeps the anchors and shows the new UI and MCP guides", async ({ page }) => {
   await page.goto("/help");
 
   await expect(page.locator("[data-help-page]")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "ヘルプと始め方" })).toBeVisible();
 
-  for (const id of ["about", "features", "integrations", "videos", "shortcuts", "privacy", "workspaces"]) {
+  for (const id of ["about", "features", "integrations", "mcp", "videos", "shortcuts", "privacy", "workspaces"]) {
     await expect(page.locator(`[data-help-section="${id}"]`)).toBeVisible();
   }
+
+  const mcp = page.locator('[data-help-section="mcp"]');
+  await expect(mcp).toHaveAttribute("id", "mcp");
+  await expect(
+    mcp.getByRole("heading", { level: 2, name: "MCP 接続（Claude Code・Codex）" }),
+  ).toBeVisible();
+  await expect(mcp.getByRole("heading", { level: 3, name: "OAuth で接続する（推奨）" })).toBeVisible();
 
   const newUi = page.locator('[data-help-section="new-ui"]');
   await expect(newUi).toBeVisible();
