@@ -73,6 +73,9 @@ function mockQueries(options: MockOptions, calls: Call[]): Queryable {
       if (sql.includes("UPDATE mcp_tokens SET revoked_at")) {
         return result([{ id: Number(params?.[0]), workspace_id: 1 }], options.revokeCount ?? 1);
       }
+      if (sql.includes("UPDATE oauth_refresh_tokens SET revoked_at")) {
+        return result([], options.revokeAllCount ?? 0);
+      }
       if (sql.includes("SELECT id FROM mcp_tokens")) {
         return result(options.existingToken ? [{ id: Number(params?.[0]) }] : []);
       }
@@ -113,6 +116,7 @@ function deactivationQueryable(calls: Call[]): Queryable {
       }
       if (sql.includes("DELETE FROM user_sessions")) return result([]);
       if (sql.includes("UPDATE mcp_tokens SET revoked_at")) return result([{ id: 3 }], 1);
+      if (sql.includes("UPDATE oauth_refresh_tokens SET revoked_at")) return result([], 1);
       throw new Error(`unexpected query: ${sql}`);
     },
   };
@@ -341,6 +345,14 @@ test("revokeAllUserTokens revokes PAT and OAuth rows for one user", async () => 
   assert.deepEqual(calls[0].params, [7]);
   assert.ok(calls[0].sql.includes("UPDATE mcp_tokens SET revoked_at = now()"));
   assert.ok(!calls[0].sql.includes("kind ="));
+});
+
+test("revokeAllUserTokens also revokes OAuth refresh tokens", async () => {
+  const calls: Call[] = [];
+  await revokeAllUserTokens(7, mockQueries({}, calls));
+  const refresh = calls.find((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at"));
+  assert.ok(refresh);
+  assert.deepEqual(refresh.params, [7]);
 });
 
 test("setUserDeactivated revokes every MCP token in the same transaction", async () => {

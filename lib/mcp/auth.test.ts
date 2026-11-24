@@ -6,6 +6,8 @@ import type { Queryable } from "@/lib/db";
 import { authenticateMcpToken } from "./auth";
 import { generateMcpToken, hashMcpToken } from "./token";
 
+process.env.APP_URL = "https://atlas.example";
+
 type Call = { sql: string; params?: unknown[] };
 
 type MockOptions = {
@@ -54,6 +56,7 @@ function tokenRow(overrides: Record<string, unknown> = {}): Record<string, unkno
     expires_at: null,
     last_used_at: new Date(),
     revoked_at: null,
+    resource: "https://atlas.example/mcp",
     mcp_enabled: true,
     mcp_pat_enabled: true,
     user_exists: true,
