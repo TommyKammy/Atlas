@@ -7,15 +7,17 @@ import { RbacSection } from "./security/RbacSection";
 import { TwoFactorSection } from "./security/TwoFactorSection";
 import { SamlSection } from "./security/SamlSection";
 import { ScimSection } from "./security/ScimSection";
+import { McpSection } from "./security/McpSection";
 import { PasswordSection } from "./security/PasswordSection";
 
-type SectionKey = "rbac" | "two-factor" | "saml" | "scim" | "password";
+type SectionKey = "rbac" | "two-factor" | "saml" | "scim" | "mcp" | "password";
 
 const SECTION_LABEL: Record<SectionKey, string> = {
   rbac: "役割とアクセス",
   "two-factor": "二要素認証",
   saml: "SAML 認証",
   scim: "プロビジョニング（SCIM）",
+  mcp: "MCP 接続",
   password: "パスワード強度",
 };
 
@@ -34,7 +36,7 @@ export default function SecurityPanel({
   currentUserId: number;
   isSuper: boolean;
 }) {
-  const sections = (["rbac", "two-factor", "saml", "scim", "password"] as const).filter((key) => {
+  const sections = (["rbac", "two-factor", "saml", "scim", "mcp", "password"] as const).filter((key) => {
     if (key === "rbac") return permissions.includes("roles.manage");
     return permissions.includes("security.manage");
   });
@@ -93,6 +95,13 @@ export default function SecurityPanel({
         )}
         {section === "scim" && permissions.includes("security.manage") && (
           <ScimSection
+            settings={settings}
+            onSettings={(next) => updateSettings(next)}
+            isSuper={isSuper}
+          />
+        )}
+        {section === "mcp" && permissions.includes("security.manage") && (
+          <McpSection
             settings={settings}
             onSettings={(next) => updateSettings(next)}
             isSuper={isSuper}

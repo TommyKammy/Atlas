@@ -4,6 +4,7 @@ import { audit } from "@/lib/audit";
 import { withAdminPermission } from "@/lib/api/route";
 import { getAdminRoles } from "@/lib/admin-data";
 import { isPermission, normalizePermissions, type Permission } from "@/lib/permissions";
+import { revokeAllUserTokens } from "@/lib/services/mcp-tokens";
 
 const BASE_LEVELS = new Set(["admin", "member", "guest"]);
 const MEMBER_ONLY_PERMISSIONS = new Set(["projects.create", "tasks.create"]);
@@ -95,6 +96,14 @@ export const PATCH = withAdminPermission("roles.manage", async (req, { uid, para
       "UPDATE users SET is_admin = $2, is_guest = $3 WHERE role_id = $1",
       [id, nextBase === "admin", nextBase === "guest"],
     );
+    // Guests cannot use MCP. Revoke tokens for every member of a role that is
+    // being changed to the guest level, in the same transaction.
+    if (nextBase === "guest" && role.base_level !== "guest") {
+      const members = await q.query("SELECT id FROM users WHERE role_id = $1", [id]);
+      for (const member of members.rows as Array<{ id: number }>) {
+        await revokeAllUserTokens(Number(member.id), q);
+      }
+    }
     return roleUpdate;
   });
   await audit(uid, "role.update", {

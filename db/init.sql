@@ -618,6 +618,8 @@ CREATE TABLE IF NOT EXISTS workspace_security (
                           CHECK (saml_session_days BETWEEN 1 AND 30),
   saml_jit_provisioning   BOOLEAN NOT NULL DEFAULT TRUE,
   scim_enabled            BOOLEAN NOT NULL DEFAULT FALSE,
+  mcp_enabled             BOOLEAN NOT NULL DEFAULT FALSE,
+  mcp_pat_enabled         BOOLEAN NOT NULL DEFAULT FALSE,
   password_min_length     INTEGER NOT NULL DEFAULT 8
                           CHECK (password_min_length BETWEEN 8 AND 64),
   password_require_upper  BOOLEAN NOT NULL DEFAULT FALSE,
@@ -691,6 +693,54 @@ CREATE INDEX IF NOT EXISTS idx_scim_request_log_created
   ON scim_request_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_scim_request_log_token
   ON scim_request_log(token_id) WHERE token_id IS NOT NULL;
+
+-- MCP bearer tokens (hashes only; the plaintext is returned once on issue).
+CREATE TABLE IF NOT EXISTS mcp_tokens (
+  id           BIGSERIAL PRIMARY KEY,
+  workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind         TEXT NOT NULL CHECK (kind IN ('pat', 'oauth')),
+  name         TEXT NOT NULL,
+  token_hash   TEXT NOT NULL CHECK (token_hash ~ '^[0-9a-f]{64}$'),
+  scopes       TEXT[] NOT NULL DEFAULT ARRAY['read']::TEXT[]
+               CHECK (scopes <@ ARRAY['read', 'write']::TEXT[] AND 'read' = ANY(scopes)),
+  client_name  TEXT,
+  expires_at   TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_used_at TIMESTAMPTZ,
+  revoked_at   TIMESTAMPTZ,
+  CONSTRAINT mcp_tokens_pat_no_expiry CHECK (kind <> 'pat' OR expires_at IS NULL)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS mcp_tokens_hash_uidx ON mcp_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_mcp_tokens_user ON mcp_tokens(user_id, id);
+CREATE INDEX IF NOT EXISTS idx_mcp_tokens_workspace ON mcp_tokens(workspace_id, id);
+
+-- One row per MCP request, including failed authentication. Request and
+-- response bodies, tool arguments, Authorization headers and token values are
+-- never stored here.
+CREATE TABLE IF NOT EXISTS mcp_request_log (
+  id           BIGSERIAL PRIMARY KEY,
+  workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  token_id     BIGINT REFERENCES mcp_tokens(id) ON DELETE SET NULL,
+  user_id      BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  endpoint     TEXT NOT NULL CHECK (endpoint IN ('default', 'readonly')),
+  rpc_method   TEXT,
+  tool_name    TEXT,
+  outcome      TEXT NOT NULL CHECK (outcome IN ('ok', 'error', 'denied', 'unauthenticated')),
+  error_code   TEXT,
+  duration_ms  INTEGER NOT NULL DEFAULT 0 CHECK (duration_ms >= 0),
+  client_name  TEXT,
+  client_ip    TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_request_log_workspace
+  ON mcp_request_log(workspace_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_mcp_request_log_created
+  ON mcp_request_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_mcp_request_log_token
+  ON mcp_request_log(token_id) WHERE token_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_mcp_request_log_user
+  ON mcp_request_log(user_id) WHERE user_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS saml_cache (
   workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,

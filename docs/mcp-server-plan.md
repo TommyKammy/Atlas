@@ -79,7 +79,7 @@ OAuthを実装するまでの間は、個人アクセストークン（PAT）を
 - **有効期限はない（Linearと同じ）**。発行画面に期限の項目は置かず、本人または管理者が失効させるまで有効。代わりに一覧で最終利用日時を表示し、使っていないトークンの失効を促す。
 - **ゲストは発行できない**。発行APIと画面の両方でゲストを拒否する。
 - 管理者がワークスペース設定で「MCP接続を許可」「PATを許可」を切り替えられる（既定は無効）。
-- ユーザーの無効化（SCIM DELETEを含む）、ゲスト化、パスワード／MFAリセット時に全トークンを失効させる。
+- ユーザーの無効化（SCIM DELETEを含む）、ゲスト化、管理者によるパスワード／2段階認証のリセット時に全トークンを失効させる。利用者本人によるパスワード変更では失効させない（Linearと同じ。2026-11-24決定）。
 
 **Phase 4: OAuth 2.1（Linearと同じ接続体験）**
 
@@ -191,19 +191,18 @@ Phase 1で判明し、Phase 2〜3で決めること:
 - ページングはオフセット方式（取得中の追加・削除で境界がずれうる）
 - `requireNotGuest` のエラーメッセージ（`guest users cannot use MCP`）の文言を確定する
 
-### Phase 2: MCPエンドポイント＋PAT＋参照ツール（3〜4日）
+### Phase 2: MCPエンドポイント＋PAT＋参照ツール（3〜4日）— 完了（2026-11-22、ブランチ `feat/mcp-phase2-endpoint`）
 
-- [ ] マイグレーション `00xx_mcp.sql`: `mcp_tokens`（user_id、name、token_hash、scopes、expires_at（PATはNULL）、last_used_at、revoked_at、kind=`pat`/`oauth`）、`workspace_security.mcp_enabled` / `mcp_pat_enabled`、`mcp_request_log`
-- [ ] `lib/mcp/token.ts`・`lib/mcp/auth.ts`（SCIMの実装を踏襲。ユーザーの無効化・ゲスト状態・トークン期限（OAuthのみ）を毎回確認）
-- [ ] ゲストのPAT発行拒否と、ゲストへの変更時の全トークン失効
-- [ ] `@modelcontextprotocol/server`（v2）を追加し、`app/mcp/route.ts` と `app/mcp/readonly/route.ts` を実装（`createMcpHandler`、ステートレス）。未認証時は401と `WWW-Authenticate`
-- [ ] Host・Origin検証、`tools/list` の固定順序と `ttlMs` / `cacheScope: "private"`、実効スコープによるツールの絞り込み
-- [ ] 2026-07-28版のクライアントと2025年版のクライアントの両方で `server/discover`・`tools/list`・`tools/call` が通るテスト
-- [ ] `lib/mcp/tools/*` に参照ツールを実装（3.4の参照行）
-- [ ] プロフィール画面に「MCP接続」セクション（PAT発行・一覧・失効、接続コマンドのコピー）
-- [ ] ユーザー無効化時の全トークン失効を、既存の共通無効化処理に追加
-- [ ] テスト: トークン検証、スコープ不足、閲覧不可プロジェクトの非表示、無効化ユーザーの拒否、ページング
-- [ ] 開発環境でClaude Code・Codexから `list_projects` / `get_task` が動くことを確認
+- [x] マイグレーション `0038_mcp_tokens.sql`: `mcp_tokens`（ハッシュのみ保存、PATは期限なしをCHECK制約で保証）、`mcp_request_log`（本文・引数・トークンは保存しない。30日で削除）、`workspace_security.mcp_enabled` / `mcp_pat_enabled`（既定は無効）（`78facbd`）
+- [x] `lib/mcp/token.ts`・`lib/mcp/auth.ts`: 毎回、トークンの失効・期限（OAuthのみ）・ワークスペースのスイッチ・ユーザーの無効化・ゲストを確認。認証失敗はIP単位でレート制限（`mcp-auth`）
+- [x] PATの発行・一覧・失効API（`/api/me/mcp-tokens`）。ゲストは発行不可。無効化（SCIMを含む共通処理）とゲスト化で全トークンを失効
+- [x] スイッチの変更は特権管理者のみ（SCIMと同じ）。`PATCH /api/admin/security`
+- [x] `POST /mcp`・`POST /mcp/readonly`（SDK v2 2.4.0、`responseMode: "json"`、2025年版への互換応答あり）。Host・Origin検証 → PAT認証 → 実効スコープでツールを絞り込み、固定順で登録。`listChanged` は宣言しない（Claude Codeは `subscriptions/listen` を開かなくなった）（`3242a73`）
+- [x] 参照ツール11個: `whoami`、`list_projects`、`get_project`、`list_sections`、`list_tasks`、`get_task`、`list_comments`、`list_my_tasks`、`list_users`、`list_project_members`、`list_custom_fields`
+- [x] プロフィールの「MCP接続」（PAT発行・一覧・失効、Claude Code / Codex の設定のコピー）と、セキュリティ設定の「MCP接続」スイッチ（`6735681`）
+- [x] 検証: ユニットテスト695件、`typecheck`、ESLint、色トークン検査。使い捨てのDBで画面操作（スイッチON → PAT発行 → 失効）、Claude Code 2.1.330（2026-07-28）とCodex 0.171.0-alpha.13（2025-06-18）から実際に接続してツール呼び出しに成功。拒否の確認: トークンなし・失効済み・ゲストのトークン・PATスイッチOFFは401、不正なOriginは403
+
+注意: `listChanged` を宣言しない処理はSDK 2.4.0の内部の挙動に依存するため、SDK更新時は `lib/mcp/server.test.ts` の該当テストで確認する。
 
 ### Phase 3: 書き込みツール（3〜4日）
 

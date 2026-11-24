@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withManagedUser } from "@/lib/services/admin-user-access";
+import { revokeSessionsAndMcpTokens, withManagedUser } from "@/lib/services/admin-user-access";
 import { audit } from "@/lib/audit";
 import { withAdminPermission } from "@/lib/api/route";
 
@@ -16,7 +16,8 @@ export const DELETE = withAdminPermission("security.manage", async (_req, { uid:
       [id],
     );
     if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
-    await q.query("DELETE FROM user_sessions WHERE user_id = $1", [id]);
+    // A 2FA reset invalidates every session and MCP token atomically.
+    await revokeSessionsAndMcpTokens(q, id, { deleteAllSessions: true });
     await audit(admin, "user.2fa.reset", {
       entity: "user",
       entityId: id,

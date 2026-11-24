@@ -19,9 +19,12 @@ export const GET = withAdminPermission("security.manage", async (_req, { uid }) 
 
 export const PATCH = withAdminPermission("security.manage", async (req, { uid }) => {
   const body = await req.json().catch(() => null);
-  if (body?.scim_enabled !== undefined) {
+  if (body?.scim_enabled !== undefined || body?.mcp_enabled !== undefined || body?.mcp_pat_enabled !== undefined) {
     const role = await getEffectiveRole(uid);
-    if (role?.isSuper !== true) throw forbidden("super administrator required to change SCIM");
+    if (role?.isSuper !== true) {
+      if (body?.scim_enabled !== undefined) throw forbidden("super administrator required to change SCIM");
+      throw forbidden("super administrator required to change MCP");
+    }
   }
   const workspaceId = (await getSecuritySettings()).workspace_id;
   const outcome = await withTransaction(async (q) => {
@@ -95,6 +98,22 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       values.push(next.scim_enabled);
       sets.push(`scim_enabled = $${values.length}`);
     }
+    if (body?.mcp_enabled !== undefined) {
+      if (typeof body.mcp_enabled !== "boolean") {
+        return NextResponse.json({ error: "invalid MCP setting" }, { status: 400 });
+      }
+      next.mcp_enabled = body.mcp_enabled;
+      values.push(next.mcp_enabled);
+      sets.push(`mcp_enabled = $${values.length}`);
+    }
+    if (body?.mcp_pat_enabled !== undefined) {
+      if (typeof body.mcp_pat_enabled !== "boolean") {
+        return NextResponse.json({ error: "invalid MCP PAT setting" }, { status: 400 });
+      }
+      next.mcp_pat_enabled = body.mcp_pat_enabled;
+      values.push(next.mcp_pat_enabled);
+      sets.push(`mcp_pat_enabled = $${values.length}`);
+    }
     if (body?.password_min_length !== undefined) {
       const length = Number(body.password_min_length);
       if (!Number.isInteger(length) || length < 8 || length > 64) {
@@ -139,13 +158,33 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
     await audit(uid, "security.update", {
       entity: "workspace_security",
       entityId: current.workspace_id,
+      workspaceId: current.workspace_id,
       summary: sets.join(", "),
     }, q);
     if (body?.scim_enabled !== undefined && body.scim_enabled !== current.scim_enabled) {
       await audit(uid, body.scim_enabled ? "security.scim_enable" : "security.scim_disable", {
         entity: "workspace_security",
         entityId: current.workspace_id,
+        workspaceId: current.workspace_id,
         summary: body.scim_enabled ? "SCIM プロビジョニングを有効化" : "SCIM プロビジョニングを無効化",
+      }, q);
+    }
+    if (body?.mcp_enabled !== undefined && body.mcp_enabled !== current.mcp_enabled) {
+      await audit(uid, body.mcp_enabled ? "security.mcp_enable" : "security.mcp_disable", {
+        entity: "workspace_security",
+        entityId: current.workspace_id,
+        workspaceId: current.workspace_id,
+        summary: body.mcp_enabled ? "MCP 接続を有効化" : "MCP 接続を無効化",
+      }, q);
+    }
+    if (body?.mcp_pat_enabled !== undefined && body.mcp_pat_enabled !== current.mcp_pat_enabled) {
+      await audit(uid, body.mcp_pat_enabled ? "security.mcp_pat_enable" : "security.mcp_pat_disable", {
+        entity: "workspace_security",
+        entityId: current.workspace_id,
+        workspaceId: current.workspace_id,
+        summary: body.mcp_pat_enabled
+          ? "MCP パーソナルアクセストークンを有効化"
+          : "MCP パーソナルアクセストークンを無効化",
       }, q);
     }
     return updated.rows[0] as SecuritySettings;

@@ -104,6 +104,12 @@ export type TaskDetailView = {
 
 export type ProjectMember = User & { role: string | null };
 
+export type SelfIdentity = {
+  id: number;
+  name: string;
+  email: string | null;
+};
+
 /** Clamp a caller limit to the MCP contract: default 25, at least 1, at most 100. */
 export function queryLimit(value: number | undefined): number {
   if (value === undefined || Number.isNaN(value)) return DEFAULT_QUERY_LIMIT;
@@ -304,6 +310,25 @@ async function searchTaskPage(
   const skip = offset - pageStart;
   const items = result.items.slice(skip, skip + limit).map(plainAdvancedHit);
   return searchPage({ ...result, items }, offset);
+}
+
+/**
+ * Identity of the live actor, used by `whoami`. Deactivated and unknown users
+ * fail closed like every other MCP reference call.
+ */
+export async function getSelf(actor: Actor): Promise<SelfIdentity> {
+  await requireActiveActor(actor);
+  const result = await db.query(
+    `SELECT id, name, email FROM users WHERE id = $1::bigint AND deactivated_at IS NULL`,
+    [actor.uid],
+  );
+  const row = result.rows[0];
+  if (!row) throw notFound("user not found");
+  return {
+    id: Number(row.id),
+    name: String(row.name),
+    email: row.email == null ? null : String(row.email),
+  };
 }
 
 /** Projects visible to the actor: workspace admins or project members. */
