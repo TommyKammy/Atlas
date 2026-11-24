@@ -754,7 +754,9 @@ ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS mcp_token_id BIGINT
 
 -- One row per successful idempotent tool call. A row with response IS NULL is
 -- an in-flight reservation. Failed calls delete the row so a retry can run.
--- The janitor removes rows after 24 hours.
+-- The janitor removes rows after 24 hours. owner_token changes on every insert
+-- and takeover; result writes and deletes match it so a stale execution cannot
+-- overwrite or remove the new owner's reservation.
 CREATE TABLE IF NOT EXISTS mcp_idempotency (
   id            BIGSERIAL PRIMARY KEY,
   token_id      BIGINT NOT NULL REFERENCES mcp_tokens(id) ON DELETE CASCADE,
@@ -762,6 +764,7 @@ CREATE TABLE IF NOT EXISTS mcp_idempotency (
   idempotency_key TEXT NOT NULL,
   request_hash  TEXT NOT NULL,
   response      JSONB,
+  owner_token   TEXT NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT mcp_idempotency_key_length
     CHECK (char_length(idempotency_key) BETWEEN 1 AND 200),

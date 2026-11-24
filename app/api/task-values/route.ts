@@ -10,5 +10,10 @@ export const POST = withTask("edit", async (_req, { uid, taskId, body }) => {
     { uid, source: "web" },
     { task_id: taskId, field_id, value },
   );
-  return NextResponse.json(result.cleared ? { cleared: true } : { ok: true }, { status: result.cleared ? 200 : 201 });
+  return NextResponse.json(
+    result.cleared
+      ? { cleared: true, updated_at: result.updated_at }
+      : { ok: true, updated_at: result.updated_at },
+    { status: result.cleared ? 200 : 201 },
+  );
 }, { body: true });

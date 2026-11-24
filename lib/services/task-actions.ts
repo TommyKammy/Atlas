@@ -12,7 +12,7 @@ export async function updateTaskForActor(
   actor: Actor,
   taskId: number,
   input: Record<string, unknown>,
-): Promise<{ id: number }> {
+): Promise<{ id: number; updated_at: string }> {
   if (!Number.isInteger(taskId) || taskId <= 0) throw badRequest("invalid task_id");
   const auth = await requireTaskAccess(actor, taskId, "edit");
   return updateTask(input, {

@@ -117,7 +117,7 @@ function fakeServices(overrides: Partial<McpWriteServices> = {}) {
     },
     updateTaskForActor: async (actor, taskId, input) => {
       calls.updateTaskForActor.push({ actor, taskId, input });
-      return { id: taskId };
+      return { id: taskId, updated_at: "2026-01-01T00:00:00.000Z" };
     },
     trashTaskForActor: async (actor, taskId) => {
       calls.trashTaskForActor.push({ actor, taskId });
@@ -125,7 +125,10 @@ function fakeServices(overrides: Partial<McpWriteServices> = {}) {
     },
     setTaskCustomValue: async (actor, input) => {
       calls.setTaskCustomValue.push({ actor, input });
-      return { cleared: input.value === null };
+      return {
+        cleared: input.value === null,
+        updated_at: "2026-01-01T00:00:00.000Z",
+      };
     },
     addComment: async (actor, input) => {
       calls.addComment.push({ actor, input });
@@ -329,13 +332,16 @@ test("TaskMutationFailure becomes an isError result with reason and conflict met
   });
 });
 
-test("custom-fields-only updates honor expected_updated_at before writing", async () => {
-  const detail = fakeDetail(100);
-  detail.task.updated_at = "2026-02-02T00:00:00.000Z";
+test("custom-fields-only updates honor expected_updated_at inside the value write", async () => {
   const { services, calls } = fakeServices({
-    getTaskDetail: async (_actor, taskId) => {
-      calls.getTaskDetail.push(taskId);
-      return detail;
+    setTaskCustomValue: async (actor, input) => {
+      calls.setTaskCustomValue.push({ actor, input });
+      if (input.expected_updated_at !== "2026-02-02T00:00:00.000Z") {
+        throw new TaskMutationFailure("conflict", "conflict", {
+          current_updated_at: "2026-02-02T00:00:00.000Z",
+        });
+      }
+      return { cleared: false, updated_at: "2026-03-03T00:00:00.000Z" };
     },
   });
 
@@ -361,8 +367,72 @@ test("custom-fields-only updates honor expected_updated_at before writing", asyn
   });
 
   assert.equal(calls.updateTaskForActor.length, 0);
-  assert.equal(calls.setTaskCustomValue.length, 1);
-  assert.deepEqual(calls.getTaskDetail, [100, 100, 100]);
+  // The stale call is rejected inside setTaskCustomValue, so only the second
+  // call reaches the service. The old handler compared getTaskDetail first and
+  // called it three times; the stamp check now lives in the write transaction.
+  assert.equal(calls.setTaskCustomValue.length, 2);
+  assert.deepEqual(calls.getTaskDetail, [100]);
+});
+
+test("save_task chains each custom-field write's new stamp into the next write", async () => {
+  let stamp = "2026-01-01T00:00:00.000Z";
+  const nextStamps = ["2026-01-02T00:00:00.000Z", "2026-01-03T00:00:00.000Z"];
+  const seen: Array<unknown> = [];
+  const { services, calls } = fakeServices({
+    setTaskCustomValue: async (actor, input) => {
+      calls.setTaskCustomValue.push({ actor, input });
+      seen.push(input.expected_updated_at);
+      const updated_at = nextStamps.shift();
+      assert.ok(updated_at, "stamp for each write");
+      stamp = updated_at;
+      return { cleared: false, updated_at };
+    },
+  });
+
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("save_task", {
+      id: 100,
+      custom_fields: [
+        { field_id: 5, value: "first" },
+        { field_id: 6, value: "second" },
+      ],
+      expected_updated_at: "2026-01-01T00:00:00.000Z",
+    }));
+    assert.equal(result.isError, undefined);
+  });
+
+  assert.deepEqual(seen, ["2026-01-01T00:00:00.000Z", "2026-01-02T00:00:00.000Z"]);
+  assert.equal(stamp, "2026-01-03T00:00:00.000Z");
+  assert.deepEqual(calls.getTaskDetail, [100]);
+});
+
+test("save_task passes the post-update stamp to simultaneous custom-field writes", async () => {
+  const { services, calls } = fakeServices({
+    updateTaskForActor: async (actor, taskId, input) => {
+      calls.updateTaskForActor.push({ actor, taskId, input });
+      return { id: taskId, updated_at: "2026-04-04T00:00:00.000Z" };
+    },
+    setTaskCustomValue: async (actor, input) => {
+      calls.setTaskCustomValue.push({ actor, input });
+      return { cleared: false, updated_at: "2026-04-05T00:00:00.000Z" };
+    },
+  });
+
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("save_task", {
+      id: 100,
+      status: "Done",
+      custom_fields: [{ field_id: 5, value: "changed" }],
+    }));
+    assert.equal(result.isError, undefined);
+  });
+
+  assert.deepEqual(calls.setTaskCustomValue.map((call) => call.input), [{
+    task_id: 100,
+    field_id: 5,
+    value: "changed",
+    expected_updated_at: "2026-04-04T00:00:00.000Z",
+  }]);
 });
 
 test("creation tools pass their key and arguments through withIdempotency", async () => {
@@ -403,7 +473,13 @@ test("creation tools pass their key and arguments through withIdempotency", asyn
 
 /** Minimal in-memory stand-in for the mcp_idempotency table. */
 function idempotencyStore(calls: Call[]) {
-  type StoredRow = { id: number; hash: string; response: unknown; key: string };
+  type StoredRow = {
+    id: number;
+    hash: string;
+    response: unknown;
+    key: string;
+    ownerToken: string;
+  };
   const rows = new Map<string, StoredRow>();
   let nextId = 1;
   const mapKey = (tokenId: unknown, toolName: unknown, key: unknown) =>
@@ -411,20 +487,26 @@ function idempotencyStore(calls: Call[]) {
 
   const query = async (sql: string, params: unknown[] = []) => {
     calls.push({ sql, params });
-    const result = (resultRows: Record<string, unknown>[] = []): QueryResult => ({
+    const result = (
+      resultRows: Record<string, unknown>[] = [],
+      rowCount = resultRows.length,
+    ): QueryResult => ({
       rows: resultRows,
-      rowCount: resultRows.length,
+      rowCount,
       command: "SELECT",
       oid: 0,
       fields: [],
     });
     if (sql.includes("INSERT INTO mcp_idempotency")) {
       const [tokenId, toolName, key, hash] = params;
+      const ownerToken = String(params[6]);
       const keyId = mapKey(tokenId, toolName, key);
       if (rows.has(keyId)) return result([]);
-      const row: StoredRow = { id: nextId++, hash: String(hash), response: null, key: String(key) };
+      const row: StoredRow = {
+        id: nextId++, hash: String(hash), response: null, key: String(key), ownerToken,
+      };
       rows.set(keyId, row);
-      return result([{ id: row.id }]);
+      return result([{ id: row.id, owner_token: row.ownerToken }]);
     }
     if (sql.includes("SELECT id, request_hash, response")) {
       const [tokenId, toolName, key] = params;
@@ -439,18 +521,24 @@ function idempotencyStore(calls: Call[]) {
         : []);
     }
     if (sql.includes("UPDATE mcp_idempotency SET response")) {
-      const [id, payload] = params;
+      const [id, ownerToken, payload] = params;
       for (const row of rows.values()) {
-        if (row.id === Number(id)) row.response = JSON.parse(String(payload));
+        if (row.id === Number(id) && row.ownerToken === String(ownerToken)) {
+          row.response = JSON.parse(String(payload));
+          return result([], 1);
+        }
       }
-      return result([]);
+      return result([], 0);
     }
     if (sql.includes("DELETE FROM mcp_idempotency")) {
-      const [id] = params;
+      const [id, ownerToken] = params;
       for (const [key, row] of rows) {
-        if (row.id === Number(id)) rows.delete(key);
+        if (row.id === Number(id) && row.ownerToken === String(ownerToken)) {
+          rows.delete(key);
+          return result([], 1);
+        }
       }
-      return result([]);
+      return result([], 0);
     }
     throw new Error(`unexpected query: ${sql}`);
   };

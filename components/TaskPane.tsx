@@ -136,6 +136,7 @@ export default function TaskPane({
     newMemberSection,
     setNewMemberSection,
     toggleReaction,
+    updatedAt,
     patch,
     patchChecked,
     saveStates,
@@ -549,7 +550,7 @@ export default function TaskPane({
             taskId={task.id}
             field="name"
             value={task.name}
-            updatedAt={task.updated_at}
+            updatedAt={updatedAt}
             recovery={inputRecovery}
             readOnly={!canEdit || reloading}
             label="タスク名"
@@ -752,7 +753,7 @@ export default function TaskPane({
                         taskId={task.id}
                         field="progress"
                         value={task.progress}
-                        updatedAt={task.updated_at}
+                        updatedAt={updatedAt}
                         recovery={inputRecovery}
                         readOnly={!canEdit || reloading}
                         type="number"
@@ -779,7 +780,7 @@ export default function TaskPane({
                       taskId={task.id}
                       field="progress"
                       value={task.progress}
-                      updatedAt={task.updated_at}
+                      updatedAt={updatedAt}
                       recovery={inputRecovery}
                       readOnly={!canEdit || reloading}
                       type="number"

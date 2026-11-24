@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { ApiError } from "@/lib/api/errors";
 import { db } from "@/lib/db";
 
@@ -21,6 +21,11 @@ type StoredIdempotencyRow = {
   request_hash: string;
   response: unknown;
   in_flight: boolean;
+};
+
+type ReservationRow = {
+  id: number | string;
+  owner_token: string;
 };
 
 const BAD_KEY_MESSAGE =
@@ -80,6 +85,13 @@ function storedResponse<T>(response: unknown): T {
  * for the same key sees that row, does not run the tool, and receives a 409
  * "in progress" error rather than duplicating the write. When `run` throws, the
  * reservation is deleted so the client can retry immediately.
+ *
+ * Each reservation, including a takeover, receives a fresh owner_token. The
+ * result write and the failure delete match both id and owner_token, so an
+ * execution that outlives the stale window cannot overwrite the response or
+ * delete the reservation of the execution that took over. We do not extend a
+ * lease while the tool runs; the stale window stays fixed at
+ * MCP_IDEMPOTENCY_STALE_MINUTES.
  */
 export async function withIdempotency<T>(
   input: IdempotencyInput,
@@ -90,20 +102,22 @@ export async function withIdempotency<T>(
   assertIdentity(input.tokenId, input.toolName);
 
   const requestHash = idempotencyRequestHash(input.args);
+  const ownerToken = randomUUID();
   const reserved = await db.query(
     `INSERT INTO mcp_idempotency
-       (token_id, tool_name, idempotency_key, request_hash, response)
-     VALUES ($1, $2, $3, $4, NULL)
+       (token_id, tool_name, idempotency_key, request_hash, response, owner_token)
+     VALUES ($1, $2, $3, $4, NULL, $7)
      ON CONFLICT (token_id, tool_name, idempotency_key) DO UPDATE SET
        request_hash = EXCLUDED.request_hash,
        response = NULL,
-       created_at = now()
+       created_at = now(),
+       owner_token = EXCLUDED.owner_token
      WHERE mcp_idempotency.created_at
              <= now() - make_interval(hours => $5::int)
         OR (mcp_idempotency.response IS NULL
             AND mcp_idempotency.created_at
               <= now() - make_interval(mins => $6::int))
-     RETURNING id`,
+     RETURNING id, owner_token`,
     [
       input.tokenId,
       input.toolName,
@@ -111,32 +125,49 @@ export async function withIdempotency<T>(
       requestHash,
       MCP_IDEMPOTENCY_TTL_HOURS,
       MCP_IDEMPOTENCY_STALE_MINUTES,
+      ownerToken,
     ],
   );
 
   if (reserved.rows.length > 0) {
-    const reservationId = reserved.rows[0].id as number | string;
+    const reservation = reserved.rows[0] as ReservationRow;
+    const reservationId = reservation.id;
+    const reservationOwner = reservation.owner_token;
     let result: T;
     try {
       result = await run();
     } catch (error) {
-      // A failed call must remain retryable.
-      await db.query("DELETE FROM mcp_idempotency WHERE id = $1", [reservationId])
-        .catch(() => undefined);
+      // A failed call must remain retryable. Delete only our own reservation:
+      // if it was taken over, the new owner keeps the row.
+      await db.query(
+        "DELETE FROM mcp_idempotency WHERE id = $1 AND owner_token = $2",
+        [reservationId, reservationOwner],
+      ).catch(() => undefined);
       throw error;
     }
     let payload: string;
     try {
       payload = JSON.stringify(result ?? null);
     } catch (error) {
-      await db.query("DELETE FROM mcp_idempotency WHERE id = $1", [reservationId])
-        .catch(() => undefined);
+      await db.query(
+        "DELETE FROM mcp_idempotency WHERE id = $1 AND owner_token = $2",
+        [reservationId, reservationOwner],
+      ).catch(() => undefined);
       throw error;
     }
-    await db.query(
-      "UPDATE mcp_idempotency SET response = $2::jsonb WHERE id = $1",
-      [reservationId, payload],
+    const recorded = await db.query(
+      "UPDATE mcp_idempotency SET response = $3::jsonb WHERE id = $1 AND owner_token = $2",
+      [reservationId, reservationOwner, payload],
     );
+    if (recorded.rowCount === 0) {
+      // Another execution took over while this one was running. Keep that
+      // execution's record; this run still returns its own result, but the
+      // write may now be duplicated.
+      console.warn(
+        `[mcp] idempotency reservation ${String(reservationId)} was taken over; `
+        + "the earlier result was not recorded and its write may be duplicated",
+      );
+    }
     return result;
   }
 

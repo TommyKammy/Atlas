@@ -17,10 +17,14 @@ type StoredRow = {
   key: string;
   hash: string;
   response: unknown;
+  ownerToken: string;
 };
 
-function result(rows: Record<string, unknown>[] = []): QueryResult {
-  return { rows, rowCount: rows.length, command: "", oid: 0, fields: [] };
+function result(
+  rows: Record<string, unknown>[] = [],
+  rowCount = rows.length,
+): QueryResult {
+  return { rows, rowCount, command: "", oid: 0, fields: [] };
 }
 
 /**
@@ -38,11 +42,12 @@ function idempotencyStore(calls: Call[]) {
     calls.push({ sql, params });
     if (sql.includes("INSERT INTO mcp_idempotency")) {
       const [tokenId, toolName, key, hash] = params as [number, string, string, string];
+      const ownerToken = String(params[6]);
       const keyId = mapKey(tokenId, toolName, key);
       if (rows.has(keyId)) return result([]);
-      const row: StoredRow = { id: nextId++, tokenId, toolName, key, hash, response: null };
+      const row: StoredRow = { id: nextId++, tokenId, toolName, key, hash, response: null, ownerToken };
       rows.set(keyId, row);
-      return result([{ id: row.id }]);
+      return result([{ id: row.id, owner_token: row.ownerToken }]);
     }
     if (sql.includes("SELECT id, request_hash, response")) {
       const [tokenId, toolName, key] = params;
@@ -57,18 +62,24 @@ function idempotencyStore(calls: Call[]) {
         : []);
     }
     if (sql.includes("UPDATE mcp_idempotency SET response")) {
-      const [id, payload] = params as [number, string];
+      const [id, ownerToken, payload] = params as [number, string, string];
       for (const row of rows.values()) {
-        if (row.id === Number(id)) row.response = JSON.parse(payload);
+        if (row.id === Number(id) && row.ownerToken === String(ownerToken)) {
+          row.response = JSON.parse(payload);
+          return result([], 1);
+        }
       }
-      return result([]);
+      return result([], 0);
     }
     if (sql.includes("DELETE FROM mcp_idempotency")) {
-      const [id] = params;
+      const [id, ownerToken] = params;
       for (const [key, row] of rows) {
-        if (row.id === Number(id)) rows.delete(key);
+        if (row.id === Number(id) && row.ownerToken === String(ownerToken)) {
+          rows.delete(key);
+          return result([], 1);
+        }
       }
-      return result([]);
+      return result([], 0);
     }
     throw new Error(`unexpected query: ${sql}`);
   };
@@ -248,4 +259,74 @@ test("the maximum key length is accepted", async (t) => {
   );
   assert.deepEqual(result, { id: 1 });
   assert.equal(runs, 1);
+});
+
+test("every reservation takes a fresh owner token that scopes its result write", async (t) => {
+  const calls: Call[] = [];
+  const store = idempotencyStore(calls);
+  t.mock.method(db, "query", store.query);
+
+  await withIdempotency({ ...BASE, key: "owner-1", args: {} }, async () => ({ id: 1 }));
+  await withIdempotency({ ...BASE, key: "owner-2", args: {} }, async () => ({ id: 2 }));
+
+  const inserts = calls.filter((call) => call.sql.includes("INSERT INTO mcp_idempotency"));
+  assert.equal(inserts.length, 2);
+  assert.match(inserts[0].sql, /owner_token = EXCLUDED\.owner_token/);
+  assert.match(inserts[0].sql, /RETURNING id, owner_token/);
+  const tokens = inserts.map((call) => call.params?.[6]);
+  assert.equal(typeof tokens[0], "string");
+  assert.equal(typeof tokens[1], "string");
+  assert.notEqual(tokens[0], tokens[1]);
+
+  const updates = calls.filter((call) => call.sql.includes("UPDATE mcp_idempotency SET response"));
+  assert.equal(updates.length, 2);
+  for (const update of updates) {
+    assert.match(update.sql, /WHERE id = \$1 AND owner_token = \$2/);
+    assert.equal(typeof update.params?.[1], "string");
+  }
+});
+
+test("a takeover keeps the new owner's response when the earlier run finishes", async (t) => {
+  const calls: Call[] = [];
+  const store = idempotencyStore(calls);
+  t.mock.method(db, "query", store.query);
+  const warnings: unknown[][] = [];
+  t.mock.method(console, "warn", (...args: unknown[]) => { warnings.push(args); });
+
+  const result = await withIdempotency({ ...BASE, args: { name: "Task" } }, async () => {
+    const row = [...store.rows.values()][0];
+    // The stale window elapsed and another execution took over the row and
+    // already recorded its own result before this run returned.
+    row.ownerToken = "taken-over";
+    row.response = { id: 2 };
+    return { id: 1 };
+  });
+
+  assert.deepEqual(result, { id: 1 });
+  const row = [...store.rows.values()][0];
+  assert.equal(row.ownerToken, "taken-over");
+  assert.deepEqual(row.response, { id: 2 });
+  assert.equal(warnings.length, 1);
+  assert.match(String(warnings[0][0]), /was taken over/);
+});
+
+test("a late failure cannot delete the reservation taken over by another run", async (t) => {
+  const calls: Call[] = [];
+  const store = idempotencyStore(calls);
+  t.mock.method(db, "query", store.query);
+
+  await assert.rejects(
+    withIdempotency({ ...BASE, args: { name: "Task" } }, async () => {
+      const row = [...store.rows.values()][0];
+      row.ownerToken = "taken-over";
+      row.response = { id: 2 };
+      throw new Error("late failure");
+    }),
+    /late failure/,
+  );
+
+  assert.equal(store.rows.size, 1);
+  const row = [...store.rows.values()][0];
+  assert.equal(row.ownerToken, "taken-over");
+  assert.deepEqual(row.response, { id: 2 });
 });

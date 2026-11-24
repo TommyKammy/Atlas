@@ -703,24 +703,27 @@ export function createWriteTools(
         const hasTaskChanges = Object.keys(patch).some((key) => key !== "expected_updated_at");
         const customFields = args.custom_fields ?? [];
         if (!hasTaskChanges && customFields.length === 0) throw badRequest("no fields to update");
+        let customValueStamp: string | undefined;
         if (hasTaskChanges) {
-          await services.updateTaskForActor(ctx.actor, args.id, patch);
-        } else if (customFields.length > 0 && args.expected_updated_at !== undefined) {
-          // setTaskCustomValue has no compare-and-set. A custom-fields-only
-          // update therefore checks the task stamp before writing any value.
-          const current = await services.getTaskDetail(ctx.actor, args.id);
-          if (current.task.updated_at !== args.expected_updated_at) {
-            throw new TaskMutationFailure("conflict", "conflict", {
-              current_updated_at: current.task.updated_at,
-            });
-          }
+          // updateTask bumped updated_at inside its transaction. Pass that
+          // stamp to the follow-up writes so they do not conflict with the
+          // task update that just committed.
+          const updated = await services.updateTaskForActor(ctx.actor, args.id, patch);
+          customValueStamp = updated.updated_at;
+        } else {
+          customValueStamp = args.expected_updated_at;
         }
         for (const field of customFields) {
-          await services.setTaskCustomValue(ctx.actor, {
+          const saved = await services.setTaskCustomValue(ctx.actor, {
             task_id: args.id,
             field_id: field.field_id,
             value: field.value,
+            ...(customValueStamp === undefined ? {} : { expected_updated_at: customValueStamp }),
           });
+          // Each value write advances tasks.updated_at. Chain the returned
+          // stamp so a later field in this call does not conflict with an
+          // earlier one from the same call.
+          customValueStamp = saved.updated_at;
         }
         const detail = await services.getTaskDetail(ctx.actor, args.id);
         const { output, truncated } = taskDetailPayload(detail);

@@ -25,6 +25,11 @@ ALTER TABLE task_events ADD CONSTRAINT task_events_via_check
 -- an in-flight reservation: concurrent retries must not execute the tool a
 -- second time. Failed calls delete their reservation so a retry can proceed.
 -- The janitor removes rows after 24 hours.
+--
+-- owner_token identifies the execution that currently owns the reservation.
+-- Every insert and every stale takeover receives a new token. Result writes and
+-- failure deletes match (id, owner_token), so an execution that finishes after
+-- its reservation was taken over cannot overwrite or delete the new owner's row.
 CREATE TABLE IF NOT EXISTS mcp_idempotency (
   id            BIGSERIAL PRIMARY KEY,
   token_id      BIGINT NOT NULL REFERENCES mcp_tokens(id) ON DELETE CASCADE,
@@ -32,6 +37,7 @@ CREATE TABLE IF NOT EXISTS mcp_idempotency (
   idempotency_key TEXT NOT NULL,
   request_hash  TEXT NOT NULL,
   response      JSONB,
+  owner_token   TEXT NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT mcp_idempotency_key_length
     CHECK (char_length(idempotency_key) BETWEEN 1 AND 200),

@@ -55,6 +55,12 @@ export async function taskSetCustomField(params: Record<string, unknown>, ctx: C
       [taskId, fieldId, text, num, date, json === null ? null : JSON.stringify(json)],
     );
   }
+  // Keep compare-and-set callers consistent with API/MCP custom-field writes:
+  // a changed value advances the task stamp in the same transaction.
+  await q.query(
+    "UPDATE tasks SET updated_at = now() WHERE id = $1::bigint",
+    [taskId],
+  );
   return finishTaskAction(
     ctx,
     taskId,

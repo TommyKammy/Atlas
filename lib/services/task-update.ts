@@ -54,7 +54,7 @@ const PATCHABLE = new Set([
 export async function updateTask(
   input: Record<string, unknown>,
   { taskId, uid, projectId: currentProjectId, authorizeProject }: TaskUpdateContext,
-): Promise<{ id: number }> {
+): Promise<{ id: number; updated_at: string }> {
   const body = { ...input };
   const placement = "placement" in body ? parseTaskPlacement(body.placement, taskId) : null;
   if (placement) {
@@ -269,9 +269,9 @@ export async function updateTask(
       throw new TaskMutationFailure("conflict", "task is no longer in this view");
     }
     await assertOrdinaryTaskMutation(q, [taskId], body);
-    const updated = await q.query<TaskCompletionRow>(
+    const updated = await q.query<TaskCompletionRow & { updated_at: string }>(
       `UPDATE tasks SET ${[...sets, "updated_at = now()"].join(", ")}
-       WHERE ${where} RETURNING ${TASK_COMPLETION_COLUMNS}`,
+       WHERE ${where} RETURNING ${TASK_COMPLETION_COLUMNS}, updated_at::text AS updated_at`,
       values,
     );
     const task = updated.rows[0];
@@ -384,7 +384,7 @@ export async function updateTask(
         data: { previous_project_id: primaryProjectId, project_id: targetProjectId },
       }, q);
     }
-    return { previousTask };
+    return { previousTask, updatedAt: task.updated_at };
   });
   if (result === null) return rejectConflict();
   const log = (kind: string, summary: string) =>
@@ -441,7 +441,7 @@ export async function updateTask(
     ...(primaryProjectId === null && !movesPrimary ? await auditScope(targetProjectId) : {}),
     summary: Object.keys(b).join(","),
   });
-  return { id: taskId };
+  return { id: taskId, updated_at: result.updatedAt };
 }
 
 export async function deleteTask(

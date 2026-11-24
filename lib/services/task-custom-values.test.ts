@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { ApiError } from "../api/errors";
 import { db, type Queryable } from "../db";
 import type { Actor } from "./actor";
 import { setTaskCustomValue, writeTaskCustomValue } from "./task-custom-values";
+import { TaskMutationFailure } from "./task-mutation-failure";
 
 type TaskContext = { default_project_id: number | null; project_ids: number[] };
 
@@ -38,16 +40,34 @@ type FieldRow = {
 function fakeTransactionQueries(options: {
   field?: FieldRow | null;
   member?: { is_admin: boolean; role: string | null };
+  taskUpdatedAt?: string;
+  nextUpdatedAt?: string;
+  writes?: string[];
 }): Queryable {
   return {
     query: async (sql: string, params?: unknown[]) => {
+      options.writes?.push(sql);
       let rows: Record<string, unknown>[] = [];
       if (sql.includes("FROM tasks WHERE id = $1::bigint AND deleted_at IS NULL FOR UPDATE")) {
-        rows = [{ id: Number(params?.[0]) }];
+        rows = [{
+          id: Number(params?.[0]),
+          updated_at: options.taskUpdatedAt ?? "2026-01-01T00:00:00.000Z",
+        }];
       } else if (sql.includes("FROM custom_fields")) {
         rows = options.field ? [{ ...options.field }] : [];
       } else if (sql.includes("LEFT JOIN project_members")) {
         rows = options.member ? [{ ...options.member }] : [];
+      } else if (sql.includes("UPDATE tasks SET updated_at = now()")) {
+        const updated_at = options.nextUpdatedAt ?? "2026-01-02T00:00:00.000Z";
+        options.taskUpdatedAt = updated_at;
+        rows = [{ updated_at }];
+      } else if (sql.includes("INSERT INTO task_custom_values")
+          || sql.includes("DELETE FROM task_custom_values")) {
+        rows = [];
+      } else if (sql.includes("SELECT workspace_id FROM projects")) {
+        rows = [{ workspace_id: 1 }];
+      } else if (sql.includes("INSERT INTO domain_events")) {
+        rows = [{ id: 1 }];
       } else {
         throw new Error(`unexpected query: ${sql}`);
       }
@@ -144,4 +164,108 @@ test("setTaskCustomValue rejects a field the actor cannot edit", async () => {
     "field access denied",
     "forbidden",
   );
+});
+
+test("writeTaskCustomValue rejects a stale expected stamp inside the lock", async () => {
+  const writes: string[] = [];
+  await assert.rejects(
+    writeTaskCustomValue(fakeTransactionQueries({
+      field: field(),
+      taskUpdatedAt: "2026-02-02T00:00:00.000Z",
+      writes,
+    }), {
+      actor,
+      taskId: 42,
+      projectId: 7,
+      fieldId: 5,
+      value: "x",
+      expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof TaskMutationFailure, `expected TaskMutationFailure, got ${String(error)}`);
+      assert.equal(error.reason, "conflict");
+      assert.equal(error.message, "conflict");
+      assert.deepEqual(error.metadata, { current_updated_at: "2026-02-02T00:00:00.000Z" });
+      return true;
+    },
+  );
+  assert.equal(writes.length, 1);
+  assert.match(writes[0], /FOR UPDATE/);
+});
+
+test("writeTaskCustomValue advances tasks.updated_at and returns it", async () => {
+  const writes: string[] = [];
+  const result = await writeTaskCustomValue(fakeTransactionQueries({
+    field: field(),
+    taskUpdatedAt: "2026-01-01T00:00:00.000Z",
+    nextUpdatedAt: "2026-01-02T00:00:00.000Z",
+    writes,
+  }), {
+    actor,
+    taskId: 42,
+    projectId: 7,
+    fieldId: 5,
+    value: "changed",
+    expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+  });
+
+  assert.deepEqual(result, { cleared: false, updated_at: "2026-01-02T00:00:00.000Z" });
+  const valueWrite = writes.findIndex((sql) => sql.includes("INSERT INTO task_custom_values"));
+  const stampWrite = writes.findIndex((sql) => sql.includes("UPDATE tasks SET updated_at = now()"));
+  assert.ok(valueWrite >= 0, "value write");
+  assert.ok(stampWrite > valueWrite, "updated_at bump follows the value write");
+});
+
+test("writeTaskCustomValue bumps the stamp when it clears a value", async () => {
+  const writes: string[] = [];
+  const result = await writeTaskCustomValue(fakeTransactionQueries({
+    field: field(),
+    nextUpdatedAt: "2026-01-03T00:00:00.000Z",
+    writes,
+  }), {
+    actor,
+    taskId: 42,
+    projectId: 7,
+    fieldId: 5,
+    value: null,
+  });
+
+  assert.deepEqual(result, { cleared: true, updated_at: "2026-01-03T00:00:00.000Z" });
+  assert.ok(writes.some((sql) => sql.includes("DELETE FROM task_custom_values")));
+  assert.ok(writes.some((sql) => sql.includes("UPDATE tasks SET updated_at = now()")));
+});
+
+test("a repeated expected stamp conflicts after the first write advances updated_at", async () => {
+  const q = fakeTransactionQueries({ field: field() });
+  const write = () => writeTaskCustomValue(q, {
+    actor,
+    taskId: 42,
+    projectId: 7,
+    fieldId: 5,
+    value: "x",
+    expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+  });
+
+  const first = await write();
+  assert.equal(first.updated_at, "2026-01-02T00:00:00.000Z");
+
+  await assert.rejects(
+    write(),
+    (error: unknown) => {
+      assert.ok(error instanceof TaskMutationFailure, `expected TaskMutationFailure, got ${String(error)}`);
+      assert.equal(error.reason, "conflict");
+      assert.deepEqual(error.metadata, { current_updated_at: "2026-01-02T00:00:00.000Z" });
+      return true;
+    },
+  );
+});
+
+test("POST /api/task-values adds updated_at while keeping the existing body and status", () => {
+  const source = readFileSync(
+    new URL("../../app/api/task-values/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /cleared: true, updated_at: result\.updated_at/);
+  assert.match(source, /ok: true, updated_at: result\.updated_at/);
+  assert.match(source, /status: result\.cleared \? 200 : 201/);
 });

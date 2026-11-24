@@ -60,6 +60,11 @@ export function useTaskPane({
   } | null>(null);
   const [inputRecovery, setInputRecovery] = useState<TaskInputRecovery | null>(null);
   const [saveStates, setSaveStates] = useState<Record<string, TaskSaveState>>({});
+  const [customValueStamp, setCustomValueStamp] = useState<{
+    taskId: number;
+    previous: string;
+    updatedAt: string;
+  } | null>(null);
   const [reloadRevision, setReloadRevision] = useState(0);
   const [reloading, startReload] = useTransition();
   const requestId = useRef(0);
@@ -82,6 +87,14 @@ export function useTaskPane({
   const memberSectionsRequest = useRef<AbortController | null>(null);
 
   useEffect(() => () => memberSectionsRequest.current?.abort(), [task.id]);
+
+  // A custom-field write advances tasks.updated_at. Keep that stamp locally
+  // until the refreshed task props catch up, so an immediately following edit
+  // does not compare against the stale stamp from before the write.
+  const updatedAt = customValueStamp?.taskId === task.id
+    && customValueStamp.previous === task.updated_at
+    ? customValueStamp.updatedAt
+    : task.updated_at;
 
   const canEditField = (field: CustomField) =>
     !reloading && canEditCustomField(field, { viewerId, canEdit, canAdmin });
@@ -122,7 +135,7 @@ export function useTaskPane({
     setReactionMap((map) => ({ ...map, [commentId]: data.reactions }));
   };
 
-  const savePatch = async (fields: Record<string, unknown>, expectedUpdatedAt = task.updated_at): Promise<boolean> => {
+  const savePatch = async (fields: Record<string, unknown>, expectedUpdatedAt = updatedAt): Promise<boolean> => {
     const key = Object.keys(fields).sort().join(",");
     const id = ++requestId.current;
     const generation = saveGeneration.current;
@@ -169,7 +182,7 @@ export function useTaskPane({
     return true;
   };
 
-  const patch = async (fields: Record<string, unknown>, expectedUpdatedAt = task.updated_at) => {
+  const patch = async (fields: Record<string, unknown>, expectedUpdatedAt = updatedAt) => {
     await savePatch(fields, expectedUpdatedAt);
   };
 
@@ -187,7 +200,7 @@ export function useTaskPane({
     closeAddProject();
     setReloadRevision((revision) => revision + 1);
     setInputRecovery((previous) => ({ taskId: task.id, revision: (previous?.revision ?? 0) + 1,
-      updatedAt: task.updated_at, values: { name: task.name, progress: task.progress } }));
+      updatedAt, values: { name: task.name, progress: task.progress } }));
     setSaveStates({});
     setConflict(null);
     startReload(() => router.refresh());
@@ -373,7 +386,22 @@ export function useTaskPane({
     fieldId: number,
     value: string | number | string[] | number[] | null,
   ) => {
-    await mutate(`custom:${fieldId}`, "カスタムフィールド", () => api("/api/task-values", "POST", { task_id: task.id, field_id: fieldId, value }));
+    const response: { updated_at?: string } = {};
+    await mutate(`custom:${fieldId}`, "カスタムフィールド", async () => {
+      const result = await api<{ updated_at?: unknown }>(
+        "/api/task-values",
+        "POST",
+        { task_id: task.id, field_id: fieldId, value },
+      );
+      if (typeof result?.updated_at === "string") response.updated_at = result.updated_at;
+    });
+    if (alive.current && response.updated_at) {
+      setCustomValueStamp({
+        taskId: task.id,
+        previous: task.updated_at,
+        updatedAt: response.updated_at,
+      });
+    }
   };
 
   const uploadFile = async (file: File) => {
@@ -449,6 +477,7 @@ export function useTaskPane({
     newMemberSection,
     setNewMemberSection,
     toggleReaction,
+    updatedAt,
     patch,
     patchChecked,
     saveStates,
