@@ -244,11 +244,24 @@ Phase 1で判明し、Phase 2〜3で決めること:
 
 見送り: CIMD のクライアントIDのドメイン許可リストは作らない（承認画面でのクライアント・戻り先の確認を前提とする）。必要になったら別途検討する。
 
-### Phase 6: 本番展開と検証（1〜2日）
+### Phase 6: 本番展開と検証（1〜2日） — 完了（2026-11-24）
 
-- [ ] 検証サーバーにデプロイ（マイグレーション、`NODE_ENV=production npm run build`、ユーザーユニット再起動。サーバー側の2つのローカル変更を再適用）
-- [ ] 本番URLでClaude Code・Codexからの一連の操作（プロジェクト作成 → タスク作成 → 担当・期限設定 → コメント → 完了）を確認し、ブラウザー画面と監査ログに反映されていることを確認
-- [ ] 権限境界の確認（閲覧専用ユーザーのトークンで書き込みが拒否される、除名直後にアクセスできない）
+- [x] 検証サーバーにデプロイ（main 77387a8。マイグレーション 0038〜0040、`NODE_ENV=production npm run build`、ユーザーユニット再起動。サーバー側の2つのローカル変更を再適用）
+  - 起動設定には `APP_ORIGIN=https://atlas.tmcast.net` が既にあり、OAuth の公開 URL はこれで決まる（`APP_URL` の追加は不要）
+  - 公開 URL で OAuth メタデータと、トークンなしの `/mcp` が 401 と `WWW-Authenticate`（`resource_metadata`）を返すことを確認。nginx は変更なし
+  - MCP と PAT は管理画面で有効化（監査ログ `security.mcp_enable` / `security.mcp_pat_enable`）
+- [x] 本番URLでの一連の操作
+  - Codex 0.171（CIMD `https://chatgpt.com/oauth/codex/client.json`）: OAuth 承認 → whoami → プロジェクト作成 → タスク作成 → 担当・期限設定 → コメント → 完了 → 取得。DB と監査ログ（`via=mcp`、クライアント名 Codex、トークン ID）に反映
+  - Claude Code 2.1.330（CIMD `https://claude.ai/oauth/claude-code-client-metadata`）: `claude mcp login` で OAuth 承認とトークン発行まで確認（Phase 4 の未確認事項を解消）。ツール実行は、この環境の CLI が未ログインのため未実施
+- [x] 権限境界の確認（テスト用 PAT を DB に直接作成し、確認後に失効）
+  - 閲覧者ロールのメンバー: 読み取りは成功、`save_task` と `add_comment` は「insufficient project role」で拒否
+  - プロジェクトから外した直後: `get_task` は「project access denied」、一覧からも消える
+  - ゲストのトークン: 401（`error_code=guest`）。失効後のトークン: 401
+
+確認中に見つけた不具合（同じ PR で修正）:
+- 2025 年版クライアントへの SSE 応答では、ツールエラーがリクエストログで `ok` と記録されていた
+- 監査ログ `security.update` の説明に SQL の断片（`mcp_enabled = $1`）が入っていた
+- 監査ログ `task.update` の説明に、変更項目ではない `expected_updated_at` が載っていた
 
 **合計目安: 約16〜23日**（PATだけで使い始めるならPhase 0〜3と5の一部で約9〜12日）
 

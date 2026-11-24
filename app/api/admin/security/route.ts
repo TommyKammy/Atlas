@@ -34,6 +34,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       FROM workspace_security w WHERE workspace_id=$1 FOR UPDATE`, [workspaceId]);
     const current = locked.rows[0] as SecuritySettings;
     const sets: string[] = [];
+    const columns: string[] = [];
     const values: unknown[] = [];
     const next = { ...current };
 
@@ -44,6 +45,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       next.two_factor_policy = body.two_factor_policy;
       values.push(next.two_factor_policy);
       sets.push(`two_factor_policy = $${values.length}`);
+      columns.push("two_factor_policy");
     }
     if (body?.saml_mode !== undefined) {
       if (!SAML_MODES.has(body.saml_mode)) {
@@ -52,6 +54,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       next.saml_mode = body.saml_mode;
       values.push(next.saml_mode);
       sets.push(`saml_mode = $${values.length}`);
+      columns.push("saml_mode");
     }
     if (body?.saml_signin_url !== undefined) {
       const url = typeof body.saml_signin_url === "string" ? body.saml_signin_url.trim().slice(0, 1000) : "";
@@ -66,12 +69,14 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       next.saml_signin_url = url;
       values.push(url);
       sets.push(`saml_signin_url = $${values.length}`);
+      columns.push("saml_signin_url");
     }
     if (body?.saml_certificate !== undefined) {
       const cert = typeof body.saml_certificate === "string" ? body.saml_certificate.trim().slice(0, 20_000) : "";
       next.saml_certificate = cert;
       values.push(cert);
       sets.push(`saml_certificate = $${values.length}`);
+      columns.push("saml_certificate");
     }
     if (body?.saml_session_days !== undefined) {
       const days = Number(body.saml_session_days);
@@ -81,6 +86,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       next.saml_session_days = days;
       values.push(days);
       sets.push(`saml_session_days = $${values.length}`);
+      columns.push("saml_session_days");
     }
     if (body?.saml_jit_provisioning !== undefined) {
       if (typeof body.saml_jit_provisioning !== "boolean") {
@@ -89,6 +95,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       next.saml_jit_provisioning = body.saml_jit_provisioning;
       values.push(next.saml_jit_provisioning);
       sets.push(`saml_jit_provisioning = $${values.length}`);
+      columns.push("saml_jit_provisioning");
     }
     if (body?.scim_enabled !== undefined) {
       if (typeof body.scim_enabled !== "boolean") {
@@ -97,6 +104,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       next.scim_enabled = body.scim_enabled;
       values.push(next.scim_enabled);
       sets.push(`scim_enabled = $${values.length}`);
+      columns.push("scim_enabled");
     }
     if (body?.mcp_enabled !== undefined) {
       if (typeof body.mcp_enabled !== "boolean") {
@@ -105,6 +113,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       next.mcp_enabled = body.mcp_enabled;
       values.push(next.mcp_enabled);
       sets.push(`mcp_enabled = $${values.length}`);
+      columns.push("mcp_enabled");
     }
     if (body?.mcp_pat_enabled !== undefined) {
       if (typeof body.mcp_pat_enabled !== "boolean") {
@@ -113,6 +122,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       next.mcp_pat_enabled = body.mcp_pat_enabled;
       values.push(next.mcp_pat_enabled);
       sets.push(`mcp_pat_enabled = $${values.length}`);
+      columns.push("mcp_pat_enabled");
     }
     if (body?.password_min_length !== undefined) {
       const length = Number(body.password_min_length);
@@ -122,6 +132,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       next.password_min_length = length;
       values.push(length);
       sets.push(`password_min_length = $${values.length}`);
+      columns.push("password_min_length");
     }
     for (const key of [
       "password_require_upper",
@@ -136,6 +147,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
         next[key] = body[key];
         values.push(body[key]);
         sets.push(`${key} = $${values.length}`);
+        columns.push(key);
       }
     }
     if (next.saml_mode !== "off") {
@@ -159,7 +171,7 @@ export const PATCH = withAdminPermission("security.manage", async (req, { uid })
       entity: "workspace_security",
       entityId: current.workspace_id,
       workspaceId: current.workspace_id,
-      summary: sets.join(", "),
+      summary: columns.join(", "),
     }, q);
     if (body?.scim_enabled !== undefined && body.scim_enabled !== current.scim_enabled) {
       await audit(uid, body.scim_enabled ? "security.scim_enable" : "security.scim_disable", {
