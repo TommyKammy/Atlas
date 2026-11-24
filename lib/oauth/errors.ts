@@ -9,6 +9,7 @@ export type OAuthErrorCode =
   | "invalid_grant"
   | "invalid_scope"
   | "invalid_target"
+  | "unsupported_grant_type"
   | "unauthorized_client"
   | "access_denied"
   | "invalid_client_metadata"
@@ -22,6 +23,7 @@ const STATUS: Record<OAuthErrorCode, number> = {
   invalid_grant: 400,
   invalid_scope: 400,
   invalid_target: 400,
+  unsupported_grant_type: 400,
   unauthorized_client: 400,
   access_denied: 403,
   invalid_client_metadata: 400,

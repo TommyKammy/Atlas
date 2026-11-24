@@ -30,13 +30,50 @@ export function appBaseUrl(env: Environment = process.env): string | null {
   return null;
 }
 
+function trimTrailingSlashes(baseUrl: string): string {
+  return baseUrl.replace(/\/+$/, "");
+}
+
+/** The RFC 8707 resource value built from an explicit public base URL. */
+export function mcpResourceUrlFromBase(
+  baseUrl: string,
+  endpoint: McpResourceEndpoint,
+): string {
+  return `${trimTrailingSlashes(baseUrl)}${RESOURCE_PATHS[endpoint]}`;
+}
+
+/** RFC 9728 metadata URL (path insertion style), e.g. https://atlas/.well-known/oauth-protected-resource/mcp. */
+export function protectedResourceMetadataUrlFromBase(
+  baseUrl: string,
+  endpoint: McpResourceEndpoint,
+): string {
+  return `${trimTrailingSlashes(baseUrl)}/.well-known/oauth-protected-resource${RESOURCE_PATHS[endpoint]}`;
+}
+
 /** The RFC 8707 resource value for an MCP endpoint, e.g. https://atlas/mcp. */
 export function mcpResourceUrl(
   endpoint: McpResourceEndpoint,
   env: Environment = process.env,
 ): string | null {
   const base = appBaseUrl(env);
-  return base === null ? null : `${base}${RESOURCE_PATHS[endpoint]}`;
+  return base === null ? null : mcpResourceUrlFromBase(base, endpoint);
+}
+
+/**
+ * Public base URL used by the metadata endpoints and WWW-Authenticate.
+ *
+ * APP_URL / APP_ORIGIN are authoritative when configured. Without either one
+ * (local development or a misconfigured deployment) fall back to the origin
+ * of the incoming request. The fallback is deliberately request-scoped and
+ * never persisted.
+ */
+export function requestBaseUrl(
+  request: Request,
+  env: Environment = process.env,
+): string {
+  const base = appBaseUrl(env);
+  if (base !== null) return base;
+  return new URL(request.url).origin;
 }
 
 /**

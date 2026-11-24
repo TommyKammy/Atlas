@@ -58,6 +58,12 @@ export async function proxy(req: NextRequest) {
     req.nextUrl.pathname === "/login" ||
     req.nextUrl.pathname === "/mcp" ||
     req.nextUrl.pathname === "/mcp/readonly" ||
+    req.nextUrl.pathname === "/.well-known/oauth-protected-resource" ||
+    req.nextUrl.pathname.startsWith("/.well-known/oauth-protected-resource/") ||
+    req.nextUrl.pathname === "/.well-known/oauth-authorization-server" ||
+    req.nextUrl.pathname === "/oauth/register" ||
+    req.nextUrl.pathname === "/oauth/token" ||
+    req.nextUrl.pathname === "/oauth/revoke" ||
     req.nextUrl.pathname === "/api/automation/process" ||
     req.nextUrl.pathname.startsWith("/api/automation/webhook/") ||
     req.nextUrl.pathname.startsWith("/share/") ||

@@ -254,7 +254,7 @@ test("subscriptions/listen is acknowledged empty and closed when listChanged is 
   }
 });
 
-test("missing and invalid tokens return a generic 401 with WWW-Authenticate", async () => {
+test("missing and invalid tokens return a generic 401 with resource metadata", async () => {
   for (const authorization of [undefined, "Bearer atlas_mcp_invalid"]) {
     const entries: McpRequestLogEntry[] = [];
     const response = await handleMcpPost(
@@ -274,12 +274,33 @@ test("missing and invalid tokens return a generic 401 with WWW-Authenticate", as
       }),
     );
     assert.equal(response.status, 401);
-    assert.equal(response.headers.get("www-authenticate"), 'Bearer error="invalid_token"');
+    // RFC 6750 has no invalid_token error when no Bearer credential was sent.
+    const expected = authorization
+      ? 'Bearer error="invalid_token", resource_metadata="https://atlas.test/.well-known/oauth-protected-resource/mcp", scope="read write"'
+      : 'Bearer resource_metadata="https://atlas.test/.well-known/oauth-protected-resource/mcp", scope="read write"';
+    assert.equal(response.headers.get("www-authenticate"), expected);
     assert.deepEqual(await response.json(), { error: "invalid_token" });
     assert.equal(entries.length, 1);
     assert.equal(entries[0].outcome, "unauthenticated");
     assert.equal(entries[0].errorCode, "invalid");
   }
+});
+
+test("the readonly 401 advertises its own metadata URL and read scope", async () => {
+  const entries: McpRequestLogEntry[] = [];
+  const response = await handleMcpPost(
+    request("/mcp/readonly", {
+      method: "POST",
+      headers: { authorization: "Bearer atlas_mcp_invalid" },
+    }),
+    "readonly",
+    authenticatedDependencies(entries, async () => ({ ok: false, reason: "invalid" })),
+  );
+  assert.equal(response.status, 401);
+  assert.equal(
+    response.headers.get("www-authenticate"),
+    'Bearer error="invalid_token", resource_metadata="https://atlas.test/.well-known/oauth-protected-resource/mcp/readonly", scope="read"',
+  );
 });
 
 test("authentication failures log header metadata without reading the body", async () => {
