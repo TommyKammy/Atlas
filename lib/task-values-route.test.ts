@@ -8,11 +8,19 @@ import { generateSessionToken } from "./session-token";
 
 type Call = { sql: string; params?: unknown[] };
 
+type ConflictRead = {
+  updatedAt?: string;
+  valueText?: string;
+  missingCustomField?: boolean;
+};
+
 const TASK_ID = 42;
 const PROJECT_ID = 7;
 const UID = 13;
 const CURRENT_STAMP = "2026-02-02T00:00:00.000Z";
 const NEXT_STAMP = "2026-03-03T00:00:00.000Z";
+const SEPARATE_TASK_STAMP = "2025-01-01T00:00:00.000Z";
+const SEPARATE_FIELD_VALUE = "separate read value";
 
 function result(rows: QueryResultRow[] = []): QueryResult {
   return { rows, rowCount: rows.length, command: "SELECT", fields: [], oid: 0 };
@@ -36,7 +44,7 @@ function currentTask() {
 }
 
 /** Session, task authorization, and the snapshot used by a 409 response. */
-function outerQueries(calls: Call[]) {
+function outerQueries(calls: Call[], conflict: ConflictRead = {}) {
   return async (sql: string, params?: unknown[]): Promise<QueryResult> => {
     calls.push({ sql, params });
     if (sql.includes("FROM user_sessions")) {
@@ -59,8 +67,37 @@ function outerQueries(calls: Call[]) {
     if (sql.includes("FROM users u") && sql.includes("is_guest")) {
       return result([{ is_admin: false, is_guest: false, deactivated_at: null }]);
     }
+    if (sql.includes("FROM tasks t") && sql.includes("LEFT JOIN custom_fields f")) {
+      return result([{
+        ...currentTask(),
+        updated_at: conflict.updatedAt ?? CURRENT_STAMP,
+        ...(conflict.missingCustomField
+          ? {
+              field_id: null,
+              field_name: null,
+              field_type: null,
+              config: null,
+              value_text: null,
+              value_number: null,
+              value_date: null,
+              value_json: null,
+            }
+          : {
+              field_id: 5,
+              field_name: "Estimate",
+              field_type: "text",
+              config: null,
+              value_text: conflict.valueText ?? "current value",
+              value_number: null,
+              value_date: null,
+              value_json: null,
+            }),
+      }]);
+    }
+    // A separate task snapshot or field read would expose different data, so
+    // the joined-read assertions fail if the route goes back to two queries.
     if (sql.includes("FROM tasks t LEFT JOIN users u")) {
-      return result([currentTask()]);
+      return result([{ ...currentTask(), updated_at: SEPARATE_TASK_STAMP }]);
     }
     if (sql.includes("FROM custom_fields f") && sql.includes("LEFT JOIN task_custom_values")) {
       return result([{
@@ -68,7 +105,7 @@ function outerQueries(calls: Call[]) {
         name: "Estimate",
         field_type: "text",
         config: null,
-        value_text: "current value",
+        value_text: SEPARATE_FIELD_VALUE,
         value_number: null,
         value_date: null,
         value_json: null,
@@ -119,11 +156,11 @@ function transactionClient(options: { taskUpdatedAt: string; calls: Call[] }): P
 async function postTaskValue(
   t: TestContext,
   body: Record<string, unknown>,
-  options: { taskUpdatedAt: string },
+  options: { taskUpdatedAt: string; conflict?: ConflictRead },
 ) {
   const outerCalls: Call[] = [];
   const clientCalls: Call[] = [];
-  t.mock.method(db, "query", outerQueries(outerCalls));
+  t.mock.method(db, "query", outerQueries(outerCalls, options.conflict));
   t.mock.method(Pool.prototype, "connect", async () => transactionClient({
     taskUpdatedAt: options.taskUpdatedAt,
     calls: clientCalls,
@@ -144,7 +181,11 @@ async function postTaskValue(
   });
   const { POST } = await import("../app/api/task-values/route");
   const response = await POST(request);
-  return { response, body: await response.json() as Record<string, unknown> };
+  return {
+    response,
+    body: await response.json() as Record<string, unknown>,
+    outerCalls,
+  };
 }
 
 test("POST /api/task-values still succeeds without expected_updated_at", async (t) => {
@@ -178,4 +219,65 @@ test("POST /api/task-values returns the PATCH-shaped 409 plus the custom field",
       value_json: null,
     },
   });
+});
+
+test("POST /api/task-values builds the 409 stamp and custom field value from one joined read", async (t) => {
+  const updatedAt = "2026-06-06T00:00:00.000Z";
+  const { response, body, outerCalls } = await postTaskValue(
+    t,
+    { expected_updated_at: "2026-01-01T00:00:00.000Z" },
+    {
+      taskUpdatedAt: CURRENT_STAMP,
+      conflict: { updatedAt, valueText: "joined value" },
+    },
+  );
+
+  assert.equal(response.status, 409);
+  assert.equal(body.updated_at, updatedAt);
+  assert.equal((body.current as { updated_at: string }).updated_at, updatedAt);
+  assert.deepEqual((body.custom_field as { value: unknown }).value, {
+    value_text: "joined value",
+    value_number: null,
+    value_date: null,
+    value_json: null,
+  });
+
+  const conflictReads = outerCalls.filter((call) =>
+    call.sql.includes("LEFT JOIN custom_fields f")
+    && call.sql.includes("LEFT JOIN task_custom_values"));
+  assert.equal(conflictReads.length, 1, "one joined read for the 409");
+  assert.deepEqual(conflictReads[0].params, [TASK_ID, 5, PROJECT_ID]);
+  assert.equal(
+    outerCalls.filter((call) => call.sql.includes("FROM custom_fields f")).length,
+    0,
+    "no separate field read",
+  );
+  assert.equal(
+    outerCalls.filter((call) => call.sql.includes("FROM tasks t LEFT JOIN users u")).length,
+    0,
+    "no separate task snapshot",
+  );
+});
+
+test("POST /api/task-values omits custom_field when the field is gone but still returns the task snapshot", async (t) => {
+  const updatedAt = "2026-07-07T00:00:00.000Z";
+  const { response, body, outerCalls } = await postTaskValue(
+    t,
+    { expected_updated_at: "2026-01-01T00:00:00.000Z" },
+    {
+      taskUpdatedAt: CURRENT_STAMP,
+      conflict: { updatedAt, missingCustomField: true },
+    },
+  );
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(Object.keys(body).sort(), ["current", "error", "updated_at"]);
+  assert.equal(body.error, "conflict");
+  assert.equal(body.updated_at, updatedAt);
+  assert.deepEqual(body.current, { ...currentTask(), updated_at: updatedAt });
+  assert.equal(
+    outerCalls.filter((call) => call.sql.includes("LEFT JOIN custom_fields f")).length,
+    1,
+    "the missing field still comes from the joined read",
+  );
 });

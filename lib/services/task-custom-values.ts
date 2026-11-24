@@ -114,43 +114,94 @@ export async function writeTaskCustomValue(
   };
 }
 
+export type TaskCustomFieldConflictState = {
+  updated_at: string | null;
+  current: Record<string, unknown> | null;
+  custom_field?: {
+    field_id: number;
+    name: string;
+    field_type: string;
+    config: ReturnType<typeof normalizeCustomFieldConfig>;
+    value: {
+      value_text: string | null;
+      value_number: number | null;
+      value_date: string | null;
+      value_json: unknown;
+    };
+  };
+};
+
 /**
- * Field metadata and current value for a custom-field 409. Scoped to the
- * project that authorized the task edit so another project's field cannot be
- * disclosed.
+ * Task fields and stamp plus the conflicting field's metadata and value for a
+ * custom-field 409. Everything is read in one statement because separate reads
+ * can pair an old value with a newer updated_at: the editor would then see the
+ * old value, and "overwrite with the latest" would send the newer stamp and
+ * hide the write that happened between the two reads. The field is scoped to
+ * the project that authorized the task edit so another project's field cannot
+ * be disclosed. A missing field (deleted, other project, invalid id) leaves
+ * custom_field out while still returning the task snapshot.
  */
-export async function taskCustomFieldConflictSnapshot(
+export async function taskCustomFieldConflictState(
   taskId: number,
   projectId: number | null,
   fieldId: unknown,
-) {
+): Promise<TaskCustomFieldConflictState> {
   const id = Number(fieldId);
-  if (!Number.isInteger(id) || id <= 0 || projectId === null) return null;
+  const scopedFieldId = Number.isInteger(id) && id > 0 && projectId !== null ? id : null;
   const result = await db.query(
-    `SELECT f.id AS field_id, f.name, f.field_type, f.config,
+    `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
+       t.start_on::text AS start_on, t.due_on::text AS due_on,
+       t.progress, t.status, t.description, t.section_id, t.is_milestone,
+       t.updated_at::text AS updated_at,
+       f.id AS field_id, f.name AS field_name, f.field_type, f.config,
        v.value_text, v.value_number, v.value_date::text AS value_date, v.value_json
-     FROM custom_fields f
+     FROM tasks t
+     LEFT JOIN users u ON u.id = t.assignee_id
+     LEFT JOIN custom_fields f
+       ON f.id = $2::bigint AND f.project_id = $3::bigint
+      AND f.deleted_at IS NULL
      LEFT JOIN task_custom_values v
-       ON v.field_id = f.id AND v.task_id = $1::bigint
-     WHERE f.id = $2::bigint AND f.project_id = $3::bigint
-       AND f.deleted_at IS NULL`,
-    [taskId, id, projectId],
+       ON v.field_id = f.id AND v.task_id = t.id
+     WHERE t.id = $1::bigint`,
+    [taskId, scopedFieldId, projectId],
   );
   const row = result.rows[0];
-  if (!row) return null;
+  if (!row) return { updated_at: null, current: null };
+  const current = {
+    name: row.name,
+    completed: row.completed,
+    assignee_id: row.assignee_id,
+    assignee_name: row.assignee_name,
+    start_on: row.start_on,
+    due_on: row.due_on,
+    progress: row.progress,
+    status: row.status,
+    description: row.description,
+    section_id: row.section_id,
+    is_milestone: row.is_milestone,
+    updated_at: row.updated_at,
+  };
+  const updatedAt = typeof row.updated_at === "string" ? row.updated_at : null;
+  if (row.field_id === null || row.field_id === undefined) {
+    return { updated_at: updatedAt, current };
+  }
   const valueNumber = row.value_number === null || row.value_number === undefined
     ? null
     : Number(row.value_number);
   return {
-    field_id: Number(row.field_id),
-    name: String(row.name),
-    field_type: String(row.field_type),
-    config: normalizeCustomFieldConfig(row.config),
-    value: {
-      value_text: typeof row.value_text === "string" ? row.value_text : null,
-      value_number: valueNumber !== null && Number.isFinite(valueNumber) ? valueNumber : null,
-      value_date: typeof row.value_date === "string" ? row.value_date : null,
-      value_json: row.value_json ?? null,
+    updated_at: updatedAt,
+    current,
+    custom_field: {
+      field_id: Number(row.field_id),
+      name: String(row.field_name),
+      field_type: String(row.field_type),
+      config: normalizeCustomFieldConfig(row.config),
+      value: {
+        value_text: typeof row.value_text === "string" ? row.value_text : null,
+        value_number: valueNumber !== null && Number.isFinite(valueNumber) ? valueNumber : null,
+        value_date: typeof row.value_date === "string" ? row.value_date : null,
+        value_json: row.value_json ?? null,
+      },
     },
   };
 }

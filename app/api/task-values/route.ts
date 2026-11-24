@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { withTask } from "@/lib/api/route";
-import { setTaskCustomValue, taskCustomFieldConflictSnapshot } from "@/lib/services/task-custom-values";
+import { setTaskCustomValue, taskCustomFieldConflictState } from "@/lib/services/task-custom-values";
 import { TaskMutationFailure } from "@/lib/services/task-mutation-failure";
-import { taskConflictSnapshot } from "@/lib/services/task-update";
 
 // Upsert one task's custom-field value. The field type determines which
 // typed column is written; empty values remove the row.
@@ -25,12 +24,17 @@ export const POST = withTask("edit", async (_req, { uid, taskId, projectId, body
     );
   } catch (error) {
     if (error instanceof TaskMutationFailure && error.reason === "conflict") {
-      const customField = await taskCustomFieldConflictSnapshot(taskId, projectId, field_id);
+      const { updated_at, current, custom_field } = await taskCustomFieldConflictState(
+        taskId,
+        projectId,
+        field_id,
+      );
       return NextResponse.json(
         {
           error: error.message,
-          ...await taskConflictSnapshot(taskId),
-          ...(customField ? { custom_field: customField } : {}),
+          updated_at,
+          current,
+          ...(custom_field ? { custom_field } : {}),
         },
         { status: 409 },
       );
