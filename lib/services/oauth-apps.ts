@@ -138,6 +138,17 @@ export async function revokeOAuthApp(
     | undefined;
   if (!row) throw notFound("connection not found");
 
+  // Lock order: users row -> family advisory lock -> token rows. Refresh and
+  // code exchange take the same order, and the audit INSERT below needs a
+  // share lock on this row for its actor_id foreign key. Taking the family
+  // lock first would invert the order and deadlock with a concurrent refresh
+  // (or with deactivation, which holds the user row while revoking tokens).
+  const owner = await q.query(
+    "SELECT id FROM users WHERE id = $1::bigint FOR UPDATE",
+    [actor.uid],
+  );
+  if (!owner.rowCount) throw notFound("connection not found");
+
   // Rotation inserts new token rows into the same family. Serialize with it so
   // the UPDATEs below also revoke pairs committed by an in-flight refresh.
   await lockOAuthFamily(q, familyId);

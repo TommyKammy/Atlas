@@ -19,6 +19,7 @@ function mockQueries(
   options: {
     rows?: Record<string, unknown>[];
     owned?: boolean;
+    userExists?: boolean;
     tokenUpdates?: number;
     refreshUpdates?: number;
   },
@@ -35,6 +36,9 @@ function mockQueries(
           family_id: params?.[0],
           workspace_id: 1,
         }]);
+      }
+      if (sql.includes("SELECT id FROM users WHERE id = $1::bigint FOR UPDATE")) {
+        return result(options.userExists === false ? [] : [{ id: 42 }]);
       }
       if (sql.includes("pg_advisory_xact_lock")) {
         return result([{ pg_advisory_xact_lock: null }]);
@@ -127,11 +131,17 @@ test("revoking a connection expires every token in the actor's family", async ()
   assert.match(access.sql, /user_id = \$2/);
 
   const familyLock = calls.findIndex((call) => call.sql.includes("pg_advisory_xact_lock"));
+  const userLock = calls.findIndex(
+    (call) => call.sql.includes("SELECT id FROM users WHERE id = $1::bigint FOR UPDATE"),
+  );
   const accessIndex = calls.indexOf(access);
   const refreshIndex = calls.findIndex((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at"));
+  assert.ok(userLock >= 0, "revocation must lock the actor's user row");
   assert.ok(familyLock >= 0, "revocation must take the family advisory lock");
+  assert.ok(userLock < familyLock, "the user row lock must precede the family lock");
   assert.ok(accessIndex > familyLock, "access tokens must be updated after the family lock");
   assert.ok(refreshIndex > familyLock, "refresh tokens must be updated after the family lock");
+  assert.deepEqual(calls[userLock].params, [42]);
   assert.deepEqual(calls[familyLock].params, [FAMILY_ID]);
 
   const refresh = calls.find((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at"));
@@ -151,6 +161,16 @@ test("another user's family is reported as missing and is never revoked", async 
   const calls: Call[] = [];
   const q = mockQueries({ owned: false }, calls);
   await assertNotFound(revokeOAuthApp(actor, OTHER_FAMILY_ID, q));
+  assert.ok(!calls.some((call) => call.sql.includes("pg_advisory_xact_lock")));
+  assert.ok(!calls.some((call) => call.sql.includes("UPDATE mcp_tokens SET revoked_at")));
+  assert.ok(!calls.some((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at")));
+});
+
+test("a missing actor row is reported as missing and is never revoked", async () => {
+  const calls: Call[] = [];
+  const q = mockQueries({ userExists: false }, calls);
+  await assertNotFound(revokeOAuthApp(actor, FAMILY_ID, q));
+  assert.ok(!calls.some((call) => call.sql.includes("pg_advisory_xact_lock")));
   assert.ok(!calls.some((call) => call.sql.includes("UPDATE mcp_tokens SET revoked_at")));
   assert.ok(!calls.some((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at")));
 });
