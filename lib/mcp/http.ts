@@ -30,6 +30,8 @@ type AtlasAuthExtra = {
   actor: Actor;
   scopes: McpScope[];
   endpoint: McpEndpoint;
+  /** Request-body client name, or the token's stored name. */
+  clientName: string | null;
 };
 
 /**
@@ -201,11 +203,16 @@ export function methodNotAllowedResponse(): Response {
   });
 }
 
-function authInfoFor(auth: Extract<McpAuthResult, { ok: true }>, endpoint: McpEndpoint): AuthInfo {
+function authInfoFor(
+  auth: Extract<McpAuthResult, { ok: true }>,
+  endpoint: McpEndpoint,
+  clientName: string | null,
+): AuthInfo {
   const extra: AtlasAuthExtra = {
     actor: auth.actor,
     scopes: auth.scopes,
     endpoint,
+    clientName,
   };
   return {
     // AuthInfo is an in-process carrier only; do not copy the bearer secret
@@ -232,7 +239,12 @@ function atlasAuthFrom(info: AuthInfo | undefined): AtlasAuthExtra {
   ) {
     throw new Error("MCP request has invalid Atlas authentication context");
   }
-  return candidate as AtlasAuthExtra;
+  return {
+    actor: candidate.actor,
+    scopes: candidate.scopes,
+    endpoint: candidate.endpoint,
+    clientName: typeof candidate.clientName === "string" ? candidate.clientName : null,
+  };
 }
 
 function makeHandler(buildServer: McpServerBuilder): ReturnType<typeof createMcpHandler> {
@@ -244,6 +256,7 @@ function makeHandler(buildServer: McpServerBuilder): ReturnType<typeof createMcp
         scopes: auth.scopes,
         endpoint: auth.endpoint,
         era: ctx.era,
+        clientName: auth.clientName,
       });
     },
     {
@@ -443,7 +456,7 @@ export async function handleMcpPost(
   let response: Response;
   try {
     response = await handlerFor(deps.buildServer).fetch(req, {
-      authInfo: authInfoFor(auth, endpoint),
+      authInfo: authInfoFor(auth, endpoint, clientName),
     });
   } catch (error) {
     console.error(

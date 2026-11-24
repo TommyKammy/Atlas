@@ -1,6 +1,7 @@
 import { db, type Queryable } from "../db";
 import type { Attachment, TaskRow } from "../data";
 import type { TimelineTaskPayload } from "../timeline-task-payload";
+import { getRequestContext } from "../request-context";
 import {
   customValueToIdArray,
   formatCustomValue,
@@ -138,12 +139,15 @@ export type TaskEventRow = {
   id: number;
   summary: string;
   actor_name: string | null;
+  via: string;
+  client_name: string | null;
   created_at: string;
 };
 
 export async function getTaskEvents(taskId: number): Promise<TaskEventRow[]> {
   const r = await db.query(
-    `SELECT e.id, e.summary, u.name AS actor_name, e.created_at::text
+    `SELECT e.id, e.summary, u.name AS actor_name, e.via, e.client_name,
+       e.created_at::text
      FROM task_events e LEFT JOIN users u ON u.id = e.actor_id
      WHERE e.task_id = $1 ORDER BY e.created_at DESC LIMIT 50`,
     [taskId],
@@ -198,9 +202,11 @@ export async function getTaskProjects(taskId: number) {
 export async function logEvent(
   taskId: number, actorId: number, kind: string, summary: string, q: Queryable = db,
 ) {
+  const context = getRequestContext();
   await q.query(
-    "INSERT INTO task_events (task_id, actor_id, kind, summary) VALUES ($1, $2, $3, $4)",
-    [taskId, actorId, kind, summary],
+    `INSERT INTO task_events (task_id, actor_id, kind, summary, via, client_name)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [taskId, actorId, kind, summary, context?.via ?? "web", context?.clientName ?? null],
   );
 }
 

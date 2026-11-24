@@ -5,6 +5,7 @@ import {
 import { z } from "zod";
 import packageJson from "@/package.json";
 import { ApiError } from "@/lib/api/errors";
+import { runWithRequestContext } from "@/lib/request-context";
 import type { Actor } from "@/lib/services/actor";
 import * as queries from "@/lib/services/queries";
 import type { McpEndpoint, McpScope } from "./auth";
@@ -35,6 +36,8 @@ export type McpToolContext = {
   scopes: McpScope[];
   endpoint: McpEndpoint;
   era: "legacy" | "modern";
+  /** Client name resolved from the request body or the token record. */
+  clientName?: string | null;
 };
 
 export type McpBuildContext = McpToolContext;
@@ -476,7 +479,14 @@ async function executeTool(
   ctx: McpToolContext,
 ): Promise<McpToolResult> {
   try {
-    return await tool.handler(args, ctx);
+    return await runWithRequestContext(
+      {
+        via: "mcp",
+        tokenId: ctx.actor.tokenId ?? null,
+        clientName: ctx.clientName ?? ctx.actor.clientName ?? null,
+      },
+      () => tool.handler(args, ctx),
+    );
   } catch (error) {
     if (error instanceof ApiError) {
       return {

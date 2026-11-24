@@ -82,7 +82,14 @@ export default function TaskPane({
   customValues: Record<number, CustomValue>;
   attachments: Attachment[];
   reactions: Record<number, { emoji: string; n: number; mine: boolean }[]>;
-  events: { id: number; summary: string; actor_name: string | null; created_at: string }[];
+  events: {
+    id: number;
+    summary: string;
+    actor_name: string | null;
+    via: string;
+    client_name: string | null;
+    created_at: string;
+  }[];
   statusOptions: string[];
   statusFieldName: string;
   statusFieldEnabled: boolean;
