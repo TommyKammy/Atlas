@@ -596,7 +596,9 @@ export function createWriteTools(
         + "creation, pass idempotency_key to avoid creating duplicates when a request is retried. "
         + "On update, only supplied fields change; pass expected_updated_at from a previous read "
         + "to fail instead of overwriting a concurrent change. assignee accepts \"me\", a user id, "
-        + "or null to clear it. custom_fields are applied one field at a time. Returns the latest "
+        + "or null to clear it. custom_fields are applied one field at a time. When moving a task "
+        + "to another project together with custom_fields, the task update runs first, so a later "
+        + "conflict can report task_updated with the fields already applied. Returns the latest "
         + "task detail. "
         + UNTRUSTED_DATA_NOTE,
       requiredScope: "write",
@@ -707,6 +709,7 @@ export function createWriteTools(
 
         const appliedCustomFields: number[] = [];
         let customValueStamp = callerStamp;
+        let taskUpdated = false;
         const writeCustomFields = async () => {
           for (const field of customFields) {
             const saved = await services.setTaskCustomValue(ctx.actor, {
@@ -722,17 +725,34 @@ export function createWriteTools(
           }
         };
         const rethrowWithAppliedFields = (error: unknown): never => {
-          if (error instanceof TaskMutationFailure && appliedCustomFields.length > 0) {
+          if (error instanceof TaskMutationFailure
+              && (appliedCustomFields.length > 0 || taskUpdated)) {
             throw new TaskMutationFailure(error.reason, error.message, {
               ...error.metadata,
               applied_custom_fields: [...appliedCustomFields],
+              ...(taskUpdated ? { task_updated: true } : {}),
             });
           }
           throw error;
         };
 
+        // A destination project's custom fields can only be written after the
+        // task itself belongs to that project. The detail read is only used to
+        // choose the write order; the optimistic lock stays the caller's stamp.
+        const changesProject = hasTaskChanges && customFields.length > 0 && hasExpectedStamp
+          && args.project_id !== undefined
+          && (await services.getTaskDetail(ctx.actor, taskId)).project?.id !== args.project_id;
+
         try {
-          if (hasTaskChanges && customFields.length > 0 && hasExpectedStamp) {
+          if (changesProject) {
+            // The task UPDATE locks with the caller's stamp. Its own stamp, not
+            // a later re-read, starts the custom-field chain so a concurrent
+            // write still conflicts instead of being silently overwritten.
+            const updated = await services.updateTaskForActor(ctx.actor, taskId, patch);
+            taskUpdated = true;
+            customValueStamp = updated.updated_at;
+            await writeCustomFields();
+          } else if (hasTaskChanges && customFields.length > 0 && hasExpectedStamp) {
             // Compare-and-set chain: custom fields first, each one locking the
             // task row and returning its new stamp, then the task UPDATE last.
             // A concurrent client write therefore conflicts at one of the
