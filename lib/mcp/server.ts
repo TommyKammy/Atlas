@@ -686,6 +686,9 @@ export function createWriteTools(
           );
         }
 
+        const taskId = args.id;
+        const callerStamp = args.expected_updated_at;
+        const hasExpectedStamp = callerStamp !== undefined;
         const patch: Record<string, unknown> = {};
         if (args.project_id !== undefined) patch.project_id = args.project_id;
         if (args.name !== undefined) patch.name = args.name;
@@ -697,40 +700,62 @@ export function createWriteTools(
         if (args.parent_task_id !== undefined) patch.parent_task_id = args.parent_task_id;
         if (args.is_milestone !== undefined) patch.is_milestone = args.is_milestone;
         if (assigneeId !== undefined) patch.assignee_id = assigneeId;
-        if (args.expected_updated_at !== undefined) {
-          patch.expected_updated_at = args.expected_updated_at;
-        }
+        if (hasExpectedStamp) patch.expected_updated_at = callerStamp;
         const hasTaskChanges = Object.keys(patch).some((key) => key !== "expected_updated_at");
         const customFields = args.custom_fields ?? [];
         if (!hasTaskChanges && customFields.length === 0) throw badRequest("no fields to update");
-        let customValueStamp: string | undefined;
-        if (hasTaskChanges) {
-          // updateTask bumped updated_at inside its transaction. Pass that
-          // stamp to the follow-up writes so they do not conflict with the
-          // task update that just committed.
-          const updated = await services.updateTaskForActor(ctx.actor, args.id, patch);
-          customValueStamp = updated.updated_at;
-        } else {
-          customValueStamp = args.expected_updated_at;
+
+        const appliedCustomFields: number[] = [];
+        let customValueStamp = callerStamp;
+        const writeCustomFields = async () => {
+          for (const field of customFields) {
+            const saved = await services.setTaskCustomValue(ctx.actor, {
+              task_id: taskId,
+              field_id: field.field_id,
+              value: field.value,
+              ...(customValueStamp === undefined ? {} : { expected_updated_at: customValueStamp }),
+            });
+            appliedCustomFields.push(field.field_id);
+            // Chain only when the caller supplied a stamp. Without one the
+            // writes stay unconditional, as they were before.
+            if (hasExpectedStamp) customValueStamp = saved.updated_at;
+          }
+        };
+        const rethrowWithAppliedFields = (error: unknown): never => {
+          if (error instanceof TaskMutationFailure && appliedCustomFields.length > 0) {
+            throw new TaskMutationFailure(error.reason, error.message, {
+              ...error.metadata,
+              applied_custom_fields: [...appliedCustomFields],
+            });
+          }
+          throw error;
+        };
+
+        try {
+          if (hasTaskChanges && customFields.length > 0 && hasExpectedStamp) {
+            // Compare-and-set chain: custom fields first, each one locking the
+            // task row and returning its new stamp, then the task UPDATE last.
+            // A concurrent client write therefore conflicts at one of the
+            // later steps instead of being silently overwritten. Synchronous
+            // automations only run after the final task UPDATE.
+            await writeCustomFields();
+            patch.expected_updated_at = customValueStamp;
+            await services.updateTaskForActor(ctx.actor, taskId, patch);
+          } else {
+            if (hasTaskChanges) {
+              await services.updateTaskForActor(ctx.actor, taskId, patch);
+            }
+            await writeCustomFields();
+          }
+        } catch (error) {
+          rethrowWithAppliedFields(error);
         }
-        for (const field of customFields) {
-          const saved = await services.setTaskCustomValue(ctx.actor, {
-            task_id: args.id,
-            field_id: field.field_id,
-            value: field.value,
-            ...(customValueStamp === undefined ? {} : { expected_updated_at: customValueStamp }),
-          });
-          // Each value write advances tasks.updated_at. Chain the returned
-          // stamp so a later field in this call does not conflict with an
-          // earlier one from the same call.
-          customValueStamp = saved.updated_at;
-        }
-        const detail = await services.getTaskDetail(ctx.actor, args.id);
+        const detail = await services.getTaskDetail(ctx.actor, taskId);
         const { output, truncated } = taskDetailPayload(detail);
         return {
           structuredContent: output,
           content: text(
-            `Updated task ${args.id}: ${detail.task.name}.`
+            `Updated task ${taskId}: ${detail.task.name}.`
             + (truncated ? ` Description truncated at ${TASK_DESCRIPTION_LIMIT} characters.` : ""),
           ),
         };

@@ -454,16 +454,13 @@ export async function updateTask(
     ...(primaryProjectId === null && !movesPrimary ? await auditScope(targetProjectId) : {}),
     summary: Object.keys(b).join(","),
   });
-  // Synchronous automations (set_status / set_assignee) can advance the stamp
-  // after the UPDATE above. Re-read so callers chain the value that is current
-  // when this function returns.
-  const stamped = await db.query(
-    "SELECT updated_at::text AS updated_at FROM tasks WHERE id = $1::bigint",
-    [taskId],
-  );
+  // Return the stamp produced by this UPDATE, not a later re-read. Synchronous
+  // automations (set_status / set_assignee) may advance tasks.updated_at after
+  // it commits; reporting that newer value would let a caller pass a stamp it
+  // never observed and silently overwrite a concurrent client's write.
   return {
     id: taskId,
-    updated_at: (stamped.rows[0]?.updated_at as string | undefined) ?? result.updatedAt,
+    updated_at: result.updatedAt,
   };
 }
 

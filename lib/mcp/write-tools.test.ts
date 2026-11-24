@@ -406,14 +406,21 @@ test("save_task chains each custom-field write's new stamp into the next write",
   assert.deepEqual(calls.getTaskDetail, [100]);
 });
 
-test("save_task passes the post-update stamp to simultaneous custom-field writes", async () => {
-  const { services, calls } = fakeServices({
+test("save_task mixed updates without expected_updated_at stay unconditional", async () => {
+  const order: string[] = [];
+  const seen: unknown[] = [];
+  const taskInputs: Record<string, unknown>[] = [];
+  const { services } = fakeServices({
     updateTaskForActor: async (actor, taskId, input) => {
-      calls.updateTaskForActor.push({ actor, taskId, input });
+      void actor;
+      order.push("task");
+      taskInputs.push(input);
       return { id: taskId, updated_at: "2026-04-04T00:00:00.000Z" };
     },
     setTaskCustomValue: async (actor, input) => {
-      calls.setTaskCustomValue.push({ actor, input });
+      void actor;
+      order.push(`custom:${input.field_id}`);
+      seen.push(input.expected_updated_at);
       return { cleared: false, updated_at: "2026-04-05T00:00:00.000Z" };
     },
   });
@@ -427,33 +434,32 @@ test("save_task passes the post-update stamp to simultaneous custom-field writes
     assert.equal(result.isError, undefined);
   });
 
-  assert.deepEqual(calls.setTaskCustomValue.map((call) => call.input), [{
-    task_id: 100,
-    field_id: 5,
-    value: "changed",
-    expected_updated_at: "2026-04-04T00:00:00.000Z",
-  }]);
+  // Without a caller stamp there is no compare-and-set chain; the previous
+  // task-first order remains.
+  assert.deepEqual(order, ["task", "custom:5"]);
+  assert.deepEqual(taskInputs, [{ status: "Done" }]);
+  assert.deepEqual(seen, [undefined]);
 });
 
-test("save_task mixed updates use the post-automation stamp for custom fields", async () => {
+test("save_task mixed updates with expected_updated_at write custom fields first and chain into the task update", async () => {
+  const order: string[] = [];
   const seen: unknown[] = [];
+  const taskInputs: Record<string, unknown>[] = [];
+  const customStamps = ["2026-07-01T00:00:00.000Z", "2026-07-02T00:00:00.000Z"];
   const { services } = fakeServices({
-    updateTaskForActor: async (actor, taskId, input) => {
-      void actor;
-      void input;
-      // A synchronous automation (set_status / set_assignee) advanced the
-      // stamp after updateTask's UPDATE.
-      return { id: taskId, updated_at: "2026-06-06T00:00:00.000Z" };
-    },
     setTaskCustomValue: async (actor, input) => {
       void actor;
+      order.push(`custom:${input.field_id}`);
       seen.push(input.expected_updated_at);
-      if (input.expected_updated_at !== "2026-06-06T00:00:00.000Z") {
-        throw new TaskMutationFailure("conflict", "conflict", {
-          current_updated_at: "2026-06-06T00:00:00.000Z",
-        });
-      }
-      return { cleared: false, updated_at: "2026-06-07T00:00:00.000Z" };
+      const updated_at = customStamps.shift();
+      assert.ok(updated_at, "stamp for each custom-field write");
+      return { cleared: false, updated_at };
+    },
+    updateTaskForActor: async (actor, taskId, input) => {
+      void actor;
+      order.push("task");
+      taskInputs.push(input);
+      return { id: taskId, updated_at: "2026-07-03T00:00:00.000Z" };
     },
   });
 
@@ -461,12 +467,110 @@ test("save_task mixed updates use the post-automation stamp for custom fields", 
     const result = await client.callTool(tool("save_task", {
       id: 100,
       status: "Done",
-      custom_fields: [{ field_id: 5, value: "changed" }],
+      custom_fields: [
+        { field_id: 5, value: "first" },
+        { field_id: 6, value: "second" },
+      ],
+      expected_updated_at: "2026-06-01T00:00:00.000Z",
     }));
     assert.equal(result.isError, undefined);
   });
 
-  assert.deepEqual(seen, ["2026-06-06T00:00:00.000Z"]);
+  assert.deepEqual(order, ["custom:5", "custom:6", "task"]);
+  assert.deepEqual(seen, ["2026-06-01T00:00:00.000Z", "2026-07-01T00:00:00.000Z"]);
+  assert.deepEqual(taskInputs, [{
+    status: "Done",
+    expected_updated_at: "2026-07-02T00:00:00.000Z",
+  }]);
+});
+
+test("save_task reports applied custom fields when the final task update conflicts", async () => {
+  const taskInputs: Record<string, unknown>[] = [];
+  const { services } = fakeServices({
+    setTaskCustomValue: async (actor, input) => {
+      void actor;
+      return {
+        cleared: false,
+        updated_at: input.field_id === 5
+          ? "2026-08-01T00:00:00.000Z"
+          : "2026-08-02T00:00:00.000Z",
+      };
+    },
+    updateTaskForActor: async (actor, taskId, input) => {
+      void actor;
+      void taskId;
+      taskInputs.push(input);
+      // Another client wrote after the custom-field chain, so the last chained
+      // stamp no longer matches and the final task update conflicts.
+      throw new TaskMutationFailure("conflict", "conflict", {
+        updated_at: "2026-08-03T00:00:00.000Z",
+        current: { id: 100, name: "Current" },
+      });
+    },
+  });
+
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("save_task", {
+      id: 100,
+      status: "Done",
+      custom_fields: [
+        { field_id: 5, value: "first" },
+        { field_id: 6, value: "second" },
+      ],
+      expected_updated_at: "2026-06-01T00:00:00.000Z",
+    }));
+    assert.equal(result.isError, true);
+    assert.deepEqual(result.structuredContent, {
+      reason: "conflict",
+      message: "conflict",
+      updated_at: "2026-08-03T00:00:00.000Z",
+      current: { id: 100, name: "Current" },
+      applied_custom_fields: [5, 6],
+    });
+  });
+
+  assert.deepEqual(taskInputs, [{
+    status: "Done",
+    expected_updated_at: "2026-08-02T00:00:00.000Z",
+  }]);
+});
+
+test("save_task reports only the custom fields applied before a later field conflict", async () => {
+  const { services, calls } = fakeServices({
+    setTaskCustomValue: async (actor, input) => {
+      void actor;
+      if (input.field_id === 6) {
+        throw new TaskMutationFailure("conflict", "conflict", {
+          current_updated_at: "2026-08-03T00:00:00.000Z",
+        });
+      }
+      return { cleared: false, updated_at: "2026-08-01T00:00:00.000Z" };
+    },
+    updateTaskForActor: async () => {
+      throw new Error("the task update must not run after a custom-field conflict");
+    },
+  });
+
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("save_task", {
+      id: 100,
+      status: "Done",
+      custom_fields: [
+        { field_id: 5, value: "first" },
+        { field_id: 6, value: "second" },
+      ],
+      expected_updated_at: "2026-06-01T00:00:00.000Z",
+    }));
+    assert.equal(result.isError, true);
+    assert.deepEqual(result.structuredContent, {
+      reason: "conflict",
+      message: "conflict",
+      current_updated_at: "2026-08-03T00:00:00.000Z",
+      applied_custom_fields: [5],
+    });
+  });
+
+  assert.equal(calls.updateTaskForActor.length, 0);
 });
 
 test("creation tools pass their key and arguments through withIdempotency", async () => {

@@ -95,6 +95,8 @@ function transactionClient(options: { taskUpdatedAt: string; calls: Call[] }): P
         return result([{ updated_at: NEXT_STAMP }]);
       }
       if (sql.includes("SELECT workspace_id FROM projects")) return result([{ workspace_id: 1 }]);
+      if (sql.includes("INSERT INTO task_events")) return result([{ id: 1 }]);
+      if (sql.includes("INSERT INTO audit_log")) return result();
       if (sql.includes("INSERT INTO domain_events")) return result([{ id: 1 }]);
       throw new Error(`unexpected transaction query: ${sql}`);
     },

@@ -1,8 +1,10 @@
+import { audit, auditScope } from "../audit";
 import { badRequest, forbidden, notFound } from "../api/errors";
 import { withTransaction, type Queryable } from "../db";
 import { emitTaskEvent } from "../domain/events";
 import { canEditFieldValue } from "../field-access";
 import { notifyField, notifyTask } from "../notify";
+import { logEvent } from "../repositories/tasks";
 import { isEmptyTaskCustomValue, normalizeTaskCustomValue } from "../task-custom-value";
 import { requireTaskAccess, type Actor } from "./actor";
 import { TaskMutationFailure } from "./task-mutation-failure";
@@ -50,6 +52,7 @@ export async function writeTaskCustomValue(
   if (f.rowCount === 0 || Number(f.rows[0].project_id) !== projectId) {
     throw notFound("field not found");
   }
+  const fieldName = String(f.rows[0].name);
   if (!(await canEditFieldValue(actor.uid, projectId, f.rows[0], q))) {
     throw forbidden("field access denied");
   }
@@ -81,9 +84,28 @@ export async function writeTaskCustomValue(
     "UPDATE tasks SET updated_at = now() WHERE id = $1::bigint RETURNING updated_at::text AS updated_at",
     [taskId],
   );
+  // A custom-field write is a task change, so it belongs in both the task
+  // history and the workspace audit trail. Passing q keeps both rows in the
+  // same transaction as the value and the stamp; the helpers add the ambient
+  // web/MCP attribution (via, token, client name).
+  await logEvent(
+    taskId,
+    actor.uid,
+    "custom_field_changed",
+    cleared
+      ? `カスタムフィールド「${fieldName}」をクリアしました`
+      : `カスタムフィールド「${fieldName}」を変更しました`,
+    q,
+  );
+  await audit(actor.uid, "task.custom_field_update", {
+    entity: "task",
+    entityId: taskId,
+    ...(projectId === null ? await auditScope(projectId, q) : { projectId }),
+    summary: fieldName,
+  }, q);
   await emitTaskEvent({
     projectId, taskId, actorId: actor.uid, type: "task.custom_field_changed",
-    data: { field_id: fieldId, field_name: f.rows[0].name, value: cleared ? null : value, ...(cleared ? { cleared: true } : {}) },
+    data: { field_id: fieldId, field_name: fieldName, value: cleared ? null : value, ...(cleared ? { cleared: true } : {}) },
   }, q);
   return {
     cleared,

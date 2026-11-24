@@ -3,9 +3,12 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { ApiError } from "../api/errors";
 import { db, type Queryable } from "../db";
+import { runWithRequestContext } from "../request-context";
 import type { Actor } from "./actor";
 import { setTaskCustomValue, writeTaskCustomValue } from "./task-custom-values";
 import { TaskMutationFailure } from "./task-mutation-failure";
+
+type Call = { sql: string; params?: unknown[] };
 
 type TaskContext = { default_project_id: number | null; project_ids: number[] };
 
@@ -43,10 +46,12 @@ function fakeTransactionQueries(options: {
   taskUpdatedAt?: string;
   nextUpdatedAt?: string;
   writes?: string[];
+  calls?: Call[];
 }): Queryable {
   return {
     query: async (sql: string, params?: unknown[]) => {
       options.writes?.push(sql);
+      options.calls?.push({ sql, params });
       let rows: Record<string, unknown>[] = [];
       if (sql.includes("FROM tasks WHERE id = $1::bigint AND deleted_at IS NULL FOR UPDATE")) {
         rows = [{
@@ -66,6 +71,10 @@ function fakeTransactionQueries(options: {
         rows = [];
       } else if (sql.includes("SELECT workspace_id FROM projects")) {
         rows = [{ workspace_id: 1 }];
+      } else if (sql.includes("INSERT INTO task_events")) {
+        rows = [{ id: 1 }];
+      } else if (sql.includes("INSERT INTO audit_log")) {
+        rows = [];
       } else if (sql.includes("INSERT INTO domain_events")) {
         rows = [{ id: 1 }];
       } else {
@@ -214,6 +223,85 @@ test("writeTaskCustomValue advances tasks.updated_at and returns it", async () =
   const stampWrite = writes.findIndex((sql) => sql.includes("UPDATE tasks SET updated_at = now()"));
   assert.ok(valueWrite >= 0, "value write");
   assert.ok(stampWrite > valueWrite, "updated_at bump follows the value write");
+});
+
+test("writeTaskCustomValue records the change in task history and audit on the transaction Queryable", async () => {
+  const calls: Call[] = [];
+  await writeTaskCustomValue(fakeTransactionQueries({
+    field: field(),
+    calls,
+  }), {
+    actor,
+    taskId: 42,
+    projectId: 7,
+    fieldId: 5,
+    value: "changed",
+    expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+  });
+
+  const valueWrite = calls.findIndex((call) => call.sql.includes("INSERT INTO task_custom_values"));
+  const history = calls.find((call) => call.sql.includes("INSERT INTO task_events"));
+  const auditRow = calls.find((call) => call.sql.includes("INSERT INTO audit_log"));
+  assert.ok(valueWrite >= 0, "value write");
+  assert.ok(history, "task history insert");
+  assert.ok(auditRow, "audit insert");
+  assert.ok(calls.indexOf(history) > valueWrite, "history follows the value write");
+  assert.ok(calls.indexOf(auditRow) > valueWrite, "audit follows the value write");
+  assert.deepEqual(history.params, [
+    42, 13, "custom_field_changed", "カスタムフィールド「Estimate」を変更しました", "web", null,
+  ]);
+  assert.deepEqual(auditRow.params, [
+    1, 13, "task.custom_field_update", "task", 42, 7, "Estimate", "web", null, null,
+  ]);
+});
+
+test("writeTaskCustomValue carries the MCP attribution into history and audit", async () => {
+  const calls: Call[] = [];
+  await runWithRequestContext(
+    { via: "mcp", tokenId: 9, clientName: "Codex" },
+    () => writeTaskCustomValue(fakeTransactionQueries({
+      field: field(),
+      calls,
+    }), {
+      actor,
+      taskId: 42,
+      projectId: 7,
+      fieldId: 5,
+      value: "changed",
+    }),
+  );
+
+  const history = calls.find((call) => call.sql.includes("INSERT INTO task_events"));
+  const auditRow = calls.find((call) => call.sql.includes("INSERT INTO audit_log"));
+  assert.ok(history, "task history insert");
+  assert.ok(auditRow, "audit insert");
+  assert.deepEqual(history.params, [
+    42, 13, "custom_field_changed", "カスタムフィールド「Estimate」を変更しました", "mcp", "Codex",
+  ]);
+  assert.deepEqual(auditRow.params, [
+    1, 13, "task.custom_field_update", "task", 42, 7, "Estimate", "mcp", 9, "Codex",
+  ]);
+});
+
+test("writeTaskCustomValue records a clear with the clear wording", async () => {
+  const calls: Call[] = [];
+  const result = await writeTaskCustomValue(fakeTransactionQueries({
+    field: field(),
+    calls,
+  }), {
+    actor,
+    taskId: 42,
+    projectId: 7,
+    fieldId: 5,
+    value: null,
+  });
+
+  assert.equal(result.cleared, true);
+  const history = calls.find((call) => call.sql.includes("INSERT INTO task_events"));
+  assert.ok(history, "task history insert");
+  assert.deepEqual(history.params, [
+    42, 13, "custom_field_changed", "カスタムフィールド「Estimate」をクリアしました", "web", null,
+  ]);
 });
 
 test("writeTaskCustomValue bumps the stamp when it clears a value", async () => {

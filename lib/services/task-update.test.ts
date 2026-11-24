@@ -61,7 +61,7 @@ function transactionClient(calls: Call[]): PoolClient {
   } as unknown as PoolClient;
 }
 
-/** Request-scoped reads plus the automation and final stamp queries. */
+/** Request-scoped reads plus the automation queries. */
 function outerQueries(calls: Call[]) {
   return async (sql: string, params?: unknown[]): Promise<QueryResult> => {
     calls.push({ sql, params });
@@ -83,16 +83,13 @@ function outerQueries(calls: Call[]) {
       return result([{ id: 42 }]);
     }
     if (sql.includes("INSERT INTO automation_runs")) return result();
-    if (sql.includes("SELECT updated_at::text AS updated_at FROM tasks WHERE id = $1::bigint")) {
-      return result([{ updated_at: POST_AUTOMATION_STAMP }]);
-    }
     if (sql.includes("SELECT project_id FROM tasks WHERE id = $1::bigint")) return result();
     if (sql.includes("INSERT INTO audit_log")) return result();
     throw new Error(`unexpected query: ${sql}`);
   };
 }
 
-test("updateTask returns the stamp re-read after synchronous automations", async (t) => {
+test("updateTask returns its own UPDATE stamp instead of a post-automation re-read", async (t) => {
   const outerCalls: Call[] = [];
   const clientCalls: Call[] = [];
   t.mock.method(db, "query", outerQueries(outerCalls));
@@ -113,8 +110,7 @@ test("updateTask returns the stamp re-read after synchronous automations", async
   const finalRead = outerCalls.findIndex((call) =>
     call.sql.includes("SELECT updated_at::text AS updated_at FROM tasks WHERE id = $1::bigint"));
   assert.ok(automationUpdate >= 0, "automation updated the task");
-  assert.ok(finalRead > automationUpdate, "the stamp is read after the automation");
-  assert.equal(outerCalls[finalRead].params?.[0], 42);
-  assert.deepEqual(updated, { id: 42, updated_at: POST_AUTOMATION_STAMP });
-  assert.notEqual(updated.updated_at, PRE_UPDATE_STAMP);
+  assert.equal(finalRead, -1, "the stamp is not re-read after the automation");
+  assert.deepEqual(updated, { id: 42, updated_at: PRE_UPDATE_STAMP });
+  assert.notEqual(updated.updated_at, POST_AUTOMATION_STAMP);
 });
