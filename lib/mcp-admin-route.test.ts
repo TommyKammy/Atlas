@@ -213,8 +213,8 @@ test("the PAT revoke route reports a missing token as 404", async (t) => {
   const nextServer = nativeRequire("next/server") as { connection: () => Promise<void> };
   t.mock.method(nextServer, "connection", async () => undefined);
   t.mock.method(Pool.prototype, "connect", async () => mockTransactionClient([], (sql) => {
+    if (sql.includes("SELECT t.user_id") && sql.includes("FROM mcp_tokens t")) return result([], 0);
     if (sql.includes("UPDATE mcp_tokens t SET revoked_at")) return result([], 0);
-    if (sql.includes("SELECT t.id") && sql.includes("FROM mcp_tokens t")) return result([], 0);
     return null;
   }));
 
@@ -238,6 +238,13 @@ test("the PAT revoke route audits a successful revocation", async (t) => {
   const nextServer = nativeRequire("next/server") as { connection: () => Promise<void> };
   t.mock.method(nextServer, "connection", async () => undefined);
   t.mock.method(Pool.prototype, "connect", async () => mockTransactionClient(clientCalls, (sql, params) => {
+    if (sql.includes("SELECT t.user_id") && sql.includes("FROM mcp_tokens t")) {
+      return result([{ user_id: 42 }], 1);
+    }
+    if (sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])")) {
+      const ids = (params?.[0] as number[]) ?? [];
+      return result(ids.map((id) => ({ id })), ids.length);
+    }
     if (sql.includes("UPDATE mcp_tokens t SET revoked_at")) {
       return result([{
         id: Number(params?.[0]),
@@ -283,8 +290,8 @@ test("the OAuth revoke route forwards the family id and logs the target user", a
         user_email: "taro@example.com",
       }], 1);
     }
-    if (sql.includes("SELECT id FROM users WHERE id = $1::bigint FOR UPDATE")) {
-      assert.deepEqual(params, [42]);
+    if (sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])")) {
+      assert.deepEqual(params, [[42]]);
       return result([{ id: 42 }], 1);
     }
     if (sql.includes("pg_advisory_xact_lock")) return result([{ pg_advisory_xact_lock: null }]);

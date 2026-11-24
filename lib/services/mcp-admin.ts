@@ -161,6 +161,26 @@ function lastUsedTime(value: string | null): number {
 }
 
 /**
+ * Lock the acting administrator and the credential owner together, in ascending
+ * id order. Admin user management locks the same pair the same way before
+ * revoking tokens, and the audit INSERT needs a foreign-key share lock on the
+ * actor row. Taking only the owner here could deadlock with a password/2FA
+ * reset or deactivation of that owner.
+ */
+async function lockAdminAndOwner(
+  q: Queryable,
+  actorId: number,
+  ownerId: number,
+): Promise<number[]> {
+  const ids = actorId === ownerId ? [ownerId] : [actorId, ownerId].sort((a, b) => a - b);
+  const locked = await q.query(
+    "SELECT id FROM users WHERE id = ANY($1::bigint[]) ORDER BY id FOR UPDATE",
+    [ids],
+  );
+  return (locked.rows as { id: number | string }[]).map((row) => Number(row.id));
+}
+
+/**
  * Active MCP credentials for the workspace: PATs stay one row per token, OAuth
  * access tokens are grouped by refresh-token family. Both lists only include
  * credentials that can still authenticate, and are merged newest-used first
@@ -293,6 +313,11 @@ export async function listAdminMcpTokens(
  * Revoke another user's PAT. The token must belong to the workspace and be a
  * PAT; a missing, OAuth, or other-workspace id is reported as not found.
  * Repeated DELETE calls on an already revoked token stay successful.
+ *
+ * Lock order is users rows (ascending id) -> token row. The actor and owner are
+ * locked before the UPDATE because admin user changes take the same user locks
+ * and then revoke token rows, and the audit INSERT needs a share lock on the
+ * actor row.
  */
 export async function revokeAdminPersonalToken(
   actorId: number,
@@ -304,6 +329,19 @@ export async function revokeAdminPersonalToken(
   if (q === db) {
     return withTransaction((tx) => revokeAdminPersonalToken(actorId, workspaceId, tokenId, tx));
   }
+
+  // Find the owner without a lock so both user rows can be taken in id order.
+  const owned = await q.query(
+    `SELECT t.user_id
+     FROM mcp_tokens t
+     WHERE t.id = $1
+       AND t.workspace_id = $2
+       AND t.kind = 'pat'`,
+    [tokenId, workspaceId],
+  );
+  const owner = owned.rows[0] as { user_id: number } | undefined;
+  if (!owner) throw notFound("token not found");
+  await lockAdminAndOwner(q, actorId, Number(owner.user_id));
 
   const updated = await q.query(
     `UPDATE mcp_tokens t SET revoked_at = now()
@@ -324,25 +362,18 @@ export async function revokeAdminPersonalToken(
       workspaceId,
       summary: `MCP パーソナルアクセストークンを管理者が失効: ${row.name}（${targetLabel(row)}）`,
     }, q);
-    return { id: tokenId };
   }
-
-  const existing = await q.query(
-    `SELECT t.id
-     FROM mcp_tokens t
-     WHERE t.id = $1 AND t.workspace_id = $2 AND t.kind = 'pat'`,
-    [tokenId, workspaceId],
-  );
-  if (!existing.rowCount) throw notFound("token not found");
   // Already revoked: keep DELETE idempotent for retries.
   return { id: tokenId };
 }
 
 /**
  * Revoke every access and refresh token in another user's OAuth family.
- * Lock order is users row -> family advisory lock -> token rows. Rotation and
- * code exchange take the same order, and the audit INSERT needs a foreign-key
- * share lock on the actor row, so taking the family first could deadlock.
+ * Lock order is users rows (ascending id) -> family advisory lock -> token
+ * rows. Rotation and code exchange take the same order, and admin user changes
+ * lock the acting administrator and owner together before revoking tokens. The
+ * audit INSERT also needs a share lock on the actor row, so locking only the
+ * owner could deadlock with a reset or deactivation of that owner.
  */
 export async function revokeAdminOAuthFamily(
   actorId: number,
@@ -379,13 +410,10 @@ export async function revokeAdminOAuthFamily(
   if (!owner) throw notFound("connection not found");
   const userId = Number(owner.user_id);
 
-  // Lock the credential owner, not the administrator: refresh rotation and
-  // code exchange lock this row before the family lock and the token updates.
-  const lockedUser = await q.query(
-    "SELECT id FROM users WHERE id = $1::bigint FOR UPDATE",
-    [userId],
-  );
-  if (!lockedUser.rowCount) throw notFound("connection not found");
+  // Rotation, code exchange, and admin resets all lock user rows before token
+  // rows; the actor must be included so the audit INSERT cannot cycle.
+  const lockedIds = await lockAdminAndOwner(q, actorId, userId);
+  if (!lockedIds.includes(userId)) throw notFound("connection not found");
 
   // Rotation inserts new token rows into the same family. Serialize with it so
   // the UPDATEs below also revoke pairs committed by an in-flight refresh.

@@ -175,12 +175,21 @@ test("a nameless DCR client is labeled like the personal OAuth list", async () =
 });
 
 function revokePatQueryable(
-  options: { updated?: boolean; existing?: boolean },
+  options: { owner?: boolean; ownerId?: number; updated?: boolean },
   calls: Call[],
 ): Queryable {
   return {
     query: async (sql, params) => {
       calls.push({ sql, params });
+      if (sql.includes("SELECT t.user_id") && sql.includes("FROM mcp_tokens t")) {
+        return options.owner === false
+          ? result([], 0)
+          : result([{ user_id: options.ownerId ?? TARGET_USER_ID }], 1);
+      }
+      if (sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])")) {
+        const ids = params?.[0] as number[];
+        return result(ids.map((id) => ({ id })), ids.length);
+      }
       if (sql.includes("UPDATE mcp_tokens t SET revoked_at")) {
         return options.updated === false
           ? result([], 0)
@@ -192,52 +201,91 @@ function revokePatQueryable(
               user_email: "taro@example.com",
             }], 1);
       }
-      if (sql.includes("SELECT t.id") && sql.includes("FROM mcp_tokens t")) {
-        return result(options.existing === true ? [{ id: Number(params?.[0]) }] : [], options.existing === true ? 1 : 0);
-      }
       if (sql.includes("INSERT INTO audit_log")) return result([]);
       throw new Error(`unexpected query: ${sql}`);
     },
   };
 }
 
-test("admin PAT revocation is workspace-scoped and audits the target user", async () => {
+test("admin PAT revocation locks the actor and owner in id order before the update and audit", async () => {
   const calls: Call[] = [];
+  const actorId = 90;
   const revoked = await revokeAdminPersonalToken(
-    ACTOR_ID,
+    actorId,
     WORKSPACE_ID,
     9,
     revokePatQueryable({}, calls),
   );
   assert.deepEqual(revoked, { id: 9 });
 
-  const update = calls.find((call) => call.sql.includes("UPDATE mcp_tokens t SET revoked_at"));
-  assert.ok(update);
-  assert.deepEqual(update.params, [9, WORKSPACE_ID]);
-  assert.match(update.sql, /t\.kind = 'pat'/);
-  assert.match(update.sql, /t\.revoked_at IS NULL/);
-  assert.match(update.sql, /t\.workspace_id = \$2/);
+  const ownerRead = calls.findIndex(
+    (call) => call.sql.includes("SELECT t.user_id") && call.sql.includes("FROM mcp_tokens t"),
+  );
+  const userLock = calls.findIndex(
+    (call) => call.sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])"),
+  );
+  const update = calls.findIndex((call) => call.sql.includes("UPDATE mcp_tokens t SET revoked_at"));
+  const audit = calls.findIndex((call) => call.sql.includes("INSERT INTO audit_log"));
 
-  const audit = calls.find((call) => call.sql.includes("INSERT INTO audit_log"));
-  assert.ok(audit);
-  assert.equal(audit.params?.[0], WORKSPACE_ID);
-  assert.equal(audit.params?.[1], ACTOR_ID);
-  assert.equal(audit.params?.[2], "mcp.token.admin_revoke");
-  assert.equal(audit.params?.[4], 9);
-  assert.match(String(audit.params?.[6]), /Laptop/);
-  assert.match(String(audit.params?.[6]), /山田 太郎/);
+  assert.ok(ownerRead >= 0, "the PAT owner must be read first");
+  assert.ok(!calls[ownerRead].sql.includes("FOR UPDATE"), "the owner read must not lock the token");
+  assert.match(calls[ownerRead].sql, /t\.kind = 'pat'/);
+  assert.match(calls[ownerRead].sql, /t\.workspace_id = \$2/);
+  assert.deepEqual(calls[ownerRead].params, [9, WORKSPACE_ID]);
+
+  assert.ok(userLock > ownerRead, "user rows must be locked after reading the owner");
+  assert.match(calls[userLock].sql, /ORDER BY id FOR UPDATE/);
+  assert.deepEqual(calls[userLock].params, [[TARGET_USER_ID, actorId]]);
+
+  assert.ok(update > userLock, "the token row must be updated after the user locks");
+  assert.deepEqual(calls[update].params, [9, WORKSPACE_ID]);
+  assert.match(calls[update].sql, /t\.kind = 'pat'/);
+  assert.match(calls[update].sql, /t\.revoked_at IS NULL/);
+  assert.match(calls[update].sql, /t\.workspace_id = \$2/);
+
+  assert.ok(audit > userLock, "the audit row must be inserted after the user locks");
+  assert.ok(audit > update, "the audit row must be inserted after the token update");
+  assert.equal(calls[audit].params?.[0], WORKSPACE_ID);
+  assert.equal(calls[audit].params?.[1], actorId);
+  assert.equal(calls[audit].params?.[2], "mcp.token.admin_revoke");
+  assert.equal(calls[audit].params?.[4], 9);
+  assert.match(String(calls[audit].params?.[6]), /Laptop/);
+  assert.match(String(calls[audit].params?.[6]), /山田 太郎/);
 });
 
-test("a missing, OAuth, or other-workspace PAT is reported as not found", async () => {
+test("revoking a PAT as its owner locks only the single user row", async () => {
+  const calls: Call[] = [];
+  const revoked = await revokeAdminPersonalToken(
+    TARGET_USER_ID,
+    WORKSPACE_ID,
+    9,
+    revokePatQueryable({}, calls),
+  );
+  assert.deepEqual(revoked, { id: 9 });
+
+  const userLock = calls.find(
+    (call) => call.sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])"),
+  );
+  assert.ok(userLock);
+  assert.deepEqual(userLock.params, [[TARGET_USER_ID]]);
+  const audit = calls.find((call) => call.sql.includes("INSERT INTO audit_log"));
+  assert.ok(audit);
+  assert.equal(audit.params?.[1], TARGET_USER_ID);
+});
+
+test("a missing, OAuth, or other-workspace PAT is reported as not found before locking", async () => {
   const calls: Call[] = [];
   await assertApiError(
-    revokeAdminPersonalToken(ACTOR_ID, WORKSPACE_ID, 9, revokePatQueryable({ updated: false }, calls)),
+    revokeAdminPersonalToken(ACTOR_ID, WORKSPACE_ID, 9, revokePatQueryable({ owner: false }, calls)),
     404,
     "token not found",
   );
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].params, [9, WORKSPACE_ID]);
+  assert.match(calls[0].sql, /t\.kind = 'pat'/);
+  assert.ok(!calls.some((call) => call.sql.includes("FOR UPDATE")));
+  assert.ok(!calls.some((call) => call.sql.includes("UPDATE mcp_tokens")));
   assert.ok(!calls.some((call) => call.sql.includes("INSERT INTO audit_log")));
-  assert.deepEqual(calls[1].params, [9, WORKSPACE_ID]);
-  assert.match(calls[1].sql, /t\.kind = 'pat'/);
 });
 
 test("revoking an already revoked PAT stays idempotent without a second audit row", async () => {
@@ -246,9 +294,10 @@ test("revoking an already revoked PAT stays idempotent without a second audit ro
     ACTOR_ID,
     WORKSPACE_ID,
     9,
-    revokePatQueryable({ updated: false, existing: true }, calls),
+    revokePatQueryable({ updated: false }, calls),
   );
   assert.deepEqual(revoked, { id: 9 });
+  assert.ok(calls.some((call) => call.sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])")));
   assert.ok(!calls.some((call) => call.sql.includes("INSERT INTO audit_log")));
 });
 
@@ -284,10 +333,13 @@ function revokeFamilyQueryable(
               user_email: "taro@example.com",
             }], 1);
       }
-      if (sql.includes("SELECT id FROM users WHERE id = $1::bigint FOR UPDATE")) {
-        return options.userExists === false
-          ? result([], 0)
-          : result([{ id: TARGET_USER_ID }], 1);
+      if (sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])")) {
+        const ids = (params?.[0] as number[]) ?? [];
+        const rows = (options.userExists === false
+          ? ids.filter((id) => id !== TARGET_USER_ID)
+          : ids
+        ).map((id) => ({ id }));
+        return result(rows, rows.length);
       }
       if (sql.includes("pg_advisory_xact_lock")) return result([{ pg_advisory_xact_lock: null }]);
       if (sql.includes("UPDATE mcp_tokens SET revoked_at")) {
@@ -302,10 +354,11 @@ function revokeFamilyQueryable(
   };
 }
 
-test("admin OAuth revocation locks the target user before the family and token rows", async () => {
+test("admin OAuth revocation locks the actor and target user in id order before the family and token rows", async () => {
   const calls: Call[] = [];
+  const actorId = 90;
   const revoked = await revokeAdminOAuthFamily(
-    ACTOR_ID,
+    actorId,
     WORKSPACE_ID,
     FAMILY_ID,
     revokeFamilyQueryable({}, calls),
@@ -313,30 +366,52 @@ test("admin OAuth revocation locks the target user before the family and token r
   assert.deepEqual(revoked, { family_id: FAMILY_ID });
 
   const userLock = calls.findIndex(
-    (call) => call.sql.includes("SELECT id FROM users WHERE id = $1::bigint FOR UPDATE"),
+    (call) => call.sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])"),
   );
   const familyLock = calls.findIndex((call) => call.sql.includes("pg_advisory_xact_lock"));
   const access = calls.findIndex((call) => call.sql.includes("UPDATE mcp_tokens SET revoked_at"));
   const refresh = calls.findIndex((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at"));
-  assert.ok(userLock >= 0, "the target user row must be locked");
+  const audit = calls.findIndex((call) => call.sql.includes("INSERT INTO audit_log"));
+  assert.ok(userLock >= 0, "the user rows must be locked");
+  assert.match(calls[userLock].sql, /ORDER BY id FOR UPDATE/);
+  assert.deepEqual(calls[userLock].params, [[TARGET_USER_ID, actorId]]);
   assert.ok(familyLock >= 0, "the family advisory lock must be taken");
-  assert.ok(userLock < familyLock, "the user row lock must precede the family lock");
+  assert.ok(userLock < familyLock, "the user row locks must precede the family lock");
   assert.ok(access > familyLock, "access tokens must be updated after the family lock");
   assert.ok(refresh > familyLock, "refresh tokens must be updated after the family lock");
-  assert.deepEqual(calls[userLock].params, [TARGET_USER_ID]);
+  assert.ok(audit > userLock, "the audit row must be inserted after the user locks");
+  assert.ok(audit > familyLock, "the audit row must be inserted after the family lock");
   assert.deepEqual(calls[familyLock].params, [FAMILY_ID]);
   assert.deepEqual(calls[access].params, [FAMILY_ID, WORKSPACE_ID, TARGET_USER_ID]);
   assert.deepEqual(calls[refresh].params, [FAMILY_ID, WORKSPACE_ID, TARGET_USER_ID]);
   assert.match(calls[access].sql, /oauth_family_id = \$1::uuid/);
   assert.match(calls[refresh].sql, /family_id = \$1::uuid/);
 
+  assert.equal(calls[audit].params?.[0], WORKSPACE_ID);
+  assert.equal(calls[audit].params?.[1], actorId);
+  assert.equal(calls[audit].params?.[2], "mcp.oauth.admin_revoke");
+  assert.match(String(calls[audit].params?.[6]), /Claude Code/);
+  assert.match(String(calls[audit].params?.[6]), /山田 太郎/);
+});
+
+test("revoking an OAuth family as its owner locks only the single user row", async () => {
+  const calls: Call[] = [];
+  const revoked = await revokeAdminOAuthFamily(
+    TARGET_USER_ID,
+    WORKSPACE_ID,
+    FAMILY_ID,
+    revokeFamilyQueryable({}, calls),
+  );
+  assert.deepEqual(revoked, { family_id: FAMILY_ID });
+
+  const userLock = calls.find(
+    (call) => call.sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])"),
+  );
+  assert.ok(userLock);
+  assert.deepEqual(userLock.params, [[TARGET_USER_ID]]);
   const audit = calls.find((call) => call.sql.includes("INSERT INTO audit_log"));
   assert.ok(audit);
-  assert.equal(audit.params?.[0], WORKSPACE_ID);
-  assert.equal(audit.params?.[1], ACTOR_ID);
-  assert.equal(audit.params?.[2], "mcp.oauth.admin_revoke");
-  assert.match(String(audit.params?.[6]), /Claude Code/);
-  assert.match(String(audit.params?.[6]), /山田 太郎/);
+  assert.equal(audit.params?.[1], TARGET_USER_ID);
 });
 
 test("a missing family is reported as not found and is never locked or revoked", async () => {
@@ -368,8 +443,15 @@ test("a missing target user is reported as not found before the family lock", as
     404,
     "connection not found",
   );
+  const userLock = calls.find(
+    (call) => call.sql.includes("SELECT id FROM users WHERE id = ANY($1::bigint[])"),
+  );
+  assert.ok(userLock, "the actor and owner rows must be locked together");
+  assert.deepEqual(userLock.params, [[ACTOR_ID, TARGET_USER_ID]]);
   assert.ok(!calls.some((call) => call.sql.includes("pg_advisory_xact_lock")));
   assert.ok(!calls.some((call) => call.sql.includes("UPDATE mcp_tokens SET revoked_at")));
+  assert.ok(!calls.some((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at")));
+  assert.ok(!calls.some((call) => call.sql.includes("INSERT INTO audit_log")));
 });
 
 test("an already revoked OAuth family stays idempotent without another audit row", async () => {
