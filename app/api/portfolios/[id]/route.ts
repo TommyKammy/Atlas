@@ -41,7 +41,7 @@ export const PATCH = withUser(async (req, { uid, params }) => {
   if (typeof body?.name === "string" && body.name.trim() !== "") patch.name = body.name.trim();
   if (typeof body?.description === "string") patch.description = body.description.trim();
   await updatePortfolio(id, patch);
-  await audit(uid, "portfolio.update", { entity: "portfolio", entityId: id });
+  await audit(uid, "portfolio.update", { entity: "portfolio", entityId: id, workspaceId: ws.id });
   return NextResponse.json({ id });
 });
 
@@ -53,6 +53,6 @@ export const DELETE = withUser(async (_req, { uid, params }) => {
   if (!portfolio) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (!portfolio.can_edit) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   await deletePortfolio(id, uid);
-  await audit(uid, "portfolio.delete", { entity: "portfolio", entityId: id });
+  await audit(uid, "portfolio.delete", { entity: "portfolio", entityId: id, workspaceId: ws.id });
   return NextResponse.json({ deleted: id });
 });

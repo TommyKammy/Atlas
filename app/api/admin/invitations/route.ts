@@ -63,7 +63,7 @@ export const POST = withAdminPermission("members.manage", async (req, { uid: adm
   );
   const origin = process.env.APP_ORIGIN ?? new URL(req.url).origin;
   const url = `${origin}/invite/${token}`;
-  const ws = await db.query("SELECT name FROM workspaces ORDER BY id LIMIT 1");
+  const ws = await db.query("SELECT id, name FROM workspaces ORDER BY id LIMIT 1");
   const mail = await sendInvitationEmail({
     to: email,
     url,
@@ -73,6 +73,7 @@ export const POST = withAdminPermission("members.manage", async (req, { uid: adm
   await audit(admin, "invitation.create", {
     entity: "invitation",
     entityId: r.rows[0].id,
+    workspaceId: ws.rows[0] ? Number(ws.rows[0].id) : undefined,
     summary: `${email} (${role})`,
   });
   return NextResponse.json(

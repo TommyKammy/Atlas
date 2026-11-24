@@ -109,6 +109,7 @@ export const PATCH = withAdminPermission("roles.manage", async (req, { uid, para
   await audit(uid, "role.update", {
     entity: "role",
     entityId: id,
+    workspaceId: Number(role.workspace_id),
     summary: `${updated.rows[0].name} (${nextBase})`,
   });
   return NextResponse.json({ roles: await getAdminRoles(role.workspace_id) });
@@ -129,6 +130,11 @@ export const DELETE = withAdminPermission("roles.manage", async (_req, { uid, pa
     return NextResponse.json({ error: "role is assigned to users" }, { status: 400 });
   }
   await db.query("DELETE FROM workspace_roles WHERE id = $1", [id]);
-  await audit(uid, "role.delete", { entity: "role", entityId: id, summary: role.name });
+  await audit(uid, "role.delete", {
+    entity: "role",
+    entityId: id,
+    workspaceId: Number(role.workspace_id),
+    summary: role.name,
+  });
   return NextResponse.json({ roles: await getAdminRoles(role.workspace_id) });
 });

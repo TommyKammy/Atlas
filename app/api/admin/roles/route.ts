@@ -53,6 +53,7 @@ export const POST = withAdminPermission("roles.manage", async (req, { uid }) => 
     await audit(uid, "role.create", {
       entity: "role",
       entityId: r.rows[0].id,
+      workspaceId: wsId,
       summary: `${name} (${baseLevel})`,
     });
     return NextResponse.json({ roles: await getAdminRoles(wsId) }, { status: 201 });

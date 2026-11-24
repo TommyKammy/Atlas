@@ -1,5 +1,5 @@
 import { getTaskProjectContext, getTaskProjectId } from "@/lib/api-project-auth";
-import { audit } from "@/lib/audit";
+import { audit, auditScope } from "@/lib/audit";
 import { runAutomations } from "@/lib/automation-runner";
 import { logEvent } from "@/lib/data";
 import { db, withTransaction } from "@/lib/db";
@@ -433,7 +433,14 @@ export async function updateTask(
   }
   await notifyTask(taskId);
   if (changesSecondarySection || (placement && primaryProjectId !== targetProjectId)) await notifyProject(sectionProjectId);
-  await audit(uid, "task.update", { entity: "task", entityId: taskId, summary: Object.keys(b).join(",") });
+  // audit() derives the project from tasks.project_id; projectless tasks (subtasks,
+  // secondary-home only) need the project the edit was authorized in.
+  await audit(uid, "task.update", {
+    entity: "task",
+    entityId: taskId,
+    ...(primaryProjectId === null && !movesPrimary ? await auditScope(targetProjectId) : {}),
+    summary: Object.keys(b).join(","),
+  });
   return { id: taskId };
 }
 
@@ -444,7 +451,7 @@ export async function deleteTask(
   const deleted = await mutateTaskTrees(new Map([[taskId, projectId]]), force ? "purge" : "trash");
   if (deleted === 0) throw new TaskMutationFailure("missing", "not found");
   await notifyTask(taskId);
-  await audit(uid, force ? "task.purge" : "task.delete", { entity: "task", entityId: taskId, projectId: projectId ?? undefined });
+  await audit(uid, force ? "task.purge" : "task.delete", { entity: "task", entityId: taskId, ...(await auditScope(projectId)) });
   if (!force) await logEvent(taskId, uid, "deleted", "タスクをゴミ箱に入れました").catch(() => undefined);
   return { deleted: taskId };
 }

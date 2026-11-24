@@ -79,7 +79,7 @@ export const POST = withAdminPermission("teams.manage", async (req, { uid }) => 
     }
     throw e;
   }
-  await audit(uid, "team.create", { entity: "team", entityId: teamId, summary: name });
+  await audit(uid, "team.create", { entity: "team", entityId: teamId, workspaceId, summary: name });
   const teams = await getAdminTeams(workspaceId);
   return NextResponse.json({ teams, team: teams.find((t) => t.id === teamId) ?? null }, { status: 201 });
 });
