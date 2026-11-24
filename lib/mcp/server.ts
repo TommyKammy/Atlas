@@ -460,8 +460,12 @@ export function createReadTools(
       title: "List my tasks",
       description:
         "List open tasks assigned to the authenticated user across projects they can view. "
-        + "Returns the same fields as list_tasks. Paged with an opaque cursor (default 25, "
-        + "maximum 100). "
+        + "Unlike the Atlas \"My tasks\" view, which shows top-level tasks only, this tool also "
+        + "includes subtasks, so the result can contain more tasks than that view. "
+        + "Each item has the same fields as list_tasks plus parent (the parent task's id and "
+        + "name, or null) and parent_hidden, which is true when the task has a parent the "
+        + "authenticated user cannot view; the parent name is omitted in that case. Paged with "
+        + "an opaque cursor (default 25, maximum 100). "
         + UNTRUSTED_DATA_NOTE,
       requiredScope: "read",
       inputSchema: z.object({

@@ -49,6 +49,8 @@ type MockOptions = {
   searchTotal?: number;
   searchPage?: number;
   searchPageCount?: number;
+  /** Rows returned by the batched parent lookup for `list_my_tasks`. */
+  taskParents?: Record<string, unknown>[];
 };
 
 const actor: Actor = { uid: 12, source: "mcp" };
@@ -187,6 +189,8 @@ function mockQueries(options: MockOptions, calls: Call[] = []) {
       rows = options.task === null ? [] : [options.task ?? defaultTask];
     } else if (sql.includes("FROM tasks t") && sql.includes("WHERE t.id = $1 AND t.deleted_at IS NULL")) {
       rows = options.task === null ? [] : [options.task ?? defaultTask];
+    } else if (sql.includes("LEFT JOIN tasks pt ON pt.id = t.parent_task_id")) {
+      rows = options.taskParents ?? [];
     } else if (sql.includes("SELECT pt.id, pt.name")) {
       rows = options.parent ? [options.parent] : [];
     } else if (sql.includes("SELECT id, name FROM sections WHERE id = $1")) {
@@ -299,7 +303,7 @@ test("listMyTasks filters through the authorized advanced search", async (t) => 
   t.mock.method(db, "query", mockQueries({ searchItems: [searchHit], searchTotal: 1 }, calls));
 
   const page = await listMyTasks(actor);
-  assert.deepEqual(page.items, [searchHit]);
+  assert.deepEqual(page.items, [{ ...searchHit, parent: null, parent_hidden: false }]);
   assert.equal(page.nextCursor, null);
 
   const search = lastCall(calls, "task_home");
@@ -310,6 +314,79 @@ test("listMyTasks filters through the authorized advanced search", async (t) => 
   assert.ok(search.sql.includes("t.deleted_at IS NULL"));
   assert.ok(search.sql.includes("t.assignee_id = $"));
   assert.deepEqual(search.params?.slice(0, 2), [1, actor.uid]);
+});
+
+test("listMyTasks attaches the parent name to subtasks", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    searchItems: [searchHit],
+    searchTotal: 1,
+    taskParents: [{
+      task_id: 42,
+      parent_id: 40,
+      parent_name: "Parent task",
+      parent_visible: true,
+    }],
+  }, calls));
+
+  const page = await listMyTasks(actor);
+  assert.deepEqual(page.items[0].parent, { id: 40, name: "Parent task" });
+  assert.equal(page.items[0].parent_hidden, false);
+
+  const parents = lastCall(calls, "LEFT JOIN tasks pt ON pt.id = t.parent_task_id");
+  assert.deepEqual(parents.params, [[42], actor.uid]);
+  // The batched lookup uses the same visibility rules as get_task: the parent
+  // must be live and readable through its primary project or a membership.
+  assert.ok(parents.sql.includes("pt.deleted_at IS NULL"));
+  assert.ok(parents.sql.includes("data_actor.is_admin"));
+  assert.ok(parents.sql.includes("p.archived_at IS NULL"));
+  assert.ok(parents.sql.includes("p.deleted_at IS NULL"));
+  assert.ok(parents.sql.includes("task_project_memberships"));
+});
+
+test("listMyTasks hides an inaccessible parent's name", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    searchItems: [searchHit],
+    searchTotal: 1,
+    taskParents: [{
+      task_id: 42,
+      parent_id: 40,
+      parent_name: "Secret parent",
+      parent_visible: false,
+    }],
+  }, calls));
+
+  const page = await listMyTasks(actor);
+  assert.equal(page.items[0].parent, null);
+  assert.equal(page.items[0].parent_hidden, true);
+  assert.ok(!JSON.stringify(page).includes("Secret parent"));
+});
+
+test("listMyTasks reads parents once per page and keeps top-level tasks parentless", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    searchItems: [
+      searchHit,
+      { ...searchHit, id: 43, name: "Subtask" },
+    ],
+    searchTotal: 2,
+    taskParents: [
+      { task_id: 42, parent_id: null, parent_name: null, parent_visible: false },
+      { task_id: 43, parent_id: 40, parent_name: "Parent task", parent_visible: true },
+    ],
+  }, calls));
+
+  const page = await listMyTasks(actor, { limit: 2 });
+  assert.equal(page.items[0].parent, null);
+  assert.equal(page.items[0].parent_hidden, false);
+  assert.deepEqual(page.items[1].parent, { id: 40, name: "Parent task" });
+  assert.equal(page.items[1].parent_hidden, false);
+
+  const parentCalls = calls.filter((call) =>
+    call.sql.includes("LEFT JOIN tasks pt ON pt.id = t.parent_task_id"));
+  assert.equal(parentCalls.length, 1);
+  assert.deepEqual(parentCalls[0].params, [[42, 43], actor.uid]);
 });
 
 test("listProjects clamps limits and emits an opaque cursor", async (t) => {

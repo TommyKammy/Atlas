@@ -102,6 +102,18 @@ export type TaskDetailView = {
   customFieldValues: TaskCustomFieldValue[];
 };
 
+export type TaskParentRef = { id: number; name: string };
+
+/**
+ * A task returned by `list_my_tasks`. Subtasks are included, unlike the Atlas
+ * "My tasks" view, and carry their parent name when the parent is viewable.
+ */
+export type MyTaskHit = AdvancedTaskHit & {
+  parent: TaskParentRef | null;
+  /** True when the task has a parent the actor is not allowed to view. */
+  parent_hidden: boolean;
+};
+
 export type ProjectMember = User & { role: string | null };
 
 export type SelfIdentity = {
@@ -409,18 +421,34 @@ export async function searchTasks(
  * Open tasks assigned to the actor, narrowed by the same `projectDataAccess`
  * predicate as the advanced search. `getMyTasks` intentionally is not used
  * because it does not filter by project permission.
+ *
+ * Unlike the Atlas "My tasks" view, subtasks are included. Parent names are
+ * resolved for the whole page in one query; a parent the actor cannot read is
+ * reported only through `parent_hidden` so its name never leaks.
  */
 export async function listMyTasks(
   actor: Actor,
   options: QueryListOptions = {},
-): Promise<QueryPage<AdvancedTaskHit>> {
+): Promise<QueryPage<MyTaskHit>> {
   await requireActiveActor(actor);
-  return searchTaskPage(actor, {
+  const page = await searchTaskPage(actor, {
     assignee: actor.uid,
     completed: "open",
     limit: options.limit,
     cursor: options.cursor,
   });
+  const parents = await loadTaskParents(actor, page.items.map((item) => item.id));
+  return {
+    ...page,
+    items: page.items.map((item) => {
+      const parent = parents.get(item.id);
+      return {
+        ...item,
+        parent: parent?.parent ?? null,
+        parent_hidden: parent?.hidden === true,
+      };
+    }),
+  };
 }
 
 /**
@@ -472,28 +500,78 @@ async function loadAuthorizedTask(
   throw lastError.status === 404 ? notFound(lastError.error) : forbidden(lastError.error);
 }
 
+/**
+ * Parent visibility shared by `get_task` and the batched `list_my_tasks`
+ * lookup. A parent is viewable through its primary project or one of its
+ * multi-home memberships, and only when that project is neither archived nor
+ * deleted.
+ */
+function parentVisibilitySql(parentAlias: string, actorParam: string): string {
+  return `EXISTS (SELECT 1 FROM projects p
+           WHERE p.id = ${parentAlias}.project_id AND p.archived_at IS NULL AND p.deleted_at IS NULL
+             AND ${projectDataAccess("p", actorParam)})
+         OR EXISTS (SELECT 1 FROM task_project_memberships m
+           JOIN projects p ON p.id = m.project_id
+           WHERE m.task_id = ${parentAlias}.id AND p.archived_at IS NULL AND p.deleted_at IS NULL
+             AND ${projectDataAccess("p", actorParam)})`;
+}
+
 async function loadParent(
   actor: Actor,
   parentTaskId: number | null,
-): Promise<{ id: number; name: string } | null> {
+): Promise<TaskParentRef | null> {
   if (parentTaskId === null) return null;
   const result = await db.query(
     `SELECT pt.id, pt.name
      FROM tasks pt
      WHERE pt.id = $1 AND pt.deleted_at IS NULL
        AND (
-         EXISTS (SELECT 1 FROM projects p
-           WHERE p.id = pt.project_id AND p.archived_at IS NULL AND p.deleted_at IS NULL
-             AND ${projectDataAccess("p", "$2")})
-         OR EXISTS (SELECT 1 FROM task_project_memberships m
-           JOIN projects p ON p.id = m.project_id
-           WHERE m.task_id = pt.id AND p.archived_at IS NULL AND p.deleted_at IS NULL
-             AND ${projectDataAccess("p", "$2")})
+         ${parentVisibilitySql("pt", "$2")}
        )`,
     [parentTaskId, actor.uid],
   );
   const row = result.rows[0];
   return row ? { id: Number(row.id), name: String(row.name) } : null;
+}
+
+type ParentLookup = {
+  parent: TaskParentRef | null;
+  hidden: boolean;
+};
+
+/**
+ * Resolve parent names for one page of tasks in a single query. Deleted and
+ * inaccessible parents are kept as `hidden` without exposing their name.
+ */
+async function loadTaskParents(
+  actor: Actor,
+  taskIds: readonly number[],
+): Promise<Map<number, ParentLookup>> {
+  const parents = new Map<number, ParentLookup>();
+  if (taskIds.length === 0) return parents;
+  const result = await db.query(
+    `SELECT t.id AS task_id, pt.id AS parent_id, pt.name AS parent_name,
+       (pt.id IS NOT NULL AND pt.deleted_at IS NULL
+         AND (${parentVisibilitySql("pt", "$2")})) AS parent_visible
+     FROM tasks t
+     LEFT JOIN tasks pt ON pt.id = t.parent_task_id
+     WHERE t.id = ANY($1::bigint[])`,
+    [taskIds, actor.uid],
+  );
+  for (const row of result.rows) {
+    const taskId = Number(row.task_id);
+    if (row.parent_id == null) {
+      parents.set(taskId, { parent: null, hidden: false });
+    } else if (row.parent_visible === true) {
+      parents.set(taskId, {
+        parent: { id: Number(row.parent_id), name: String(row.parent_name) },
+        hidden: false,
+      });
+    } else {
+      parents.set(taskId, { parent: null, hidden: true });
+    }
+  }
+  return parents;
 }
 
 async function loadTaskSection(

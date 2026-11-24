@@ -82,6 +82,14 @@ test("read scope lists the fixed read tools in a stable order without write tool
   });
 });
 
+test("list_my_tasks documents subtasks, parents and the top-level UI difference", () => {
+  const tool = createReadTools().find((entry) => entry.name === "list_my_tasks");
+  assert.ok(tool);
+  assert.match(tool.description, /includes subtasks/i);
+  assert.match(tool.description, /parent_hidden/);
+  assert.match(tool.description, /top-level tasks only/i);
+});
+
 test("the builder filters by effective scope and by the readonly endpoint", async () => {
   const tools = [...createReadTools(DEFAULT_MCP_QUERY_SERVICES), writeTool()];
 
