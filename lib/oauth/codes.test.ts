@@ -21,7 +21,12 @@ function result(rows: Record<string, unknown>[] = [], rowCount = rows.length): Q
 }
 
 function mockQueryable(
-  options: { row?: Record<string, unknown>; updatedCount?: number } = {},
+  options: {
+    row?: Record<string, unknown>;
+    lockedRow?: Record<string, unknown> | null;
+    updatedCount?: number;
+    userExists?: boolean;
+  } = {},
   calls: Call[] = [],
 ): Queryable {
   return {
@@ -30,8 +35,21 @@ function mockQueryable(
       if (sql.includes("INSERT INTO oauth_authorization_codes")) {
         return result([{ expires_at: "2026-11-24T00:10:00Z" }]);
       }
+      if (sql.includes("SELECT user_id, family_id::text AS family_id")
+          && sql.includes("FROM oauth_authorization_codes")) {
+        return result(options.row
+          ? [{ user_id: options.row.user_id, family_id: options.row.family_id }]
+          : []);
+      }
+      if (sql.includes("SELECT id FROM users")) {
+        return result(options.userExists === false ? [] : [{ id: Number(params?.[0]) }]);
+      }
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return result([{ pg_advisory_xact_lock: null }]);
+      }
       if (sql.includes("FROM oauth_authorization_codes")) {
-        return result(options.row ? [options.row] : []);
+        const row = options.lockedRow === undefined ? options.row : options.lockedRow;
+        return result(row ? [row] : []);
       }
       if (sql.includes("UPDATE oauth_authorization_codes SET used_at")) {
         return result([], options.updatedCount ?? 1);
@@ -171,6 +189,51 @@ test("consuming a valid code marks it used and returns its grant", async () => {
   assert.deepEqual(update.params, [11]);
 });
 
+test("consume locks the user, the family and then the code row", async () => {
+  const calls: Call[] = [];
+  await consumeAuthorizationCode(consumeInput(), mockQueryable({ row: codeRow() }, calls));
+
+  const ownerRead = calls.findIndex((call) => call.sql.includes("SELECT user_id, family_id::text AS family_id"));
+  const userLock = calls.findIndex((call) => call.sql.includes("SELECT id FROM users") && call.sql.includes("FOR UPDATE"));
+  const familyLock = calls.findIndex((call) => call.sql.includes("pg_advisory_xact_lock"));
+  const codeLock = calls.findIndex((call) => call.sql.includes("FROM oauth_authorization_codes") && call.sql.includes("FOR UPDATE"));
+  const used = calls.findIndex((call) => call.sql.includes("UPDATE oauth_authorization_codes SET used_at"));
+
+  assert.ok(ownerRead >= 0, "the code owner must be read without a lock first");
+  assert.ok(userLock > ownerRead, "the user row must be locked after reading the owner");
+  assert.ok(familyLock > userLock, "the family lock must follow the user row lock");
+  assert.ok(codeLock > familyLock, "the code row must be locked after the family lock");
+  assert.ok(used > codeLock, "the code must be locked before it is marked used");
+  assert.deepEqual(calls[userLock].params, [42]);
+  assert.deepEqual(calls[familyLock].params, [FAMILY_ID]);
+});
+
+test("a code row that disappears before the locked read is invalid_grant", async () => {
+  const calls: Call[] = [];
+  await assertOAuthError(
+    consumeAuthorizationCode(
+      consumeInput(),
+      mockQueryable({ row: codeRow(), lockedRow: null }, calls),
+    ),
+    "invalid_grant",
+  );
+  assert.ok(!calls.some((call) => call.sql.includes("UPDATE oauth_authorization_codes SET used_at")));
+  assert.ok(!calls.some((call) => call.sql.includes("UPDATE mcp_tokens SET revoked_at")));
+});
+
+test("a missing user row is invalid_grant", async () => {
+  const calls: Call[] = [];
+  await assertOAuthError(
+    consumeAuthorizationCode(
+      consumeInput(),
+      mockQueryable({ row: codeRow(), userExists: false }, calls),
+    ),
+    "invalid_grant",
+  );
+  assert.ok(!calls.some((call) => call.sql.includes("pg_advisory_xact_lock")));
+  assert.ok(!calls.some((call) => call.sql.includes("UPDATE oauth_authorization_codes SET used_at")));
+});
+
 test("omitting resource at the token endpoint uses the code's stored audience", async () => {
   const consumed = await consumeAuthorizationCode(
     consumeInput({ resource: undefined }),
@@ -208,6 +271,10 @@ test("a second use is rejected and revokes the whole token family", async () => 
   assert.ok(accessRevoke);
   assert.deepEqual(refreshRevoke.params, [FAMILY_ID]);
   assert.deepEqual(accessRevoke.params, [FAMILY_ID]);
+  const familyLock = calls.findIndex((call) => call.sql.includes("pg_advisory_xact_lock"));
+  assert.ok(familyLock >= 0, "replay revocation must take the family advisory lock");
+  assert.ok(familyLock < calls.indexOf(accessRevoke));
+  assert.ok(familyLock < calls.indexOf(refreshRevoke));
 });
 
 test("a lost race on used_at is treated as reuse and revokes the family", async () => {

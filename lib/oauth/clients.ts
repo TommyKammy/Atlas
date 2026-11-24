@@ -174,6 +174,28 @@ async function readBoundedBody(response: Response, limit: number): Promise<strin
 }
 
 /**
+ * Build the Response handed to the shared CIMD validator, or throw for any
+ * non-200 status. This lives outside the socket callback because `Response`
+ * rejects null-body statuses (101/204/205/304) and statuses outside 200-599,
+ * and an exception thrown from a stream event handler would become an
+ * uncaughtException instead of rejecting the fetch promise.
+ */
+export function metadataResponseFromIncoming(
+  statusCode: number | undefined,
+  contentType: string | string[] | undefined,
+  body: Uint8Array<ArrayBuffer>,
+): Response {
+  if (statusCode !== 200) {
+    throw new Error(`client metadata document returned HTTP ${statusCode ?? "unknown"}`);
+  }
+  const header = Array.isArray(contentType) ? contentType[0] ?? "" : contentType ?? "";
+  return new Response(body, {
+    status: statusCode,
+    headers: { "content-type": header },
+  });
+}
+
+/**
  * Default transport: resolve DNS once, require every answer to be public and
  * connect to the vetted IP itself (the Host header and TLS SNI keep the
  * logical host). Redirects are never followed and the 5s deadline covers the
@@ -193,6 +215,15 @@ const defaultMetadataFetch: MetadataFetch = (url, destination, init) => {
       signal: init.signal,
       headers: { Host: url.host, Accept: "application/json" },
     }, (response) => {
+      response.on("error", reject);
+      const status = response.statusCode;
+      if (status !== 200) {
+        // Do not attach data/end handlers: a non-JSON body has no use and the
+        // Promise is already rejected. Drain it so the socket can be reused.
+        response.resume();
+        reject(new Error(`client metadata document returned HTTP ${status ?? "unknown"}`));
+        return;
+      }
       const chunks: Buffer[] = [];
       let size = 0;
       response.on("data", (chunk: Buffer) => {
@@ -204,13 +235,16 @@ const defaultMetadataFetch: MetadataFetch = (url, destination, init) => {
         }
         chunks.push(chunk);
       });
-      response.on("error", reject);
       response.on("end", () => {
-        const contentType = response.headers["content-type"];
-        resolve(new Response(Buffer.concat(chunks), {
-          status: response.statusCode ?? 0,
-          headers: { "content-type": Array.isArray(contentType) ? contentType[0] ?? "" : contentType ?? "" },
-        }));
+        try {
+          resolve(metadataResponseFromIncoming(
+            status,
+            response.headers["content-type"],
+            Buffer.concat(chunks),
+          ));
+        } catch (error) {
+          reject(error);
+        }
       });
     });
     outgoing.on("error", reject);

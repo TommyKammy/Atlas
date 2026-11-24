@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { db, withTransaction, type Queryable } from "@/lib/db";
 import { hashMcpToken } from "@/lib/mcp/token";
 import { OAuthError } from "./errors";
+import { lockOAuthFamily } from "./family-lock";
 import { assertSupportedResource } from "./resources";
 import { normalizeOAuthScopes, type OAuthScope } from "./scopes";
 
@@ -205,6 +206,10 @@ async function insertTokenPair(
 }
 
 async function revokeFamily(q: Queryable, familyId: string): Promise<void> {
+  // Rotation inserts new rows into the same family, so serialize with it:
+  // these UPDATEs alone would not see rows committed after their snapshot.
+  // Re-entrant when refreshTokensInTransaction already holds the lock.
+  await lockOAuthFamily(q, familyId);
   // Keep the same table order as revokeAllUserTokens (access rows first) so
   // concurrent deactivation and family revocation cannot deadlock.
   await q.query(
@@ -291,18 +296,21 @@ async function refreshTokensInTransaction(
   const hash = hashMcpToken(refreshToken);
 
   const found = await q.query(
-    `SELECT id, user_id, workspace_id
+    `SELECT id, user_id, workspace_id, family_id::text AS family_id
      FROM oauth_refresh_tokens
      WHERE token_hash = $1`,
     [hash],
   );
   const foundRow = found.rows[0] as
-    | { id: number; user_id: number; workspace_id: number }
+    | { id: number; user_id: number; workspace_id: number; family_id: string }
     | undefined;
   if (!foundRow) throw invalidGrant("refresh token is invalid");
 
-  // Lock the user first (same order as issuance/deactivation), then the token.
+  // Lock order: user row -> family advisory lock -> token row. The family
+  // lock keeps a concurrent revocation from missing the pair inserted below
+  // by this rotation.
   await requireTokenPrincipal(q, Number(foundRow.user_id), Number(foundRow.workspace_id));
+  await lockOAuthFamily(q, String(foundRow.family_id));
 
   const selected = await q.query(
     `SELECT rt.id, rt.family_id::text AS family_id, rt.client_id, rt.user_id,

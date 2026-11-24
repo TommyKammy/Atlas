@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { QueryResult } from "pg";
 import type { Queryable } from "@/lib/db";
-import { resolveClient, registerClient } from "./clients";
+import { resolveClient, registerClient, metadataResponseFromIncoming } from "./clients";
 import { OAuthError } from "./errors";
 
 type Call = { sql: string; params?: unknown[] };
@@ -49,6 +49,46 @@ function cimdMetadata(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+test("CIMD responses are accepted only for HTTP 200", () => {
+  const body = Buffer.from(JSON.stringify(cimdMetadata()));
+  const response = metadataResponseFromIncoming(200, "application/json", body);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "application/json");
+
+  for (const status of [204, 205, 304, 301, 500, undefined]) {
+    assert.throws(
+      () => metadataResponseFromIncoming(status, "application/json", body),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.equal(
+          error.message,
+          `client metadata document returned HTTP ${status ?? "unknown"}`,
+        );
+        return true;
+      },
+      String(status),
+    );
+  }
+});
+
+test("a non-200 CIMD response becomes invalid_client instead of crashing", async () => {
+  for (const status of [204, 205, 304, 301, 500]) {
+    await assert.rejects(
+      resolveClient(CIMD_URL, mockQueryable(), {
+        resolve: publicResolve(),
+        fetch: async () => new Response(null, { status }),
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof OAuthError);
+        assert.equal(error.code, "invalid_client");
+        assert.match(error.message, /error status/);
+        return true;
+      },
+      String(status),
+    );
+  }
+});
 
 test("a CIMD client cached for less than 24 hours is used without fetching", async (t) => {
   const calls: Call[] = [];

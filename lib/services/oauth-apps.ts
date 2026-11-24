@@ -1,6 +1,7 @@
 import { audit } from "../audit";
 import { notFound } from "../api/errors";
 import { db, withTransaction, type Queryable } from "../db";
+import { lockOAuthFamily } from "../oauth/family-lock";
 import type { Actor } from "./actor";
 
 export type OAuthAppEndpoint = "default" | "readonly";
@@ -136,6 +137,10 @@ export async function revokeOAuthApp(
     | { family_id: string; workspace_id: number }
     | undefined;
   if (!row) throw notFound("connection not found");
+
+  // Rotation inserts new token rows into the same family. Serialize with it so
+  // the UPDATEs below also revoke pairs committed by an in-flight refresh.
+  await lockOAuthFamily(q, familyId);
 
   // Same table order as revokeAllUserTokens and the OAuth family revocations.
   await q.query(

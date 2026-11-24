@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { db, withTransaction, type Queryable } from "@/lib/db";
 import { hashMcpToken } from "@/lib/mcp/token";
 import { OAuthError } from "./errors";
+import { lockOAuthFamily } from "./family-lock";
 import { isValidCodeChallenge, verifyPkce } from "./pkce";
 import { isAllowedRedirectUri } from "./redirect";
 import { assertSupportedResource } from "./resources";
@@ -84,6 +85,8 @@ function positiveInteger(value: unknown): value is number {
 }
 
 async function revokeCodeFamily(q: Queryable, familyId: string): Promise<void> {
+  // Same lock order and rotation-race protection as tokens.revokeFamily.
+  await lockOAuthFamily(q, familyId);
   // Same order as revokeFamily / revokeAllUserTokens.
   await q.query(
     `UPDATE mcp_tokens SET revoked_at = now()
@@ -182,6 +185,31 @@ async function consumeAuthorizationCodeInTransaction(
   q: Queryable,
 ): Promise<ConsumedAuthorizationCode | ConsumeRejection> {
   if (!isAuthorizationCode(input.code)) throw invalidGrant("authorization code is invalid");
+  const hash = hashMcpToken(input.code);
+
+  // Read the owner without a row lock, then lock in the same order as the
+  // refresh flow: users row -> family -> code row. revokeAllUserTokens holds
+  // the user row before deleting unused codes, so taking the code row first
+  // here would invert the order and deadlock.
+  const owner = await q.query(
+    `SELECT user_id, family_id::text AS family_id
+     FROM oauth_authorization_codes
+     WHERE code_hash = $1`,
+    [hash],
+  );
+  const ownerRow = owner.rows[0] as
+    | { user_id: number; family_id: string }
+    | undefined;
+  if (!ownerRow) throw invalidGrant("authorization code is invalid");
+
+  const lockedUser = await q.query(
+    "SELECT id FROM users WHERE id = $1::bigint FOR UPDATE",
+    [Number(ownerRow.user_id)],
+  );
+  if (!lockedUser.rowCount) throw invalidGrant("authorization code is invalid");
+
+  await lockOAuthFamily(q, String(ownerRow.family_id));
+
   const selected = await q.query(
     `SELECT id, code_hash, client_id, user_id, workspace_id, redirect_uri,
        code_challenge, scopes, resource, family_id::text AS family_id,
@@ -189,7 +217,7 @@ async function consumeAuthorizationCodeInTransaction(
      FROM oauth_authorization_codes
      WHERE code_hash = $1
      FOR UPDATE`,
-    [hashMcpToken(input.code)],
+    [hash],
   );
   const row = selected.rows[0] as CodeRow | undefined;
   if (!row) throw invalidGrant("authorization code is invalid");

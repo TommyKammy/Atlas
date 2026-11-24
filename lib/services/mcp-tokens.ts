@@ -167,7 +167,9 @@ export async function revokePersonalToken(actor: Actor, tokenId: number): Promis
  * Revoke every MCP token (PAT and OAuth) for a user. Deactivation and a change
  * to the guest role call this inside their own transaction. OAuth refresh
  * tokens are revoked with the same user id so a refresh cannot mint a new
- * access token after the account is disabled or made a guest.
+ * access token after the account is disabled or made a guest. Unused
+ * authorization codes are deleted for the same reason; used codes stay behind
+ * so replay detection can still revoke their family.
  */
 export async function revokeAllUserTokens(userId: number, q: Queryable = db): Promise<number> {
   const result = await q.query(
@@ -176,6 +178,10 @@ export async function revokeAllUserTokens(userId: number, q: Queryable = db): Pr
   );
   await q.query(
     "UPDATE oauth_refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL",
+    [userId],
+  );
+  await q.query(
+    "DELETE FROM oauth_authorization_codes WHERE user_id = $1 AND used_at IS NULL",
     [userId],
   );
   return result.rowCount ?? 0;

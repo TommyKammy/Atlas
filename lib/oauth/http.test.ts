@@ -65,6 +65,12 @@ function createTransactionStore(state: State): Queryable {
   return {
     query: async (sql, params) => {
       state.calls.push({ sql, params });
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return result([{ pg_advisory_xact_lock: null }]);
+      }
+      if (sql.includes("SELECT id FROM users") && sql.includes("FOR UPDATE")) {
+        return result([{ id: Number(params?.[0]) }]);
+      }
       if (sql.includes("FROM oauth_authorization_codes")) {
         return result(state.codeRow ? [state.codeRow] : []);
       }
@@ -87,7 +93,9 @@ function createTransactionStore(state: State): Queryable {
       }
       if (sql.includes("FROM oauth_refresh_tokens")
           && sql.includes("WHERE token_hash = $1")) {
-        return result(state.refreshFound ? [{ id: 55, user_id: 42, workspace_id: 1 }] : []);
+        return result(state.refreshFound
+          ? [{ id: 55, user_id: 42, workspace_id: 1, family_id: FAMILY_ID }]
+          : []);
       }
       if (sql.includes("FROM oauth_refresh_tokens rt")) {
         return result(state.refreshRow ? [state.refreshRow] : []);

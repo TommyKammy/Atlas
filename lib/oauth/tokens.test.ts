@@ -74,6 +74,7 @@ function createDb(options: { principal?: PrincipalOptions } = {}) {
   const q: Queryable = {
     query: async (sql, params = []) => {
       calls.push({ sql, params });
+      if (sql.includes("pg_advisory_xact_lock")) return result([{ pg_advisory_xact_lock: null }]);
       if (sql.includes("FROM users u")) {
         if (!principal.exists) return result();
         return result([{
@@ -117,7 +118,9 @@ function createDb(options: { principal?: PrincipalOptions } = {}) {
       }
       if (sql.includes("SELECT id, user_id, workspace_id") && sql.includes("FROM oauth_refresh_tokens")) {
         const row = refresh.find((entry) => entry.token_hash === params[0]);
-        return result(row ? [{ id: row.id, user_id: row.user_id, workspace_id: row.workspace_id }] : []);
+        return result(row
+          ? [{ id: row.id, user_id: row.user_id, workspace_id: row.workspace_id, family_id: row.family_id }]
+          : []);
       }
       if (sql.includes("FROM oauth_refresh_tokens rt")) {
         const row = refresh.find((entry) => entry.id === Number(params[0]));
@@ -284,6 +287,29 @@ test("refreshing rotates the refresh token inside the same family", async () => 
   assert.equal(db.refresh[1].token_hash, hashMcpToken(second.refreshToken));
 });
 
+test("refresh takes the user, family and token locks in that order", async () => {
+  const db = createDb();
+  const first = await issue(db);
+  db.calls.length = 0;
+
+  await refreshTokens(first.refreshToken, CLIENT_ID, RESOURCE, db.q);
+
+  const userLock = db.calls.findIndex(
+    (call) => call.sql.includes("FROM users u") && call.sql.includes("FOR UPDATE"),
+  );
+  const familyLock = db.calls.findIndex((call) => call.sql.includes("pg_advisory_xact_lock"));
+  const tokenLock = db.calls.findIndex((call) => call.sql.includes("FROM oauth_refresh_tokens rt"));
+  const markUsed = db.calls.findIndex((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET used_at"));
+  const insert = db.calls.findIndex((call) => call.sql.includes("INSERT INTO mcp_tokens"));
+
+  assert.ok(userLock >= 0, "user row must be locked");
+  assert.ok(familyLock > userLock, "family lock must follow the user row lock");
+  assert.ok(tokenLock > familyLock, "refresh row must be locked after the family lock");
+  assert.ok(markUsed > tokenLock, "the refresh row must be locked before it is marked used");
+  assert.ok(insert > familyLock, "rotation must insert after the family lock");
+  assert.deepEqual(db.calls[familyLock].params, [first.familyId]);
+});
+
 test("reusing a used refresh token revokes every token in the family", async () => {
   const db = createDb();
   const first = await issue(db);
@@ -383,6 +409,22 @@ test("revoking a refresh token revokes the whole family", async () => {
   assert.equal(await revokeToken(second.refreshToken, db.q), true);
   assert.ok(db.refresh.every((row) => row.revoked_at instanceof Date));
   assert.ok(db.access.every((row) => row.revoked_at instanceof Date));
+});
+
+test("family revocation takes the advisory lock before updating token rows", async () => {
+  const db = createDb();
+  const first = await issue(db);
+  db.calls.length = 0;
+
+  assert.equal(await revokeToken(first.refreshToken, db.q), true);
+
+  const familyLock = db.calls.findIndex((call) => call.sql.includes("pg_advisory_xact_lock"));
+  const accessUpdate = db.calls.findIndex((call) => call.sql.includes("UPDATE mcp_tokens SET revoked_at"));
+  const refreshUpdate = db.calls.findIndex((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at"));
+  assert.ok(familyLock >= 0, "family revocation must take the advisory lock");
+  assert.ok(accessUpdate > familyLock, "access tokens must be updated after the family lock");
+  assert.ok(refreshUpdate > familyLock, "refresh tokens must be updated after the family lock");
+  assert.deepEqual(db.calls[familyLock].params, [first.familyId]);
 });
 
 test("revokeToken accepts refresh plaintext and ignores unknown values", async () => {

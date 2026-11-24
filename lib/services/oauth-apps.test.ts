@@ -36,6 +36,9 @@ function mockQueries(
           workspace_id: 1,
         }]);
       }
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return result([{ pg_advisory_xact_lock: null }]);
+      }
       if (sql.includes("UPDATE mcp_tokens SET revoked_at")) {
         return result([], options.tokenUpdates ?? 2);
       }
@@ -122,6 +125,14 @@ test("revoking a connection expires every token in the actor's family", async ()
   assert.deepEqual(access.params, [FAMILY_ID, 42]);
   assert.match(access.sql, /oauth_family_id = \$1::uuid/);
   assert.match(access.sql, /user_id = \$2/);
+
+  const familyLock = calls.findIndex((call) => call.sql.includes("pg_advisory_xact_lock"));
+  const accessIndex = calls.indexOf(access);
+  const refreshIndex = calls.findIndex((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at"));
+  assert.ok(familyLock >= 0, "revocation must take the family advisory lock");
+  assert.ok(accessIndex > familyLock, "access tokens must be updated after the family lock");
+  assert.ok(refreshIndex > familyLock, "refresh tokens must be updated after the family lock");
+  assert.deepEqual(calls[familyLock].params, [FAMILY_ID]);
 
   const refresh = calls.find((call) => call.sql.includes("UPDATE oauth_refresh_tokens SET revoked_at"));
   assert.ok(refresh);
