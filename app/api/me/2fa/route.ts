@@ -6,6 +6,7 @@ import { ApiError, conflict, forbidden, jsonError, notFound, unauthorized } from
 import { consumeRecoveryCodeForUser } from "@/lib/api/mfa";
 import { getMfaRequestSession, lockSessionPolicy, rotateSessionAfterMfa, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
 import { getSecuritySettings } from "@/lib/admin-data";
+import { POST_LOGIN_COOKIE, postLoginCookieOptions, postLoginPathFromCookieHeader } from "@/lib/post-login";
 import { guardAuthRequest, reserveAuthAttempt, authRateLimitResponse, POLICIES } from "@/lib/auth-rate-limit";
 import { SamlSessionRequiredError } from "@/lib/session-policy";
 import { decryptMfaSecret, encryptMfaSecret, MfaSecretUnavailableError } from "@/lib/mfa-secret";
@@ -75,8 +76,9 @@ async function updateMfa(req: Request) {
   if (!["begin", "enable", "disable", "verify"].includes(action)) return NextResponse.json({ error: "invalid action" }, { status: 400 });
   const scope = action === "verify" ? "mfa-verify" : action === "begin" ? "mfa-enroll" : "mfa-manage";
   const attempt = await reserveAuthAttempt(scope, String(uid), POLICIES[scope]);
+  const postLogin = postLoginPathFromCookieHeader(req.headers.get("cookie"));
   try {
-    return await applyMfa(access, me, body, action, attempt);
+    return await applyMfa(access, me, body, action, attempt, postLogin);
   } catch (error) {
     if (!(error instanceof ApiError) || error.status >= 500) await attempt.release();
     throw error;
@@ -89,6 +91,7 @@ async function applyMfa(
   body: Record<string, unknown> | null,
   action: string,
   attempt: Awaited<ReturnType<typeof reserveAuthAttempt>>,
+  postLogin: string | null,
 ) {
   const uid = access.user.id;
 
@@ -112,8 +115,12 @@ async function applyMfa(
       await attempt.release(q);
       return rotated;
     });
-    const res = NextResponse.json({ enabled: true });
+    const res = NextResponse.json({
+      enabled: true,
+      ...(postLogin === null ? {} : { redirect_to: postLogin }),
+    });
     res.cookies.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.maxAge));
+    res.cookies.set(POST_LOGIN_COOKIE, "", { ...postLoginCookieOptions(), maxAge: 0 });
     return res;
   }
 
@@ -153,8 +160,16 @@ async function applyMfa(
       await attempt.release(q);
       return rotated;
     });
-    const res = NextResponse.json({ enabled: true, recovery_codes: recoveryCodes }, { headers: { "Cache-Control": "no-store" } });
+    const completedPendingMfa = access.mfaPending;
+    const res = NextResponse.json({
+      enabled: true,
+      recovery_codes: recoveryCodes,
+      ...(completedPendingMfa && postLogin !== null ? { redirect_to: postLogin } : {}),
+    }, { headers: { "Cache-Control": "no-store" } });
     res.cookies.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.maxAge));
+    if (completedPendingMfa) {
+      res.cookies.set(POST_LOGIN_COOKIE, "", { ...postLoginCookieOptions(), maxAge: 0 });
+    }
     return res;
   }
 

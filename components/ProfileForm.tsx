@@ -74,6 +74,7 @@ export default function ProfileForm({
   const [disablePassword, setDisablePassword] = useState("");
   const [twoFaBusy, setTwoFaBusy] = useState(false);
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
+  const [mfaRedirectTo, setMfaRedirectTo] = useState<string | null>(null);
 
   const saveProfile = async () => {
     setMsg("");
@@ -175,6 +176,7 @@ export default function ProfileForm({
       setRecoveryCodes(Array.isArray(data?.recovery_codes) ? data.recovery_codes : []);
       setTwoFaMsg("二要素認証を有効化しました");
       if (!mfaPending) router.refresh();
+      else if (typeof data?.redirect_to === "string") setMfaRedirectTo(data.redirect_to);
     } finally {
       setTwoFaBusy(false);
     }
@@ -191,11 +193,13 @@ export default function ProfileForm({
           ? { action: "verify", recovery_code: totpCode }
           : { action: "verify", code: totpCode }),
       });
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
         setTwoFaMsg(authenticationFailureMessage(res) ?? "認証コードが正しくありません。再度お試しください。");
         return;
       }
-      router.push("/");
+      const redirectTo = typeof data?.redirect_to === "string" ? data.redirect_to : "/";
+      router.push(redirectTo);
       router.refresh();
     } finally {
       setTwoFaBusy(false);
@@ -480,10 +484,10 @@ export default function ProfileForm({
             {mfaPending && (
               <button
                 type="button"
-                onClick={() => { router.push("/"); router.refresh(); }}
+                onClick={() => { router.push(mfaRedirectTo ?? "/"); router.refresh(); }}
                 className="mt-2 inline-flex h-8 items-center justify-center rounded-md bg-success-strong px-3 text-[13px] font-medium text-on-strong hover:bg-success-strong-hover"
               >
-                ホームへ進む
+                {mfaRedirectTo ? "接続の承認へ進む" : "ホームへ進む"}
               </button>
             )}
           </div>

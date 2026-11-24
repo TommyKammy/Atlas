@@ -1,4 +1,5 @@
 import {
+  MissingPublicBaseUrlError,
   mcpResourceUrlFromBase,
   requestBaseUrl,
   type McpResourceEndpoint,
@@ -82,21 +83,44 @@ function metadataResponse(document: unknown): Response {
   });
 }
 
+function missingBaseUrlResponse(): Response {
+  return new Response(
+    JSON.stringify({ error: "server_error", error_description: "public origin is not configured" }),
+    {
+      status: 500,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    },
+  );
+}
+
 export function protectedResourceMetadataResponse(
   request: Request,
   endpoint: McpResourceEndpoint,
   env: Record<string, string | undefined> = process.env,
 ): Response {
-  return metadataResponse(
-    protectedResourceMetadata(requestBaseUrl(request, env), endpoint),
-  );
+  try {
+    return metadataResponse(
+      protectedResourceMetadata(requestBaseUrl(request, env), endpoint),
+    );
+  } catch (error) {
+    if (error instanceof MissingPublicBaseUrlError) return missingBaseUrlResponse();
+    throw error;
+  }
 }
 
 export function authorizationServerMetadataResponse(
   request: Request,
   env: Record<string, string | undefined> = process.env,
 ): Response {
-  return metadataResponse(
-    authorizationServerMetadata(requestBaseUrl(request, env)),
-  );
+  try {
+    return metadataResponse(
+      authorizationServerMetadata(requestBaseUrl(request, env)),
+    );
+  } catch (error) {
+    if (error instanceof MissingPublicBaseUrlError) return missingBaseUrlResponse();
+    throw error;
+  }
 }

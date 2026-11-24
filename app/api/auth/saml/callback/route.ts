@@ -5,11 +5,13 @@ import { db, withTransaction } from "@/lib/db";
 import { createSession, lockSessionPolicy, SESSION_COOKIE, sessionCookieOptions } from "@/lib/api/session";
 import { getSecuritySettings } from "@/lib/admin-data";
 import {
-  allowsSamlFlowCookie, appOrigin, buildSaml, SAML_FLOW_COOKIE_OPTIONS, samlFlowCookieName,
+  allowsSamlFlowCookie, appOrigin, buildSaml, decodeSamlFlowProof,
+  SAML_FLOW_COOKIE_OPTIONS, samlFlowCookieName,
   samlProfileEmail, samlProfileName,
 } from "@/lib/saml";
 import { getDefaultRole } from "@/lib/permissions";
 import { shouldProvisionSamlUser } from "@/lib/saml-provisioning";
+import { POST_LOGIN_COOKIE, postLoginCookieOptions, postLoginPathFromCookieHeader } from "@/lib/post-login";
 import { isSessionToken } from "@/lib/session-token";
 
 function redirectAfterPost(location: string) {
@@ -30,15 +32,16 @@ async function finishSaml(req: NextRequest) {
   const state = form?.get("RelayState");
   if (!isSessionToken(state)) return loginError("invalid_state");
   const flowCookie = samlFlowCookieName(state);
-  const secret = req.cookies.get(flowCookie)?.value;
-  if (!isSessionToken(secret)) return loginError("invalid_state");
+  const proofValue = req.cookies.get(flowCookie)?.value;
+  const proof = typeof proofValue === "string" ? decodeSamlFlowProof(proofValue) : null;
+  if (!proof) return loginError("invalid_state");
 
   let profile: Record<string, unknown>;
   try {
     // The SDK records the assertion before checking its signed request ID.
     // Roll back that record if validation fails so another flow cannot burn it.
     const result = await withTransaction((q) =>
-      buildSaml(req, settings, { state, secret }, q).validatePostResponseAsync({ SAMLResponse: response }),
+      buildSaml(req, settings, { state, secret: proof.secret }, q).validatePostResponseAsync({ SAMLResponse: response }),
     );
     if (!result.profile) return loginError("invalid_response");
     profile = result.profile as unknown as Record<string, unknown>;
@@ -87,9 +90,21 @@ async function finishSaml(req: NextRequest) {
     return { ok: true, token, maxAge, mfaPending } as const;
   });
   if (!issued.ok) return loginError(issued.error);
-  const res = redirectAfterPost(issued.mfaPending ? "/profile#two-factor" : "/");
+  const returnTo = issued.mfaPending
+    ? null
+    : (proof.returnTo ?? postLoginPathFromCookieHeader(req.headers.get("cookie")));
+  const res = redirectAfterPost(
+    issued.mfaPending ? "/profile#two-factor" : (returnTo ?? "/"),
+  );
   res.cookies.set(SESSION_COOKIE, issued.token, sessionCookieOptions(issued.maxAge));
   res.cookies.set(flowCookie, "", { ...SAML_FLOW_COOKIE_OPTIONS, maxAge: 0 });
+  if (issued.mfaPending && proof.returnTo !== undefined) {
+    // The flow cookie is removed above; carry the destination into the
+    // same-site MFA verification request.
+    res.cookies.set(POST_LOGIN_COOKIE, proof.returnTo, postLoginCookieOptions());
+  } else if (!issued.mfaPending) {
+    res.cookies.set(POST_LOGIN_COOKIE, "", { ...postLoginCookieOptions(), maxAge: 0 });
+  }
   return res;
 }
 

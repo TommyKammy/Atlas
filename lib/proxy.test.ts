@@ -26,8 +26,33 @@ test("OAuth discovery, token and registration endpoints stay public", async () =
   }
 });
 
-test("the approval endpoint still requires a session", async () => {
-  const response = await proxy(request("/oauth/authorize"));
+test("the approval page and its POST/recovery routes stay public", async () => {
+  for (const path of [
+    "/oauth/authorize",
+    "/oauth/authorize/decision",
+    "/oauth/authorize/resume",
+  ]) {
+    const response = await proxy(request(path));
+    assert.equal(
+      response.headers.get("x-middleware-next"),
+      "1",
+      `${path} must reach its own session check`,
+    );
+  }
+});
+
+test("a POST to the approval page is rewritten to the decision handler", async () => {
+  const response = await proxy(new NextRequest("https://atlas.test/oauth/authorize", {
+    method: "POST",
+  }));
+  assert.equal(
+    response.headers.get("x-middleware-rewrite"),
+    "https://atlas.test/oauth/authorize/decision",
+  );
+});
+
+test("ordinary pages still require a session", async () => {
+  const response = await proxy(request("/profile"));
   assert.equal(response.status, 307);
   const location = response.headers.get("location");
   assert.ok(location);

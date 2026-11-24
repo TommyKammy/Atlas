@@ -8,6 +8,7 @@ import {
 } from "@modelcontextprotocol/server";
 import { authRateLimitResponse } from "@/lib/auth-rate-limit";
 import {
+  MissingPublicBaseUrlError,
   protectedResourceMetadataUrlFromBase,
   requestBaseUrl,
 } from "@/lib/oauth/resources";
@@ -184,10 +185,15 @@ export async function readRpcMetadata(
 }
 
 function invalidTokenResponse(req: Request, endpoint: McpEndpoint): Response {
-  const resourceMetadata = protectedResourceMetadataUrlFromBase(
-    requestBaseUrl(req),
-    endpoint,
-  );
+  let resourceMetadata: string;
+  try {
+    resourceMetadata = protectedResourceMetadataUrlFromBase(requestBaseUrl(req), endpoint);
+  } catch (error) {
+    // A production deployment without APP_URL/APP_ORIGIN must fail closed;
+    // never advertise a metadata URL derived from the request Host header.
+    if (error instanceof MissingPublicBaseUrlError) return internalErrorResponse();
+    throw error;
+  }
   const scope = endpoint === "readonly" ? "read" : "read write";
   // RFC 6750: when the request carried no Bearer credential there is no
   // invalid_token error to report; the challenge still points at the
