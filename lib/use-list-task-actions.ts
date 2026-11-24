@@ -5,7 +5,7 @@ import { useQuickTask } from "@/components/task/QuickTaskContext";
 import { ApiError, api } from "./api-client";
 import type { CustomField } from "./custom-fields";
 import type { Section, TaskRow } from "./data";
-import { patchTask, TaskConflictError } from "./task-client";
+import { patchTask, saveTaskCustomValue, TaskConflictError } from "./task-client";
 import { rememberTaskDeletion, undoLastTaskDeletion } from "./task-undo";
 import { toast as toastMessage } from "./ui-feedback";
 
@@ -35,6 +35,16 @@ export function useListTaskActions({
   const [editStart, setEditStart] = useState("");
   const [addingTo, setAddingTo] = useState<number | string | null>(null);
   const [addCommitting, setAddCommitting] = useState<Record<string, boolean>>({});
+  // Custom-field writes advance tasks.updated_at. Until refreshed props carry
+  // the new stamp, remember it so an immediately following row edit does not
+  // send the stale stamp from before the write.
+  const [customValueStamps, setCustomValueStamps] = useState<
+    Record<number, { previous: string; updatedAt: string }>
+  >({});
+  const expectedUpdatedAt = (task: TaskRow) => {
+    const stamp = customValueStamps[task.id];
+    return stamp && stamp.previous === task.updated_at ? stamp.updatedAt : task.updated_at;
+  };
 
   const addSubtask = async (parent: TaskRow) => {
     const name = subDraft.trim();
@@ -69,7 +79,7 @@ export function useListTaskActions({
 
   const toggle = async (task: TaskRow) => {
     try {
-      await patchTask(task.id, { completed: !task.completed }, task.updated_at);
+      await patchTask(task.id, { completed: !task.completed }, expectedUpdatedAt(task));
     } catch (error) {
       if (error instanceof TaskConflictError) {
         toastMessage("他のユーザーが先に更新しました。最新を表示します。");
@@ -105,7 +115,7 @@ export function useListTaskActions({
     options?: { close?: boolean },
   ) => {
     try {
-      await patchTask(task.id, fields, task.updated_at);
+      await patchTask(task.id, fields, expectedUpdatedAt(task));
     } catch (error) {
       if (error instanceof TaskConflictError) {
         toastMessage("他のユーザーが先に更新しました。最新を表示します。");
@@ -160,7 +170,27 @@ export function useListTaskActions({
           nextValue = [];
         }
       }
-      await api("/api/task-values", "POST", { task_id: task.id, field_id: fieldId, value: nextValue });
+      try {
+        const result = await saveTaskCustomValue(
+          task.id,
+          fieldId,
+          nextValue,
+          expectedUpdatedAt(task),
+        );
+        const updatedAt = result.updated_at;
+        if (typeof updatedAt === "string") {
+          setCustomValueStamps((current) => ({
+            ...current,
+            [task.id]: { previous: task.updated_at, updatedAt },
+          }));
+        }
+      } catch (error) {
+        if (error instanceof TaskConflictError) {
+          toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+        } else {
+          toastMessage(`更新に失敗しました: ${error instanceof ApiError ? error.status : ""}`);
+        }
+      }
       setEditing(null);
       refresh();
     }

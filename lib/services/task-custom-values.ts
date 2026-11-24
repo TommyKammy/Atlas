@@ -1,10 +1,14 @@
+import { audit, auditScope } from "../audit";
 import { badRequest, forbidden, notFound } from "../api/errors";
-import { withTransaction, type Queryable } from "../db";
+import { normalizeCustomFieldConfig } from "../custom-fields";
+import { db, withTransaction, type Queryable } from "../db";
 import { emitTaskEvent } from "../domain/events";
 import { canEditFieldValue } from "../field-access";
 import { notifyField, notifyTask } from "../notify";
+import { logEvent } from "../repositories/tasks";
 import { isEmptyTaskCustomValue, normalizeTaskCustomValue } from "../task-custom-value";
 import { requireTaskAccess, type Actor } from "./actor";
+import { TaskMutationFailure } from "./task-mutation-failure";
 
 type TaskCustomValueWrite = {
   actor: Actor;
@@ -12,21 +16,35 @@ type TaskCustomValueWrite = {
   projectId: number | null;
   fieldId: unknown;
   value: unknown;
+  /** Same compare-and-set contract as updateTask's expected_updated_at. */
+  expectedUpdatedAt?: string | null;
 };
 
 /**
  * Transaction body for one task custom-field value.
  * Exported so tests can drive the SQL-dependent branches with a Queryable.
+ *
+ * The task row is locked before the stamp comparison so a concurrent write
+ * cannot slip between the check and the value write. A successful write bumps
+ * tasks.updated_at, which makes the value change visible to compare-and-set
+ * callers (task name edits, later custom-field writes, MCP retries).
  */
 export async function writeTaskCustomValue(
   q: Queryable,
-  { actor, taskId, projectId, fieldId, value }: TaskCustomValueWrite,
-): Promise<{ cleared: boolean }> {
+  { actor, taskId, projectId, fieldId, value, expectedUpdatedAt }: TaskCustomValueWrite,
+): Promise<{ cleared: boolean; updated_at: string }> {
   const task = await q.query(
-    "SELECT id FROM tasks WHERE id = $1::bigint AND deleted_at IS NULL FOR UPDATE",
+    "SELECT id, updated_at::text AS updated_at FROM tasks WHERE id = $1::bigint AND deleted_at IS NULL FOR UPDATE",
     [taskId],
   );
   if (task.rowCount === 0) throw notFound("task not found");
+  const taskUpdatedAt = (task.rows[0] as { updated_at: string }).updated_at;
+  if (typeof expectedUpdatedAt === "string" && expectedUpdatedAt !== ""
+      && taskUpdatedAt !== expectedUpdatedAt) {
+    throw new TaskMutationFailure("conflict", "conflict", {
+      current_updated_at: taskUpdatedAt,
+    });
+  }
   const f = await q.query(
     `SELECT name, field_type, project_id, config, access_level, editor_ids FROM custom_fields
      WHERE id = $1::bigint AND deleted_at IS NULL FOR SHARE`,
@@ -35,6 +53,7 @@ export async function writeTaskCustomValue(
   if (f.rowCount === 0 || Number(f.rows[0].project_id) !== projectId) {
     throw notFound("field not found");
   }
+  const fieldName = String(f.rows[0].name);
   if (!(await canEditFieldValue(actor.uid, projectId, f.rows[0], q))) {
     throw forbidden("field access denied");
   }
@@ -62,11 +81,129 @@ export async function writeTaskCustomValue(
       [taskId, fieldId, text, num, date, json === null ? null : JSON.stringify(json)],
     );
   }
+  const updated = await q.query(
+    "UPDATE tasks SET updated_at = now() WHERE id = $1::bigint RETURNING updated_at::text AS updated_at",
+    [taskId],
+  );
+  // A custom-field write is a task change, so it belongs in both the task
+  // history and the workspace audit trail. Passing q keeps both rows in the
+  // same transaction as the value and the stamp; the helpers add the ambient
+  // web/MCP attribution (via, token, client name).
+  await logEvent(
+    taskId,
+    actor.uid,
+    "custom_field_changed",
+    cleared
+      ? `カスタムフィールド「${fieldName}」をクリアしました`
+      : `カスタムフィールド「${fieldName}」を変更しました`,
+    q,
+  );
+  await audit(actor.uid, "task.custom_field_update", {
+    entity: "task",
+    entityId: taskId,
+    ...(projectId === null ? await auditScope(projectId, q) : { projectId }),
+    summary: fieldName,
+  }, q);
   await emitTaskEvent({
     projectId, taskId, actorId: actor.uid, type: "task.custom_field_changed",
-    data: { field_id: fieldId, field_name: f.rows[0].name, value: cleared ? null : value, ...(cleared ? { cleared: true } : {}) },
+    data: { field_id: fieldId, field_name: fieldName, value: cleared ? null : value, ...(cleared ? { cleared: true } : {}) },
   }, q);
-  return { cleared };
+  return {
+    cleared,
+    updated_at: (updated.rows[0] as { updated_at: string }).updated_at,
+  };
+}
+
+export type TaskCustomFieldConflictState = {
+  updated_at: string | null;
+  current: Record<string, unknown> | null;
+  custom_field?: {
+    field_id: number;
+    name: string;
+    field_type: string;
+    config: ReturnType<typeof normalizeCustomFieldConfig>;
+    value: {
+      value_text: string | null;
+      value_number: number | null;
+      value_date: string | null;
+      value_json: unknown;
+    };
+  };
+};
+
+/**
+ * Task fields and stamp plus the conflicting field's metadata and value for a
+ * custom-field 409. Everything is read in one statement because separate reads
+ * can pair an old value with a newer updated_at: the editor would then see the
+ * old value, and "overwrite with the latest" would send the newer stamp and
+ * hide the write that happened between the two reads. The field is scoped to
+ * the project that authorized the task edit so another project's field cannot
+ * be disclosed. A missing field (deleted, other project, invalid id) leaves
+ * custom_field out while still returning the task snapshot.
+ */
+export async function taskCustomFieldConflictState(
+  taskId: number,
+  projectId: number | null,
+  fieldId: unknown,
+): Promise<TaskCustomFieldConflictState> {
+  const id = Number(fieldId);
+  const scopedFieldId = Number.isInteger(id) && id > 0 && projectId !== null ? id : null;
+  const result = await db.query(
+    `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
+       t.start_on::text AS start_on, t.due_on::text AS due_on,
+       t.progress, t.status, t.description, t.section_id, t.is_milestone,
+       t.updated_at::text AS updated_at,
+       f.id AS field_id, f.name AS field_name, f.field_type, f.config,
+       v.value_text, v.value_number, v.value_date::text AS value_date, v.value_json
+     FROM tasks t
+     LEFT JOIN users u ON u.id = t.assignee_id
+     LEFT JOIN custom_fields f
+       ON f.id = $2::bigint AND f.project_id = $3::bigint
+      AND f.deleted_at IS NULL
+     LEFT JOIN task_custom_values v
+       ON v.field_id = f.id AND v.task_id = t.id
+     WHERE t.id = $1::bigint`,
+    [taskId, scopedFieldId, projectId],
+  );
+  const row = result.rows[0];
+  if (!row) return { updated_at: null, current: null };
+  const current = {
+    name: row.name,
+    completed: row.completed,
+    assignee_id: row.assignee_id,
+    assignee_name: row.assignee_name,
+    start_on: row.start_on,
+    due_on: row.due_on,
+    progress: row.progress,
+    status: row.status,
+    description: row.description,
+    section_id: row.section_id,
+    is_milestone: row.is_milestone,
+    updated_at: row.updated_at,
+  };
+  const updatedAt = typeof row.updated_at === "string" ? row.updated_at : null;
+  if (row.field_id === null || row.field_id === undefined) {
+    return { updated_at: updatedAt, current };
+  }
+  const valueNumber = row.value_number === null || row.value_number === undefined
+    ? null
+    : Number(row.value_number);
+  return {
+    updated_at: updatedAt,
+    current,
+    custom_field: {
+      field_id: Number(row.field_id),
+      name: String(row.field_name),
+      field_type: String(row.field_type),
+      config: normalizeCustomFieldConfig(row.config),
+      value: {
+        value_text: typeof row.value_text === "string" ? row.value_text : null,
+        value_number: valueNumber !== null && Number.isFinite(valueNumber) ? valueNumber : null,
+        value_date: typeof row.value_date === "string" ? row.value_date : null,
+        value_json: row.value_json ?? null,
+      },
+    },
+  };
 }
 
 /**
@@ -75,8 +212,13 @@ export async function writeTaskCustomValue(
  */
 export async function setTaskCustomValue(
   actor: Actor,
-  input: { task_id: unknown; field_id?: unknown; value?: unknown },
-): Promise<{ cleared: boolean }> {
+  input: {
+    task_id: unknown;
+    field_id?: unknown;
+    value?: unknown;
+    expected_updated_at?: unknown;
+  },
+): Promise<{ cleared: boolean; updated_at: string }> {
   const taskId = Number(input.task_id);
   if (!Number.isInteger(taskId) || taskId <= 0) throw badRequest("invalid task_id");
   const auth = await requireTaskAccess(actor, taskId, "edit");
@@ -88,6 +230,9 @@ export async function setTaskCustomValue(
     projectId: auth.projectId,
     fieldId: field_id,
     value,
+    expectedUpdatedAt: typeof input.expected_updated_at === "string"
+      ? input.expected_updated_at
+      : undefined,
   }));
   await Promise.all([notifyTask(taskId), notifyField(field_id as number)]);
   return result;

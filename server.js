@@ -212,6 +212,7 @@ app.prepare().then(async () => {
   const trashDays = Number(process.env.RETENTION_DAYS_TRASH || 30);
   const scimLogDays = Number(process.env.RETENTION_DAYS_SCIM_LOGS || 30);
   const mcpLogDays = Number(process.env.RETENTION_DAYS_MCP_LOGS || 30);
+  const mcpIdempotencyHours = 24;
   const janitor = async () => {
     try {
       const pool = dbPool;
@@ -264,6 +265,11 @@ app.prepare().then(async () => {
         [mcpLogDays],
       );
       if (Number(ml.rows[0].n) > 0) console.log(`janitor: purged mcp_request_log=${ml.rows[0].n}`);
+      const mi = await pool.query(
+        "WITH del AS (DELETE FROM mcp_idempotency WHERE created_at < NOW() - make_interval(hours => $1) RETURNING 1) SELECT COUNT(*) AS n FROM del",
+        [mcpIdempotencyHours],
+      );
+      if (Number(mi.rows[0].n) > 0) console.log(`janitor: purged mcp_idempotency=${mi.rows[0].n}`);
       if (Number(a.rows[0].n) + Number(e.rows[0].n) + Number(de.rows[0].n) + Number(rr.rows[0].n) > 0) {
         console.log(
           `janitor: purged audit=${a.rows[0].n} events=${e.rows[0].n} domain_events=${de.rows[0].n} rule_runs=${rr.rows[0].n}`,

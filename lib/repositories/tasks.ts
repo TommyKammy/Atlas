@@ -1,6 +1,7 @@
 import { db, type Queryable } from "../db";
 import type { Attachment, TaskRow } from "../data";
 import type { TimelineTaskPayload } from "../timeline-task-payload";
+import { taskEventAttribution } from "../request-context";
 import {
   customValueToIdArray,
   formatCustomValue,
@@ -138,12 +139,15 @@ export type TaskEventRow = {
   id: number;
   summary: string;
   actor_name: string | null;
+  via: string;
+  client_name: string | null;
   created_at: string;
 };
 
 export async function getTaskEvents(taskId: number): Promise<TaskEventRow[]> {
   const r = await db.query(
-    `SELECT e.id, e.summary, u.name AS actor_name, e.created_at::text
+    `SELECT e.id, e.summary, u.name AS actor_name, e.via, e.client_name,
+       e.created_at::text
      FROM task_events e LEFT JOIN users u ON u.id = e.actor_id
      WHERE e.task_id = $1 ORDER BY e.created_at DESC LIMIT 50`,
     [taskId],
@@ -195,13 +199,46 @@ export async function getTaskProjects(taskId: number) {
   return r.rows as { id: number; name: string; section_name: string | null }[];
 }
 
+export async function insertTaskEvent(
+  q: Queryable,
+  { taskId, actorId, kind, summary }: {
+    taskId: number;
+    actorId: number;
+    kind: string;
+    summary: string;
+  },
+): Promise<number> {
+  const { via, clientName } = taskEventAttribution();
+  const result = await q.query(
+    `INSERT INTO task_events (task_id, actor_id, kind, summary, via, client_name)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [taskId, actorId, kind, summary, via, clientName],
+  );
+  return Number(result.rows[0]?.id);
+}
+
+/** One history row per task, used by bulk paths that must not loop inserts. */
+export async function insertTaskEvents(
+  q: Queryable,
+  { taskIds, actorId, kind, summary }: {
+    taskIds: number[];
+    actorId: number;
+    kind: string;
+    summary: string;
+  },
+): Promise<void> {
+  const { via, clientName } = taskEventAttribution();
+  await q.query(
+    `INSERT INTO task_events (task_id, actor_id, kind, summary, via, client_name)
+     SELECT id, $2::bigint, $3, $4, $5, $6 FROM tasks WHERE id = ANY($1::bigint[])`,
+    [taskIds, actorId, kind, summary, via, clientName],
+  );
+}
+
 export async function logEvent(
   taskId: number, actorId: number, kind: string, summary: string, q: Queryable = db,
 ) {
-  await q.query(
-    "INSERT INTO task_events (task_id, actor_id, kind, summary) VALUES ($1, $2, $3, $4)",
-    [taskId, actorId, kind, summary],
-  );
+  await insertTaskEvent(q, { taskId, actorId, kind, summary });
 }
 
 export async function getTaskCustomValues(

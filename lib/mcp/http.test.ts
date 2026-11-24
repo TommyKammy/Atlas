@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { z } from "zod";
 import { GET as readonlyGet } from "@/app/mcp/readonly/route";
 import { GET as defaultGet } from "@/app/mcp/route";
+import { getRequestContext, type RequestContext } from "@/lib/request-context";
 import type { McpAuthResult, McpAuthSuccess, McpEndpoint } from "./auth";
 import {
   handleMcpPost,
@@ -16,6 +18,7 @@ import {
   buildMcpServer,
   createReadTools,
   type McpQueryServices,
+  type McpToolDefinition,
 } from "./server";
 
 process.env.APP_URL = "https://atlas.test";
@@ -148,6 +151,37 @@ test("2026-07-28 client lists tools and calls whoami through POST /mcp", async (
   } finally {
     await client.close();
   }
+});
+
+test("tool handlers receive the request body's client name in the MCP context", async () => {
+  let seen: RequestContext | undefined;
+  const probe: McpToolDefinition = {
+    name: "context_probe",
+    title: "Context probe",
+    description: "Test-only tool that records the ambient request context.",
+    requiredScope: "read",
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    inputSchema: z.object({}),
+    handler: async () => {
+      seen = getRequestContext();
+      return { content: [{ type: "text", text: "ok" }] };
+    },
+  };
+  const client = await connectClient({
+    endpoint: "default",
+    pin: "2026-07-28",
+    deps: {
+      ...authenticatedDependencies([]),
+      buildServer: (ctx) => buildMcpServer(ctx, [probe]),
+    },
+  });
+  try {
+    const result = await client.callTool({ name: "context_probe", arguments: {} });
+    assert.equal(result.isError, undefined);
+  } finally {
+    await client.close();
+  }
+  assert.deepEqual(seen, { via: "mcp", tokenId: 7, clientName: "atlas-test-client" });
 });
 
 test("a default 2025-era client still lists tools and calls whoami", async () => {

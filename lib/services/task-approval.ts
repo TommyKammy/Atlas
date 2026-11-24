@@ -7,6 +7,7 @@ import { lockAutomationProjectAccess } from "../project-automation-lock";
 import { audit } from "../audit";
 import { notifyProject } from "../notify";
 import { emitTaskEvent } from "../domain/events";
+import { insertTaskEvent } from "../repositories/tasks";
 import { runAutomations } from "../automation-runner";
 import { recordTaskCompletion, TASK_COMPLETION_COLUMNS, type TaskCompletionRow } from "./task-completion";
 import {
@@ -247,11 +248,12 @@ export async function updateTaskApproval(taskId: number, uid: number, body: unkn
         projectId: current.project_id, actorId: uid, data: { approval: true, approval_version: version } });
     }
     const summary = `${TASK_APPROVAL_ACTION_LABELS[input.action]}（承認者: ${approverName}）`;
-    const event = await q.query(
-      "INSERT INTO task_events(task_id,actor_id,kind,summary) VALUES($1,$2,$3,$4) RETURNING id",
-      [taskId, uid, `approval_${input.action}`, summary],
-    );
-    const eventId = Number(event.rows[0].id);
+    const eventId = await insertTaskEvent(q, {
+      taskId,
+      actorId: uid,
+      kind: `approval_${input.action}`,
+      summary,
+    });
     await q.query(
       `INSERT INTO task_approval_history(task_id,action,round,version,actor_id,actor_name,
          approver_id,approver_name,comment,event_id)

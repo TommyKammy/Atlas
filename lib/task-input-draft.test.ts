@@ -50,6 +50,21 @@ test("a refreshed saved value acknowledges the draft and advances its baseline",
   assert.equal(result.baseUpdatedAt, latest.updatedAt);
 });
 
+test("custom-field drafts follow remote values only while unedited", () => {
+  const initial = { taskId: 42, value: "10", updatedAt: "stamp1" };
+  const refreshed = { ...initial, value: "12", updatedAt: "stamp2" };
+  const untouched = reconcileTaskInputDraft(createTaskInputDraft(initial), refreshed);
+  assert.equal(untouched.value, "12");
+  assert.equal(untouched.baseValue, "12");
+  assert.equal(untouched.baseUpdatedAt, "stamp2");
+
+  const dirty = { ...createTaskInputDraft(initial), value: "11" };
+  const kept = reconcileTaskInputDraft(dirty, refreshed);
+  assert.equal(kept.value, "11");
+  assert.equal(kept.baseValue, "10");
+  assert.equal(kept.baseUpdatedAt, "stamp1");
+});
+
 test("a repeated discard and changing tasks reset previous dirty drafts", () => {
   const recovering = { ...latest, recovery: { revision: 1, value: "Latest", updatedAt: latest.updatedAt } };
   const draft = { ...createTaskInputDraft(recovering), value: "Another stale attempt" };

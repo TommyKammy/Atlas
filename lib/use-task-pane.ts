@@ -4,13 +4,14 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { confirmAction, toast as toastMessage } from "./ui-feedback";
 import { ApiError, api } from "./api-client";
-import { patchTask, TaskConflictError } from "./task-client";
+import { patchTask, saveTaskCustomValue, TaskConflictError } from "./task-client";
 import { rememberTaskDeletion, undoLastTaskDeletion } from "./task-undo";
 import { copyTaskLink as copyTaskLinkAction, deleteTask } from "./task-actions";
 import type { TaskRow, User } from "./data";
 import type { RichTextDoc } from "./rich-text-types";
 import { todayISO } from "./dates";
 import { canEditCustomField, type CustomField } from "./custom-fields";
+import { parseCustomFieldConflict, type CustomFieldConflict } from "./task-conflict";
 import { useApiRefresh } from "./use-api-refresh";
 import { taskPaneCloseHref } from "./task-pane-navigation";
 import type { TaskInputRecovery } from "./task-input-draft";
@@ -57,9 +58,18 @@ export function useTaskPane({
     current: Record<string, string | number | boolean | null>;
     attempted: Record<string, unknown>;
     stamp: string;
+    /** The custom-field write that conflicted, including its server value. */
+    customField?: CustomFieldConflict;
+    /** Custom-field conflicts retry the value write instead of a field patch. */
+    retry?: () => Promise<boolean>;
   } | null>(null);
   const [inputRecovery, setInputRecovery] = useState<TaskInputRecovery | null>(null);
   const [saveStates, setSaveStates] = useState<Record<string, TaskSaveState>>({});
+  const [customValueStamp, setCustomValueStamp] = useState<{
+    taskId: number;
+    previous: string;
+    updatedAt: string;
+  } | null>(null);
   const [reloadRevision, setReloadRevision] = useState(0);
   const [reloading, startReload] = useTransition();
   const requestId = useRef(0);
@@ -82,6 +92,14 @@ export function useTaskPane({
   const memberSectionsRequest = useRef<AbortController | null>(null);
 
   useEffect(() => () => memberSectionsRequest.current?.abort(), [task.id]);
+
+  // A custom-field write advances tasks.updated_at. Keep that stamp locally
+  // until the refreshed task props catch up, so an immediately following edit
+  // does not compare against the stale stamp from before the write.
+  const updatedAt = customValueStamp?.taskId === task.id
+    && customValueStamp.previous === task.updated_at
+    ? customValueStamp.updatedAt
+    : task.updated_at;
 
   const canEditField = (field: CustomField) =>
     !reloading && canEditCustomField(field, { viewerId, canEdit, canAdmin });
@@ -122,7 +140,7 @@ export function useTaskPane({
     setReactionMap((map) => ({ ...map, [commentId]: data.reactions }));
   };
 
-  const savePatch = async (fields: Record<string, unknown>, expectedUpdatedAt = task.updated_at): Promise<boolean> => {
+  const savePatch = async (fields: Record<string, unknown>, expectedUpdatedAt = updatedAt): Promise<boolean> => {
     const key = Object.keys(fields).sort().join(",");
     const id = ++requestId.current;
     const generation = saveGeneration.current;
@@ -169,7 +187,7 @@ export function useTaskPane({
     return true;
   };
 
-  const patch = async (fields: Record<string, unknown>, expectedUpdatedAt = task.updated_at) => {
+  const patch = async (fields: Record<string, unknown>, expectedUpdatedAt = updatedAt) => {
     await savePatch(fields, expectedUpdatedAt);
   };
 
@@ -187,7 +205,7 @@ export function useTaskPane({
     closeAddProject();
     setReloadRevision((revision) => revision + 1);
     setInputRecovery((previous) => ({ taskId: task.id, revision: (previous?.revision ?? 0) + 1,
-      updatedAt: task.updated_at, values: { name: task.name, progress: task.progress } }));
+      updatedAt, values: { name: task.name, progress: task.progress } }));
     setSaveStates({});
     setConflict(null);
     startReload(() => router.refresh());
@@ -196,6 +214,9 @@ export function useTaskPane({
   const discardConflict = () => {
     if (!conflict) return;
     latestRequest.current[Object.keys(conflict.attempted).sort().join(",")] = ++requestId.current;
+    // Remount uncontrolled editors (custom fields, dates, description) so
+    // their local DOM values cannot outlive the discarded draft.
+    setReloadRevision((revision) => revision + 1);
     // The conflict snapshot is usable before the refreshed RSC response arrives.
     // Reset both the visible draft and its lock stamp, not just the warning.
     setInputRecovery((previous) => ({
@@ -211,6 +232,10 @@ export function useTaskPane({
 
   const retryOverwrite = async () => {
     if (!conflict) return;
+    if (conflict.retry) {
+      if (await conflict.retry()) setConflict((current) => current === conflict ? null : current);
+      return;
+    }
     if (await savePatch(conflict.attempted, conflict.stamp)) setConflict((current) => current === conflict ? null : current);
   };
 
@@ -369,11 +394,70 @@ export function useTaskPane({
     await mutate(`membership:${projectIdValue}`, "所属プロジェクトの削除", () => api(`/api/memberships?task_id=${task.id}&project_id=${projectIdValue}`, "DELETE"));
   };
 
+  const saveCustomValue = async (
+    fieldId: number,
+    value: string | number | string[] | number[] | null,
+    expectedStamp = updatedAt,
+  ): Promise<boolean> => {
+    const key = `custom:${fieldId}`;
+    const id = ++requestId.current;
+    const generation = saveGeneration.current;
+    latestRequest.current[key] = id;
+    const current = () => alive.current && generation === saveGeneration.current && latestRequest.current[key] === id;
+    const saveState = (state: Partial<TaskSaveState>) => {
+      if (current()) setSaveStates((previous) => updateTaskSaveState(previous, { id, key, label: "カスタムフィールド", phase: "saving", ...state }));
+    };
+    if (!canEdit) {
+      saveState({ phase: "failed", message: taskSaveErrorMessage(403) });
+      return false;
+    }
+    saveState({ phase: "saving" });
+    try {
+      const result = await saveTaskCustomValue(task.id, fieldId, value, expectedStamp);
+      if (!current()) return false;
+      saveState({ phase: "saved" });
+      if (typeof result.updated_at === "string") {
+        setCustomValueStamp({
+          taskId: task.id,
+          previous: task.updated_at,
+          updatedAt: result.updated_at,
+        });
+      }
+      refresh();
+      return true;
+    } catch (error) {
+      if (!current()) return false;
+      if (error instanceof TaskConflictError) {
+        saveState({ phase: "conflict" });
+        if (error.current && error.updatedAt) {
+          const customField = parseCustomFieldConflict(error.customField, value);
+          setConflict({
+            current: error.current as Record<string, string | number | boolean | null>,
+            attempted: { [`cf-${fieldId}`]: value },
+            stamp: error.updatedAt,
+            ...(customField ? { customField } : {}),
+            retry: () => saveCustomValue(fieldId, value, error.updatedAt as string),
+          });
+        } else {
+          toastMessage("他のユーザーが先に更新しました。最新を表示します。");
+          refresh();
+        }
+        return false;
+      }
+      const status = error instanceof ApiError ? error.status : null;
+      saveState({ phase: "failed", message: taskSaveErrorMessage(status),
+        ...(status !== 401 && status !== 403 && status !== 404 ? { retry: async () => { await saveCustomValue(fieldId, value, expectedStamp); } } : {}),
+      });
+      return false;
+    }
+  };
+
   const setCustomValue = async (
     fieldId: number,
     value: string | number | string[] | number[] | null,
+    expectedUpdatedAt?: string,
   ) => {
-    await mutate(`custom:${fieldId}`, "カスタムフィールド", () => api("/api/task-values", "POST", { task_id: task.id, field_id: fieldId, value }));
+    await saveCustomValue(fieldId, value, expectedUpdatedAt);
   };
 
   const uploadFile = async (file: File) => {
@@ -449,6 +533,7 @@ export function useTaskPane({
     newMemberSection,
     setNewMemberSection,
     toggleReaction,
+    updatedAt,
     patch,
     patchChecked,
     saveStates,

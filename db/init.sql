@@ -355,6 +355,8 @@ CREATE TABLE IF NOT EXISTS task_events (
   actor_id   BIGINT REFERENCES users(id) ON DELETE SET NULL,
   kind       TEXT NOT NULL,
   summary    TEXT NOT NULL,
+  via        TEXT NOT NULL DEFAULT 'web' CHECK (via IN ('web', 'mcp', 'automation')),
+  client_name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_events_task ON task_events(task_id);
@@ -418,6 +420,10 @@ CREATE TABLE IF NOT EXISTS audit_log (
   entity_id    BIGINT,
   project_id   BIGINT REFERENCES projects(id) ON DELETE SET NULL,
   summary      TEXT NOT NULL DEFAULT '',
+  via          TEXT NOT NULL DEFAULT 'web' CHECK (via IN ('web', 'mcp', 'automation')),
+  -- mcp_token_id is added after mcp_tokens is created (the table is declared
+  -- below, and PostgreSQL requires the referenced table to exist already).
+  client_name  TEXT,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_audit_workspace ON audit_log(workspace_id, id DESC);
@@ -741,6 +747,34 @@ CREATE INDEX IF NOT EXISTS idx_mcp_request_log_token
   ON mcp_request_log(token_id) WHERE token_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_mcp_request_log_user
   ON mcp_request_log(user_id) WHERE user_id IS NOT NULL;
+
+-- audit_log is declared before mcp_tokens, so its token reference is added here.
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS mcp_token_id BIGINT
+  REFERENCES mcp_tokens(id) ON DELETE SET NULL;
+
+-- One row per successful idempotent tool call. A row with response IS NULL is
+-- an in-flight reservation. Failed calls delete the row so a retry can run.
+-- The janitor removes rows after 24 hours. owner_token changes on every insert
+-- and takeover; result writes and deletes match it so a stale execution cannot
+-- overwrite or remove the new owner's reservation.
+CREATE TABLE IF NOT EXISTS mcp_idempotency (
+  id            BIGSERIAL PRIMARY KEY,
+  token_id      BIGINT NOT NULL REFERENCES mcp_tokens(id) ON DELETE CASCADE,
+  tool_name     TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
+  request_hash  TEXT NOT NULL,
+  response      JSONB,
+  owner_token   TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT mcp_idempotency_key_length
+    CHECK (char_length(idempotency_key) BETWEEN 1 AND 200),
+  CONSTRAINT mcp_idempotency_request_hash_format
+    CHECK (request_hash ~ '^[0-9a-f]{64}$')
+);
+CREATE UNIQUE INDEX IF NOT EXISTS mcp_idempotency_key_uidx
+  ON mcp_idempotency(token_id, tool_name, idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_mcp_idempotency_created
+  ON mcp_idempotency(created_at);
 
 CREATE TABLE IF NOT EXISTS saml_cache (
   workspace_id BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,

@@ -66,6 +66,9 @@ export default async function AuditPage() {
               {rows.map((r) => {
                 const target = [r.project_name, r.summary].filter(Boolean).join(" / ") || `${r.entity}#${r.entity_id ?? "–"}`;
                 const actor = auditActorLabel(r.actor_name, r.action);
+                const via = r.via === "mcp"
+                  ? `MCP経由${r.client_name ? `（${r.client_name}）` : ""}`
+                  : null;
                 return (
                   <tr key={r.id} data-audit-row={r.id} className="border-b border-line-subtle hover:bg-hover">
                     <td className="px-2 py-2 align-top">
@@ -81,6 +84,15 @@ export default async function AuditPage() {
                       <span className="block truncate text-[13px] text-secondary" title={actor}>
                         {actor}
                       </span>
+                      {via && (
+                        <span
+                          data-audit-via={r.id}
+                          className="mt-0.5 block truncate text-[10px] text-muted"
+                          title={via}
+                        >
+                          {via}
+                        </span>
+                      )}
                     </td>
                     <td className="px-2 py-2 align-top">
                       <span

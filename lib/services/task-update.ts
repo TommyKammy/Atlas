@@ -33,6 +33,27 @@ type TaskBeforePatch = {
   deleted_at: string | null;
 };
 
+/** Current task fields and stamp for a compare-and-set conflict response. */
+export async function taskConflictSnapshot(taskId: number): Promise<{
+  updated_at: string | null;
+  current: Record<string, unknown> | null;
+}> {
+  const snap = await db.query(
+    `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
+       t.start_on::text AS start_on, t.due_on::text AS due_on,
+       t.progress, t.status, t.description, t.section_id, t.is_milestone,
+       t.updated_at::text AS updated_at
+     FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
+     WHERE t.id = $1::bigint`,
+    [taskId],
+  );
+  const current = snap.rows[0] ?? null;
+  return {
+    updated_at: typeof current?.updated_at === "string" ? current.updated_at : null,
+    current,
+  };
+}
+
 const PATCHABLE = new Set([
   "name",
   "description",
@@ -54,7 +75,7 @@ const PATCHABLE = new Set([
 export async function updateTask(
   input: Record<string, unknown>,
   { taskId, uid, projectId: currentProjectId, authorizeProject }: TaskUpdateContext,
-): Promise<{ id: number }> {
+): Promise<{ id: number; updated_at: string }> {
   const body = { ...input };
   const placement = "placement" in body ? parseTaskPlacement(body.placement, taskId) : null;
   if (placement) {
@@ -214,17 +235,9 @@ export async function updateTask(
     if (cur.rows[0].project_id !== primaryProjectId) {
       throw new TaskMutationFailure("conflict", "task primary project changed");
     }
-    const snap = await db.query(
-      `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
-         t.start_on::text AS start_on, t.due_on::text AS due_on,
-         t.progress, t.status, t.description, t.section_id, t.is_milestone,
-         t.updated_at::text AS updated_at
-       FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id
-       WHERE t.id = $1::bigint`,
-      [taskId],
-    );
+    const snapshot = await taskConflictSnapshot(taskId);
     throw new TaskMutationFailure("conflict", "conflict", {
-      updated_at: cur.rows[0].u, current: snap.rows[0] ?? null,
+      updated_at: cur.rows[0].u, current: snapshot.current,
     });
   };
   if (typeof expected === "string" && expected !== "") {
@@ -269,9 +282,9 @@ export async function updateTask(
       throw new TaskMutationFailure("conflict", "task is no longer in this view");
     }
     await assertOrdinaryTaskMutation(q, [taskId], body);
-    const updated = await q.query<TaskCompletionRow>(
+    const updated = await q.query<TaskCompletionRow & { updated_at: string }>(
       `UPDATE tasks SET ${[...sets, "updated_at = now()"].join(", ")}
-       WHERE ${where} RETURNING ${TASK_COMPLETION_COLUMNS}`,
+       WHERE ${where} RETURNING ${TASK_COMPLETION_COLUMNS}, updated_at::text AS updated_at`,
       values,
     );
     const task = updated.rows[0];
@@ -384,7 +397,7 @@ export async function updateTask(
         data: { previous_project_id: primaryProjectId, project_id: targetProjectId },
       }, q);
     }
-    return { previousTask };
+    return { previousTask, updatedAt: task.updated_at };
   });
   if (result === null) return rejectConflict();
   const log = (kind: string, summary: string) =>
@@ -441,7 +454,14 @@ export async function updateTask(
     ...(primaryProjectId === null && !movesPrimary ? await auditScope(targetProjectId) : {}),
     summary: Object.keys(b).join(","),
   });
-  return { id: taskId };
+  // Return the stamp produced by this UPDATE, not a later re-read. Synchronous
+  // automations (set_status / set_assignee) may advance tasks.updated_at after
+  // it commits; reporting that newer value would let a caller pass a stamp it
+  // never observed and silently overwrite a concurrent client's write.
+  return {
+    id: taskId,
+    updated_at: result.updatedAt,
+  };
 }
 
 export async function deleteTask(

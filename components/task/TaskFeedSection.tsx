@@ -9,7 +9,14 @@ import { toast } from "@/lib/ui-feedback";
 import RichTextEditor from "../rich-text/RichTextEditor";
 import RichTextView from "../rich-text/RichTextView";
 
-type FeedEvent = { id: number; summary: string; actor_name: string | null; created_at: string };
+type FeedEvent = {
+  id: number;
+  summary: string;
+  actor_name: string | null;
+  via: string;
+  client_name: string | null;
+  created_at: string;
+};
 type Reaction = { emoji: string; n: number; mine: boolean };
 
 type FeedItem =
@@ -261,6 +268,11 @@ export default function TaskFeedSection({
       <div className="min-w-0 flex-1 text-[12px] leading-5">
         <span className="font-medium text-secondary">{event.actor_name ?? "システム"}</span>{" "}
         <span className="text-muted">{event.summary}</span>
+        {event.via === "mcp" && (
+          <span data-task-event-via={event.id} className="ml-1.5 text-[10px] text-muted">
+            MCP経由{event.client_name ? `（${event.client_name}）` : ""}
+          </span>
+        )}
         <span className="ml-1.5 text-[10px] text-muted">{formatWhen(event.created_at)}</span>
       </div>
     </div>

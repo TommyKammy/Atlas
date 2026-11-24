@@ -8,10 +8,10 @@ const subscribe = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
 
-/** Title/progress drafts survive refreshes and reset only on explicit recovery. */
+/** Text/number/date drafts survive refreshes and reset only on explicit recovery. */
 export default function TaskDraftInput({ taskId, field, value, updatedAt, recovery, onSave, label, className, placeholder, type = "text", min, max, enterBlurs = false, normalize = (value) => value, readOnly = false }: {
   taskId: number;
-  field: "name" | "progress";
+  field: string;
   value: string | number;
   updatedAt: string;
   recovery: TaskInputRecovery | null;
@@ -19,7 +19,7 @@ export default function TaskDraftInput({ taskId, field, value, updatedAt, recove
   label: string;
   className: string;
   placeholder?: string;
-  type?: "text" | "number";
+  type?: "text" | "number" | "date";
   min?: number;
   max?: number;
   enterBlurs?: boolean;
