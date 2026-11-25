@@ -41,6 +41,13 @@ test("date suggestions use a stable Japanese extraction day and explicit week se
   for (const input of ["なるべく早く", "月末", "来週", "月曜日か火曜日", "2026年2月30日", "2/30", "2026-02-29", "", null]) assert.equal(suggestActionDate(input, at).date, "", String(input));
   assert.equal(suggestActionDate("明日", "invalid").date, "");
 });
+test("a yearless leap day has a reason only when a date can be suggested", () => {
+  // Across midnight in Japan the candidate changes from today to next year.
+  const leapDay = suggestActionDate("2月29日", "2024-02-29T14:59:59Z");
+  assert.equal(leapDay.date, "2024-02-29");
+  assert.match(leapDay.reason, /次に来る日付/);
+  assert.deepEqual(suggestActionDate("2月29日", "2024-02-29T15:00:00Z"), { date: "", reason: "" });
+});
 test("section suggestions use existing sections only, retain model reasoning, and degrade safely for old batches", () => {
   const sections = [{ id: 1, name: "未着手" }, { id: 2, name: "広報" }];
   const action = { title: "公開告知をまとめる", assignee: "佐藤さん", due: "月曜日", evidence: "佐藤さんが月曜日までに公開告知をまとめる。", source_id: "N1", section_id: 2, section_reason: "告知文を準備する仕事のため" };
