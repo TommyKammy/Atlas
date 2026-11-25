@@ -2,7 +2,7 @@ import { getTaskProjectContext, getTaskProjectId } from "@/lib/api-project-auth"
 import { audit, auditScope } from "@/lib/audit";
 import { runAutomations } from "@/lib/automation-runner";
 import { logEvent } from "@/lib/data";
-import { db, withTransaction } from "@/lib/db";
+import { db, withTransaction, type Queryable } from "@/lib/db";
 import { emitTaskEvent } from "@/lib/domain/events";
 import { normalizeMentionLabels } from "@/lib/mentions";
 import { notifyProject, notifyTask } from "@/lib/notify";
@@ -34,11 +34,11 @@ type TaskBeforePatch = {
 };
 
 /** Current task fields and stamp for a compare-and-set conflict response. */
-export async function taskConflictSnapshot(taskId: number): Promise<{
+export async function taskConflictSnapshot(taskId: number, q: Queryable = db): Promise<{
   updated_at: string | null;
   current: Record<string, unknown> | null;
 }> {
-  const snap = await db.query(
+  const snap = await q.query(
     `SELECT t.name, t.completed, t.assignee_id, u.name AS assignee_name,
        t.start_on::text AS start_on, t.due_on::text AS due_on,
        t.progress, t.status, t.description, t.section_id, t.is_milestone,

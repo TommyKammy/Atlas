@@ -16,7 +16,7 @@ import { formatTaskKey } from "../dev-project-keys";
 import { emitTaskEvent } from "../domain/events";
 import { notifyTask } from "../notify";
 import { insertTaskEvent } from "../repositories/tasks";
-import { requireTaskAccess, type Actor } from "./actor";
+import { requireProjectAccess, requireTaskAccess, type Actor } from "./actor";
 import { recordTaskCompletion, TASK_COMPLETION_COLUMNS, type TaskCompletionRow } from "./task-completion";
 import { TaskMutationFailure } from "./task-mutation-failure";
 import { taskConflictSnapshot } from "./task-update";
@@ -82,10 +82,15 @@ type LockedStart = {
   startStatus: string | null;
 };
 
+/** Thrown inside the transaction to roll it back when the task moved. */
+class TaskMovedDuringStart extends Error {}
+
 /**
  * Steps 1–4 of the lock procedure: read the primary project unlocked, lock its
  * dev_projects row, lock the task, and confirm the project did not change in
- * between. Returns null when the task moved, so the caller can retry once.
+ * between. Returns null when the task moved: the caller must then roll back
+ * before retrying, because locking the new project's settings while holding
+ * the task would reverse the lock order.
  */
 async function lockForStart(q: Queryable, taskId: number): Promise<LockedStart | null> {
   const unlocked = await q.query(
@@ -130,11 +135,30 @@ export async function startTask(
   // project must grant edit access; a secondary home is not enough.
   await requireTaskAccess(actor, taskId, "edit", { scope: "primary" });
 
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await startOnce(actor, taskId, options);
+    } catch (error) {
+      if (!(error instanceof TaskMovedDuringStart)) throw error;
+      // The rollback released the task lock; retry once from the start.
+      if (attempt >= 1) throw startConflict("task_moved", "the task moved to another project while starting it");
+    }
+  }
+}
+
+async function startOnce(
+  actor: Actor,
+  taskId: number,
+  options: StartTaskOptions,
+): Promise<StartTaskResult> {
   const outcome = await withTransaction(async (q) => {
-    let locked = await lockForStart(q, taskId);
-    if (locked === null) locked = await lockForStart(q, taskId);
-    if (locked === null) throw startConflict("task_moved", "the task moved to another project while starting it");
+    const locked = await lockForStart(q, taskId);
+    if (locked === null) throw new TaskMovedDuringStart();
     const { projectId, startStatus } = locked;
+    // The access check before the transaction saw the project the task was in
+    // then. Check the project now locked, so a task moved meanwhile into a
+    // project the actor cannot edit is not changed there.
+    await requireProjectAccess(actor, projectId, "edit", q);
 
     const current = (await q.query<TaskCompletionRow & {
       updated_at: string;
@@ -146,7 +170,9 @@ export async function startTask(
     )).rows[0];
     if (options.expectedUpdatedAt !== undefined && options.expectedUpdatedAt !== ""
         && current.updated_at !== options.expectedUpdatedAt) {
-      const snapshot = await taskConflictSnapshot(taskId);
+      // On this transaction's connection: a second pool connection per
+      // waiting start could exhaust the pool.
+      const snapshot = await taskConflictSnapshot(taskId, q);
       throw new TaskMutationFailure("conflict", "conflict", {
         updated_at: current.updated_at, current: snapshot.current,
       });

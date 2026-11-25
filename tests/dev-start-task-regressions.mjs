@@ -397,3 +397,107 @@ test("status renames and subtask creation run concurrently without deadlocks", a
   );
   assert.equal((await taskRow(parent)).status, startStatus);
 });
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** A plain project with the given [actor, role] members. */
+async function plainProject(name, members) {
+  const { rows: [row] } = await db.query(
+    "INSERT INTO projects (workspace_id, name, status_options) VALUES (1, $1, $2::jsonb) RETURNING id",
+    [name, JSON.stringify(OPTIONS)],
+  );
+  for (const [member, role] of members) {
+    await db.query(
+      "INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, $3)",
+      [row.id, member.uid, role],
+    );
+  }
+  return Number(row.id);
+}
+
+test("a task moved into a project the actor cannot edit is not changed there", async () => {
+  const agent = await user("Moved-away agent");
+  const owner = await user("Moved-away owner");
+  const source = await plainProject("Moved-away source", [[agent, "editor"]]);
+  const target = await devProject("Moved-away target", [[owner, "editor"]]);
+  const id = await task(source, "moving", { status: "未着手" });
+  const mover = await db.connect();
+  try {
+    // The start passes its access check on the source, then waits for the
+    // task while another transaction moves it to the target.
+    await mover.query("BEGIN");
+    await mover.query("SELECT 1 FROM tasks WHERE id = $1 FOR UPDATE", [id]);
+    const start = failure(startTask(agent, id));
+    await pause(300);
+    await mover.query("UPDATE tasks SET project_id = $1 WHERE id = $2", [target.projectId, id]);
+    await mover.query("COMMIT");
+    assert.equal((await start).status, 403);
+  } finally {
+    mover.release();
+  }
+  const row = await taskRow(id);
+  assert.equal(row.assignee_id, null);
+  assert.equal(row.status, "未着手");
+});
+
+test("a start retrying after a move releases the task before locking the new settings", async () => {
+  const agent = await user("Retry agent");
+  const source = await plainProject("Retry source", [[agent, "editor"]]);
+  const target = await devProject("Retry target", [[agent, "editor"]]);
+  const id = await task(source, "retried", { status: "未着手" });
+  const mover = await db.connect();
+  const settings = await db.connect();
+  try {
+    await mover.query("BEGIN");
+    await mover.query("SELECT 1 FROM tasks WHERE id = $1 FOR UPDATE", [id]);
+    const start = startTask(agent, id);
+    await pause(300);
+    await mover.query("UPDATE tasks SET project_id = $1 WHERE id = $2", [target.projectId, id]);
+    // A status edit on the target holds its settings, as updateProject does,
+    // and then rewrites the moved task. FOR NO KEY UPDATE conflicts with the
+    // start's FOR SHARE like updateProject's FOR UPDATE, but not with the key
+    // the move's uncommitted task_keys row holds on the same settings row.
+    await settings.query("BEGIN");
+    await settings.query("SELECT 1 FROM dev_projects WHERE project_id = $1 FOR NO KEY UPDATE", [target.projectId]);
+    await mover.query("COMMIT");
+    await pause(300);
+    await settings.query("UPDATE tasks SET status = 'レビュー' WHERE id = $1", [id]);
+    await settings.query("COMMIT");
+    const started = await start;
+    assert.deepEqual(started.changed, { assignee: true, status: false, reopened: false });
+  } finally {
+    mover.release();
+    settings.release();
+  }
+  const row = await taskRow(id);
+  assert.equal(row.assignee_id, agent.uid);
+  assert.equal(row.status, "レビュー");
+});
+
+test("many stale-stamp starts at once do not exhaust the connection pool", async () => {
+  const agent = await user("Pool agent");
+  const dev = await devProject("Pool project", [[agent, "editor"]]);
+  const ids = [];
+  for (let index = 0; index < 16; index++) ids.push(await task(dev.projectId, `pool ${index}`));
+  // Hold every task so each start fills a pool connection with an open
+  // transaction before any of them reaches the conflict.
+  const holder = await db.connect();
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("starts did not finish: pool exhausted")), 10_000);
+  });
+  try {
+    await holder.query("BEGIN");
+    await holder.query("SELECT 1 FROM tasks WHERE id = ANY($1::bigint[]) FOR UPDATE", [ids]);
+    const starts = Promise.all(
+      ids.map((id) => failure(startTask(agent, id, { expectedUpdatedAt: "2000-01-01 00:00:00+00" }))),
+    );
+    await pause(500);
+    await holder.query("COMMIT");
+    const results = await Promise.race([starts, timeout]);
+    assert.ok(results.every((result) => result.reason === "conflict"));
+  } finally {
+    clearTimeout(timer);
+    holder.release();
+  }
+});

@@ -300,6 +300,9 @@ PostgreSQL はこれを検出して片方を中断するが、どちらが中断
 実装メモ（PR 4）:
 
 - `lib/services/task-start.ts` の `startTask` が本体で、MCP の `start_task`（`lib/mcp/start-task.ts`）はキーを閲覧権限で解決してから呼ぶ（PR 3 の書き込み系ツールと同じ）。権限は、`requireTaskAccess(..., "edit", { scope: "primary" })` で主プロジェクトの編集権限を確かめる。他のプロジェクトにも入っているタスクでも、着手は開発プロジェクトの課題としての操作なので、主プロジェクトで決める。
+- ロックの手順 4 で主プロジェクトが変わっていたときは、トランザクションをロールバックしてロックを手放してから、新しいトランザクションでやり直す。同じトランザクションのままやり直すと、タスク行を持ったまま移動先の `dev_projects` をロックすることになり、§4.4 の順序が逆になって状態の改名とデッドロックしうるためである。
+- 事前の `requireTaskAccess` は、その時点の主プロジェクトで確かめているにすぎない。そこでタスクをロックした後に、ロックしたプロジェクトの編集権限を同じトランザクションで確かめ直す。権限の確認の後で、編集できないプロジェクトへ移されたタスクを変更しないためである。
+- トランザクションの中で読むもの（`expected_updated_at` の不一致時の `taskConflictSnapshot` を含む）は、すべてトランザクションの接続で読む。プールの接続をもう 1 本取ると、同時に多数の着手が来たときにプールを使い切って止まるためである。
 - 競合は `TaskMutationFailure("conflict", ...)` で、`metadata.conflict` に種類（`task_moved` など）を入れる。MCP の結果では `structuredContent.conflict` になる。`expected_updated_at` の不一致は、既存の書き込みと同じ形（`updated_at` と `current`）で返す。
 - 状態の判定は `startStatusTarget` に切り出した。`start_status` が `status_options` にない場合（本来は起きない）は状態を変えない。
 - 再開では、`updateTask` と同じ `recordTaskCompletion` で `reopened` の活動ログと `task.reopened` を記録する。`started` の活動ログはこれとは別に 1 件記録する。監査の `summary` は、変更した列（`assignee_id`、`completed`、`status`）を並べる。
