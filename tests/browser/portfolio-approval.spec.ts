@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { expect, test, type APIResponse, type Page } from "@playwright/test";
 
 test.use({ actionTimeout: 15_000 });
@@ -128,7 +129,7 @@ async function openPlanningFromPortfolio(
   ).toHaveAttribute("aria-current", "page");
 }
 
-async function seedApprovalFixture(page: Page): Promise<{
+async function seedApprovalFixture(page: Page, linkedProjectId: number | null = null): Promise<{
   id: number;
   name: string;
   reviewer: DirectoryMember;
@@ -153,7 +154,17 @@ async function seedApprovalFixture(page: Page): Promise<{
   );
 
 
+  if (linkedProjectId !== null) {
+    await expectJson(await page.request.post(`/api/portfolios/${portfolio.id}/projects`, {
+      data: { project_id: linkedProjectId },
+    }), 201);
+  }
   for (const member of [reviewer, approver]) {
+    if (linkedProjectId !== null) {
+      await expectJson(await page.request.post(`/api/projects/${linkedProjectId}/members`, {
+        data: { user_id: member.id, role: "viewer" },
+      }), 201);
+    }
     await expectJson(
       await page.request.post(`/api/portfolios/${portfolio.id}/planning/viewers`, {
         data: { userId: member.id },
@@ -181,7 +192,7 @@ async function seedApprovalFixture(page: Page): Promise<{
         ownerMemberId: admin.id,
         expectedEffect: "保守期限までに基盤を移行",
         kind: "fixed",
-        linkedProjectId: null,
+        linkedProjectId,
         costYen: 300_000,
         demands: [1, 2, 3].map((monthIndex) => ({ roleId, monthIndex, days: 10 })),
       },
@@ -292,6 +303,74 @@ async function decisionAttempt(
 
 test.beforeEach(async ({ page }) => {
   await login(page, ADMIN);
+});
+
+function planningFixtureSql(statement: string, proposalId: number): string {
+  return execFileSync("bash", [
+    "-euc",
+    'source scripts/e2e-guard.sh; require_e2e_target </dev/null; db_sql -qAt -v proposal_id="$1"',
+    "planning-review-test",
+    String(proposalId),
+  ], { input: statement, encoding: "utf8" }).trim();
+}
+
+test("review replays recheck source visibility and record exactly one audit entry", async ({ page }) => {
+  const project = await expectJson<{ id: number }>(await page.request.post("/api/projects", {
+    data: { workspace_id: 1, name: "レビュー元 " + crypto.randomUUID() },
+  }), 201);
+  const fixture = await seedApprovalFixture(page, project.id);
+  const [proposal] = (await loadPlanningState(page, fixture.id)).proposals;
+  const url = `/api/portfolios/${fixture.id}/planning/proposals/${proposal.id}/review`;
+  const data = { action: "pass", note: REVIEW_NOTE, requestId: crypto.randomUUID(), expectedStatus: "under_review" };
+  await login(page, REVIEWER);
+  const first = await expectJson<Record<string, unknown>>(await page.request.post(url, { data }), 200);
+  expect(first).toEqual({
+    id: proposal.id, version: proposal.version, status: "pending_decision",
+    outcome: "passed", reviewedAt: expect.any(String), idempotent: false,
+  });
+  const replay = await expectJson(await page.request.post(url, { data }), 200);
+  expect(replay).toEqual({ ...first, idempotent: true });
+  const reused = await expectJson(await page.request.post(url, { data: { ...data, note: REVIEW_NOTE + "再確認" } }), 409);
+  expect(reused).toMatchObject({ code: "request_id_reused" });
+  const stale = await expectJson(await page.request.post(url, { data: { ...data, requestId: crypto.randomUUID() } }), 409);
+  expect(stale).toMatchObject({ code: "proposal_status_changed" });
+
+  await login(page, ADMIN);
+  await expectJson(await page.request.delete(`/api/projects/${project.id}/members/${fixture.reviewer.id}`), 200);
+  await login(page, REVIEWER);
+  const denied = await expectJson(await page.request.post(url, { data }), 403);
+  expect(denied).toMatchObject({ error: expect.stringContaining("閲覧権限のない元プロジェクト") });
+  expect(planningFixtureSql(`
+    SELECT actor_id, summary FROM audit_log
+    WHERE action = 'portfolio_plan.proposal_review' AND entity = 'portfolio_plan_proposal'
+      AND entity_id = :proposal_id;
+  `, proposal.id)).toBe(`${fixture.reviewer.id}|ポートフォリオ #${fixture.id} / v${proposal.version} / passed`);
+});
+
+test("review of a legacy submitted proposal rolls back when its audit insert fails", async ({ page }) => {
+  const fixture = await seedApprovalFixture(page);
+  const [proposal] = (await loadPlanningState(page, fixture.id)).proposals;
+  const url = `/api/portfolios/${fixture.id}/planning/proposals/${proposal.id}/review`;
+  const data = { action: "pass", note: REVIEW_NOTE, requestId: crypto.randomUUID(), expectedStatus: "submitted" };
+  await login(page, REVIEWER);
+  // Only this proposal's review audit is rejected in the disposable database.
+  planningFixtureSql(`
+    UPDATE portfolio_plan_proposals SET status = 'submitted' WHERE id = :proposal_id;
+    ALTER TABLE audit_log ADD CONSTRAINT reject_review_:proposal_id
+      CHECK (action <> 'portfolio_plan.proposal_review' OR entity_id <> :proposal_id) NOT VALID;
+  `, proposal.id);
+  try {
+    const failed = await page.request.post(url, { data });
+    expect(failed.status(), await failed.text()).toBe(500);
+    expect(planningFixtureSql(`
+      SELECT status, reviewed_at IS NULL, review_request_id IS NULL FROM portfolio_plan_proposals
+      WHERE id = :proposal_id;
+    `, proposal.id)).toBe("submitted|t|t");
+  } finally {
+    planningFixtureSql("ALTER TABLE audit_log DROP CONSTRAINT reject_review_:proposal_id;", proposal.id);
+  }
+  const retry = await expectJson(await page.request.post(url, { data }), 200);
+  expect(retry).toMatchObject({ id: proposal.id, status: "pending_decision", outcome: "passed", idempotent: false });
 });
 
 test("assigned reviewer passes and assigned approver adopts the frozen B snapshot", async ({
