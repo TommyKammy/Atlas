@@ -2062,6 +2062,33 @@ for fmt in csv xlsx; do
   [[ "$C" == "200" && "$SIZE" -gt 10 ]] && ok "project table export $fmt" || bad "project table export $fmt ($C/$SIZE)"
 done
 
+# Reject only this fixture's archive so the second write fails after the table insert.
+create_table_and_archive() {
+  curl -sS -m 15 -b "$JAR" -X POST "$BASE/api/projects/$DPID/table" \
+    -H 'Content-Type: application/json' -d '{"name":"E2E archive retry","archive_source":true}' \
+    -o "$TMPD/archive-table.json" -w '%{http_code}'
+}
+archive_table_state() {
+  db_sql -qAt -v project_id="$DPID" <<'SQL'
+SELECT (SELECT count(*) FROM project_tables WHERE project_id = p.id), p.archived_at IS NOT NULL
+FROM projects p WHERE p.id = :project_id;
+SQL
+}
+db_sql -q -v project_id="$DPID" <<'SQL' || exit 1
+ALTER TABLE projects ADD CONSTRAINT e2e_reject_table_archive
+  CHECK (id <> :project_id OR archived_at IS NULL) NOT VALID;
+SQL
+C=$(create_table_and_archive)
+[[ "$C" == "500" ]] && ok "table archive failure reported" || bad "table archive failure reported" "$C"
+N=$(archive_table_state)
+[[ "$N" == "0|f" ]] && ok "failed archive rolls back table" || bad "failed archive rolls back table" "$N"
+db_sql -qc 'ALTER TABLE projects DROP CONSTRAINT e2e_reject_table_archive' || exit 1
+C=$(create_table_and_archive)
+[[ "$C" == "201" && "$(jget "$(cat "$TMPD/archive-table.json")" archived_source)" == "True" ]] \
+  && ok "table archive retry created" || bad "table archive retry created" "$C"
+N=$(archive_table_state)
+[[ "$N" == "1|t" ]] && ok "archive retry stored exactly one table" || bad "archive retry stored exactly one table" "$N"
+
 TR=$(api POST "/api/projects/$APID/trash")
 [[ "$(jget "$TR" trashed)" == "$APID" ]] && ok "project trash" || bad "project trash" "$TR"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" "$BASE/api/projects/$APID/settings")
