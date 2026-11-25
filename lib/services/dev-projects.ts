@@ -1,4 +1,4 @@
-import { badRequest, conflict, notFound } from "../api/errors";
+import { ApiError, badRequest, conflict, notFound } from "../api/errors";
 import { audit } from "../audit";
 import { withTransaction, type Queryable } from "../db";
 import { normalizeDevPrefix } from "../dev-project-keys";
@@ -10,6 +10,13 @@ import { requireProjectAccess, type Actor } from "./actor";
  * backfill is kept short (docs/dev-projects-phase0.md §4.2).
  */
 export const DEV_PROJECT_ENABLE_MAX_TASKS = 20_000;
+
+/**
+ * Waits between attempts when a task in the project is locked FOR UPDATE.
+ * Enabling never waits on task rows (that could deadlock), so it fails fast
+ * and retries; those locks are held for the length of one request.
+ */
+export const DEV_PROJECT_ENABLE_RETRY_DELAYS_MS = [50, 150, 400, 1000];
 
 export type EnableDevProjectInput = {
   prefix: unknown;
@@ -48,6 +55,9 @@ export function enableDevProjectError(error: unknown): unknown {
     );
     case "DK422": return badRequest("start_status must be one of the project status options");
     case "23505": return conflict("prefix is already used in this workspace");
+    case "55P03": return new ApiError(
+      409, "tasks in this project are being edited; try again", "dev_project_busy",
+    );
     default: return error;
   }
 }
@@ -83,6 +93,26 @@ export async function enableDevProjectTx(
   };
 }
 
+function isBusy(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "dev_project_busy";
+}
+
+/** Run one enable transaction, retrying while tasks are locked (55P03). */
+export async function retryWhileBusy<T>(
+  run: () => Promise<T>,
+  delays: readonly number[] = DEV_PROJECT_ENABLE_RETRY_DELAYS_MS,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await run();
+    } catch (error) {
+      if (!isBusy(error) || attempt >= delays.length) throw error;
+      await sleep(delays[attempt]);
+    }
+  }
+}
+
 /**
  * Enable a project as a development project for an actor with configure
  * access. Not yet reachable from routes or MCP; the screens and the
@@ -94,7 +124,8 @@ export async function enableDevProject(
   input: EnableDevProjectInput,
 ): Promise<EnabledDevProject> {
   await requireProjectAccess(actor, projectId, "configure");
-  const enabled = await withTransaction((q) => enableDevProjectTx(q, projectId, input, actor.uid));
+  const enabled = await retryWhileBusy(() =>
+    withTransaction((q) => enableDevProjectTx(q, projectId, input, actor.uid)));
   await audit(actor.uid, "project.dev_enable", {
     entity: "project",
     entityId: projectId,

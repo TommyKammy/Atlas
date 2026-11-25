@@ -228,6 +228,71 @@ test("enabling does not deadlock with a duplicate that locked its source row fir
   }));
 });
 
+test("enabling fails fast instead of deadlocking with a recurring completion that locked its task", { timeout: 15_000 }, async () => {
+  // task-update: SELECT task FOR UPDATE, then insertNextOccurrence INSERTs
+  // into the same project. Waiting on the task row while holding the project
+  // row would deadlock, so enabling reports 55P03 and the caller retries.
+  const dev = await project("Completion race");
+  const source = await task(dev, "recurring");
+  const prefix = uniquePrefix();
+  await withClient(async (completer) => withClient(async (enabler) => {
+    await completer.query("BEGIN");
+    await completer.query("SELECT id FROM tasks WHERE id = $1 FOR UPDATE", [source]);
+    await enabler.query("BEGIN");
+    const started = Date.now();
+    await assert.rejects(enable(dev, prefix, { client: enabler }), { code: "55P03" });
+    assert.ok(Date.now() - started < 1_000, "enabling must not wait on the task row");
+    await enabler.query("ROLLBACK");
+
+    const { rows: [next] } = await completer.query(
+      "INSERT INTO tasks (project_id, name) VALUES ($1, 'next occurrence') RETURNING id", [dev],
+    );
+    await completer.query("COMMIT");
+
+    await enable(dev, prefix);
+    assert.equal((await keyOf(source)).key, `${prefix}-1`);
+    assert.equal((await keyOf(Number(next.id))).key, `${prefix}-2`);
+  }));
+});
+
+test("a completion that starts after enabling locked the tasks waits and is keyed", { timeout: 15_000 }, async () => {
+  const dev = await project("Completion after enable");
+  const source = await task(dev, "recurring");
+  const prefix = uniquePrefix();
+  await withClient(async (completer) => withClient(async (enabler) => {
+    await enabler.query("BEGIN");
+    await enable(dev, prefix, { client: enabler });
+    await completer.query("BEGIN");
+    const locking = completer.query("SELECT id FROM tasks WHERE id = $1 FOR UPDATE", [source]);
+    await waitForLockWaiters(1);
+    await enabler.query("COMMIT");
+    await locking;
+    const { rows: [next] } = await completer.query(
+      "INSERT INTO tasks (project_id, name) VALUES ($1, 'next occurrence') RETURNING id", [dev],
+    );
+    await completer.query("COMMIT");
+    assert.equal((await keyOf(source)).key, `${prefix}-1`);
+    assert.equal((await keyOf(Number(next.id))).key, `${prefix}-2`);
+  }));
+});
+
+test("a locked task that already has a key does not block enabling", { timeout: 15_000 }, async () => {
+  const origin = await project("Keyed origin");
+  const originPrefix = uniquePrefix();
+  await enable(origin, originPrefix);
+  const moved = await task(origin, "moved");
+  const target = await project("Keyed target");
+  await db.query("UPDATE tasks SET project_id = $1 WHERE id = $2", [target, moved]);
+  await withClient(async (locker) => {
+    await locker.query("BEGIN");
+    await locker.query("SELECT id FROM tasks WHERE id = $1 FOR UPDATE", [moved]);
+    const { keyed } = await enable(target, uniquePrefix());
+    assert.equal(keyed, 0);
+    await locker.query("COMMIT");
+  });
+  assert.equal((await keyOf(moved)).key, `${originPrefix}-1`);
+});
+
 test("enabling races a move out of the project without duplicate or lost keys", { timeout: 15_000 }, async () => {
   const a = await project("Race A");
   const b = await project("Race B");

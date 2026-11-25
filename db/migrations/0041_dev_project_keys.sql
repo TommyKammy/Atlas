@@ -95,11 +95,17 @@ CREATE TRIGGER tasks_assign_key_move
 -- * FOR UPDATE on the projects row (not FOR NO KEY UPDATE) conflicts with the
 --   FOR KEY SHARE taken by the key trigger and by the tasks.project_id foreign
 --   key, so in-flight task inserts commit first and later ones wait for us.
--- * Task rows are never locked FOR UPDATE/SHARE here. Paths such as
---   duplicateTask lock a task row and then insert into the same project; if
---   we waited on task rows while holding the project row, the two would
---   deadlock. The backfill INSERT only takes FOR KEY SHARE on task rows (for
---   task_keys.task_id), which conflicts with neither FOR SHARE nor a move.
+-- * We never wait on a task row while holding the projects row. Many paths
+--   lock a task FOR UPDATE and then insert a row that references the same
+--   project (completing a recurring task inserts the next occurrence; 31
+--   tables reference projects). The backfill's task_keys.task_id foreign key
+--   takes FOR KEY SHARE on each task row, which conflicts with FOR UPDATE, so
+--   waiting there would deadlock with such a path. Instead the rows to key
+--   are locked FOR KEY SHARE NOWAIT first: if any is held FOR UPDATE we fail
+--   at once with lock_not_available (55P03) and the caller retries. Once we
+--   hold them nobody can take FOR UPDATE on them, so the backfill never
+--   waits. FOR KEY SHARE does not conflict with FOR SHARE (duplicateTask) or
+--   FOR NO KEY UPDATE (ordinary updates and moves).
 --
 -- Errors use SQLSTATE class 'DK' so the service can map them:
 --   DK404 project not found or in trash      DK409 already a development project
@@ -138,6 +144,13 @@ BEGIN
   IF v_total > p_max_tasks THEN
     RAISE EXCEPTION 'project has too many tasks to enable at once' USING ERRCODE = 'DK413';
   END IF;
+
+  -- Lock the rows the backfill will key without waiting (see above).
+  PERFORM 1
+     FROM tasks t
+    WHERE t.project_id = p_project_id
+      AND NOT EXISTS (SELECT 1 FROM task_keys k WHERE k.task_id = t.id)
+      FOR KEY SHARE OF t NOWAIT;
 
   INSERT INTO dev_projects (project_id, workspace_id, prefix, branch_prefix, start_status, enabled_by)
   VALUES (p_project_id, v_workspace, p_prefix, lower(p_prefix), p_start_status, p_enabled_by)
