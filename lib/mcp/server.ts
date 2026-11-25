@@ -7,10 +7,13 @@ import type { Actor } from "@/lib/services/actor";
 import { ProjectUpdateConflict } from "@/lib/services/projects";
 import * as queries from "@/lib/services/queries";
 import { TaskMutationFailure } from "@/lib/services/task-mutation-failure";
+import * as taskKeys from "@/lib/services/task-keys";
+import { hidingAccess, PROJECT_PREFIX_NOT_FOUND, TASK_KEY_NOT_FOUND } from "@/lib/services/task-keys";
 import { createSaveTaskTool } from "./save-task";
 import { taskDetailPayload, TASK_DESCRIPTION_LIMIT } from "./task-detail";
 import {
-  dateSchema, defineTool, idSchema, text, UNTRUSTED_DATA_NOTE,
+  dateSchema, defineTool, idSchema, PROJECT_REF_NOTE, projectRefSchema, TASK_REF_NOTE, taskRefSchema, text,
+  UNTRUSTED_DATA_NOTE,
   type McpBuildContext, type McpToolContext, type McpToolDefinition, type McpToolResult,
 } from "./tool-definition";
 import {
@@ -41,6 +44,8 @@ export type McpQueryServices = {
   listUsers: typeof queries.listUsers;
   listProjectMembers: typeof queries.listProjectMembers;
   listCustomFields: typeof queries.listCustomFields;
+  resolveTaskRef: typeof taskKeys.resolveTaskRef;
+  resolveProjectRef: typeof taskKeys.resolveProjectRef;
 };
 
 export const DEFAULT_MCP_QUERY_SERVICES: McpQueryServices = {
@@ -55,6 +60,8 @@ export const DEFAULT_MCP_QUERY_SERVICES: McpQueryServices = {
   listUsers: queries.listUsers,
   listProjectMembers: queries.listProjectMembers,
   listCustomFields: queries.listCustomFields,
+  resolveTaskRef: taskKeys.resolveTaskRef,
+  resolveProjectRef: taskKeys.resolveProjectRef,
 };
 
 function pageSummary(unit: string, page: { items: unknown[]; nextCursor: string | null }): string {
@@ -120,7 +127,8 @@ export function createReadTools(
       name: "list_projects",
       title: "List projects",
       description:
-        "List projects the authenticated user can view. Returns id and name for each project. "
+        "List projects the authenticated user can view. Returns id, name and dev for each "
+        + "project; dev is { prefix, start_status } for development projects and null otherwise. "
         + "Paged with an opaque cursor: pass nextCursor as cursor with the same query to fetch "
         + "the next page (default 25, maximum 100). "
         + UNTRUSTED_DATA_NOTE,
@@ -142,13 +150,18 @@ export function createReadTools(
       name: "get_project",
       title: "Get project",
       description:
-        "Return a project's basic information and its full section list. Archived and deleted "
-        + "projects are reported as not found. "
+        "Return a project's basic information and its full section list. project.dev is "
+        + "{ prefix, start_status } for development projects and null otherwise. Archived and "
+        + "deleted projects are reported as not found. "
+        + PROJECT_REF_NOTE + " "
         + UNTRUSTED_DATA_NOTE,
       requiredScope: "read",
-      inputSchema: z.object({ projectId: idSchema }),
+      inputSchema: z.object({ projectId: projectRefSchema }),
       handler: async (args, ctx) => {
-        const summary = await services.getProjectSummary(ctx.actor, args.projectId);
+        const summary = await hidingAccess(args.projectId, PROJECT_PREFIX_NOT_FOUND, async () => {
+          const projectId = await services.resolveProjectRef(ctx.actor, args.projectId);
+          return services.getProjectSummary(ctx.actor, projectId);
+        });
         return {
           structuredContent: { ...summary },
           content: text(
@@ -185,12 +198,15 @@ export function createReadTools(
       description:
         "Search tasks visible to the authenticated user, optionally narrowed by project, "
         + "assignee (\"me\" or a user id), status, completion state, due-date range or keyword. "
-        + "Dates use YYYY-MM-DD. Returns id, name, completion, progress, due date, assignee, "
-        + "project id and project name. Paged with an opaque cursor (default 25, maximum 100). "
+        + "Dates use YYYY-MM-DD. Returns id, key, name, completion, progress, due date, assignee, "
+        + "project id and project name. key is the issue key (for example ATL-123) or null. When "
+        + "query is exactly an issue key, that task is returned first if it matches the other "
+        + "filters. Paged with an opaque cursor (default 25, maximum 100). "
+        + PROJECT_REF_NOTE + " "
         + UNTRUSTED_DATA_NOTE,
       requiredScope: "read",
       inputSchema: z.object({
-        projectId: idSchema.optional(),
+        projectId: projectRefSchema.optional(),
         assignee: z.union([z.literal("me"), idSchema]).optional(),
         status: z.string().max(100).optional(),
         completed: z.union([z.boolean(), z.enum(["all", "open", "done"])]).optional(),
@@ -201,7 +217,13 @@ export function createReadTools(
         cursor: cursorSchema,
       }),
       handler: async (args, ctx) => {
-        const page = await services.searchTasks(ctx.actor, args);
+        const { projectId: projectRef, ...filters } = args;
+        const page = projectRef === undefined
+          ? await services.searchTasks(ctx.actor, filters)
+          : await hidingAccess(projectRef, PROJECT_PREFIX_NOT_FOUND, async () => {
+              const projectId = await services.resolveProjectRef(ctx.actor, projectRef);
+              return services.searchTasks(ctx.actor, { ...filters, projectId });
+            });
         return {
           structuredContent: { ...page },
           content: text(pageSummary("task", page)),
@@ -216,20 +238,26 @@ export function createReadTools(
         + "project, section, parent, collaborators and custom field values. The plain-text "
         + "description is truncated to 2,000 characters by default and description_truncated is "
         + "set when that happens; pass includeFullDescription: true to retrieve the full text with "
-        + "this tool. Use list_comments for comments. "
+        + "this tool. task.key is the issue key (for example ATL-123), which keeps the issuing "
+        + "project's prefix after a move, or null. Use list_comments for comments. "
+        + TASK_REF_NOTE + " "
         + UNTRUSTED_DATA_NOTE,
       requiredScope: "read",
       inputSchema: z.object({
-        taskId: idSchema,
+        taskId: taskRefSchema,
         includeFullDescription: z.boolean().optional(),
       }),
       handler: async (args, ctx) => {
-        const detail = await services.getTaskDetail(ctx.actor, args.taskId);
+        const detail = await hidingAccess(args.taskId, TASK_KEY_NOT_FOUND, async () => {
+          const taskId = await services.resolveTaskRef(ctx.actor, args.taskId, "view");
+          return services.getTaskDetail(ctx.actor, taskId);
+        });
         const { output, truncated } = taskDetailPayload(detail, args.includeFullDescription);
         return {
           structuredContent: output,
           content: text(
-            `Task ${detail.task.id}: ${detail.task.name}. `
+            `Task ${detail.task.key ? `${detail.task.key} (id ${detail.task.id})` : detail.task.id}: `
+            + `${detail.task.name}. `
             + `Completed: ${detail.task.completed ? "yes" : "no"}; status: ${detail.task.status}.`
             + (truncated ? ` Description truncated at ${TASK_DESCRIPTION_LIMIT} characters.` : ""),
           ),
@@ -243,15 +271,19 @@ export function createReadTools(
         "List comments on a task the authenticated user can view, oldest first. Returns id, "
         + "author id, author name, body, created_at and edited_at. Paged with an opaque cursor "
         + "(default 25, maximum 100). "
+        + TASK_REF_NOTE + " "
         + UNTRUSTED_DATA_NOTE,
       requiredScope: "read",
       inputSchema: z.object({
-        taskId: idSchema,
+        taskId: taskRefSchema,
         limit: limitSchema,
         cursor: cursorSchema,
       }),
       handler: async (args, ctx) => {
-        const page = await services.listComments(ctx.actor, args.taskId, args);
+        const page = await hidingAccess(args.taskId, TASK_KEY_NOT_FOUND, async () => {
+          const taskId = await services.resolveTaskRef(ctx.actor, args.taskId, "view");
+          return services.listComments(ctx.actor, taskId, args);
+        });
         return {
           structuredContent: { ...page },
           content: text(pageSummary("comment", page)),
@@ -265,7 +297,7 @@ export function createReadTools(
         "List open tasks assigned to the authenticated user across projects they can view. "
         + "Unlike the Atlas \"My tasks\" view, which shows top-level tasks only, this tool also "
         + "includes subtasks, so the result can contain more tasks than that view. "
-        + "Each item has the same fields as list_tasks plus parent (the parent task's id and "
+        + "Each item has the same fields as list_tasks (including key) plus parent (the parent task's id and "
         + "name, or null) and parent_hidden, which is true when the task has a parent the "
         + "authenticated user cannot view; the parent name is omitted in that case. Paged with "
         + "an opaque cursor (default 25, maximum 100). "
