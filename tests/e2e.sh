@@ -2063,6 +2063,14 @@ ANID=$(jget "$AN" id)
 AF=$(api POST /api/custom-fields "{\"project_id\":$APID,\"name\":\"アクションフィールド\",\"field_type\":\"text\"}")
 AFID=$(jget "$AF" id)
 api POST /api/task-values "{\"task_id\":$ATID,\"field_id\":$AFID,\"value\":\"アクション値\"}" >/dev/null
+# Create an empty snapshot as an editor before the fixture restricts editing.
+db_sql -qc "INSERT INTO project_members (project_id, user_id, role)
+  SELECT $APID, id, 'editor' FROM users WHERE email='tanaka@example.com'
+  ON CONFLICT (project_id, user_id) DO UPDATE SET role='editor'" || exit 1
+C=$(curl -sS -m 15 -b "$TMPD/jar-t" -X POST "$BASE/api/projects/$APID/table" \
+  -H 'Content-Type: application/json' -d '{"include_tasks":false,"archive_source":true}' \
+  -o "$TMPD/editor-table.json" -w '%{http_code}')
+[[ "$C" == "201" ]] && ok "editor creates an empty table" || bad "editor creates an empty table ($C)"
 R=$(api GET "/api/projects/$APID/settings")
 echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['project']['settings']['dependency_buffer']=='buffer', d" && ok "project settings defaults" || bad "project settings defaults" "$R"
 R=$(api PATCH "/api/projects/$APID" '{"owner_id":1,"due_on":"2026-12-31","settings":{"dependency_buffer":"fill","work_days":[1,2,3,4],"work_hours":{"start":"10:00","end":"19:00"},"notifications":{"email":false,"in_app":true,"slack":false,"teams":false},"who_can_edit":"admins","who_can_share":"editors"}}')
@@ -2104,6 +2112,42 @@ TBL=$(api POST "/api/projects/$APID/table" '{"name":"E2Eアクションテーブ
 TBLID=$(jget "$TBL" id)
 [[ -n "$TBLID" ]] && ok "project table create" || bad "project table create" "$TBL"
 echo "$TBL" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['name']=='E2Eアクションテーブル' and d['row_count']>=1, d" && ok "project table snapshot" || bad "project table snapshot" "$TBL"
+# Compare the public response to the stored snapshot for both modes.
+for mode in editor admin; do
+  if [[ "$mode" == editor ]]; then RESPONSE=$(cat "$TMPD/editor-table.json"); else RESPONSE=$TBL; fi
+  TABLE_ID=$(jget "$RESPONSE" id)
+  STORED=$(db_sql -qAt -v id="$TABLE_ID" -v project="$APID" <<'SQL'
+SELECT to_jsonb(t) || jsonb_build_object('created_at', t.created_at::text,
+  'archived', p.archived_at IS NOT NULL, 'actor', u.email,
+  'audit_count', (SELECT count(*) FROM audit_log a WHERE a.action='project.table_create'
+    AND a.actor_id=t.created_by AND a.project_id=p.id AND a.entity='project' AND a.entity_id=p.id
+    AND a.summary=format('table %s, rows %s', t.id, jsonb_array_length(t.rows))))
+FROM project_tables t JOIN projects p ON p.id=t.project_id JOIN users u ON u.id=t.created_by
+WHERE t.id=:id AND p.id=:project;
+SQL
+)
+  if python3 - "$mode" "$RESPONSE" "$STORED" "$AFID" <<'PYTEST'
+import json, sys
+mode, response, stored, field = sys.argv[1:]
+response, stored = json.loads(response), json.loads(stored)
+editor = mode == "editor"
+name = "E2Eアクション元 テーブル" if editor else "E2Eアクションテーブル"
+columns = [("section", "セクション", "text"), ("name", "名前", "text"), ("assignee", "担当者", "text"),
+           ("start_on", "開始日", "date"), ("due_on", "期日", "date"), ("completed", "完了", "boolean"),
+           ("progress", "進捗", "number"), ("status", "Status", "text"), ("cf_" + field, "アクションフィールド", "text")]
+assert stored["columns"] == [dict(key=k, label=l, type=t) for k, l, t in columns], stored
+assert stored["options"] == dict(include_tasks=not editor, source_project_name="E2Eアクション元")
+assert stored["name"] == name and stored["archived"] is False and stored["audit_count"] == 1
+assert response == dict(id=stored["id"], name=name, row_count=0 if editor else 2,
+                        column_count=len(columns), archived_source=False, created_at=stored["created_at"])
+if editor:
+    assert stored["rows"] == [] and stored["actor"] == "tanaka@example.com"
+else:
+    assert sorted((r[1], r[0], r[-1]) for r in stored["rows"]) == sorted([
+        ("アクション対象タスク", "アクションセクション", "アクション値"), ("アクション未分類タスク", "", "")])
+PYTEST
+  then ok "$mode table response, storage and audit"; else bad "$mode table response, storage and audit"; fi
+done
 page "/tables/$TBLID" "$TMPD/action-table.html"
 grep -q 'data-project-table="' "$TMPD/action-table.html" && grep -q 'アクション対象タスク' "$TMPD/action-table.html" && ok "project table page" || bad "project table page"
 for fmt in csv xlsx; do
