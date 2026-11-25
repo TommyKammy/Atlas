@@ -677,9 +677,25 @@ N=$(db_sql -t -A -c "SELECT config->>'column_function' FROM custom_fields WHERE 
 [[ "$N" == "average" ]] && ok "rollup column function stored" || bad "rollup column function stored ($N)"
 C=$(curl -s -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X POST "$BASE/api/custom-fields" -H 'Content-Type: application/json' -d "{\"project_id\":1,\"name\":\"E2E不正参照\",\"field_type\":\"lookup\",\"config\":{\"reference_field_id\":$RFID,\"lookup_field_id\":$FFID}}")
 [[ "$C" == "400" ]] && ok "invalid lookup target rejected" || bad "invalid lookup target rejected ($C)"
-R=$(api PATCH /api/custom-fields/$AFID '{"config":{"prefix":"E2EIDX-"}}')
-N=$(db_sql -t -A -c "SELECT COUNT(*) FROM task_custom_values WHERE field_id=$AFID AND value_text LIKE 'E2EIDX-%';")
-[[ "$N" -ge 1 ]] && ok "auto ID prefix updates values" || bad "auto ID prefix updates values ($N)"
+auto_id_numbers() {
+  db_sql -qAtc "SELECT task_id, value_number FROM task_custom_values WHERE field_id=$AFID ORDER BY task_id"
+}
+auto_id_prefix_matches() {
+  db_sql -qAtc "SELECT (f.config->>'prefix' = '$1') AND count(v.task_id) > 0
+    AND bool_and(v.value_text IS NOT DISTINCT FROM ('$1' || v.value_number::text))
+    FROM custom_fields f JOIN task_custom_values v ON v.field_id=f.id
+    WHERE f.id=$AFID AND v.value_number IS NOT NULL GROUP BY f.config"
+}
+AUTO_ID_NUMBERS=$(auto_id_numbers)
+db_sql -qc "ALTER TABLE task_custom_values ADD CONSTRAINT e2e_reject_prefix
+  CHECK (field_id <> $AFID OR value_text NOT LIKE 'E2EIDX-%') NOT VALID" || exit 1
+PREFIX_CHANGE='{"config":{"prefix":"E2EIDX-"}}'
+C=$(curl -sS -m 10 -b "$JAR" -o /dev/null -w "%{http_code}" -X PATCH "$BASE/api/custom-fields/$AFID" -H 'Content-Type: application/json' -d "$PREFIX_CHANGE")
+[[ "$C" == "500" ]] && ok "auto ID rewrite failure reported" || bad "auto ID rewrite failure reported ($C)"
+[[ "$(auto_id_prefix_matches E2EID-)" == "t" ]] && ok "auto ID rewrite rolls back prefix" || bad "auto ID rewrite rolls back prefix"
+db_sql -qc "ALTER TABLE task_custom_values DROP CONSTRAINT e2e_reject_prefix" || exit 1
+R=$(api PATCH /api/custom-fields/$AFID "$PREFIX_CHANGE")
+[[ "$(jget "$R" id)" == "$AFID" && "$(auto_id_prefix_matches E2EIDX-)" == "t" && "$(auto_id_numbers)" == "$AUTO_ID_NUMBERS" ]] && ok "auto ID retry updates every display and preserves numbers" || bad "auto ID retry updates every display and preserves numbers"
 rm -f "$TMPD/jar-t"
 curl -s -m 10 -c "$TMPD/jar-t" -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' -d '{"email":"tanaka@example.com","password":"atlas-dev-2026"}' -o /dev/null
 PA=$(api POST /api/custom-fields '{"project_id":1,"name":"E2E権限管理者","field_type":"text","access_level":"admins"}')
