@@ -114,6 +114,12 @@ export type AdvancedSearchFilters = {
   completedFrom: string | null;
   completedTo: string | null;
   custom: { fieldId: number; value: string; type: string }[];
+  /**
+   * The task an exact issue-key query (for example "ATL-123") names. It is
+   * matched in addition to the text and ranked first, but only within the
+   * same visibility and filters as every other row.
+   */
+  keyTaskId?: number | null;
 };
 
 export type AdvancedTaskHit = {
@@ -144,6 +150,7 @@ export async function searchTasksAdvanced(
   let likeParam = 0;
   let exactParam = 0;
   let prefixParam = 0;
+  let keyParam = 0;
   if (hasQuery) {
     params.push(like);
     likeParam = params.length;
@@ -151,8 +158,14 @@ export async function searchTasksAdvanced(
     exactParam = params.length;
     params.push(`${escaped}%`);
     prefixParam = params.length;
+    let keyMatch = "";
+    if (f.keyTaskId != null) {
+      params.push(f.keyTaskId);
+      keyParam = params.length;
+      keyMatch = ` OR t.id = $${keyParam}`;
+    }
     conds.push(`(t.name ILIKE $${likeParam} OR t.description ILIKE $${likeParam}
-      OR EXISTS (SELECT 1 FROM comments c WHERE c.task_id = t.id AND c.body ILIKE $${likeParam}))`);
+      OR EXISTS (SELECT 1 FROM comments c WHERE c.task_id = t.id AND c.body ILIKE $${likeParam})${keyMatch})`);
   }
   params.push(actor.userId);
   conds.push(projectDataAccess("p", `$${params.length}`));
@@ -218,6 +231,7 @@ export async function searchTasksAdvanced(
   }
   const rankSql = hasQuery
     ? `CASE
+         ${keyParam ? `WHEN t.id = $${keyParam} THEN -1` : ""}
          WHEN lower(t.name) = lower($${exactParam}) THEN 0
          WHEN t.name ILIKE $${prefixParam} THEN 1
          WHEN t.name ILIKE $${likeParam} THEN 2

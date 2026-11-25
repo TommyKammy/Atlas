@@ -204,6 +204,13 @@ PostgreSQL はこれを検出して片方を中断するが、どちらが中断
 
 数値 ID の経路で 403 と 404 を区別している既存の挙動を揃えるかどうかは、この段階の範囲外とする（§12）。
 
+実装メモ（PR 2）:
+
+- `parseTaskKey` は PR 1 の `lib/dev-project-keys.ts` にあり、`lib/services/task-keys.ts` はそれを使う。
+- MCP ツールは、キーや接頭辞で指定されたときだけ、解決後の読み取り（`getTaskDetail` など）で起きた 403・404 も `hidingAccess` で同じ not found に揃える。権限はあるがプロジェクトがアーカイブ済み、といった後段のエラーからも存在が漏れないようにするため。
+- `list_tasks` の `query` がキーに完全に一致するときは、キーからタスク ID を引き（権限は確かめない）、検索 SQL の本文一致に `OR t.id = <ID>` を足して順位を最上位にする。可視性やほかの絞り込みは検索 SQL がそのまま適用するので、閲覧権限のないタスクは返らない。
+- `get_project` も接頭辞を受け付ける（§8 の表への追加）。
+
 ## 6. 着手（`start_task`）の仕様
 
 ### 6.1 設定: 着手時の状態
@@ -315,7 +322,7 @@ PostgreSQL はこれを検出して片方を中断するが、どちらが中断
 | `list_my_tasks` | 各行に `key` |
 | `save_task` | `id`、`parent_task_id` にキー、`project_id` に接頭辞を受け付ける。作成の冪等処理は §7 |
 | `complete_task` / `move_task` / `trash_task` / `add_comment` / `list_comments` | タスクの引数にキーを受け付ける |
-| `get_project` / `list_projects` | `dev: { prefix, start_status } \| null` |
+| `get_project` / `list_projects` | `dev: { prefix, start_status } \| null`。`get_project` は `projectId` に接頭辞も受け付ける |
 | **`start_task`（新規）** | §6。`write` スコープ。`/mcp/readonly` には公開しない |
 
 ツールは 19 個になる。`docs/mcp.md` の表と件数を更新する。

@@ -36,6 +36,7 @@ import {
   requireProjectAccess,
   type Actor,
 } from "./actor";
+import { devSettingsFor, lookupTaskKey, taskKeysFor, type DevProjectSettings } from "./task-keys";
 
 export const DEFAULT_QUERY_LIMIT = 25;
 export const MAX_QUERY_LIMIT = 100;
@@ -51,7 +52,8 @@ export type QueryListOptions = {
   cursor?: string;
 };
 
-export type ProjectListItem = { id: number; name: string };
+/** `dev` is the development-project setting, or null for ordinary projects. */
+export type ProjectListItem = { id: number; name: string; dev: DevProjectSettings | null };
 
 export type ProjectSummary = {
   project: {
@@ -69,6 +71,7 @@ export type ProjectSummary = {
     owner_id: number | null;
     team_id: number | null;
     due_on: string | null;
+    dev: DevProjectSettings | null;
   };
   sections: Section[];
 };
@@ -94,8 +97,14 @@ export type TaskCustomFieldValue = {
   value_json: unknown;
 };
 
+/**
+ * A search hit with its issue key: the issuing project's current prefix and
+ * number, wherever the task is now, or null when no key was issued.
+ */
+export type TaskHit = AdvancedTaskHit & { key: string | null };
+
 export type TaskDetailView = {
-  task: TaskDetail;
+  task: TaskDetail & { key: string | null };
   project: { id: number; name: string } | null;
   section: { id: number; name: string } | null;
   parent: { id: number; name: string } | null;
@@ -108,7 +117,7 @@ export type TaskParentRef = { id: number; name: string };
  * A task returned by `list_my_tasks`. Subtasks are included, unlike the Atlas
  * "My tasks" view, and carry their parent name when the parent is viewable.
  */
-export type MyTaskHit = AdvancedTaskHit & {
+export type MyTaskHit = TaskHit & {
   parent: TaskParentRef | null;
   /** True when the task has a parent the actor is not allowed to view. */
   parent_hidden: boolean;
@@ -212,7 +221,10 @@ function plainSection(row: Section): Section {
   };
 }
 
-function plainProject(project: Project & { status_options_version?: number }): ProjectSummary["project"] {
+function plainProject(
+  project: Project & { status_options_version?: number },
+  dev: DevProjectSettings | null,
+): ProjectSummary["project"] {
   return {
     id: Number(project.id),
     workspace_id: project.workspace_id == null ? null : Number(project.workspace_id),
@@ -230,6 +242,7 @@ function plainProject(project: Project & { status_options_version?: number }): P
     owner_id: project.owner_id == null ? null : Number(project.owner_id),
     team_id: project.team_id == null ? null : Number(project.team_id),
     due_on: project.due_on ?? null,
+    dev,
   };
 }
 
@@ -304,14 +317,15 @@ function searchFilters(input: SearchTasksInput, actor: Actor): AdvancedSearchFil
 async function searchTaskPage(
   actor: Actor,
   input: SearchTasksInput,
-): Promise<QueryPage<AdvancedTaskHit>> {
+): Promise<QueryPage<TaskHit>> {
   const workspaceId = await loadWorkspaceId();
+  const keyTaskId = input.query === undefined ? null : await lookupTaskKey(input.query);
   const limit = queryLimit(input.limit);
   const offset = decodeCursor(input.cursor);
   const page = Math.floor(offset / limit) + 1;
   const result = await searchTasksAdvanced(
     workspaceId,
-    searchFilters(input, actor),
+    { ...searchFilters(input, actor), keyTaskId },
     { userId: actor.uid },
     { page, pageSize: limit },
   );
@@ -320,7 +334,9 @@ async function searchTaskPage(
   // returning earlier or later rows.
   const pageStart = (page - 1) * limit;
   const skip = offset - pageStart;
-  const items = result.items.slice(skip, skip + limit).map(plainAdvancedHit);
+  const hits = result.items.slice(skip, skip + limit).map(plainAdvancedHit);
+  const keys = await taskKeysFor(hits.map((hit) => hit.id));
+  const items = hits.map((hit) => ({ ...hit, key: keys.get(hit.id) ?? null }));
   return searchPage({ ...result, items }, offset);
 }
 
@@ -368,8 +384,13 @@ export async function listProjects(
      LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,
   );
+  const dev = await devSettingsFor(result.rows.slice(0, limit).map((row) => Number(row.id)));
   return pageResult(
-    result.rows.map((row) => ({ id: Number(row.id), name: String(row.name) })),
+    result.rows.map((row) => ({
+      id: Number(row.id),
+      name: String(row.name),
+      dev: dev.get(Number(row.id)) ?? null,
+    })),
     limit,
     offset,
   );
@@ -383,9 +404,9 @@ export async function getProjectSummary(
   await requireActiveActor(actor);
   await requireProjectAccess(actor, projectId, "view");
   const project = await loadVisibleProject(projectId);
-  const sections = await getSections(projectId);
+  const [sections, dev] = await Promise.all([getSections(projectId), devSettingsFor([projectId])]);
   return {
-    project: plainProject(project),
+    project: plainProject(project, dev.get(projectId) ?? null),
     sections: sections.map(plainSection),
   };
 }
@@ -408,7 +429,7 @@ export async function listSections(
 export async function searchTasks(
   actor: Actor,
   input: SearchTasksInput = {},
-): Promise<QueryPage<AdvancedTaskHit>> {
+): Promise<QueryPage<TaskHit>> {
   await requireActiveActor(actor);
   if (input.projectId !== undefined) {
     await requireProjectAccess(actor, input.projectId, "view");
@@ -628,13 +649,14 @@ export async function getTaskDetail(actor: Actor, taskId: number): Promise<TaskD
   // section is allowed. The primary project's section must not leak, and a
   // missing secondary section stays null instead of falling back to it.
   const sourceSectionId = project ? task.eff_section_id : task.section_id;
-  const [section, parent, customFieldValues] = await Promise.all([
+  const [section, parent, customFieldValues, keys] = await Promise.all([
     loadTaskSection(
       sourceSectionId == null ? null : Number(sourceSectionId),
       project ? Number(project.id) : null,
     ),
     loadParent(actor, task.parent_task_id),
     loadTaskCustomFieldValues(actor, taskId),
+    taskKeysFor([taskId]),
   ]);
   const sectionId = project
     ? section
@@ -654,6 +676,7 @@ export async function getTaskDetail(actor: Actor, taskId: number): Promise<TaskD
       section_id: sectionId,
       eff_section_id: sectionId,
       parent_task_id: parent ? parent.id : null,
+      key: keys.get(taskId) ?? null,
     },
     project: project ? { id: Number(project.id), name: project.name } : null,
     section,

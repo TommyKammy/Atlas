@@ -51,6 +51,12 @@ type MockOptions = {
   searchPageCount?: number;
   /** Rows returned by the batched parent lookup for `list_my_tasks`. */
   taskParents?: Record<string, unknown>[];
+  /** Rows for the batched issue-key lookup: { task_id, prefix, number }. */
+  taskKeys?: Record<string, unknown>[];
+  /** Rows for the development settings lookup: { project_id, prefix, start_status }. */
+  devProjects?: Record<string, unknown>[];
+  /** Task id an exact key query resolves to. */
+  keyTaskId?: number;
 };
 
 const actor: Actor = { uid: 12, source: "mcp" };
@@ -160,6 +166,14 @@ function mockQueries(options: MockOptions, calls: Call[] = []) {
     } else if (sql.includes("AS default_project_id")) {
       const context = options.taskContext === undefined ? DEFAULT_TASK_CONTEXT : options.taskContext;
       rows = context ? [{ ...context }] : [];
+    } else if (sql.includes("FROM task_keys k JOIN dev_projects d")) {
+      const ids = (params?.[0] as number[]).map(Number);
+      rows = (options.taskKeys ?? []).filter((row) => ids.includes(Number(row.task_id)));
+    } else if (sql.includes("FROM dev_projects WHERE project_id = ANY")) {
+      const ids = (params?.[0] as number[]).map(Number);
+      rows = (options.devProjects ?? []).filter((row) => ids.includes(Number(row.project_id)));
+    } else if (sql.includes("FROM dev_project_prefixes pp")) {
+      rows = options.keyTaskId === undefined ? [] : [{ task_id: options.keyTaskId }];
     } else if (sql.includes("FROM workspaces")) {
       rows = [{ id: 1 }];
     } else if (sql.includes("FROM projects p") && sql.includes("ORDER BY p.name, p.id")) {
@@ -303,7 +317,7 @@ test("listMyTasks filters through the authorized advanced search", async (t) => 
   t.mock.method(db, "query", mockQueries({ searchItems: [searchHit], searchTotal: 1 }, calls));
 
   const page = await listMyTasks(actor);
-  assert.deepEqual(page.items, [{ ...searchHit, parent: null, parent_hidden: false }]);
+  assert.deepEqual(page.items, [{ ...searchHit, key: null, parent: null, parent_hidden: false }]);
   assert.equal(page.nextCursor, null);
 
   const search = lastCall(calls, "task_home");
@@ -828,4 +842,59 @@ test("a non-compatible parent's homes are not read candidates", async (t) => {
     homes.sql,
     /inherited_membership\.task_id = inherited_parent\.id\s+WHERE inherited_parent\.id = t\.parent_task_id\s+AND \(t\.project_id IS NULL OR t\.project_id = inherited_parent\.project_id\)/,
   );
+});
+
+test("search hits carry their issue key in one batched lookup", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({
+    searchItems: [searchHit, { ...searchHit, id: 43 }],
+    searchTotal: 2,
+    taskKeys: [{ task_id: 42, prefix: "ATL", number: 7 }],
+  }, calls));
+  const page = await searchTasks(actor, {});
+  assert.deepEqual(page.items.map((item) => [item.id, item.key]), [[42, "ATL-7"], [43, null]]);
+  assert.equal(calls.filter((call) => call.sql.includes("FROM task_keys k JOIN dev_projects d")).length, 1);
+  assert.ok(!calls.some((call) => call.sql.includes("FROM dev_project_prefixes pp")), "no key lookup without a query");
+});
+
+test("an exact key query adds the keyed task inside the same filters and ranks it first", async (t) => {
+  const calls: Call[] = [];
+  t.mock.method(db, "query", mockQueries({ searchItems: [searchHit], searchTotal: 1, keyTaskId: 42 }, calls));
+  await searchTasks(actor, { query: "atl-7" });
+  const lookup = lastCall(calls, "FROM dev_project_prefixes pp");
+  assert.deepEqual(lookup.params, [1, "ATL", 7]);
+  const search = lastCall(calls, "task_home");
+  assert.ok(/OR t\.id = \$\d+\)/.test(search.sql), "key match joins the text match");
+  assert.ok(/WHEN t\.id = \$\d+ THEN -1/.test(search.sql), "key match ranks first");
+  assert.ok(search.sql.includes("data_actor.is_admin"), "visibility still applies");
+  assert.ok(search.params?.includes(42));
+
+  calls.length = 0;
+  await searchTasks(actor, { query: "plain words" });
+  assert.ok(!calls.some((call) => call.sql.includes("FROM dev_project_prefixes pp")));
+  assert.ok(!/THEN -1/.test(lastCall(calls, "task_home").sql));
+});
+
+test("projects report their development settings", async (t) => {
+  t.mock.method(db, "query", mockQueries({
+    role: "viewer",
+    projects: [{ id: 7, name: "Alpha" }, { id: 8, name: "Beta" }],
+    devProjects: [{ project_id: 7, prefix: "ATL", start_status: "todo" }],
+  }));
+  const page = await listProjects(actor);
+  assert.deepEqual(page.items, [
+    { id: 7, name: "Alpha", dev: { prefix: "ATL", start_status: "todo" } },
+    { id: 8, name: "Beta", dev: null },
+  ]);
+  const summary = await getProjectSummary(actor, 7);
+  assert.deepEqual(summary.project.dev, { prefix: "ATL", start_status: "todo" });
+});
+
+test("task detail carries the issue key", async (t) => {
+  t.mock.method(db, "query", mockQueries({
+    role: "viewer",
+    taskKeys: [{ task_id: 42, prefix: "ATL", number: 7 }],
+  }));
+  const detail = await getTaskDetail(actor, 42);
+  assert.equal(detail.task.key, "ATL-7");
 });

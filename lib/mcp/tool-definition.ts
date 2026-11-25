@@ -16,6 +16,18 @@ const READ_ANNOTATIONS = {
 export const idSchema = z.number().int().positive();
 export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
+/** A task id or an issue key such as "ATL-123" (any letter case). */
+export const taskRefSchema = z.union([idSchema, z.string().min(3).max(32)]);
+/** A project id or a development-project prefix such as "ATL" (current or old). */
+export const projectRefSchema = z.union([idSchema, z.string().min(2).max(10)]);
+
+export const TASK_REF_NOTE =
+  "Tasks can be given by numeric id or by issue key (PREFIX-NUMBER, for example ATL-123); "
+  + "a key that does not exist and one you cannot view both return \"task not found\".";
+export const PROJECT_REF_NOTE =
+  "Projects can be given by numeric id or, for development projects, by prefix (for example ATL); "
+  + "an unknown prefix and one you cannot view both return \"project not found\".";
+
 export type McpToolContext = {
   actor: Actor;
   scopes: McpScope[];
