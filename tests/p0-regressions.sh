@@ -130,8 +130,10 @@ if [[ "$suite" == integrity || "$suite" == all ]]; then
     docker cp "tests/$file-regressions.mjs" "$app_id:/app/tests/"
     docker exec "$app_id" node --test "/app/tests/$file-regressions.mjs" || status=1
   done
-  docker cp tests/dev-keys-resolve-regressions.mjs "$app_id:/app/tests/"
-  docker exec "$app_id" node --import tsx --test /app/tests/dev-keys-resolve-regressions.mjs || status=1
+  for file in dev-keys-resolve dev-keys-writes; do
+    docker cp "tests/$file-regressions.mjs" "$app_id:/app/tests/"
+    docker exec "$app_id" node --import tsx --test "/app/tests/$file-regressions.mjs" || status=1
+  done
   docker cp tests/p1-automation-regressions.mjs "$app_id:/app/tests/"
   docker exec "$app_id" node --test /app/tests/p1-automation-regressions.mjs || status=1
   docker cp tests/ar01-ar03-regressions.mjs "$app_id:/app/tests/"

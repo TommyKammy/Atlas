@@ -28,6 +28,14 @@ export async function afterTaskCreated(projectId: number, taskId: number, uid: n
   await runAutomations(projectId, taskId, "task_created").catch(() => undefined);
 }
 
+export type CreateTaskOptions = {
+  /**
+   * Runs inside the INSERT's transaction, so whatever it writes commits or
+   * rolls back with the task. Throwing aborts the creation.
+   */
+  onInserted?: (q: Queryable, taskId: number) => Promise<void>;
+};
+
 /**
  * Create a task for an actor that need not come from an HTTP session.
  * Validation order and error messages mirror POST /api/tasks.
@@ -35,6 +43,7 @@ export async function afterTaskCreated(projectId: number, taskId: number, uid: n
 export async function createTask(
   actor: Actor,
   input: unknown,
+  options: CreateTaskOptions = {},
 ): Promise<{ id: number; updated_at: string }> {
   if (!input || typeof input !== "object") throw badRequest("invalid json");
   const body = input as Record<string, unknown>;
@@ -76,9 +85,13 @@ export async function createTask(
   const dateOrNull = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
   const start = dateOrNull(start_on);
   const due = dateOrNull(due_on);
-  const id = await withTransaction(q => insertTask(q, {
-    projectId, sectionId, parentId, name: name.trim(), start, due, assigneeId, uid: actor.uid, isMilestone,
-  }));
+  const id = await withTransaction(async q => {
+    const taskId = await insertTask(q, {
+      projectId, sectionId, parentId, name: name.trim(), start, due, assigneeId, uid: actor.uid, isMilestone,
+    });
+    await options.onInserted?.(q, taskId);
+    return taskId;
+  });
   await afterTaskCreated(projectId, id, actor.uid, name);
   const stamp = await db.query("SELECT updated_at::text AS updated_at FROM tasks WHERE id = $1", [id]);
   return { id, updated_at: stamp.rows[0].updated_at as string };

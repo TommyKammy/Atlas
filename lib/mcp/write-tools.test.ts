@@ -86,6 +86,9 @@ function fakeDetail(taskId: number): TaskDetailView {
   };
 }
 
+const FAKE_TASK_KEYS: Record<string, number> = { "ATL-7": 70, "ATL-8": 80 };
+const FAKE_PROJECT_PREFIXES: Record<string, number> = { ATL: 9 };
+
 function fakeSummary(projectId: number): ProjectSummary {
   return {
     project: { id: projectId, name: `Project ${projectId}` } as unknown as ProjectSummary["project"],
@@ -165,11 +168,15 @@ function fakeServices(overrides: Partial<McpWriteServices> = {}) {
     loadWorkspaceId: async () => 1,
     withIdempotency: async (input, run) => {
       calls.idempotency.push(input);
-      return run();
+      return run({ recordCreatedTask: async () => undefined });
     },
     enforceWriteLimit: async (tokenId) => {
       calls.writeLimit.push(tokenId);
     },
+    // Keys resolve to fixed ids here; numeric ids pass through unchanged.
+    resolveTaskRef: async (_actor, ref) => (typeof ref === "number" ? ref : FAKE_TASK_KEYS[ref.toUpperCase()] ?? 0),
+    resolveProjectRef: async (_actor, ref) => (typeof ref === "number" ? ref : FAKE_PROJECT_PREFIXES[ref.toUpperCase()] ?? 0),
+    taskCustomValueMatches: async () => true,
   };
 
   return { services: { ...services, ...overrides }, calls };
@@ -818,6 +825,8 @@ function idempotencyStore(calls: Call[]) {
             request_hash: row.hash,
             response: row.response,
             in_flight: row.response === null,
+            created_task_id: null,
+            stale: false,
           }]
         : []);
     }
@@ -1091,4 +1100,164 @@ test("write tools expose a fixed registration order", () => {
   const names = createWriteTools().map((item: McpToolDefinition) => item.name);
   assert.deepEqual(names, WRITE_TOOL_NAMES);
   assert.deepEqual(createReadTools().map((item) => item.name), READ_TOOL_NAMES);
+});
+
+test("write tools accept issue keys and project prefixes and act on the resolved ids", async () => {
+  const resolved: Array<{ ref: unknown; access: unknown }> = [];
+  const { services, calls } = fakeServices({
+    resolveTaskRef: async (_actor, ref, access) => {
+      resolved.push({ ref, access });
+      return typeof ref === "number" ? ref : FAKE_TASK_KEYS[ref.toUpperCase()];
+    },
+  });
+
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const created = await client.callTool(tool("save_task", {
+      project_id: "atl", parent_task_id: "ATL-8", name: "Keyed", idempotency_key: "k1",
+    }));
+    assert.equal(created.isError, undefined);
+    const updated = await client.callTool(tool("save_task", { id: "atl-7", name: "Renamed" }));
+    assert.equal(updated.isError, undefined);
+    await client.callTool(tool("complete_task", { id: "ATL-7" }));
+    await client.callTool(tool("move_task", { id: "ATL-7", section_id: 3 }));
+    const comment = await client.callTool(tool("add_comment", { task_id: "ATL-7", body: "PR #1" }));
+    assert.deepEqual(comment.structuredContent, { id: 500, task_id: 70 });
+    const trashed = await client.callTool(tool("trash_task", { id: "ATL-8" }));
+    assert.deepEqual(trashed.structuredContent, { id: 80, trashed: true });
+    assert.match((trashed.content as Array<{ text: string }>)[0].text, /^Task ATL-8 \(id 80\)/);
+  });
+
+  assert.deepEqual(calls.createTask[0].input, { project_id: 9, name: "Keyed", parent_task_id: 80 });
+  // Keys and prefixes are hashed as the ids they name.
+  assert.equal((calls.idempotency[0].args as Record<string, unknown>).project_id, 9);
+  assert.equal((calls.idempotency[0].args as Record<string, unknown>).parent_task_id, 80);
+  assert.equal((calls.idempotency[1].args as Record<string, unknown>).task_id, 70);
+  assert.deepEqual(calls.updateTaskForActor.map((call) => call.taskId), [70, 70, 70]);
+  assert.deepEqual(calls.addComment[0].input, { task_id: 70, body: "PR #1" });
+  assert.deepEqual(calls.trashTaskForActor.map((call) => call.taskId), [80]);
+  // Write tools resolve with view access; the write service then applies its
+  // own permission check, so a viewer without edit rights sees the usual 403.
+  assert.ok(resolved.every((call) => call.access === "view"));
+});
+
+test("a key the actor cannot see stops the write before any service runs", async () => {
+  const { services, calls } = fakeServices({
+    resolveTaskRef: async () => {
+      throw new ApiError(404, "task not found", "not_found");
+    },
+    resolveProjectRef: async () => {
+      throw new ApiError(404, "project not found", "not_found");
+    },
+  });
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    for (const [name, args, message] of [
+      ["complete_task", { id: "ATL-9" }, "task not found"],
+      ["add_comment", { task_id: "ATL-9", body: "x" }, "task not found"],
+      ["save_task", { project_id: "NOPE", name: "x" }, "project not found"],
+    ] as const) {
+      const result = await client.callTool(tool(name, args));
+      assert.equal(result.isError, true, name);
+      assert.equal((result.content as Array<{ text: string }>)[0].text, message, name);
+    }
+  });
+  assert.equal(calls.updateTaskForActor.length + calls.addComment.length + calls.createTask.length, 0);
+  assert.equal(calls.idempotency.length, 0);
+});
+
+test("save_task records the created task inside the creation transaction", async () => {
+  const recorded: number[] = [];
+  const marker = { query: async () => ({ rows: [], rowCount: 1 }) };
+  const { services } = fakeServices({
+    createTask: async (_actor, _input, options) => {
+      await options?.onInserted?.(marker as never, 100);
+      return { id: 100, updated_at: "2026-01-01T00:00:00.000Z" };
+    },
+    withIdempotency: async (_input, run) => run({
+      recordCreatedTask: async (q, taskId) => {
+        assert.equal(q, marker, "recorded through the creation's own transaction client");
+        recorded.push(taskId);
+      },
+    }),
+  });
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    await client.callTool(tool("save_task", { project_id: 1, name: "x", idempotency_key: "k" }));
+  });
+  assert.deepEqual(recorded, [100]);
+});
+
+function recoveringServices(detail: TaskDetailView, overrides: Partial<McpWriteServices> = {}) {
+  return fakeServices({
+    withIdempotency: async (_input, _run, options) => options!.recover!({ createdTaskId: detail.task.id }),
+    getTaskDetail: async () => detail,
+    ...overrides,
+  });
+}
+
+function recoveredDetail(overrides: Record<string, unknown> = {}): TaskDetailView {
+  const detail = fakeDetail(100);
+  Object.assign(detail.task, {
+    key: "ATL-100", project_id: 1, name: "Recovered", description: "Details", status: "Todo",
+    assignee_id: 42, due_on: "2026-01-02", section_id: 2, parent_task_id: null, is_milestone: false,
+    ...overrides,
+  });
+  return detail;
+}
+
+const RECOVER_ARGS = {
+  project_id: 1, name: "Recovered", description: "Details", status: "Todo", assignee: "me",
+  due_on: "2026-01-02", section_id: 2, custom_fields: [{ field_id: 5, value: "a" }],
+  idempotency_key: "crashed",
+};
+
+test("a recovered creation that matches the request returns the task without writing", async () => {
+  const { services, calls } = recoveringServices(recoveredDetail());
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("save_task", RECOVER_ARGS));
+    assert.equal(result.isError, undefined);
+    const structured = result.structuredContent as { recovered: boolean; task: { id: number } };
+    assert.equal(structured.recovered, true);
+    assert.equal(structured.task.id, 100);
+    assert.match((result.content as Array<{ text: string }>)[0].text, /Task ATL-100 \(id 100\) was created by an earlier request/);
+  });
+  assert.equal(calls.createTask.length, 0);
+  assert.equal(calls.updateTaskForActor.length, 0);
+  assert.equal(calls.setTaskCustomValue.length, 0);
+});
+
+test("a recovered creation reports values the task does not hold as not_confirmed", async () => {
+  const { services, calls } = recoveringServices(
+    recoveredDetail({ description: "Edited by a person", status: "Inbox" }),
+    { taskCustomValueMatches: async (_actor, _taskId, fieldId) => fieldId !== 5 },
+  );
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("save_task", RECOVER_ARGS));
+    assert.equal(result.isError, true);
+    const structured = result.structuredContent as Record<string, unknown>;
+    assert.equal(structured.created, true);
+    assert.equal(structured.recovered, true);
+    assert.equal(structured.id, 100);
+    assert.deepEqual(structured.failed_updates, [
+      { field: "description", error: "not_confirmed" },
+      { field: "status", error: "not_confirmed" },
+      { field: "custom_fields.5", error: "not_confirmed" },
+    ]);
+  });
+  // The person's edit is never overwritten.
+  assert.equal(calls.updateTaskForActor.length, 0);
+  assert.equal(calls.setTaskCustomValue.length, 0);
+});
+
+test("a recovered creation that cannot be read reports task_detail", async () => {
+  const { services } = recoveringServices(recoveredDetail(), {
+    getTaskDetail: async () => {
+      throw new ApiError(404, "task not found", "not_found");
+    },
+  });
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("save_task", RECOVER_ARGS));
+    assert.equal(result.isError, true);
+    const structured = result.structuredContent as Record<string, unknown>;
+    assert.deepEqual(structured.failed_updates, [{ field: "task_detail", error: "task not found" }]);
+    assert.deepEqual(structured.task, { id: 100 });
+  });
 });

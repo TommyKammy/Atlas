@@ -6,7 +6,7 @@ import { emitTaskEvent } from "../domain/events";
 import { canEditFieldValue } from "../field-access";
 import { notifyField, notifyTask } from "../notify";
 import { logEvent } from "../repositories/tasks";
-import { isEmptyTaskCustomValue, normalizeTaskCustomValue } from "../task-custom-value";
+import { equalTaskCustomValue, isEmptyTaskCustomValue, normalizeTaskCustomValue } from "../task-custom-value";
 import { requireTaskAccess, type Actor } from "./actor";
 import { TaskMutationFailure } from "./task-mutation-failure";
 
@@ -236,4 +236,33 @@ export async function setTaskCustomValue(
   }));
   await Promise.all([notifyTask(taskId), notifyField(field_id as number)]);
   return result;
+}
+
+/**
+ * Whether a task's stored value for a field equals what writing `value` would
+ * store. Read only, with no access check: callers have already read the task.
+ * A field that is deleted, belongs to another project or rejects the value
+ * counts as a mismatch.
+ */
+export async function taskCustomValueMatches(
+  actor: Actor,
+  taskId: number,
+  fieldId: number,
+  value: unknown,
+): Promise<boolean> {
+  const field = await db.query(
+    `SELECT f.field_type, f.config
+       FROM custom_fields f JOIN tasks t ON t.project_id = f.project_id
+      WHERE t.id = $1::bigint AND f.id = $2::bigint AND f.deleted_at IS NULL`,
+    [taskId, fieldId],
+  );
+  if (field.rowCount === 0) return false;
+  const normalized = await normalizeTaskCustomValue(field.rows[0], value, actor.uid, db);
+  if (!normalized.ok) return false;
+  const stored = await db.query(
+    `SELECT value_text, value_number, value_date::text AS value_date, value_json
+       FROM task_custom_values WHERE task_id = $1::bigint AND field_id = $2::bigint`,
+    [taskId, fieldId],
+  );
+  return equalTaskCustomValue(stored.rows[0], normalized.value);
 }

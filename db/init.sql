@@ -841,6 +841,9 @@ CREATE TABLE IF NOT EXISTS mcp_idempotency (
   response      JSONB,
   owner_token   TEXT NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Set with the task INSERT so a crash before the response is recorded
+  -- cannot lead to a duplicate on retry (docs/dev-projects-phase0.md §7).
+  created_task_id BIGINT,
   CONSTRAINT mcp_idempotency_key_length
     CHECK (char_length(idempotency_key) BETWEEN 1 AND 200),
   CONSTRAINT mcp_idempotency_request_hash_format
