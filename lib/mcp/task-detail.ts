@@ -29,3 +29,8 @@ export function taskDetailPayload(
     truncated,
   };
 }
+
+/** How tool messages name a task: its key with the id, or the id alone. */
+export function taskLabel(task: { id: number; key: string | null }): string {
+  return task.key ? `${task.key} (id ${task.id})` : String(task.id);
+}

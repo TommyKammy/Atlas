@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { ApiError } from "@/lib/api/errors";
-import { db } from "@/lib/db";
+import { db, type Queryable } from "@/lib/db";
 
 /** Successful responses are reusable for 24 hours, matching the janitor. */
 export const MCP_IDEMPOTENCY_TTL_HOURS = 24;
@@ -21,6 +21,32 @@ type StoredIdempotencyRow = {
   request_hash: string;
   response: unknown;
   in_flight: boolean;
+  created_task_id: number | string | null;
+  stale: boolean;
+};
+
+/** What a running create tool can do with its own reservation. */
+export type IdempotencyReservation = {
+  /**
+   * Record the created task in the reservation. Call it inside the
+   * transaction that inserts the task: the record then commits or rolls back
+   * with the task. Throws a 409, rolling the creation back, when another
+   * execution has taken the reservation over.
+   */
+  recordCreatedTask(q: Queryable, taskId: number): Promise<void>;
+};
+
+export type IdempotencyOptions<T> = {
+  /**
+   * Answer a retry whose earlier execution created a task but never recorded
+   * a response. It must only read: it is not recorded and may run any number
+   * of times.
+   */
+  recover?: (stored: { createdTaskId: number }) => Promise<T>;
+};
+
+const NO_RESERVATION: IdempotencyReservation = {
+  recordCreatedTask: async () => undefined,
 };
 
 type ReservationRow = {
@@ -84,7 +110,13 @@ function storedResponse<T>(response: unknown): T {
  * The reservation is a committed row with response IS NULL. A concurrent call
  * for the same key sees that row, does not run the tool, and receives a 409
  * "in progress" error rather than duplicating the write. When `run` throws, the
- * reservation is deleted so the client can retry immediately.
+ * reservation is deleted so the client can retry immediately, unless it
+ * already records a created task.
+ *
+ * A reservation with created_task_id is never taken over or deleted before the
+ * TTL: the task committed, so running again would duplicate it. Once it is
+ * stale, a retry calls `options.recover` instead of `run`; before that it is
+ * still "in progress" because the first execution may yet finish.
  *
  * Each reservation, including a takeover, receives a fresh owner_token. The
  * result write and the failure delete match both id and owner_token, so an
@@ -95,10 +127,11 @@ function storedResponse<T>(response: unknown): T {
  */
 export async function withIdempotency<T>(
   input: IdempotencyInput,
-  run: () => Promise<T>,
+  run: (reservation: IdempotencyReservation) => Promise<T>,
+  options: IdempotencyOptions<T> = {},
 ): Promise<T> {
   const key = normalizeKey(input.key);
-  if (key === null) return run();
+  if (key === null) return run(NO_RESERVATION);
   assertIdentity(input.tokenId, input.toolName);
 
   const requestHash = idempotencyRequestHash(input.args);
@@ -111,10 +144,12 @@ export async function withIdempotency<T>(
        request_hash = EXCLUDED.request_hash,
        response = NULL,
        created_at = now(),
-       owner_token = EXCLUDED.owner_token
+       owner_token = EXCLUDED.owner_token,
+       created_task_id = NULL
      WHERE mcp_idempotency.created_at
              <= now() - make_interval(hours => $5::int)
         OR (mcp_idempotency.response IS NULL
+            AND mcp_idempotency.created_task_id IS NULL
             AND mcp_idempotency.created_at
               <= now() - make_interval(mins => $6::int))
      RETURNING id, owner_token`,
@@ -133,26 +168,39 @@ export async function withIdempotency<T>(
     const reservation = reserved.rows[0] as ReservationRow;
     const reservationId = reservation.id;
     const reservationOwner = reservation.owner_token;
+    // A failed call must remain retryable. Delete only our own reservation
+    // (if it was taken over, the new owner keeps the row) and only while it
+    // records no created task: a task that committed must not be created
+    // again by the retry.
+    const release = () => db.query(
+      `DELETE FROM mcp_idempotency
+        WHERE id = $1 AND owner_token = $2 AND created_task_id IS NULL`,
+      [reservationId, reservationOwner],
+    ).catch(() => undefined);
+    const handle: IdempotencyReservation = {
+      async recordCreatedTask(q, taskId) {
+        const marked = await q.query(
+          `UPDATE mcp_idempotency SET created_task_id = $3
+            WHERE id = $1 AND owner_token = $2 AND response IS NULL`,
+          [reservationId, reservationOwner, taskId],
+        );
+        if (marked.rowCount === 0) {
+          throw new ApiError(409, "idempotency key was taken over by another request", "conflict");
+        }
+      },
+    };
     let result: T;
     try {
-      result = await run();
+      result = await run(handle);
     } catch (error) {
-      // A failed call must remain retryable. Delete only our own reservation:
-      // if it was taken over, the new owner keeps the row.
-      await db.query(
-        "DELETE FROM mcp_idempotency WHERE id = $1 AND owner_token = $2",
-        [reservationId, reservationOwner],
-      ).catch(() => undefined);
+      await release();
       throw error;
     }
     let payload: string;
     try {
       payload = JSON.stringify(result ?? null);
     } catch (error) {
-      await db.query(
-        "DELETE FROM mcp_idempotency WHERE id = $1 AND owner_token = $2",
-        [reservationId, reservationOwner],
-      ).catch(() => undefined);
+      await release();
       throw error;
     }
     const recorded = await db.query(
@@ -172,10 +220,11 @@ export async function withIdempotency<T>(
   }
 
   const existing = await db.query(
-    `SELECT id, request_hash, response, (response IS NULL) AS in_flight
+    `SELECT id, request_hash, response, (response IS NULL) AS in_flight, created_task_id,
+            (created_at <= now() - make_interval(mins => $4::int)) AS stale
        FROM mcp_idempotency
       WHERE token_id = $1 AND tool_name = $2 AND idempotency_key = $3`,
-    [input.tokenId, input.toolName, key],
+    [input.tokenId, input.toolName, key, MCP_IDEMPOTENCY_STALE_MINUTES],
   );
   const row = existing.rows[0] as StoredIdempotencyRow | undefined;
   if (!row) {
@@ -187,6 +236,9 @@ export async function withIdempotency<T>(
     throw new ApiError(409, "idempotency key reused with different arguments", "conflict");
   }
   if (row.in_flight === true) {
+    if (row.created_task_id != null && row.stale === true && options.recover) {
+      return options.recover({ createdTaskId: Number(row.created_task_id) });
+    }
     throw new ApiError(409, "idempotency key is already in progress", "conflict");
   }
   return storedResponse<T>(row.response);

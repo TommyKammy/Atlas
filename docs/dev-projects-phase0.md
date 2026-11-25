@@ -212,6 +212,11 @@ PostgreSQL はこれを検出して片方を中断するが、どちらが中断
 - `list_tasks` の `query` がキーに完全に一致するときは、キーからタスク ID を引き（権限は確かめない）、検索 SQL の本文一致に `OR t.id = <ID>` を足して順位を最上位にする。可視性やほかの絞り込みは検索 SQL がそのまま適用するので、閲覧権限のないタスクは返らない。
 - `get_project` も接頭辞を受け付ける（§8 の表への追加）。
 
+実装メモ（PR 3）:
+
+- 書き込み系ツールも、キーの解決では閲覧権限（`view`）だけを確かめ、編集やコメントの権限は書き込みサービスにそのまま任せる。キーの解決で `edit` を求めると、閲覧はできるが編集できない利用者に「task not found」と答えることになり、存在を知っている相手に誤った情報を返すためである。その場合は数値 ID のときと同じ 403 になる。
+- キーと接頭辞は `withIdempotency` より前に解決し、ハッシュは解決後の数値 ID で計算する（`save_task` の `project_id` と `parent_task_id`、`add_comment` の `task_id`）。
+
 ## 6. 着手（`start_task`）の仕様
 
 ### 6.1 設定: 着手時の状態
@@ -311,6 +316,13 @@ PostgreSQL はこれを検出して片方を中断するが、どちらが中断
 6. **リクエストのハッシュ**: `request_hash` は、`project_id` / `parent_task_id` を解決後の数値 ID に正規化してから計算する。`"ATL"` と数値 ID のどちらで再送しても同じ要求として扱う。
 
 `afterTaskCreated`（自動化とイベント）がトランザクションの外で動くことは既存の課題として残し、この段階では扱わない。`create_tasks`（一括起票）は、この仕組みを複数件と親子に広げる設計とあわせて、後の段階で扱う。
+
+実装メモ（PR 3）:
+
+- 列はマイグレーション `0042_mcp_idempotency_created_task.sql` で追加する（`init.sql` にも反映）。外部キーは付けない。予約行は回復のための目印にすぎず、タスクが完全削除されていた場合は、回復の結果で読めなかったことを報告する。
+- `withIdempotency(input, run, { recover })` の `run` は、自分の予約への操作 `reservation.recordCreatedTask(q, taskId)` を受け取る。`idempotency_key` がないときは何もしない。`createTask(actor, input, { onInserted })` のフックからこれを呼ぶ。
+- 回復の比較は、作成時に要求したすべての項目（`project_id`、`name`、`section_id`、`parent_task_id`、日付、`assignee`、`is_milestone`、`description`、`status`、カスタムフィールド）について行う。カスタムフィールドは、値を書くときと同じ正規化をした値と保存済みの値を比べる（`taskCustomValueMatches`）。結果には `recovered: true` を付け、一致しない項目があれば作成時の部分失敗と同じ形（`created`、`id`、`task`、`failed_updates`、`isError`）で返す。
+- 現在の `afterTaskCreated` は、監査記録や自動化の失敗を自分で握りつぶすため、例外はほとんど出ない。コミット後の失敗のテストは、`createTask` がその後に行う `updated_at` の読み取りを失敗させて代用する。
 
 ## 8. MCP ツールの変更
 

@@ -11,7 +11,8 @@ import * as queries from "@/lib/services/queries";
 import { createSection } from "@/lib/services/sections";
 import { trashTaskForActor, updateTaskForActor } from "@/lib/services/task-actions";
 import { createTask } from "@/lib/services/task-create";
-import { setTaskCustomValue } from "@/lib/services/task-custom-values";
+import { setTaskCustomValue, taskCustomValueMatches } from "@/lib/services/task-custom-values";
+import { resolveProjectRef, resolveTaskRef } from "@/lib/services/task-keys";
 import { TaskMutationFailure } from "@/lib/services/task-mutation-failure";
 import { MCP_IDEMPOTENCY_KEY_MAX_LENGTH, withIdempotency } from "./idempotency";
 import { enforceMcpWriteLimit } from "./rate-limit";
@@ -52,6 +53,9 @@ export type McpWriteServices = {
   loadWorkspaceId: typeof queries.loadWorkspaceId;
   withIdempotency: typeof withIdempotency;
   enforceWriteLimit: typeof enforceMcpWriteLimit;
+  resolveTaskRef: typeof resolveTaskRef;
+  resolveProjectRef: typeof resolveProjectRef;
+  taskCustomValueMatches: typeof taskCustomValueMatches;
 };
 
 export const DEFAULT_MCP_WRITE_SERVICES: McpWriteServices = {
@@ -69,6 +73,9 @@ export const DEFAULT_MCP_WRITE_SERVICES: McpWriteServices = {
   loadWorkspaceId: queries.loadWorkspaceId,
   withIdempotency,
   enforceWriteLimit: enforceMcpWriteLimit,
+  resolveTaskRef,
+  resolveProjectRef,
+  taskCustomValueMatches,
 };
 
 /**

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { QueryResult } from "pg";
 import { ApiError } from "@/lib/api/errors";
-import { db } from "@/lib/db";
+import { db, type Queryable } from "@/lib/db";
 import {
   MCP_IDEMPOTENCY_KEY_MAX_LENGTH,
   idempotencyRequestHash,
@@ -18,6 +18,9 @@ type StoredRow = {
   hash: string;
   response: unknown;
   ownerToken: string;
+  createdTaskId: number | null;
+  /** Stands in for created_at older than the stale window. */
+  stale: boolean;
 };
 
 function result(
@@ -45,7 +48,9 @@ function idempotencyStore(calls: Call[]) {
       const ownerToken = String(params[6]);
       const keyId = mapKey(tokenId, toolName, key);
       if (rows.has(keyId)) return result([]);
-      const row: StoredRow = { id: nextId++, tokenId, toolName, key, hash, response: null, ownerToken };
+      const row: StoredRow = {
+        id: nextId++, tokenId, toolName, key, hash, response: null, ownerToken, createdTaskId: null, stale: false,
+      };
       rows.set(keyId, row);
       return result([{ id: row.id, owner_token: row.ownerToken }]);
     }
@@ -58,8 +63,20 @@ function idempotencyStore(calls: Call[]) {
             request_hash: row.hash,
             response: row.response,
             in_flight: row.response === null,
+            created_task_id: row.createdTaskId,
+            stale: row.stale,
           }]
         : []);
+    }
+    if (sql.includes("SET created_task_id")) {
+      const [id, ownerToken, taskId] = params as [number, string, number];
+      for (const row of rows.values()) {
+        if (row.id === Number(id) && row.ownerToken === String(ownerToken) && row.response === null) {
+          row.createdTaskId = Number(taskId);
+          return result([], 1);
+        }
+      }
+      return result([], 0);
     }
     if (sql.includes("UPDATE mcp_idempotency SET response")) {
       const [id, ownerToken, payload] = params as [number, string, string];
@@ -72,9 +89,10 @@ function idempotencyStore(calls: Call[]) {
       return result([], 0);
     }
     if (sql.includes("DELETE FROM mcp_idempotency")) {
+      assert.match(sql, /created_task_id IS NULL/);
       const [id, ownerToken] = params;
       for (const [key, row] of rows) {
-        if (row.id === Number(id) && row.ownerToken === String(ownerToken)) {
+        if (row.id === Number(id) && row.ownerToken === String(ownerToken) && row.createdTaskId === null) {
           rows.delete(key);
           return result([], 1);
         }
@@ -329,4 +347,130 @@ test("a late failure cannot delete the reservation taken over by another run", a
   const row = [...store.rows.values()][0];
   assert.equal(row.ownerToken, "taken-over");
   assert.deepEqual(row.response, { id: 2 });
+});
+
+/** A Queryable that forwards to the mocked pool, as a transaction client would. */
+const tx = { query: (sql: string, params?: unknown[]) => db.query(sql, params) } as unknown as Queryable;
+
+test("without a key the reservation hook is a no-op", async (t) => {
+  t.mock.method(db, "query", async () => assert.fail("idempotency storage must not be used"));
+  const result = await withIdempotency({ ...BASE, key: undefined, args: {} }, async (reservation) => {
+    await reservation.recordCreatedTask(tx, 5);
+    return { id: 5 };
+  });
+  assert.deepEqual(result, { id: 5 });
+});
+
+test("a takeover requires no recorded task and clears created_task_id", async (t) => {
+  const calls: Call[] = [];
+  const store = idempotencyStore(calls);
+  t.mock.method(db, "query", store.query);
+  await withIdempotency({ ...BASE, args: {} }, async () => ({ id: 1 }));
+  const insert = calls.find((call) => call.sql.includes("INSERT INTO mcp_idempotency"));
+  assert.match(insert!.sql, /created_task_id = NULL/);
+  assert.match(insert!.sql, /response IS NULL\s+AND mcp_idempotency\.created_task_id IS NULL/);
+});
+
+test("a failure after the task was recorded keeps the reservation", async (t) => {
+  const calls: Call[] = [];
+  const store = idempotencyStore(calls);
+  t.mock.method(db, "query", store.query);
+  let runs = 0;
+  const input = { ...BASE, args: { name: "Task" } };
+
+  await assert.rejects(
+    withIdempotency(input, async (reservation) => {
+      runs++;
+      await reservation.recordCreatedTask(tx, 77);
+      throw new Error("audit failed after commit");
+    }),
+    /audit failed after commit/,
+  );
+  const row = [...store.rows.values()][0];
+  assert.equal(row.createdTaskId, 77);
+  assert.equal(row.response, null);
+
+  // Before the stale window the first run may still be finishing.
+  await assert.rejects(
+    withIdempotency(input, async () => {
+      runs++;
+      return { id: 78 };
+    }, { recover: async () => assert.fail("must not recover before the stale window") }),
+    (error: unknown) => error instanceof ApiError && error.status === 409
+      && error.message === "idempotency key is already in progress",
+  );
+  assert.equal(runs, 1);
+});
+
+test("a stale reservation with a created task is recovered, not run again or recorded", async (t) => {
+  const calls: Call[] = [];
+  const store = idempotencyStore(calls);
+  t.mock.method(db, "query", store.query);
+  const input = { ...BASE, args: { name: "Task" } };
+  await withIdempotency(input, async (reservation) => {
+    await reservation.recordCreatedTask(tx, 77);
+    throw new Error("crashed before the response");
+  }).catch(() => undefined);
+  [...store.rows.values()][0].stale = true;
+
+  let runs = 0;
+  const recovered: number[] = [];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await withIdempotency(input, async () => {
+      runs++;
+      return { id: 0 };
+    }, {
+      recover: async ({ createdTaskId }) => {
+        recovered.push(createdTaskId);
+        return { id: createdTaskId, recovered: true };
+      },
+    });
+    assert.deepEqual(result, { id: 77, recovered: true });
+  }
+  assert.equal(runs, 0);
+  assert.deepEqual(recovered, [77, 77]);
+  assert.equal([...store.rows.values()][0].response, null, "recovery is never recorded");
+
+  // Different arguments under the same key are still a conflict.
+  await assert.rejects(
+    withIdempotency({ ...BASE, args: { name: "Other" } }, async () => ({ id: 0 }), {
+      recover: async () => assert.fail("must not recover a different request"),
+    }),
+    (error: unknown) => error instanceof ApiError && error.status === 409
+      && error.message === "idempotency key reused with different arguments",
+  );
+});
+
+test("a stale reservation without a recover callback stays in progress", async (t) => {
+  const calls: Call[] = [];
+  const store = idempotencyStore(calls);
+  t.mock.method(db, "query", store.query);
+  const input = { ...BASE, args: {} };
+  await withIdempotency(input, async (reservation) => {
+    await reservation.recordCreatedTask(tx, 77);
+    throw new Error("crashed");
+  }).catch(() => undefined);
+  [...store.rows.values()][0].stale = true;
+  await assert.rejects(
+    withIdempotency(input, async () => ({ id: 0 })),
+    (error: unknown) => error instanceof ApiError && error.status === 409,
+  );
+});
+
+test("recording the task after a takeover fails so the creation rolls back", async (t) => {
+  const calls: Call[] = [];
+  const store = idempotencyStore(calls);
+  t.mock.method(db, "query", store.query);
+  await assert.rejects(
+    withIdempotency({ ...BASE, args: {} }, async (reservation) => {
+      [...store.rows.values()][0].ownerToken = "taken-over";
+      await reservation.recordCreatedTask(tx, 77);
+      return { id: 77 };
+    }),
+    (error: unknown) => error instanceof ApiError && error.status === 409
+      && error.message === "idempotency key was taken over by another request",
+  );
+  const row = [...store.rows.values()][0];
+  assert.equal(row.createdTaskId, null);
+  assert.equal(row.ownerToken, "taken-over");
 });
