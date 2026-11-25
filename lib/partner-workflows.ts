@@ -47,9 +47,11 @@ export function suggestActionDate(value: string | null, referenceAt: string): { 
   if (absolute) return { date: calendar(+absolute[1], +absolute[2], +absolute[3]), reason: "" };
   const partial = raw.match(/^(\d{1,2})(?:月|\/)(\d{1,2})日?$/u);
   if (partial) {
-    const date = calendar(year, +partial[1], +partial[2]);
-    if (!date) return empty;
-    return { date: date < today ? calendar(year + 1, +partial[1], +partial[2]) : date, reason: `${reason} 年の指定がないため、次に来る日付を提案しています。` };
+    const month = Number(partial[1]), day = Number(partial[2]);
+    const thisYear = calendar(year, month, day);
+    if (!thisYear) return empty;
+    const date = thisYear < today ? calendar(year + 1, month, day) : thisYear;
+    return date ? { date, reason: `${reason} 年の指定がないため、次に来る日付を提案しています。` } : empty;
   }
   let offset: number | undefined = ({ 今日: 0, 本日: 0, 明日: 1, あす: 1, 明後日: 2, あさって: 2 } as Record<string, number>)[raw];
   const days = raw.match(/^(\d{1,3})日後$/u);
