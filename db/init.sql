@@ -1149,3 +1149,45 @@ CREATE TABLE IF NOT EXISTS automation_webhook_endpoints (
 );
 CREATE INDEX IF NOT EXISTS idx_automation_webhooks_project
   ON automation_webhook_endpoints(project_id, id);
+
+-- Development projects and issue keys. The numbering trigger lives in
+-- db/migrations/0041_dev_project_keys.sql.
+-- Settings and key namespace. The row outlives a hard-deleted project
+-- (project_id becomes NULL) so keys of tasks moved elsewhere survive.
+CREATE TABLE IF NOT EXISTS dev_projects (
+  id             BIGSERIAL PRIMARY KEY,
+  project_id     BIGINT UNIQUE REFERENCES projects(id) ON DELETE SET NULL,
+  workspace_id   BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  prefix         TEXT NOT NULL CHECK (prefix ~ '^[A-Z][A-Z0-9]{1,9}$'),
+  branch_prefix  TEXT NOT NULL CHECK (branch_prefix ~ '^[a-z][a-z0-9]{1,9}$'),
+  start_status   TEXT,
+  enabled_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  enabled_by     BIGINT REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- The numbering counter is kept apart from the settings row so the key
+-- trigger never locks dev_projects (§4.4).
+CREATE TABLE IF NOT EXISTS dev_key_counters (
+  namespace_id   BIGINT PRIMARY KEY REFERENCES dev_projects(id) ON DELETE CASCADE,
+  next_number    INTEGER NOT NULL DEFAULT 1 CHECK (next_number > 0)
+);
+
+-- Every prefix a namespace has used. Old prefixes keep resolving and cannot
+-- be taken by another project.
+CREATE TABLE IF NOT EXISTS dev_project_prefixes (
+  workspace_id   BIGINT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  prefix         TEXT NOT NULL CHECK (prefix ~ '^[A-Z][A-Z0-9]{1,9}$'),
+  namespace_id   BIGINT NOT NULL REFERENCES dev_projects(id) ON DELETE NO ACTION,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (workspace_id, prefix)
+);
+CREATE INDEX IF NOT EXISTS idx_dev_project_prefixes_namespace
+  ON dev_project_prefixes(namespace_id);
+
+CREATE TABLE IF NOT EXISTS task_keys (
+  task_id        BIGINT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+  namespace_id   BIGINT NOT NULL REFERENCES dev_projects(id) ON DELETE NO ACTION,
+  number         INTEGER NOT NULL CHECK (number > 0),
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (namespace_id, number)
+);

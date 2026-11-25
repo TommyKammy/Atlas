@@ -139,22 +139,30 @@ CREATE TRIGGER tasks_assign_key
 
 ### 4.2 既存のタスクにまとめてキーを振る（開発プロジェクトの有効化時）
 
-有効化はサービス関数 `enableDevProject` の 1 トランザクションで行う。**タスク行は FOR UPDATE / FOR SHARE でロックしない。**
+有効化はサービス関数 `enableDevProject` の 1 トランザクションで行う。**プロジェクト行を持ったままタスク行を待つことはしない。**
+
+実装では、手順 1〜3 を DB 関数 `atlas_enable_dev_project`（`0041`）にまとめ、サービス関数 `enableDevProject`（`lib/services/dev-projects.ts`）は権限確認と監査を行ってからこの関数を呼ぶ。ロックの規則を SQL の 1 か所に置き、DB だけのテスト（`tests/dev-project-keys-regressions.mjs`）で直接確かめるためである。
 
 1. `SELECT … FROM projects WHERE id = $1 FOR UPDATE` でプロジェクト行をロックする。
-2. `dev_projects`、`dev_key_counters`、`dev_project_prefixes` を挿入する。
-3. 1 文の `INSERT INTO task_keys … SELECT … ON CONFLICT (task_id) DO NOTHING` で、その文の開始時点で主プロジェクトがこのプロジェクトで、キーのないタスク（ゴミ箱内も含む）に `created_at, id` の順で番号を振る。そのあと `next_number` を更新する。
+2. 手順 4 でキーを振るタスク（このプロジェクトにあり、キーのないもの）を `FOR KEY SHARE NOWAIT` でロックする。どれかが `FOR UPDATE` で保持されていれば、待たずに `lock_not_available`（55P03）で失敗する。
+3. `dev_projects`、`dev_key_counters`、`dev_project_prefixes` を挿入する。
+4. 1 文の `INSERT INTO task_keys … SELECT … ON CONFLICT (task_id) DO NOTHING` で、その文の開始時点で主プロジェクトがこのプロジェクトで、キーのないタスク（ゴミ箱内も含む）に `created_at, id` の順で番号を振る。そのあと `next_number` を更新する。
 
 **手順 1 で同時作成との競合を防げる理由**: 採番トリガー（§4.1）は冒頭で `projects` 行に `FOR KEY SHARE` を取り、コミットまで保持する。`FOR UPDATE` はこれと競合する。そのため有効化のトランザクションは、作成中のトランザクションのコミットを待ってから進み、有効化の最中に始まった作成は有効化のコミットを待つ。後者の作成は、コミット済みの `dev_projects` を見てトリガーで採番される。外部キー確認も同じロックを取るが、トリガーの起動順に依存しないよう、トリガー自身で明示的に取る。
 
-**タスク行をロックしない理由（デッドロックの回避）**: 既存の経路には、タスク行をロックしてから同じプロジェクトにタスクを作るものがある。たとえば `duplicateTask`（`lib/services/task-copy.ts`）は、複製元に `FOR SHARE` を取ってから INSERT する。有効化が手順 3 でタスクに `FOR UPDATE` を取ると、次のように互いを待ち合う。
+**タスク行を待たない理由（デッドロックの回避）**: 既存の経路には、タスク行をロックしてから同じプロジェクトを参照する行を作るものが多い。たとえば繰り返しタスクの完了（`lib/services/task-update.ts`）は、タスクに `FOR UPDATE` を取ってから、`insertNextOccurrence` で次の回のタスクを同じプロジェクトに INSERT する。`projects` を参照するテーブルは 31 あり、どれへの INSERT も外部キー確認で `projects` 行に `FOR KEY SHARE` を取る。一方、手順 4 の INSERT は `task_keys.task_id` の外部キー確認でタスク行に `FOR KEY SHARE` を取り、これは `FOR UPDATE` と競合する。有効化がここで待つと、次のように互いを待ち合う。
 
-- 複製側: 複製元のロックを持ったまま、トリガーでプロジェクト行を待つ
-- 有効化側: プロジェクト行のロックを持ったまま、複製元の行を待つ
+- 完了側: タスクの `FOR UPDATE` を持ったまま、次の回の INSERT でプロジェクト行を待つ
+- 有効化側: プロジェクト行の `FOR UPDATE` を持ったまま、そのタスク行を待つ
 
-手順 3 の INSERT がタスク行に取るのは、`task_keys.task_id` の外部キー確認による `FOR KEY SHARE` だけである。これは `FOR SHARE` とも、移動の UPDATE（`FOR NO KEY UPDATE`）とも競合しないので、有効化がタスク行で待つことはない。
+PostgreSQL はこれを検出して片方を中断するが、どちらが中断されるかは決まっていない。利用者の完了操作が失敗しうるため、手順 2 で有効化側だけが失敗するようにする。
 
-**プロジェクト外への移動と同時に起きた場合**: 手順 3 の文の開始時点で、まだこのプロジェクトにあったタスクには、このプロジェクトのキーが付く。キーの名前空間は発行元に固定する方針なので、「有効化の時点でこのプロジェクトにあった」タスクがこのキーを持つのは、仕様どおりである。移動先も開発プロジェクトなら、移動側のトリガーが同じ `task_id` を INSERT しようとする。この INSERT は `ON CONFLICT DO NOTHING` により、有効化のコミットを待ってから何もせずに終わる。逆に、移動が先にコミットされていれば、そのタスクは手順 3 の対象にならない。
+- `FOR KEY SHARE NOWAIT` は、`FOR SHARE`（`duplicateTask` の複製元）や `FOR NO KEY UPDATE`（通常の UPDATE、移動）とは競合しない。失敗するのは、誰かが `FOR UPDATE` を持っている短い間だけである。
+- 手順 2 のあとは、対象のタスクに他のトランザクションが `FOR UPDATE` を取れず、プロジェクト行のロックにより新しいタスクも作れない。そのため手順 4 で待つことはない。
+- キーをすでに持つタスク（他の開発プロジェクトから移ってきたもの）は手順 4 の対象外なので、ロックしない。
+- `enableDevProject` は 55P03 のとき、トランザクション全体を短い間隔（50, 150, 400, 1000 ms）でやり直す。それでも失敗すれば `409 dev_project_busy` を返す。
+
+**プロジェクト外への移動と同時に起きた場合**: 手順 4 の文の開始時点で、まだこのプロジェクトにあったタスクには、このプロジェクトのキーが付く。キーの名前空間は発行元に固定する方針なので、「有効化の時点でこのプロジェクトにあった」タスクがこのキーを持つのは、仕様どおりである。移動先も開発プロジェクトなら、移動側のトリガーが同じ `task_id` を INSERT しようとする。この INSERT は `ON CONFLICT DO NOTHING` により、有効化のコミットを待ってから何もせずに終わる。逆に、移動が先にコミットされていれば、そのタスクは手順 4 の対象にならない。
 
 - `FOR NO KEY UPDATE` は `FOR KEY SHARE` と競合しないため使わない。この点をコードのコメントとテストで固定する。
 - 初版では、有効化できるのはタスクが 20,000 件以下のプロジェクトに限る。超える場合はエラーにする。ロックを持つ時間に上限を設けるためで、上限は実測して調整する。
@@ -171,13 +179,13 @@ CREATE TRIGGER tasks_assign_key
 | --- | --- |
 | タスクの作成・移動（トリガー） | `projects`（KEY SHARE）→ `dev_key_counters` → 遅延トリガー `0002` による親タスク（FOR SHARE） |
 | 状態の改名（`updateProject`） | `projects`（UPDATE）→ `dev_projects.start_status` → `tasks`（状態の一括 UPDATE） |
-| 有効化（`enableDevProject`） | `projects`（FOR UPDATE）→ `dev_projects` / `dev_key_counters` → `tasks`（外部キー確認の KEY SHARE だけ） |
-| タスクの複製（`duplicateTask`）など、タスク行をロックしてから作成する経路 | 複製元 `tasks`（FOR SHARE）→ `projects`（KEY SHARE）→ `dev_key_counters` |
+| 有効化（`enableDevProject`） | `projects`（FOR UPDATE）→ `tasks`（KEY SHARE NOWAIT。待たない）→ `dev_projects` / `dev_key_counters` |
+| タスクの複製（`duplicateTask`）、繰り返しタスクの完了など、タスク行をロックしてから作成する経路 | `tasks`（FOR SHARE / FOR UPDATE）→ `projects`（KEY SHARE）→ `dev_key_counters` |
 | 着手（`start_task`、§6.2） | `dev_projects`（FOR SHARE）→ `tasks`（FOR UPDATE） |
 | プロジェクトのゴミ箱移動による付け替え | advisory lock → `tasks` → （トリガー）`dev_key_counters` |
 
 - 表には、トリガーが動く前に呼び出し側がすでに持っているロックも含める。新しい経路を追加するときは、この表と照らして順序を確かめる。
-- 有効化はタスク行を待たないので、タスク行を先にロックする既存の経路とは循環しない。
+- 有効化はタスク行を待たない（NOWAIT で失敗してやり直す）ので、タスク行を先にロックする既存の経路とは循環しない。
 - 状態の改名と着手は、どちらも `dev_projects` → `tasks` の順にロックする。
 - カウンタを設定行から分けたので、状態の改名とサブタスクの作成が `dev_projects` と `tasks` を逆順にロックしてデッドロックすることはない。
 - `updateProject` では、`start_status` の更新を状態の一括 UPDATE より**前**に行う。
@@ -361,6 +369,7 @@ PRODUCT.md の「日常の画面に専門機能を出さない」に従い、表
   - `project_id` を接頭辞と数値 ID のどちらで再送しても、同じ要求として扱われる
 - **ロック**:
   - 2 つの接続で「複製元を FOR SHARE → 有効化が projects を FOR UPDATE → 複製の INSERT」の順序を固定しても、複製と有効化の両方が成功し、どちらで作られたタスクにもキーが付く
+  - 完了側がタスクを FOR UPDATE で持っている間の有効化は、待たずに 55P03 で失敗する。完了側の次の回の作成は成功し、やり直した有効化で両方にキーが付く
   - 状態の改名・状態の削除・状態フィールドの無効化と `start_task` を、それぞれの順序で並行させても、削除済みの状態名が書き込まれない
   - 状態の改名とサブタスクの作成を並行して繰り返してもデッドロックしない。有効化とプロジェクト外への移動を並行しても、キーの重複や付け間違いが起きない
 - **整合性**: §4.3 の検査が 0 件

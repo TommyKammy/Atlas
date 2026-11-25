@@ -126,6 +126,10 @@ if [[ "$suite" == integrity || "$suite" == all ]]; then
   docker exec "$app_id" node --test /app/tests/timeline-section-move-regressions.mjs || status=1
   docker cp tests/p1-integrity-regressions.mjs "$app_id:/app/tests/"
   docker exec "$app_id" node --test /app/tests/p1-integrity-regressions.mjs || status=1
+  for file in dev-project-keys dev-project-keys-http; do
+    docker cp "tests/$file-regressions.mjs" "$app_id:/app/tests/"
+    docker exec "$app_id" node --test "/app/tests/$file-regressions.mjs" || status=1
+  done
   docker cp tests/p1-automation-regressions.mjs "$app_id:/app/tests/"
   docker exec "$app_id" node --test /app/tests/p1-automation-regressions.mjs || status=1
   docker cp tests/ar01-ar03-regressions.mjs "$app_id:/app/tests/"
