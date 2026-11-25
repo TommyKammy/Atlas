@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { withProject } from "@/lib/api/route";
 import { badRequest } from "@/lib/api/errors";
@@ -95,29 +95,30 @@ export const POST = withProject("edit", async (_req, { uid, projectId, role, bod
     }
   }
 
-  const inserted = await db.query(
-    `INSERT INTO project_tables (project_id, name, columns, rows, options, created_by)
-     VALUES ($1::bigint, $2, $3::jsonb, $4::jsonb, $5::jsonb, $6::bigint)
-     RETURNING id, created_at::text AS created_at`,
-    [
-      projectId,
-      name,
-      JSON.stringify(columns),
-      JSON.stringify(rows),
-      JSON.stringify({ include_tasks: includeTasks, source_project_name: project.rows[0].name }),
-      uid,
-    ],
-  );
-  const tableId = Number(inserted.rows[0].id);
-
-  let archived = false;
-  if (payload.archive_source === true && role === "admin") {
-    await db.query(
-      "UPDATE projects SET archived_at = COALESCE(archived_at, now()) WHERE id = $1::bigint",
-      [projectId],
+  const archived = payload.archive_source === true && role === "admin";
+  const table = await withTransaction(async (q) => {
+    const result = await q.query(
+      `INSERT INTO project_tables (project_id, name, columns, rows, options, created_by)
+       VALUES ($1::bigint, $2, $3::jsonb, $4::jsonb, $5::jsonb, $6::bigint)
+       RETURNING id, created_at::text AS created_at`,
+      [
+        projectId,
+        name,
+        JSON.stringify(columns),
+        JSON.stringify(rows),
+        JSON.stringify({ include_tasks: includeTasks, source_project_name: project.rows[0].name }),
+        uid,
+      ],
     );
-    archived = true;
-  }
+    if (archived) {
+      await q.query(
+        "UPDATE projects SET archived_at = COALESCE(archived_at, now()) WHERE id = $1::bigint",
+        [projectId],
+      );
+    }
+    return result.rows[0];
+  });
+  const tableId = Number(table.id);
 
   await audit(uid, "project.table_create", {
     entity: "project",
@@ -132,7 +133,7 @@ export const POST = withProject("edit", async (_req, { uid, projectId, role, bod
       row_count: rows.length,
       column_count: columns.length,
       archived_source: archived,
-      created_at: inserted.rows[0].created_at,
+      created_at: table.created_at,
     },
     { status: 201 },
   );
