@@ -13,6 +13,7 @@ import { trashTaskForActor, updateTaskForActor } from "@/lib/services/task-actio
 import { createTask } from "@/lib/services/task-create";
 import { setTaskCustomValue, taskCustomValueMatches } from "@/lib/services/task-custom-values";
 import { resolveProjectRef, resolveTaskRef } from "@/lib/services/task-keys";
+import { startTask } from "@/lib/services/task-start";
 import { TaskMutationFailure } from "@/lib/services/task-mutation-failure";
 import { MCP_IDEMPOTENCY_KEY_MAX_LENGTH, withIdempotency } from "./idempotency";
 import { enforceMcpWriteLimit } from "./rate-limit";
@@ -56,6 +57,7 @@ export type McpWriteServices = {
   resolveTaskRef: typeof resolveTaskRef;
   resolveProjectRef: typeof resolveProjectRef;
   taskCustomValueMatches: typeof taskCustomValueMatches;
+  startTask: typeof startTask;
 };
 
 export const DEFAULT_MCP_WRITE_SERVICES: McpWriteServices = {
@@ -76,6 +78,7 @@ export const DEFAULT_MCP_WRITE_SERVICES: McpWriteServices = {
   resolveTaskRef,
   resolveProjectRef,
   taskCustomValueMatches,
+  startTask,
 };
 
 /**

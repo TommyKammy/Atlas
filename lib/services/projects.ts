@@ -464,6 +464,27 @@ export async function updateProject(
       values,
     );
     if (!project.rows[0]) return null;
+    if (statusOptions || typeof body.status_field_enabled === "boolean") {
+      // docs/dev-projects-phase0.md §6.1: lock the development settings before
+      // any task, the order start_task uses, so a start never writes a status
+      // this request removes. The start status follows a rename and is
+      // cleared when its option disappears, before the tasks are renamed.
+      const dev = await q.query<{ start_status: string | null }>(
+        "SELECT start_status FROM dev_projects WHERE project_id = $1::bigint FOR UPDATE",
+        [projectId],
+      );
+      const startStatus = dev.rows[0]?.start_status ?? null;
+      if (statusOptions && startStatus !== null) {
+        const renamed = statusRenames.find(({ from }) => from === startStatus)?.to ?? startStatus;
+        const next = statusOptions.includes(renamed) ? renamed : null;
+        if (next !== startStatus) {
+          await q.query(
+            "UPDATE dev_projects SET start_status = $2 WHERE project_id = $1::bigint",
+            [projectId, next],
+          );
+        }
+      }
+    }
     if (statusRenames.length > 0) {
       // One UPDATE maps the original values, so chains and swaps cannot
       // remap a task that was already renamed by this request.
