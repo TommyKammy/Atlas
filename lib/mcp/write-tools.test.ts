@@ -689,6 +689,53 @@ test("save_task reports only the custom fields applied before a later field conf
   assert.equal(calls.updateTaskForActor.length, 0);
 });
 
+test("replaying a partially applied move checks the original stamp against the new project", async () => {
+  const original = "2026-01-01T00:00:00.000Z";
+  const moved = "2026-01-02T00:00:00.000Z";
+  const saved = "2026-01-03T00:00:00.000Z";
+  let projectId = 1;
+  let stamp = original;
+  const writes: Array<[string, unknown]> = [];
+  const { services, calls } = fakeServices({
+    getTaskDetail: async (_actor, id) => ({ ...fakeDetail(id), project: { id: projectId, name: "Project" } }),
+    updateTaskForActor: async (_actor, id, patch) => {
+      writes.push(["task", patch.expected_updated_at]);
+      projectId = Number(patch.project_id);
+      stamp = moved;
+      return { id, updated_at: stamp };
+    },
+    setTaskCustomValue: async (_actor, input) => {
+      writes.push([`field:${input.field_id}`, input.expected_updated_at]);
+      if (input.expected_updated_at !== stamp) {
+        throw new TaskMutationFailure("conflict", "stale stamp", { current_updated_at: stamp });
+      }
+      if (input.field_id === 6) throw new TaskMutationFailure("invalid", "invalid value");
+      stamp = saved;
+      return { cleared: false, updated_at: stamp };
+    },
+  });
+
+  const request = tool("save_task", {
+    id: 100, project_id: 2, expected_updated_at: original, idempotency_key: "move-replay",
+    custom_fields: [{ field_id: 5, value: "first" }, { field_id: 6, value: "second" }],
+  });
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const partial = await client.callTool(request);
+    assert.equal(partial.isError, true);
+    assert.deepEqual(partial.structuredContent, {
+      reason: "invalid", message: "invalid value", applied_custom_fields: [5], task_updated: true,
+    });
+    const replay = await client.callTool(request);
+    assert.equal(replay.isError, true);
+    assert.deepEqual(replay.structuredContent, {
+      reason: "conflict", message: "stale stamp", current_updated_at: saved,
+    });
+  });
+  assert.deepEqual(writes, [["task", original], ["field:5", moved], ["field:6", saved], ["field:5", original]]);
+  assert.deepEqual(calls.idempotency, []);
+  assert.deepEqual(calls.writeLimit, [7, 7]);
+});
+
 test("creation tools pass their key and arguments through withIdempotency", async () => {
   const { services, calls } = fakeServices();
 
