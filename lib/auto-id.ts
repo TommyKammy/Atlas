@@ -14,8 +14,9 @@ export async function ensureAutoIdValues(projectId: number): Promise<void> {
   );
   if (existing.rowCount === 0) return;
   await withTransaction(async (q) => {
+    // Hold the prefix stable until all missing values have been inserted.
     const fields = await q.query(
-      "SELECT id, config FROM custom_fields WHERE project_id = $1::bigint AND field_type = 'auto_id' AND deleted_at IS NULL ORDER BY id",
+      "SELECT id, config FROM custom_fields WHERE project_id = $1::bigint AND field_type = 'auto_id' AND deleted_at IS NULL ORDER BY id FOR SHARE",
       [projectId],
     );
     for (const field of fields.rows) {

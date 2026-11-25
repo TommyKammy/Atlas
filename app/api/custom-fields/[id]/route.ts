@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { notifyField } from "@/lib/notify";
 import { withResourceProject } from "@/lib/api/route";
 import { normalizeFieldEditorIds } from "@/lib/field-access";
@@ -13,7 +13,7 @@ import {
 } from "@/lib/custom-fields";
 import { validateCustomFieldReferences } from "@/lib/custom-field-validation";
 
-export const PATCH = withResourceProject("configure", "custom_fields", async (_req, { uid, role, params, body }) => {
+export const PATCH = withResourceProject("configure", "custom_fields", (_req, { uid, role, params, body }) => withTransaction(async (q) => {
   const id = params.id;
   const payload = (body ?? {}) as {
     name?: unknown;
@@ -23,8 +23,8 @@ export const PATCH = withResourceProject("configure", "custom_fields", async (_r
     access_level?: unknown;
     editor_ids?: unknown;
   };
-  const current = await db.query(
-    "SELECT field_type, config, project_id, access_level, editor_ids FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
+  const current = await q.query(
+    "SELECT field_type, config, project_id, access_level, editor_ids FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL FOR NO KEY UPDATE",
     [id],
   );
   if (current.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -57,7 +57,7 @@ export const PATCH = withResourceProject("configure", "custom_fields", async (_r
   if (payload.config !== undefined) {
     const parsed = parseCustomFieldConfig(fieldType, payload.config);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
-    const referenceError = await validateCustomFieldReferences(projectId, fieldType, parsed.config, uid);
+    const referenceError = await validateCustomFieldReferences(projectId, fieldType, parsed.config, uid, q);
     if (referenceError) return NextResponse.json({ error: referenceError }, { status: 400 });
     if (fieldType === "auto_id") {
       const prefix = parsed.config.prefix ?? "ID-";
@@ -87,7 +87,7 @@ export const PATCH = withResourceProject("configure", "custom_fields", async (_r
     return NextResponse.json({ error: "no changes supplied" }, { status: 400 });
   }
   values.push(id);
-  const r = await db.query(
+  const r = await q.query(
     `UPDATE custom_fields SET ${sets.join(", ")}
      WHERE id = $${values.length}::bigint AND deleted_at IS NULL
      RETURNING id, name, field_type, options, description, config, access_level, editor_ids`,
@@ -96,7 +96,7 @@ export const PATCH = withResourceProject("configure", "custom_fields", async (_r
   if (r.rowCount === 0) return NextResponse.json({ error: "not found" }, { status: 404 });
   const row = r.rows[0];
   if (autoIdPrefix !== undefined) {
-    await db.query(
+    await q.query(
       "UPDATE task_custom_values SET value_text = $2 || value_number::text WHERE field_id = $1::bigint AND value_number IS NOT NULL",
       [id, autoIdPrefix],
     );
@@ -111,7 +111,7 @@ export const PATCH = withResourceProject("configure", "custom_fields", async (_r
     access_level: row.access_level ?? "everyone",
     editor_ids: Array.isArray(row.editor_ids) ? row.editor_ids.map(Number) : [],
   });
-}, { body: true });
+}), { body: true });
 
 export const DELETE = withResourceProject("configure", "custom_fields", async (_req, { params }) => {
   const id = params.id;

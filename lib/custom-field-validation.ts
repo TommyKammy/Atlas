@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, type Queryable } from "./db";
 import {
   isLookupTargetFieldType,
   type CustomFieldConfig,
@@ -14,17 +14,18 @@ export async function validateCustomFieldReferences(
   fieldType: CustomFieldType,
   config: CustomFieldConfig,
   userId?: number,
+  q: Queryable = db,
 ): Promise<string | null> {
   if (fieldType === "reference") {
     const ids = config.source_project_ids ?? [];
     if (ids.length === 0) return "source_project_ids is required";
-    const projects = await db.query(
+    const projects = await q.query(
       "SELECT id FROM projects WHERE id = ANY($1::bigint[])",
       [ids],
     );
     if (projects.rowCount !== new Set(ids).size) return "source project not found";
     if (userId !== undefined) {
-      const access = await db.query(
+      const access = await q.query(
         `SELECT p.id FROM projects p
          WHERE p.id = ANY($1::bigint[])
            AND (
@@ -42,14 +43,14 @@ export async function validateCustomFieldReferences(
     const refId = config.reference_field_id;
     const targetId = config.lookup_field_id;
     if (!refId || !targetId) return "reference_field_id and lookup_field_id are required";
-    const ref = await db.query(
+    const ref = await q.query(
       "SELECT project_id, field_type FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
       [refId],
     );
     if (ref.rowCount === 0 || Number(ref.rows[0].project_id) !== projectId || ref.rows[0].field_type !== "reference") {
       return "reference field must belong to this project";
     }
-    const target = await db.query(
+    const target = await q.query(
       "SELECT field_type FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
       [targetId],
     );
@@ -66,7 +67,7 @@ export async function validateCustomFieldReferences(
     if (config.rollup_source === "reference") {
       const refId = config.reference_field_id;
       if (!refId) return "reference_field_id is required";
-      const ref = await db.query(
+      const ref = await q.query(
         "SELECT project_id, field_type FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
         [refId],
       );
@@ -74,7 +75,7 @@ export async function validateCustomFieldReferences(
         return "reference field must belong to this project";
       }
     }
-    const target = await db.query(
+    const target = await q.query(
       "SELECT field_type FROM custom_fields WHERE id = $1::bigint AND deleted_at IS NULL",
       [targetId],
     );
