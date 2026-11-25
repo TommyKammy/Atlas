@@ -1842,6 +1842,40 @@ C=$(curl -s -m 10 -o "$TMPD/invite.html" -w "%{http_code}" "$BASE/invite/$ITOK")
 [[ "$C" == "200" ]] && ok "invite page public" || bad "invite page ($C)"
 R=$(curl -s -m 10 "$BASE/api/invitations/$ITOK")
 [[ "$R" == *'"role":"guest"'* && "$R" == *'"workspace_name"'* ]] && ok "invitation lookup" || bad "invitation lookup" "$R"
+# Keep the original guest invitation valid if inserting its replacement fails.
+db_sql -q <<'SQL' || exit 1
+ALTER TABLE invitations ADD CONSTRAINT e2e_reject_reissued_invitation
+  CHECK (email <> 'e2e-invite@example.com' OR role <> 'guest' OR accepted_at IS NOT NULL) NOT VALID;
+SQL
+invite_again() {
+  curl -sS -m 15 -b "$JAR" -X POST "$BASE/api/admin/invitations" \
+    -H 'Content-Type: application/json' -d '{"email":"e2e-invite@example.com","role":"guest"}' \
+    -o "$1" -w '%{http_code}'
+}
+C=$(invite_again "$TMPD/reissued-invitation.json")
+[[ "$C" == "500" ]] && ok "invitation replacement insert failed" || bad "invitation replacement insert failed" "$C"
+C=$(curl -s -m 10 -o /dev/null -w "%{http_code}" "$BASE/api/invitations/$ITOK")
+[[ "$C" == "200" ]] && ok "original invitation survives failed reissue" || bad "original invitation survives failed reissue" "$C"
+db_sql -qc 'ALTER TABLE invitations DROP CONSTRAINT e2e_reject_reissued_invitation' || exit 1
+C=$(invite_again "$TMPD/reissued-invitation.json")
+[[ "$C" == "201" ]] && ok "invitation reissue retry" || bad "invitation reissue retry" "$C"
+C=$(curl -s -m 10 -o /dev/null -w "%{http_code}" "$BASE/api/invitations/$ITOK")
+[[ "$C" == "410" ]] && ok "successful reissue retires original invitation" || bad "successful reissue retires original invitation" "$C"
+# Two simultaneous reissues for the same address must leave one usable link.
+invite_again "$TMPD/reissue-a.json" > "$TMPD/reissue-a.status" &
+first_reissue=$!
+invite_again "$TMPD/reissue-b.json" > "$TMPD/reissue-b.status" &
+second_reissue=$!
+wait "$first_reissue" && wait "$second_reissue"
+[[ "$(cat "$TMPD/reissue-a.status")/$(cat "$TMPD/reissue-b.status")" == "201/201" ]] \
+  && ok "concurrent reissues succeed" || bad "concurrent reissues succeed"
+N=$(db_sql -qAtc "SELECT count(*) FROM invitations WHERE email='e2e-invite@example.com' AND accepted_at IS NULL")
+[[ "$N" == "1" ]] && ok "one open invitation after reissues" || bad "one open invitation after reissues" "$N"
+ITOK=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["invitation"]["token"])' < "$TMPD/reissue-a.json")
+C=$(curl -s -m 10 -o /dev/null -w "%{http_code}" "$BASE/api/invitations/$ITOK")
+if [[ "$C" == "410" ]]; then
+  ITOK=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["invitation"]["token"])' < "$TMPD/reissue-b.json")
+fi
 R=$(curl -s -m 10 -X POST "$BASE/api/invitations/$ITOK" -H 'Content-Type: application/json' -d '{"name":"E2E招待","password":"e2e-pass1"}')
 IUID=$(echo "$R" | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))")
 [[ -n "$IUID" ]] && ok "invitation accept" || bad "invitation accept" "$R"
