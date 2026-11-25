@@ -130,23 +130,22 @@ export async function getDashboardPageData(projectId: number) {
 
 /** Persist the requested widget order. Returns the fresh widget list. */
 export async function reorderDashboardWidgets(projectId: number, order: number[]): Promise<DashboardWidget[]> {
-  const ids = [...new Set(order.filter((id) => Number.isInteger(id) && id > 0))];
+  // Ignore IDs outside the widget column's bigint range before binding the array.
+  const ids = [...new Set(order.filter((id) => Number.isInteger(id) && id > 0 && id < 2 ** 63))];
   if (ids.length === 0) return getDashboardWidgets(projectId);
   await withTransaction(async (q) => {
-    const owned = await q.query(
-      "SELECT id FROM project_dashboard_widgets WHERE project_id = $1",
-      [projectId],
+    await q.query(
+      `UPDATE project_dashboard_widgets AS widget
+       SET position = ranked.position, updated_at = now()
+       FROM (
+         SELECT owned.id, row_number() OVER (ORDER BY requested.ordinality) * 1000 AS position
+         FROM unnest($2::bigint[]) WITH ORDINALITY AS requested(id, ordinality)
+         JOIN project_dashboard_widgets AS owned ON owned.id = requested.id
+         WHERE owned.project_id = $1
+       ) AS ranked
+       WHERE widget.project_id = $1 AND widget.id = ranked.id`,
+      [projectId, ids],
     );
-    const ownedIds = new Set(owned.rows.map((row) => Number(row.id)));
-    let position = 1000;
-    for (const id of ids) {
-      if (!ownedIds.has(id)) continue;
-      await q.query(
-        "UPDATE project_dashboard_widgets SET position = $1, updated_at = now() WHERE id = $2 AND project_id = $3",
-        [position, id, projectId],
-      );
-      position += 1000;
-    }
   });
   return getDashboardWidgets(projectId);
 }
