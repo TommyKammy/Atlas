@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { withAdminPermission } from "@/lib/api/route";
 import { sendInvitationEmail } from "@/lib/mailer";
@@ -50,17 +50,25 @@ export const POST = withAdminPermission("members.manage", async (req, { uid: adm
   if ((existing.rowCount ?? 0) > 0) {
     return NextResponse.json({ error: "user already exists" }, { status: 409 });
   }
-  await db.query(
-    "UPDATE invitations SET accepted_at = now() WHERE email = $1 AND accepted_at IS NULL",
-    [email],
-  );
   const token = randomBytes(24).toString("base64url");
-  const r = await db.query(
-    `INSERT INTO invitations (email, role, token, invited_by, expires_at)
-     VALUES ($1, $2, $3, $4, now() + interval '7 days')
-     RETURNING id, email, role, token, expires_at::text AS expires_at`,
-    [email, role, token, admin],
-  );
+  const invitation = await withTransaction(async (q) => {
+    // Serialize replacements even when there is no open invitation row to lock.
+    await q.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended('atlas:invitation:' || $1::text, 0))",
+      [email],
+    );
+    await q.query(
+      "UPDATE invitations SET accepted_at = now() WHERE email = $1 AND accepted_at IS NULL",
+      [email],
+    );
+    const result = await q.query(
+      `INSERT INTO invitations (email, role, token, invited_by, expires_at)
+       VALUES ($1, $2, $3, $4, now() + interval '7 days')
+       RETURNING id, email, role, token, expires_at::text AS expires_at`,
+      [email, role, token, admin],
+    );
+    return result.rows[0];
+  });
   const origin = process.env.APP_ORIGIN ?? new URL(req.url).origin;
   const url = `${origin}/invite/${token}`;
   const ws = await db.query("SELECT id, name FROM workspaces ORDER BY id LIMIT 1");
@@ -72,13 +80,13 @@ export const POST = withAdminPermission("members.manage", async (req, { uid: adm
   });
   await audit(admin, "invitation.create", {
     entity: "invitation",
-    entityId: r.rows[0].id,
+    entityId: invitation.id,
     workspaceId: ws.rows[0] ? Number(ws.rows[0].id) : undefined,
     summary: `${email} (${role})`,
   });
   return NextResponse.json(
     {
-      invitation: { ...r.rows[0], url },
+      invitation: { ...invitation, url },
       emailed: mail.sent,
       mail_reason: mail.reason ?? null,
     },
