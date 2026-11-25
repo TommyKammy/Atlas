@@ -10,6 +10,7 @@ import { TaskMutationFailure } from "@/lib/services/task-mutation-failure";
 import * as taskKeys from "@/lib/services/task-keys";
 import { hidingAccess, PROJECT_PREFIX_NOT_FOUND, TASK_KEY_NOT_FOUND } from "@/lib/services/task-keys";
 import { createSaveTaskTool } from "./save-task";
+import { createStartTaskTool } from "./start-task";
 import { taskDetailPayload, TASK_DESCRIPTION_LIMIT, taskLabel } from "./task-detail";
 import {
   dateSchema, defineTool, idSchema, PROJECT_REF_NOTE, projectRefSchema, TASK_REF_NOTE, taskRefSchema, text,
@@ -667,6 +668,7 @@ export function createWriteTools(
         };
       },
     }),
+    createStartTaskTool(services),
   ];
 }
 

@@ -40,6 +40,7 @@ const WRITE_TOOL_NAMES = [
   "save_section",
   "save_project",
   "trash_task",
+  "start_task",
 ];
 
 type Call = { sql: string; params?: unknown[] };
@@ -177,6 +178,12 @@ function fakeServices(overrides: Partial<McpWriteServices> = {}) {
     resolveTaskRef: async (_actor, ref) => (typeof ref === "number" ? ref : FAKE_TASK_KEYS[ref.toUpperCase()] ?? 0),
     resolveProjectRef: async (_actor, ref) => (typeof ref === "number" ? ref : FAKE_PROJECT_PREFIXES[ref.toUpperCase()] ?? 0),
     taskCustomValueMatches: async () => true,
+    startTask: async (_actor, taskId) => ({
+      taskId,
+      key: `ATL-${taskId}`,
+      branchName: `atl-${taskId}`,
+      changed: { assignee: true, status: true, reopened: false },
+    }),
   };
 
   return { services: { ...services, ...overrides }, calls };
@@ -233,7 +240,7 @@ test("write tool annotations match the destructive and idempotent contract", asy
       );
       assert.equal(
         annotations.idempotentHint,
-        name === "complete_task" || name === "move_task",
+        name === "complete_task" || name === "move_task" || name === "start_task",
         `${name} idempotentHint`,
       );
     }
@@ -1259,5 +1266,62 @@ test("a recovered creation that cannot be read reports task_detail", async () =>
     const structured = result.structuredContent as Record<string, unknown>;
     assert.deepEqual(structured.failed_updates, [{ field: "task_detail", error: "task not found" }]);
     assert.deepEqual(structured.task, { id: 100 });
+  });
+});
+
+test("start_task resolves the key, passes its options and returns the branch name", async () => {
+  const started: Array<{ taskId: number; options: unknown }> = [];
+  const { services, calls } = fakeServices({
+    startTask: async (_actor, taskId, options) => {
+      started.push({ taskId, options });
+      return {
+        taskId, key: "ATL-7", branchName: "atl-7",
+        changed: { assignee: true, status: false, reopened: true },
+      };
+    },
+  });
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("start_task", {
+      task: "atl-7", reopen: true, expected_updated_at: "stamp",
+    }));
+    assert.equal(result.isError, undefined);
+    const structured = result.structuredContent as Record<string, unknown>;
+    assert.equal(structured.key, "ATL-7");
+    assert.equal(structured.branch_name, "atl-7");
+    assert.deepEqual(structured.changed, { assignee: true, status: false, reopened: true });
+    assert.equal((structured.task as { id: number }).id, 70);
+    assert.equal(
+      (result.content as Array<{ text: string }>)[0].text,
+      "Task ATL-7 (id 70) started: assigned to you, reopened. Branch: atl-7.",
+    );
+  });
+  assert.deepEqual(started, [{ taskId: 70, options: { reopen: true, expectedUpdatedAt: "stamp" } }]);
+  assert.deepEqual(calls.writeLimit, [7]);
+});
+
+test("start_task reports a conflict with its kind and changes nothing", async () => {
+  const { services } = fakeServices({
+    startTask: async () => {
+      throw new TaskMutationFailure("conflict", "the task is assigned to someone else", {
+        conflict: "assigned_to_other", assignee: { id: 9, name: "Other" },
+      });
+    },
+  });
+  await withClient(buildMcpServer(context(), createWriteTools(services)), async (client) => {
+    const result = await client.callTool(tool("start_task", { task: 5 }));
+    assert.equal(result.isError, true);
+    assert.deepEqual(result.structuredContent, {
+      reason: "conflict",
+      message: "the task is assigned to someone else",
+      conflict: "assigned_to_other",
+      assignee: { id: 9, name: "Other" },
+    });
+  });
+});
+
+test("start_task is not offered on the readonly endpoint", async () => {
+  await withClient(buildMcpServer(context({ endpoint: "readonly" })), async (client) => {
+    const names = (await client.listTools()).tools.map((item) => item.name);
+    assert.ok(!names.includes("start_task"));
   });
 });
