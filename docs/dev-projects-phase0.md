@@ -141,6 +141,8 @@ CREATE TRIGGER tasks_assign_key
 
 有効化はサービス関数 `enableDevProject` の 1 トランザクションで行う。**タスク行は FOR UPDATE / FOR SHARE でロックしない。**
 
+実装では、手順 1〜3 を DB 関数 `atlas_enable_dev_project`（`0041`）にまとめ、サービス関数 `enableDevProject`（`lib/services/dev-projects.ts`）は権限確認と監査を行ってからこの関数を呼ぶ。ロックの規則を SQL の 1 か所に置き、DB だけのテスト（`tests/dev-project-keys-regressions.mjs`）で直接確かめるためである。
+
 1. `SELECT … FROM projects WHERE id = $1 FOR UPDATE` でプロジェクト行をロックする。
 2. `dev_projects`、`dev_key_counters`、`dev_project_prefixes` を挿入する。
 3. 1 文の `INSERT INTO task_keys … SELECT … ON CONFLICT (task_id) DO NOTHING` で、その文の開始時点で主プロジェクトがこのプロジェクトで、キーのないタスク（ゴミ箱内も含む）に `created_at, id` の順で番号を振る。そのあと `next_number` を更新する。
