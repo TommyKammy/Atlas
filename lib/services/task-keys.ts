@@ -8,59 +8,21 @@
  */
 import { ApiError, badRequest, notFound } from "../api/errors";
 import { db, type Queryable } from "../db";
-import { formatTaskKey, normalizeDevPrefix, parseTaskKey } from "../dev-project-keys";
-import { requireProjectAccess, requireTaskAccess, type Actor } from "./actor";
+import { normalizeDevPrefix, parseTaskKey } from "../dev-project-keys";
 import type { ProjectPermission } from "../api-project-auth";
+import { requireProjectAccess, requireTaskAccess, type Actor } from "./actor";
+import { requireTaskReadable } from "./queries";
+import { lookupProjectPrefix, lookupTaskKey } from "./task-key-lookup";
+
+export {
+  devSettingsFor, lookupTaskKey, taskKeysFor, type DevProjectSettings,
+} from "./task-key-lookup";
 
 export type TaskRef = number | string;
 export type ProjectRef = number | string;
 
-export type DevProjectSettings = { prefix: string; start_status: string | null };
-
 export const TASK_KEY_NOT_FOUND = "task not found";
 export const PROJECT_PREFIX_NOT_FOUND = "project not found";
-
-/** Single-workspace deployments: the first workspace, as elsewhere in queries. */
-async function workspaceId(q: Queryable): Promise<number> {
-  const result = await q.query("SELECT id FROM workspaces ORDER BY id LIMIT 1");
-  const id = Number(result.rows[0]?.id);
-  if (!Number.isSafeInteger(id) || id <= 0) throw notFound("workspace not found");
-  return id;
-}
-
-/**
- * The task id behind a key, without any permission check. Callers must check
- * access themselves; searches use it only inside their own visibility filter.
- * Old prefixes resolve through dev_project_prefixes.
- */
-export async function lookupTaskKey(text: unknown, q: Queryable = db): Promise<number | null> {
-  const key = parseTaskKey(text);
-  if (!key) return null;
-  const result = await q.query(
-    `SELECT k.task_id
-       FROM dev_project_prefixes pp
-       JOIN task_keys k ON k.namespace_id = pp.namespace_id AND k.number = $3
-      WHERE pp.workspace_id = $1 AND pp.prefix = $2`,
-    [await workspaceId(q), key.prefix, key.number],
-  );
-  const id = result.rows[0]?.task_id;
-  return id == null ? null : Number(id);
-}
-
-/** The project currently enabled under a prefix (current or old), without a permission check. */
-async function lookupProjectPrefix(text: string, q: Queryable): Promise<number | null> {
-  const prefix = normalizeDevPrefix(text);
-  if (!prefix) return null;
-  const result = await q.query(
-    `SELECT d.project_id
-       FROM dev_project_prefixes pp
-       JOIN dev_projects d ON d.id = pp.namespace_id
-      WHERE pp.workspace_id = $1 AND pp.prefix = $2`,
-    [await workspaceId(q), prefix],
-  );
-  const id = result.rows[0]?.project_id;
-  return id == null ? null : Number(id);
-}
 
 function isAccessError(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 403 || error.status === 404);
@@ -85,6 +47,12 @@ export async function hidingAccess<T>(ref: TaskRef | ProjectRef, message: string
 /**
  * Resolve a task id or key. Keys are checked for `access` here, so an
  * unknown key and a key the actor cannot see give the same error.
+ *
+ * `view` uses the read services' rule (`requireTaskReadable`), which also
+ * accepts a compatible parent's homes, so a key reads exactly the tasks the
+ * numeric id does. Other levels use `requireTaskAccess`, the rule the write
+ * services apply. `q` applies to the lookup and to non-view checks; the read
+ * rule always runs on the pool, like the read services themselves.
  */
 export async function resolveTaskRef(
   actor: Actor,
@@ -96,7 +64,10 @@ export async function resolveTaskRef(
   if (!parseTaskKey(ref)) throw badRequest("task must be a numeric id or a key such as ATL-123");
   const taskId = await lookupTaskKey(ref, q);
   if (taskId === null) throw notFound(TASK_KEY_NOT_FOUND);
-  await hidingAccess(ref, TASK_KEY_NOT_FOUND, () => requireTaskAccess(actor, taskId, access, { q }));
+  await hidingAccess(ref, TASK_KEY_NOT_FOUND, async () => {
+    if (access === "view") await requireTaskReadable(actor, taskId);
+    else await requireTaskAccess(actor, taskId, access, { q });
+  });
   return taskId;
 }
 
@@ -116,43 +87,4 @@ export async function resolveProjectRef(
   if (projectId === null) throw notFound(PROJECT_PREFIX_NOT_FOUND);
   await hidingAccess(ref, PROJECT_PREFIX_NOT_FOUND, () => requireProjectAccess(actor, projectId, "view", q));
   return projectId;
-}
-
-/**
- * Keys for a batch of tasks in one query. A key is shown with the current
- * prefix of the project that issued it, wherever the task is now.
- */
-export async function taskKeysFor(taskIds: readonly number[], q: Queryable = db): Promise<Map<number, string>> {
-  const keys = new Map<number, string>();
-  if (taskIds.length === 0) return keys;
-  const result = await q.query(
-    `SELECT k.task_id, d.prefix, k.number
-       FROM task_keys k JOIN dev_projects d ON d.id = k.namespace_id
-      WHERE k.task_id = ANY($1::bigint[])`,
-    [taskIds],
-  );
-  for (const row of result.rows) {
-    keys.set(Number(row.task_id), formatTaskKey(String(row.prefix), Number(row.number)));
-  }
-  return keys;
-}
-
-/** Development settings for a batch of projects; projects without one are absent. */
-export async function devSettingsFor(
-  projectIds: readonly number[],
-  q: Queryable = db,
-): Promise<Map<number, DevProjectSettings>> {
-  const settings = new Map<number, DevProjectSettings>();
-  if (projectIds.length === 0) return settings;
-  const result = await q.query(
-    `SELECT project_id, prefix, start_status FROM dev_projects WHERE project_id = ANY($1::bigint[])`,
-    [projectIds],
-  );
-  for (const row of result.rows) {
-    settings.set(Number(row.project_id), {
-      prefix: String(row.prefix),
-      start_status: row.start_status == null ? null : String(row.start_status),
-    });
-  }
-  return settings;
 }

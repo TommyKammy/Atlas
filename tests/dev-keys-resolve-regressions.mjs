@@ -94,6 +94,32 @@ test("an unknown key and a key the actor cannot view fail the same way", async (
   });
 });
 
+test("a subtask readable through its parent's other project resolves by key like by id", async () => {
+  // The subtask lives in the development project with its parent; the parent
+  // is also in another project, the only one the viewer belongs to.
+  const devMember = await user("Inherited dev member");
+  const viewer = await user("Inherited viewer");
+  const outsider = await user("Inherited outsider");
+  const dev = await project("Inherited dev", [devMember]);
+  const shared = await project("Inherited shared", [viewer]);
+  const prefix = uniquePrefix();
+  await enable(dev, prefix);
+  const parent = await task(dev, "parent");
+  await db.query("INSERT INTO task_project_memberships (task_id, project_id) VALUES ($1, $2)", [parent, shared]);
+  const { rows: [{ id: child }] } = await db.query(
+    "INSERT INTO tasks (project_id, parent_task_id, name) VALUES ($1, $2, 'child') RETURNING id", [dev, parent],
+  );
+  const childKey = `${prefix}-2`;
+
+  assert.equal((await getTaskDetail(viewer, Number(child))).task.key, childKey, "readable by id");
+  assert.equal(await resolveTaskRef(viewer, childKey), Number(child), "and by key");
+  const listed = await searchTasks(viewer, { query: childKey });
+  assert.equal(listed.items[0]?.id, Number(child));
+  assert.equal(listed.items[0]?.key, childKey);
+
+  assert.deepEqual(await failure(resolveTaskRef(outsider, childKey)), TASK_NOT_FOUND);
+});
+
 test("project prefixes resolve for viewers and hide projects from others", async () => {
   const member = await user("Prefix member");
   const outsider = await user("Prefix outsider");

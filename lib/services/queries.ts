@@ -36,7 +36,7 @@ import {
   requireProjectAccess,
   type Actor,
 } from "./actor";
-import { devSettingsFor, lookupTaskKey, taskKeysFor, type DevProjectSettings } from "./task-keys";
+import { devSettingsFor, lookupTaskKey, taskKeysFor, type DevProjectSettings } from "./task-key-lookup";
 
 export const DEFAULT_QUERY_LIMIT = 25;
 export const MAX_QUERY_LIMIT = 100;
@@ -470,6 +470,16 @@ export async function listMyTasks(
       };
     }),
   };
+}
+
+/**
+ * Fail unless `getTaskDetail` and `listComments` would read the task: the same
+ * live actor, homes and errors. Key resolution uses this for view access so
+ * a key reads exactly the tasks its numeric id does.
+ */
+export async function requireTaskReadable(actor: Actor, taskId: number): Promise<void> {
+  await requireActiveActor(actor);
+  await loadAuthorizedTask(actor, taskId);
 }
 
 /**

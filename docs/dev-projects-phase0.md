@@ -206,7 +206,8 @@ PostgreSQL はこれを検出して片方を中断するが、どちらが中断
 
 実装メモ（PR 2）:
 
-- `parseTaskKey` は PR 1 の `lib/dev-project-keys.ts` にあり、`lib/services/task-keys.ts` はそれを使う。
+- `parseTaskKey` は PR 1 の `lib/dev-project-keys.ts` にあり、`lib/services/task-keys.ts` はそれを使う。権限を確かめない引き当て（`lookupTaskKey`、`taskKeysFor`、`devSettingsFor`）は `lib/services/task-key-lookup.ts` に分け、読み取りサービス（`queries.ts`）と resolver の循環参照を避ける。
+- `resolveTaskRef` の `view` は、読み取りサービスと同じ規則（`requireTaskReadable` = `loadAuthorizedTask`）で確かめる。`authorizeTask` は互換な親タスクのマルチホームを数えないため、数値 ID では読めるサブタスクがキーでは読めない、というずれが起きるからである。`edit` などの書き込みの権限は、書き込みサービスと同じ `requireTaskAccess` で確かめる。
 - MCP ツールは、キーや接頭辞で指定されたときだけ、解決後の読み取り（`getTaskDetail` など）で起きた 403・404 も `hidingAccess` で同じ not found に揃える。権限はあるがプロジェクトがアーカイブ済み、といった後段のエラーからも存在が漏れないようにするため。
 - `list_tasks` の `query` がキーに完全に一致するときは、キーからタスク ID を引き（権限は確かめない）、検索 SQL の本文一致に `OR t.id = <ID>` を足して順位を最上位にする。可視性やほかの絞り込みは検索 SQL がそのまま適用するので、閲覧権限のないタスクは返らない。
 - `get_project` も接頭辞を受け付ける（§8 の表への追加）。
