@@ -37,6 +37,20 @@ export async function resetTimelineRow(
   });
 }
 
+/** Copy an issue key such as ATL-123, falling back to a prompt when the clipboard is blocked. */
+export async function copyTaskKey(key: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(key);
+    toast(`${key} をコピーしました`);
+  } catch {
+    try {
+      window.prompt("課題キー", key);
+    } catch {
+      toast(`コピーできませんでした。課題キーは ${key} です`);
+    }
+  }
+}
+
 /** Copy a task URL, falling back to a prompt when the clipboard is blocked. */
 export async function copyTaskLink(url: string): Promise<void> {
   try {

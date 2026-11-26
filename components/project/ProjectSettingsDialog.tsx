@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 import { toast } from "@/lib/ui-feedback";
 import Dialog from "../ui/Dialog";
+import DevProjectSettingsPanel from "./DevProjectSettingsPanel";
+import type { DevProjectSettingsView } from "@/lib/services/dev-projects";
 import type { NotificationDeliveryStatus } from "@/lib/notification-delivery-status";
 import {
   checkboxClass,
@@ -50,6 +52,7 @@ const TABS = [
   { key: "dependencies", label: "依存関係" },
   { key: "schedule", label: "スケジュール" },
   { key: "notifications", label: "通知" },
+  { key: "dev", label: "開発" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -80,16 +83,21 @@ export default function ProjectSettingsDialog({
   const [teams, setTeams] = useState<Team[]>([]);
   const [delivery, setDelivery] = useState<NotificationDeliveryStatus | null>(null);
   const [deliveryBusy, setDeliveryBusy] = useState(false);
+  // Shown only when the workspace allows development projects (§9).
+  const [devSettings, setDevSettings] = useState<DevProjectSettingsView | null>(null);
+  const tabs = TABS.filter((entry) => entry.key !== "dev" || devSettings?.allowed === true);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [data, directory] = await Promise.all([
+        const [data, directory, dev] = await Promise.all([
           api<SettingsPayload>(`/api/projects/${projectId}/settings`),
           api<{ users?: OwnerUser[] }>("/api/users").catch(() => ({ users: [] })),
+          api<DevProjectSettingsView>(`/api/projects/${projectId}/dev`).catch(() => null),
         ]);
         if (cancelled) return;
+        setDevSettings(dev);
         setName(data.project.name);
         setDescription(data.project.description ?? "");
         setOwnerId(data.project.owner_id === null ? "" : String(data.project.owner_id));
@@ -183,7 +191,7 @@ export default function ProjectSettingsDialog({
             className="flex shrink-0 flex-wrap gap-1 border-b border-line-subtle bg-surface-subtle/60 p-2 sm:w-52 sm:flex-col sm:flex-nowrap sm:border-b-0 sm:border-r"
             aria-label="設定タブ"
           >
-            {TABS.map((entry) => (
+            {tabs.map((entry) => (
               <button
                 key={entry.key}
                 type="button"
@@ -205,6 +213,16 @@ export default function ProjectSettingsDialog({
               <p className="text-[13px] text-muted">読み込み中…</p>
             ) : (
               <>
+                {tab === "dev" && devSettings?.allowed === true && (
+                  <DevProjectSettingsPanel
+                    projectId={projectId}
+                    initial={devSettings}
+                    onChanged={(next) => {
+                      setDevSettings(next);
+                      onSaved();
+                    }}
+                  />
+                )}
                 {tab === "details" && (
                   <div className="space-y-4" data-project-settings-panel="details">
                     <label className="block">
@@ -432,16 +450,19 @@ export default function ProjectSettingsDialog({
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-line-subtle px-5 py-3">
           <button type="button" className={secondaryButtonClass} onClick={onClose} disabled={saving}>
-            キャンセル
+            {tab === "dev" ? "閉じる" : "キャンセル"}
           </button>
-          <button
-            type="button"
-            className={primaryButtonClass}
-            onClick={() => void save()}
-            disabled={saving || loading || !loaded}
-          >
-            {saving ? "保存中…" : "保存"}
-          </button>
+          {/* The 開発 tab saves with its own button. */}
+          {tab !== "dev" && (
+            <button
+              type="button"
+              className={primaryButtonClass}
+              onClick={() => void save()}
+              disabled={saving || loading || !loaded}
+            >
+              {saving ? "保存中…" : "保存"}
+            </button>
+          )}
         </div>
       </div>
     </Dialog>

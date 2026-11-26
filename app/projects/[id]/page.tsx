@@ -1,4 +1,5 @@
 import { canConfigureProject } from "@/lib/project-policy";
+import { displayTaskKey } from "@/lib/services/task-key-lookup";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { isRouterPrefetch } from "@/lib/router-prefetch";
@@ -163,6 +164,7 @@ export default async function ProjectPage(props: {
   // visit may move it to the top of the viewer's recent projects.
   if (!isRouterPrefetch(await headers())) await touchRecentProject(viewerId, projectId);
   const paneData = task ? await getTaskPaneData(task.id, projectId, viewerId) : null;
+  const taskKey = task ? await displayTaskKey(task.id) : null;
 
   const tabParam = qstr("tab");
   const activeTab = tabParam ? projectTabs.find((tab) => tab.tab_key === tabParam) : undefined;
@@ -444,6 +446,7 @@ export default async function ProjectPage(props: {
         <LazyTaskPane
           key={`task-${task.id}`}
           projectId={projectId}
+          taskKey={taskKey}
           view={view}
           task={task}
           subtasks={paneData.subtasks}

@@ -15,6 +15,7 @@ import {
   type CustomValue,
 } from "@/lib/custom-fields";
 import { todayISO } from "@/lib/dates";
+import { copyTaskKey } from "@/lib/task-actions";
 import { taskConflictComparisonRows } from "@/lib/task-conflict";
 import {
   overdueBadgeText,
@@ -70,10 +71,13 @@ export default function TaskPane({
   viewerCanModerate,
   canEdit,
   canAdmin,
+  taskKey = null,
 }: {
   projectId: number;
   view: string;
   task: TaskRow;
+  /** Issue key, given only when the task's primary project is a development project. */
+  taskKey?: string | null;
   subtasks: TaskRow[];
   comments: CommentRow[];
   users: User[];
@@ -570,6 +574,21 @@ export default function TaskPane({
             </div>
           )}
 
+          {taskKey && (
+            <div className="mb-1 flex items-center gap-1.5" data-task-key>
+              <span className="font-mono text-[12px] font-medium text-secondary">{taskKey}</span>
+              <button
+                type="button"
+                onClick={() => void copyTaskKey(taskKey)}
+                aria-label={`課題キー ${taskKey} をコピー`}
+                title="課題キーをコピー"
+                className="rounded px-1 text-[11px] text-muted hover:bg-hover hover:text-text"
+                data-task-key-copy
+              >
+                コピー
+              </button>
+            </div>
+          )}
           <TaskDraftInput
             taskId={task.id}
             field="name"

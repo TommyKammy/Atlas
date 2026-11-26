@@ -1,4 +1,5 @@
 import { getSearchCustomFields, searchTasksAdvanced, searchProjectsGlobal, searchMessagesGlobal, searchKnowledgeGlobal, searchFilesGlobal } from "@/lib/services/authorized-data";
+import { lookupTaskKey } from "@/lib/services/task-key-lookup";
 import Link from "next/link";
 import {
   getProjectsForUser,
@@ -91,6 +92,8 @@ export default async function SearchPage(props: {
     completedFrom: searchDateParam(str(sp, "completed_from")),
     completedTo: searchDateParam(str(sp, "completed_to")),
     custom,
+    // An exact issue key ranks its task first within the filters (§9).
+    keyTaskId: q !== "" ? await lookupTaskKey(q) : null,
   };
   const searched =
     q !== "" ||

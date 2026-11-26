@@ -1194,3 +1194,11 @@ CREATE TABLE IF NOT EXISTS task_keys (
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (namespace_id, number)
 );
+
+-- Workspace-level feature switches (0043). A missing row means every feature is off.
+CREATE TABLE IF NOT EXISTS workspace_features (
+  workspace_id  BIGINT PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+  dev_projects  BOOLEAN NOT NULL DEFAULT false,
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by    BIGINT REFERENCES users(id) ON DELETE SET NULL
+);

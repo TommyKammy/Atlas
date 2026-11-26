@@ -70,6 +70,25 @@ export async function taskKeysFor(taskIds: readonly number[], q: Queryable = db)
   return keys;
 }
 
+/**
+ * The key to show on a task's screens: only while its primary project is a
+ * development project (§9), so tasks moved to an ordinary project show
+ * nothing there even though their key keeps resolving.
+ */
+export async function displayTaskKey(taskId: number, q: Queryable = db): Promise<string | null> {
+  const result = await q.query(
+    `SELECT d.prefix, k.number
+       FROM tasks t
+       JOIN dev_projects current_dev ON current_dev.project_id = t.project_id
+       JOIN task_keys k ON k.task_id = t.id
+       JOIN dev_projects d ON d.id = k.namespace_id
+      WHERE t.id = $1::bigint`,
+    [taskId],
+  );
+  const row = result.rows[0];
+  return row ? formatTaskKey(String(row.prefix), Number(row.number)) : null;
+}
+
 /** Development settings for a batch of projects; projects without one are absent. */
 export async function devSettingsFor(
   projectIds: readonly number[],
