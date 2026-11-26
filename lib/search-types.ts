@@ -1,4 +1,11 @@
-export type SuggestTask = { id: number; name: string; project_id: number; project_name: string };
+export type SuggestTask = {
+  id: number;
+  name: string;
+  project_id: number;
+  project_name: string;
+  /** Issue key such as ATL-123, or null. */
+  key?: string | null;
+};
 export type SuggestProject = { id: number; name: string };
 export type SuggestMessage = { id: number; title: string; project_id: number; project_name: string };
 export type SuggestKnowledge = { id: number; title: string; project_id: number; project_name: string };
@@ -67,7 +74,7 @@ export function buildSearchOptions(data: SearchSuggestData, q: string): SearchSu
     ...(groups.tasks ?? []).map((task) => ({
       key: `task-${task.id}`,
       group: "tasks" as const,
-      label: task.name,
+      label: task.key ? `${task.key} ${task.name}` : task.name,
       sublabel: task.project_name,
       href: taskHref(task),
     })),

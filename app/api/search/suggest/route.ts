@@ -1,6 +1,7 @@
 import { searchTasksAdvanced, searchProjectsGlobal, searchMessagesGlobal, searchKnowledgeGlobal, searchFilesGlobal } from "@/lib/services/authorized-data";
 import { NextResponse } from "next/server";
 import { withUser } from "@/lib/api/route";
+import { lookupTaskKey, taskKeysFor } from "@/lib/services/task-key-lookup";
 import {
   getSearchHistory,
   getWorkspace,
@@ -28,6 +29,9 @@ export const GET = withUser(async (req, { uid }) => {
     completedFrom: null,
     completedTo: null,
     custom: [],
+    // An exact issue key (ATL-123) ranks its task first, still inside the
+    // visibility filter of the search itself (docs/dev-projects-phase0.md §9).
+    keyTaskId: await lookupTaskKey(q),
   };
   const [tasks, projects, messages, knowledge, files] = await Promise.all([
     searchTasksAdvanced(ws.id, filters, { userId: uid }),
@@ -36,14 +40,17 @@ export const GET = withUser(async (req, { uid }) => {
     searchKnowledgeGlobal(ws.id, q, { userId: uid }),
     searchFilesGlobal(ws.id, q, { userId: uid }),
   ]);
+  const topTasks = tasks.slice(0, 5);
+  const keys = await taskKeysFor(topTasks.map((task) => task.id));
   return NextResponse.json({
     history: [],
     groups: {
-      tasks: tasks.slice(0, 5).map((task) => ({
+      tasks: topTasks.map((task) => ({
         id: task.id,
         name: task.name,
         project_id: task.project_id,
         project_name: task.project_name,
+        key: keys.get(task.id) ?? null,
       })),
       projects: projects.slice(0, 5).map((project) => ({ id: project.id, name: project.name })),
       messages: messages.slice(0, 5).map((message) => ({

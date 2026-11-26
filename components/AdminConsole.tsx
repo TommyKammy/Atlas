@@ -20,8 +20,9 @@ import OrganizationPanel from "./OrganizationPanel";
 import SecurityPanel from "./SecurityPanel";
 import UsageStats from "./UsageStats";
 import LlmSettings from "./LlmSettings";
+import FeaturesPanel from "./FeaturesPanel";
 
-type TabKey = "members" | "teams" | "workspace" | "security" | "insights" | "ai";
+type TabKey = "members" | "teams" | "workspace" | "features" | "security" | "insights" | "ai";
 
 type Tab = {
   key: TabKey;
@@ -70,6 +71,12 @@ export default function AdminConsole({
       key: "workspace",
       label: "組織設定",
       description: "組織名とプロフィール",
+      allowed: permissions.includes("workspace.manage"),
+    },
+    {
+      key: "features",
+      label: "機能",
+      description: "開発プロジェクトなどの追加機能",
       allowed: permissions.includes("workspace.manage"),
     },
     {
@@ -179,6 +186,7 @@ export default function AdminConsole({
         {active === "workspace" && permissions.includes("workspace.manage") && (
           <OrganizationPanel initial={initialWorkspace} />
         )}
+        {active === "features" && permissions.includes("workspace.manage") && <FeaturesPanel />}
         {active === "security" &&
           (permissions.includes("security.manage") || permissions.includes("roles.manage")) && (
             <SecurityPanel
